@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -78,6 +78,16 @@ const showInvoiceCurrency = (c: string) => {
 export default function App() {
   const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
+    sales_purchases: true,
+    treasury_finance: true,
+    base_info: false, // Collapse by default to make it look clean
+    reports: true,
+  });
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
+  };
 
   useEffect(() => {
     if (activeTab === 'create_sale') {
@@ -884,221 +894,378 @@ export default function App() {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto w-full py-6 px-4 flex flex-col gap-2">
-          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider">عملیات اصلی</div>
-          <button
-            type="button"
-            onClick={() => { setActiveTab('create_sale'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'create_sale' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
-                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <ShoppingCart className="w-5 h-5 text-indigo-500" />
-            ثبت فاکتور فروش
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setActiveTab('create_purchase'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'create_purchase' 
-                ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
-                : 'text-gray-600 hover:text-amber-700 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <Receipt className="w-5 h-5 text-amber-500" />
-            ثبت فاکتور خرید
-          </button>
+        <div className="flex-1 overflow-y-auto w-full py-4 px-3 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-gray-200Select-none" style={{ scrollbarWidth: 'thin' }}>
           
-          <button
-            type="button"
-            onClick={() => { setActiveTab('list_sale'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'list_sale' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
-                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <List className="w-5 h-5 text-indigo-500" />
-            لیست فاکتورهای فروش
-          </button>
+          {/* Group 1: Sales / Purchases */}
+          <div className="bg-gray-50/50 rounded-2xl p-2 border border-gray-100 flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => toggleGroup('sales_purchases')}
+              className="flex items-center justify-between w-full text-xs font-bold text-gray-500 hover:text-indigo-750 hover:bg-white/85 py-2.5 px-3 rounded-xl transition-all cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-indigo-500" />
+                <span>خرید و فروش (معاملات)</span>
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.sales_purchases ? 'rotate-180' : ''}`} />
+            </button>
+            
+            <AnimatePresence initial={false}>
+              {expandedGroups.sales_purchases && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden flex flex-col gap-1 pr-1 mr-1 border-r border-gray-200/50 mt-1"
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('create_sale'); setIsSidebarOpen(false); }}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'create_sale' 
+                        ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                        : 'text-gray-600 hover:text-indigo-600 hover:bg-white'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    ثبت فاکتور فروش
+                  </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('list_purchase'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'list_purchase' 
-                ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
-                : 'text-gray-600 hover:text-amber-700 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <FileText className="w-5 h-5 text-amber-500" />
-            لیست فاکتورهای خرید
-          </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('list_sale'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'list_sale' 
+                        ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                        : 'text-gray-600 hover:text-indigo-600 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <List className="w-3.5 h-3.5 text-indigo-500" />
+                      فاکتورهای فروش
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans ${
+                      activeTab === 'list_sale' ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {formatNumber(invoices.filter(i => i.type !== 'purchase').length)}
+                    </span>
+                  </button>
 
-          <div className="w-full h-px bg-gray-100 my-4"></div>
-          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider text-right">خزانه‌داری و امور مالی</div>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('create_purchase'); setIsSidebarOpen(false); }}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'create_purchase' 
+                        ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                        : 'text-gray-600 hover:text-amber-700 hover:bg-white'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    ثبت فاکتور خرید
+                  </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('create_receive_receipt'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'create_receive_receipt' 
-                ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
-                : 'text-gray-600 hover:text-emerald-800 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <Wallet className="w-5 h-5 text-emerald-500" />
-            صدور رسید دریافت
-          </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('list_purchase'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'list_purchase' 
+                        ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                        : 'text-gray-600 hover:text-amber-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-amber-500" />
+                      فاکتورهای خرید
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans ${
+                      activeTab === 'list_purchase' ? 'bg-amber-200 text-amber-800' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {formatNumber(invoices.filter(i => i.type === 'purchase').length)}
+                    </span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('list_receive_receipt'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'list_receive_receipt' 
-                ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
-                : 'text-gray-600 hover:text-emerald-800 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <List className="w-5 h-5 text-emerald-500" />
-            لیست رسیدهای دریافت
-          </button>
+          {/* Group 2: Treasury and Flow */}
+          <div className="bg-gray-50/50 rounded-2xl p-2 border border-gray-100 flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => toggleGroup('treasury_finance')}
+              className="flex items-center justify-between w-full text-xs font-bold text-gray-500 hover:text-emerald-700 hover:bg-white/80 py-2.5 px-3 rounded-xl transition-all cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-emerald-500" />
+                <span>امور مالی و خزانه‌داری</span>
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.treasury_finance ? 'rotate-180' : ''}`} />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('create_pay_receipt'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'create_pay_receipt' 
-                ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
-                : 'text-gray-600 hover:text-rose-800 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <CreditCard className="w-5 h-5 text-rose-500" />
-            صدور رسید پرداخت
-          </button>
+            <AnimatePresence initial={false}>
+              {expandedGroups.treasury_finance && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden flex flex-col gap-1 pr-1 mr-1 border-r border-gray-200/50 mt-1"
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('create_receive_receipt'); setIsSidebarOpen(false); }}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'create_receive_receipt' 
+                        ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
+                        : 'text-gray-600 hover:text-emerald-700 hover:bg-white'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    صدور رسید دریافت
+                  </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('list_pay_receipt'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'list_pay_receipt' 
-                ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
-                : 'text-gray-600 hover:text-rose-800 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <FileText className="w-5 h-5 text-rose-500" />
-            لیست رسیدهای پرداخت
-          </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('list_receive_receipt'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'list_receive_receipt' 
+                        ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
+                        : 'text-gray-600 hover:text-emerald-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <List className="w-3.5 h-3.5 text-emerald-500" />
+                      رسیدهای دریافت وجه
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans ${
+                      activeTab === 'list_receive_receipt' ? 'bg-emerald-200 text-emerald-800' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {formatNumber(transactions.filter(t => t.type === 'receive').length)}
+                    </span>
+                  </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('financial_report'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'financial_report' 
-                ? 'bg-blue-50 text-blue-700 shadow-sm border-r-4 border-blue-600' 
-                : 'text-gray-600 hover:text-blue-800 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5 text-blue-500" />
-            گزارش مالی و تراز
-          </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('create_pay_receipt'); setIsSidebarOpen(false); }}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'create_pay_receipt' 
+                        ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
+                        : 'text-gray-600 hover:text-rose-700 hover:bg-white'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    صدور رسید پرداخت
+                  </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('person_ledger'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'person_ledger' 
-                ? 'bg-violet-50 text-violet-700 shadow-sm border-r-4 border-violet-600' 
-                : 'text-gray-600 hover:text-violet-800 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <User className="w-5 h-5 text-violet-500" />
-            کارت حساب اشخاص
-          </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('list_pay_receipt'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'list_pay_receipt' 
+                        ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
+                        : 'text-gray-600 hover:text-rose-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-rose-500" />
+                      رسیدهای پرداخت وجه
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans ${
+                      activeTab === 'list_pay_receipt' ? 'bg-rose-200 text-rose-800' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {formatNumber(transactions.filter(t => t.type === 'pay').length)}
+                    </span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-          <div className="w-full h-px bg-gray-100 my-4"></div>
-          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider text-right">اطلاعات پایه</div>
+          {/* Group 3: Analysis & Reports */}
+          <div className="bg-gray-50/50 rounded-2xl p-2 border border-gray-100 flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => toggleGroup('reports')}
+              className="flex items-center justify-between w-full text-xs font-bold text-gray-500 hover:text-violet-750 hover:bg-white/80 py-2.5 px-3 rounded-xl transition-all cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-violet-500" />
+                <span>گزارش‌ها و تحلیل تراز</span>
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.reports ? 'rotate-180' : ''}`} />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('products'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'products' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
-                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <Package className="w-5 h-5" />
-            مدیریت کالا / خدمات
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => { setActiveTab('persons'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'persons' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
-                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <User className="w-5 h-5" />
-            مدیریت اشخاص
-          </button>
+            <AnimatePresence initial={false}>
+              {expandedGroups.reports && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden flex flex-col gap-1 pr-1 mr-1 border-r border-gray-200/50 mt-1"
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('financial_report'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'financial_report' 
+                        ? 'bg-blue-50 text-blue-700 shadow-sm border-r-4 border-blue-600' 
+                        : 'text-gray-600 hover:text-blue-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
+                      گزارش مالی و تراز کل
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-sans">تراز</span>
+                  </button>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('accounts'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'accounts' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
-                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <CreditCard className="w-5 h-5" />
-            مدیریت حساب‌های بانکی
-          </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('person_ledger'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'person_ledger' 
+                        ? 'bg-violet-50 text-violet-700 shadow-sm border-r-4 border-violet-600' 
+                        : 'text-gray-600 hover:text-violet-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-violet-500" />
+                      کارت حساب معین اشخاص
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 font-sans">معین</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => { setActiveTab('cashboxes'); setIsSidebarOpen(false); }}
-            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'cashboxes' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
-                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
-            }`}
-          >
-            <Wallet className="w-5 h-5" />
-            مدیریت صندوق‌ها و تنخواه
-          </button>
+          {/* Group 4: Base Information */}
+          <div className="bg-gray-50/50 rounded-2xl p-2 border border-gray-100 flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => toggleGroup('base_info')}
+              className="flex items-center justify-between w-full text-xs font-bold text-gray-500 hover:text-amber-700 hover:bg-white/80 py-2.5 px-3 rounded-xl transition-all cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Store className="w-4 h-4 text-amber-500" />
+                <span>اطلاعات پایه سیستم</span>
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.base_info ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence initial={false}>
+              {expandedGroups.base_info && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden flex flex-col gap-1 pr-1 mr-1 border-r border-gray-200/50 mt-1"
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('products'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'products' 
+                        ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                        : 'text-gray-600 hover:text-amber-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Package className="w-3.5 h-3.5 text-amber-500" />
+                      کالاها و خدمات
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                      {formatNumber(products.length)}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('persons'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'persons' 
+                        ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                        : 'text-gray-600 hover:text-amber-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-amber-500" />
+                      طرف‌های حساب و اشخاص
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                      {formatNumber(persons.length)}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('accounts'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'accounts' 
+                        ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                        : 'text-gray-600 hover:text-amber-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-500" />
+                      حساب‌های بانکی
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                      {formatNumber(accounts.length)}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('cashboxes'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'cashboxes' 
+                        ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                        : 'text-gray-600 hover:text-amber-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Wallet className="w-3.5 h-3.5 text-amber-500" />
+                      صندوق‌‌ها و تنخواه
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                      {formatNumber(cashboxes.length)}
+                    </span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
         </div>
 
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex flex-col gap-2">
+        <div className="p-3 border-t border-gray-100 bg-gray-50/50 flex flex-col gap-2">
           <button
             type="button"
             onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
-            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
               activeTab === 'settings' 
-                ? 'bg-gray-900 text-white shadow-sm' 
+                ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' 
                 : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm'
             }`}
           >
-            <Settings className="w-4 h-4" />
-            تنظیمات فروشگاه
+            <Settings className="w-4 h-4 text-gray-500 hover:rotate-90 transition-transform duration-300" />
+            تنظیمات فروشگاه و تم
           </button>
           
           <button
             type="button"
             onClick={() => { setActiveTab('update'); setIsSidebarOpen(false); }}
-            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
               activeTab === 'update' 
-                ? 'bg-gray-900 text-white shadow-sm' 
+                ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' 
                 : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm'
             }`}
           >
-            <Github className="w-4 h-4" />
+            <Github className="w-4 h-4 text-gray-500 animate-pulse" />
             بروزرسانی از گیت‌هاب
           </button>
         </div>
