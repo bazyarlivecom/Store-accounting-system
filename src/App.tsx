@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github } from 'lucide-react';
+import { Plus, Trash2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -22,6 +22,24 @@ type Person = {
 };
 type Product = { id: number; name: string; price: number; type: 'product' | 'service'; category: string };
 
+type Account = {
+  id: number;
+  bankName: string;
+  branchName?: string;
+  accountNumber?: string;
+  cardNumber?: string;
+  shebaNumber?: string;
+  balance: number;
+  accountHolder?: string;
+};
+
+type Cashbox = {
+  id: number;
+  name: string;
+  manager?: string;
+  balance: number;
+};
+
 type InvoiceItem = {
   id: string;
   productId: number | '';
@@ -33,12 +51,14 @@ type InvoiceItem = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'products' | 'persons' | 'update'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update'>('create');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [persons, setPersons] = useState<Person[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Update State
@@ -79,6 +99,24 @@ export default function App() {
   const [newPersonRole, setNewPersonRole] = useState<'customer' | 'employee' | 'supplier'>('customer');
   const [newPersonPhone, setNewPersonPhone] = useState('');
   const [submittingPerson, setSubmittingPerson] = useState(false);
+
+  // Bank Account modal & form state
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [newAccountBankName, setNewAccountBankName] = useState('');
+  const [newAccountBranchName, setNewAccountBranchName] = useState('');
+  const [newAccountNumber, setNewAccountNumber] = useState('');
+  const [newAccountCardNumber, setNewAccountCardNumber] = useState('');
+  const [newAccountShebaNumber, setNewAccountShebaNumber] = useState('');
+  const [newAccountBalance, setNewAccountBalance] = useState('');
+  const [newAccountHolder, setNewAccountHolder] = useState('');
+  const [submittingAccount, setSubmittingAccount] = useState(false);
+
+  // Cashbox modal & form state
+  const [isCashboxModalOpen, setIsCashboxModalOpen] = useState(false);
+  const [newCashboxName, setNewCashboxName] = useState('');
+  const [newCashboxManager, setNewCashboxManager] = useState('');
+  const [newCashboxBalance, setNewCashboxBalance] = useState('');
+  const [submittingCashbox, setSubmittingCashbox] = useState(false);
 
   // Fetch API data on mount
   const fetchInvoices = async () => {
@@ -214,12 +252,128 @@ export default function App() {
     }
   };
 
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch('/api/accounts');
+      if (res.ok) {
+        setAccounts(await res.json());
+      }
+    } catch (error) {
+      console.error('Error fetching accounts', error);
+    }
+  };
+
+  const handleSubmitAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccountBankName) return;
+    setSubmittingAccount(true);
+    try {
+      const res = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankName: newAccountBankName,
+          branchName: newAccountBranchName,
+          accountNumber: newAccountNumber,
+          cardNumber: newAccountCardNumber,
+          shebaNumber: newAccountShebaNumber,
+          balance: Number(newAccountBalance) || 0,
+          accountHolder: newAccountHolder
+        })
+      });
+      if (res.ok) {
+        await fetchAccounts();
+        setNewAccountBankName('');
+        setNewAccountBranchName('');
+        setNewAccountNumber('');
+        setNewAccountCardNumber('');
+        setNewAccountShebaNumber('');
+        setNewAccountBalance('');
+        setNewAccountHolder('');
+        setIsAccountModalOpen(false);
+        setSuccessMsg('حساب بانکی با موفقیت ثبت شد');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error adding account', error);
+    } finally {
+      setSubmittingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = async (id: number) => {
+    if (!confirm('آیا از حذف این حساب بانکی اطمینان دارید؟')) return;
+    try {
+      const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await fetchAccounts();
+      }
+    } catch (error) {
+      console.error('Error deleting account', error);
+    }
+  };
+
+  const fetchCashboxes = async () => {
+    try {
+      const res = await fetch('/api/cashboxes');
+      if (res.ok) {
+        setCashboxes(await res.json());
+      }
+    } catch (error) {
+      console.error('Error fetching cashboxes', error);
+    }
+  };
+
+  const handleSubmitCashbox = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCashboxName) return;
+    setSubmittingCashbox(true);
+    try {
+      const res = await fetch('/api/cashboxes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCashboxName,
+          manager: newCashboxManager,
+          balance: Number(newCashboxBalance) || 0
+        })
+      });
+      if (res.ok) {
+        await fetchCashboxes();
+        setNewCashboxName('');
+        setNewCashboxManager('');
+        setNewCashboxBalance('');
+        setIsCashboxModalOpen(false);
+        setSuccessMsg('صندوق با موفقیت ثبت شد');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error adding cashbox', error);
+    } finally {
+      setSubmittingCashbox(false);
+    }
+  };
+
+  const handleDeleteCashbox = async (id: number) => {
+    if (!confirm('آیا از حذف این صندوق اطمینان دارید؟')) return;
+    try {
+      const res = await fetch(`/api/cashboxes/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await fetchCashboxes();
+      }
+    } catch (error) {
+      console.error('Error deleting cashbox', error);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         await Promise.all([
           fetchPersons(),
-          fetchProducts()
+          fetchProducts(),
+          fetchAccounts(),
+          fetchCashboxes()
         ]);
         
         await fetchInvoices();
@@ -479,6 +633,32 @@ export default function App() {
           >
             <User className="w-5 h-5" />
             مدیریت اشخاص
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('accounts'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'accounts' 
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <CreditCard className="w-5 h-5" />
+            مدیریت حساب‌های بانکی
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('cashboxes'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'cashboxes' 
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <Wallet className="w-5 h-5" />
+            مدیریت صندوق‌ها و تنخواه
           </button>
         </div>
 
@@ -1096,6 +1276,160 @@ export default function App() {
             )}
           </div>
         </motion.div>
+      ) : activeTab === 'accounts' ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-indigo-500" />
+              مدیریت حساب‌های بانکی
+            </h2>
+            <button
+              onClick={() => setIsAccountModalOpen(true)}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              ثبت حساب جدید
+            </button>
+          </div>
+          
+          {successMsg && (
+            <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100">
+              <CheckCircle className="w-5 h-5" />
+              {successMsg}
+            </div>
+          )}
+          
+          <div className="p-0 overflow-x-auto">
+            {accounts.length === 0 ? (
+              <div className="py-12 text-center text-gray-500 font-medium">
+                هیچ حساب بانکی ثبت نشده است. برای شروع یک حساب جدید تعریف کنید.
+              </div>
+            ) : (
+              <table className="w-full text-right border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+                    <th className="py-4 px-6 font-semibold">ردیف</th>
+                    <th className="py-4 px-6 font-semibold">نام بانک</th>
+                    <th className="py-4 px-6 font-semibold">صاحب حساب</th>
+                    <th className="py-4 px-6 font-semibold">شماره حساب</th>
+                    <th className="py-4 px-6 font-semibold">شماره کارت</th>
+                    <th className="py-4 px-6 font-semibold">شماره شبا</th>
+                    <th className="py-4 px-6 font-semibold">شعبه</th>
+                    <th className="py-4 px-6 font-semibold">موجودی (تومان)</th>
+                    <th className="py-4 px-6 font-semibold text-center w-24">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {accounts.map((acc, index) => (
+                    <tr key={acc.id} className="hover:bg-gray-50/50 transition-colors text-gray-700">
+                      <td className="py-4 px-6 font-medium text-gray-400">{index + 1}</td>
+                      <td className="py-4 px-6 font-semibold text-gray-950">
+                        <span className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-indigo-500" />
+                          {acc.bankName}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-sm">{acc.accountHolder || '-'}</td>
+                      <td className="py-4 px-6 text-sm font-mono text-left" dir="ltr">{acc.accountNumber || '-'}</td>
+                      <td className="py-4 px-6 text-sm font-mono text-left" dir="ltr">{acc.cardNumber || '-'}</td>
+                      <td className="py-4 px-6 text-sm font-mono text-left" dir="ltr">{acc.shebaNumber || '-'}</td>
+                      <td className="py-4 px-6 text-sm">{acc.branchName || '-'}</td>
+                      <td className="py-4 px-6 text-sm font-semibold text-indigo-600 font-mono text-left" dir="ltr">
+                        {formatNumber(acc.balance)}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <button
+                          onClick={() => handleDeleteAccount(acc.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                          title="حذف حساب"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </motion.div>
+      ) : activeTab === 'cashboxes' ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-indigo-500" />
+              مدیریت صندوق‌ها و تنخواه
+            </h2>
+            <button
+              onClick={() => setIsCashboxModalOpen(true)}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              ثبت صندوق جدید
+            </button>
+          </div>
+          
+          {successMsg && (
+            <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100">
+              <CheckCircle className="w-5 h-5" />
+              {successMsg}
+            </div>
+          )}
+          
+          <div className="p-0 overflow-x-auto">
+            {cashboxes.length === 0 ? (
+              <div className="py-12 text-center text-gray-500 font-medium">
+                هیچ صندوق یا تنخواه‌گردانی ثبت نشده است. برای شروع یک مورد جدید ثبت کنید.
+              </div>
+            ) : (
+              <table className="w-full text-right border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+                    <th className="py-4 px-6 font-semibold">ردیف</th>
+                    <th className="py-4 px-6 font-semibold">نام صندوق / تنخواه</th>
+                    <th className="py-4 px-6 font-semibold">مسئول صندوق</th>
+                    <th className="py-4 px-6 font-semibold">موجودی فعلی (تومان)</th>
+                    <th className="py-4 px-6 font-semibold text-center w-24">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {cashboxes.map((box, index) => (
+                    <tr key={box.id} className="hover:bg-gray-50/50 transition-colors text-gray-700">
+                      <td className="py-4 px-6 font-medium text-gray-400">{index + 1}</td>
+                      <td className="py-4 px-6 font-semibold text-gray-950">
+                        <span className="flex items-center gap-2">
+                          <Wallet className="w-4 h-4 text-indigo-500" />
+                          {box.name}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-sm">{box.manager || 'نامشخص'}</td>
+                      <td className="py-4 px-6 text-sm font-semibold text-teal-600 font-mono text-left" dir="ltr">
+                        {formatNumber(box.balance)}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <button
+                          onClick={() => handleDeleteCashbox(box.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                          title="حذف صندوق"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </motion.div>
       ) : activeTab === 'update' ? (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -1437,6 +1771,252 @@ export default function App() {
                     <Plus className="w-5 h-5" />
                   )}
                   <span>ثبت شخص</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isAccountModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-2xl max-h-[90vh] flex flex-col"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-indigo-500" />
+                  ثبت حساب بانکی جدید
+                </h3>
+                <button
+                  onClick={() => setIsAccountModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto">
+                <form id="accountForm" onSubmit={handleSubmitAccount} className="flex flex-col gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        نام بانک <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newAccountBankName}
+                        onChange={(e) => setNewAccountBankName(e.target.value)}
+                        placeholder="مثال: بانک ملی، بانک ملت"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        نام صاحب حساب <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newAccountHolder}
+                        onChange={(e) => setNewAccountHolder(e.target.value)}
+                        placeholder="مثال: علی محمدی"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                        required
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        شماره حساب
+                      </label>
+                      <input
+                        type="text"
+                        value={newAccountNumber}
+                        onChange={(e) => setNewAccountNumber(e.target.value)}
+                        placeholder="مثال: 0102030405"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
+                        dir="ltr"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        شماره کارت
+                      </label>
+                      <input
+                        type="text"
+                        value={newAccountCardNumber}
+                        onChange={(e) => setNewAccountCardNumber(e.target.value)}
+                        placeholder="16 رقمی"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
+                        dir="ltr"
+                      />
+                    </div>
+
+                    <div className="w-full text-right md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        شماره شبا (IBAN)
+                      </label>
+                      <input
+                        type="text"
+                        value={newAccountShebaNumber}
+                        onChange={(e) => setNewAccountShebaNumber(e.target.value)}
+                        placeholder="مثال: IR12017000000000..."
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
+                        dir="ltr"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        نام شعبه
+                      </label>
+                      <input
+                        type="text"
+                        value={newAccountBranchName}
+                        onChange={(e) => setNewAccountBranchName(e.target.value)}
+                        placeholder="مثال: شعبه مرکزی"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        موجودی اولیه (تومان)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newAccountBalance}
+                        onChange={(e) => setNewAccountBalance(e.target.value)}
+                        placeholder="مثال: 1000000"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                </form>
+              </div>
+              
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsAccountModalOpen(false)}
+                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="submit"
+                  form="accountForm"
+                  disabled={submittingAccount}
+                  className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submittingAccount ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                  ) : (
+                    <Plus className="w-5 h-5" />
+                  )}
+                  <span>ثبت حساب</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isCashboxModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-md max-h-[90vh] flex flex-col"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-indigo-500" />
+                  ثبت صندوق یا تنخواه جدید
+                </h3>
+                <button
+                  onClick={() => setIsCashboxModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto">
+                <form id="cashboxForm" onSubmit={handleSubmitCashbox} className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        نام صندوق / تنخواه <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newCashboxName}
+                        onChange={(e) => setNewCashboxName(e.target.value)}
+                        placeholder="مثال: صندوق اصلی، تنخواه دفتر"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        نام مسئول صندوق
+                      </label>
+                      <input
+                        type="text"
+                        value={newCashboxManager}
+                        onChange={(e) => setNewCashboxManager(e.target.value)}
+                        placeholder="مثال: سارا احمدی"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        موجودی اولیه (تومان)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newCashboxBalance}
+                        onChange={(e) => setNewCashboxBalance(e.target.value)}
+                        placeholder="مثال: 500000"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                </form>
+              </div>
+              
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsCashboxModalOpen(false)}
+                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="submit"
+                  form="cashboxForm"
+                  disabled={submittingCashbox}
+                  className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submittingCashbox ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                  ) : (
+                    <Plus className="w-5 h-5" />
+                  )}
+                  <span>ثبت صندوق</span>
                 </button>
               </div>
             </motion.div>

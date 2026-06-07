@@ -23,6 +23,16 @@ let products = [
 // In-memory invoice storage
 let invoices: any[] = [];
 
+let accounts = [
+  { id: 1, bankName: 'بانک ملی', branchName: 'مرکزی', accountNumber: '0102030405001', cardNumber: '6037991122334455', shebaNumber: 'IR120170000000102030405001', balance: 150000000, accountHolder: 'علی محمدی' },
+  { id: 2, bankName: 'بانک ملت', branchName: 'آزادی', accountNumber: '5566778899', cardNumber: '6104337788990011', shebaNumber: 'IR96012000000005566778899', balance: 320000000, accountHolder: 'شرکت آرمان اندیش' },
+];
+
+let cashboxes = [
+  { id: 1, name: 'صندوق اصلی فروشگاه', manager: 'رضا کریمی', balance: 45000000 },
+  { id: 2, name: 'تنخواه‌گردان دفتر', manager: 'سارا احمدی', balance: 12000000 },
+];
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -117,6 +127,56 @@ async function startServer() {
       message: 'فاکتور با موفقیت ثبت شد', 
       invoiceId: newInvoice.id 
     });
+  });
+
+  // Bank Accounts API
+  app.get('/api/accounts', (req, res) => {
+    res.json([...accounts].reverse());
+  });
+
+  app.post('/api/accounts', (req, res) => {
+    const { bankName, branchName, accountNumber, cardNumber, shebaNumber, balance, accountHolder } = req.body;
+    const newAccount = {
+      id: Math.floor(Math.random() * 100000),
+      bankName: bankName || 'بانک نامشخص',
+      branchName: branchName || '',
+      accountNumber: accountNumber || '',
+      cardNumber: cardNumber || '',
+      shebaNumber: shebaNumber || '',
+      balance: Number(balance) || 0,
+      accountHolder: accountHolder || ''
+    };
+    accounts.push(newAccount);
+    res.json({ success: true, message: 'حساب بانکی با موفقیت ثبت شد', account: newAccount });
+  });
+
+  app.delete('/api/accounts/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    accounts = accounts.filter(a => a.id !== id);
+    res.json({ success: true, message: 'حساب بانکی با موفقیت حذف شد' });
+  });
+
+  // Cashboxes API
+  app.get('/api/cashboxes', (req, res) => {
+    res.json([...cashboxes].reverse());
+  });
+
+  app.post('/api/cashboxes', (req, res) => {
+    const { name, manager, balance } = req.body;
+    const newCashbox = {
+      id: Math.floor(Math.random() * 100000),
+      name: name || 'صندوق نامشخص',
+      manager: manager || '',
+      balance: Number(balance) || 0
+    };
+    cashboxes.push(newCashbox);
+    res.json({ success: true, message: 'صندوق با موفقیت ثبت شد', cashbox: newCashbox });
+  });
+
+  app.delete('/api/cashboxes/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    cashboxes = cashboxes.filter(c => c.id !== id);
+    res.json({ success: true, message: 'صندوق با موفقیت حذف شد' });
   });
 
   app.post('/api/system/update', (req, res) => {
