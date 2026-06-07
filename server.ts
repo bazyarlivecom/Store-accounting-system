@@ -270,6 +270,42 @@ async function startServer() {
   app.post('/api/transactions', (req, res) => {
     const { type, personId, amount, date, jalaliDate, resourceType, resourceId, description } = req.body;
     
+    if (type === 'salary') {
+      if (!personId || !amount) {
+        return res.status(400).json({ success: false, message: 'لطفا کارمند و مبلغ حقوق را تعیین کنید' });
+      }
+
+      const tAmount = Number(amount);
+      if (resourceType && resourceId && resourceId !== 0) {
+        if (resourceType === 'bank') {
+          const acc = accounts.find(a => a.id === Number(resourceId));
+          if (acc) {
+            acc.balance -= tAmount;
+          }
+        } else if (resourceType === 'cashbox') {
+          const cb = cashboxes.find(c => c.id === Number(resourceId));
+          if (cb) {
+            cb.balance -= tAmount;
+          }
+        }
+      }
+
+      const newTransaction = {
+        id: Math.floor(Math.random() * 100000),
+        type: 'salary',
+        personId: Number(personId),
+        amount: tAmount,
+        date: date || new Date().toISOString(),
+        jalaliDate: jalaliDate || new Date().toLocaleDateString('fa-IR'),
+        resourceType: resourceType || 'none',
+        resourceId: resourceId ? Number(resourceId) : 0,
+        description: description || ''
+      };
+
+      transactions.push(newTransaction);
+      return res.json({ success: true, message: 'سند حقوق و دستمزد با موفقیت صادر شد', transaction: newTransaction });
+    }
+
     if (!type || !personId || !amount || !resourceType || !resourceId) {
       return res.status(400).json({ success: false, message: 'لطفا تمام اطلاعات لازم از جمله طرف حساب، مبلغ و صندوق/بانک را وارد کنید' });
     }

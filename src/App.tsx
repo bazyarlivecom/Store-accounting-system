@@ -76,7 +76,7 @@ const showInvoiceCurrency = (c: string) => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger'>('create_sale');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
     sales_purchases: true,
@@ -117,6 +117,24 @@ export default function App() {
   const [receiptDescription, setReceiptDescription] = useState<string>('');
   const [submittingReceipt, setSubmittingReceipt] = useState<boolean>(false);
   const [receiptSuccessMsg, setReceiptSuccessMsg] = useState<string>('');
+
+  // Salary form state
+  const [salaryPersonId, setSalaryPersonId] = useState<number | ''>('');
+  const [salaryDate, setSalaryDate] = useState<any>(new Date());
+  const [salaryBaseAmount, setSalaryBaseAmount] = useState<string>('');
+  const [salaryHousingAllowance, setSalaryHousingAllowance] = useState<string>('');
+  const [salaryGroceryAllowance, setSalaryGroceryAllowance] = useState<string>('');
+  const [salaryOtherAllowances, setSalaryOtherAllowances] = useState<string>('');
+  const [salaryInsuranceDeduction, setSalaryInsuranceDeduction] = useState<string>('');
+  const [salaryTaxDeduction, setSalaryTaxDeduction] = useState<string>('');
+  const [salaryOtherDeductions, setSalaryOtherDeductions] = useState<string>('');
+  const [salaryDescription, setSalaryDescription] = useState<string>('');
+  const [salaryDirectPayment, setSalaryDirectPayment] = useState<boolean>(false);
+  const [salaryResourceType, setSalaryResourceType] = useState<'bank' | 'cashbox'>('bank');
+  const [salaryResourceId, setSalaryResourceId] = useState<number | ''>('');
+  const [salarySuccessMsg, setSalarySuccessMsg] = useState<string>('');
+  const [submittingSalary, setSubmittingSalary] = useState<boolean>(false);
+  const [viewingPayslip, setViewingPayslip] = useState<any | null>(null);
 
   // Person Ledger state
   const [ledgerPersonId, setLedgerPersonId] = useState<number | ''>('');
@@ -474,6 +492,100 @@ export default function App() {
       alert('خطایی در ارتباط با سرور رخ داد');
     } finally {
       setSubmittingReceipt(false);
+    }
+  };
+
+  const handleSubmitSalary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!salaryPersonId || !salaryBaseAmount) {
+      alert('لطفا کارمند و مبلغ حقوق پایه را تعیین کنید');
+      return;
+    }
+
+    const base = Number(salaryBaseAmount) || 0;
+    const housing = Number(salaryHousingAllowance) || 0;
+    const grocery = Number(salaryGroceryAllowance) || 0;
+    const otherAllow = Number(salaryOtherAllowances) || 0;
+    const insDeduct = Number(salaryInsuranceDeduction) || 0;
+    const taxDeduct = Number(salaryTaxDeduction) || 0;
+    const penaltyDeduct = Number(salaryOtherDeductions) || 0;
+
+    const netSalary = (base + housing + grocery + otherAllow) - (insDeduct + taxDeduct + penaltyDeduct);
+
+    if (netSalary <= 0) {
+      alert('مبلغ خالص حقوق باید بزرگتر از صفر باشد');
+      return;
+    }
+
+    setSubmittingSalary(true);
+    try {
+      const p = persons.find(item => item.id === Number(salaryPersonId));
+      const personName = p ? p.name : 'کارمند';
+
+      // Build payslip breakdown to store in description as JSON string
+      const payloadDescription = JSON.stringify({
+        isPayslip: true,
+        employeeName: personName,
+        base,
+        allowances: {
+          housing,
+          grocery,
+          other: otherAllow
+        },
+        deductions: {
+          insurance: insDeduct,
+          tax: taxDeduct,
+          penalty: penaltyDeduct
+        },
+        netSalary,
+        userNote: salaryDescription || 'سند حقوق و دستمزد کارمند'
+      });
+
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'salary',
+          personId: Number(salaryPersonId),
+          amount: netSalary,
+          date: typeof salaryDate.toDate === 'function' ? salaryDate.toDate().toISOString() : new Date(salaryDate).toISOString(),
+          jalaliDate: new Date(salaryDate).toLocaleDateString('fa-IR'),
+          resourceType: salaryDirectPayment ? salaryResourceType : 'none',
+          resourceId: salaryDirectPayment ? Number(salaryResourceId) : 0,
+          description: payloadDescription
+        })
+      });
+
+      if (res.ok) {
+        setSalarySuccessMsg('سند حقوق و دستمزد با موفقیت صادر شد.');
+        setSalaryBaseAmount('');
+        setSalaryHousingAllowance('');
+        setSalaryGroceryAllowance('');
+        setSalaryOtherAllowances('');
+        setSalaryInsuranceDeduction('');
+        setSalaryTaxDeduction('');
+        setSalaryOtherDeductions('');
+        setSalaryDescription('');
+        setSalaryDirectPayment(false);
+        setSalaryResourceId('');
+        
+        await Promise.all([
+          fetchTransactions(),
+          fetchInvoices(),
+          fetchAccounts(),
+          fetchCashboxes()
+        ]);
+
+        setTimeout(() => setSalarySuccessMsg(''), 4000);
+      } else {
+        const err = await res.json();
+        alert(err.message || 'خطا در ثبت سند حقوق');
+      }
+    } catch (error) {
+      console.error('Error submitting salary', error);
+      alert('خطای سیستمی رخ داد');
+    } finally {
+      setSubmittingSalary(false);
     }
   };
 
@@ -905,7 +1017,7 @@ export default function App() {
             >
               <span className="flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4 text-indigo-500" />
-                <span>خرید و فروش (معاملات)</span>
+                <span>خرید و فروش</span>
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.sales_purchases ? 'rotate-180' : ''}`} />
             </button>
@@ -998,7 +1110,7 @@ export default function App() {
             >
               <span className="flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-emerald-500" />
-                <span>امور مالی و خزانه‌داری</span>
+                <span>امور مالی و خزانه</span>
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.treasury_finance ? 'rotate-180' : ''}`} />
             </button>
@@ -1036,7 +1148,7 @@ export default function App() {
                   >
                     <span className="flex items-center gap-2">
                       <List className="w-3.5 h-3.5 text-emerald-500" />
-                      رسیدهای دریافت وجه
+                      رسیدهای دریافت
                     </span>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans ${
                       activeTab === 'list_receive_receipt' ? 'bg-emerald-200 text-emerald-800' : 'bg-gray-200 text-gray-600'
@@ -1069,12 +1181,47 @@ export default function App() {
                   >
                     <span className="flex items-center gap-2">
                       <FileText className="w-3.5 h-3.5 text-rose-500" />
-                      رسیدهای پرداخت وجه
+                      رسیدهای پرداخت
                     </span>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans ${
                       activeTab === 'list_pay_receipt' ? 'bg-rose-200 text-rose-800' : 'bg-gray-200 text-gray-600'
                     }`}>
                       {formatNumber(transactions.filter(t => t.type === 'pay').length)}
+                    </span>
+                  </button>
+
+                  <div className="border-t border-gray-100/50 my-1 mx-2"></div>
+
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('create_salary_payroll'); setIsSidebarOpen(false); }}
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'create_salary_payroll' 
+                        ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                        : 'text-gray-600 hover:text-indigo-700 hover:bg-white'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-indigo-500" />
+                    ثبت سند حقوق
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('list_salary_payroll'); setIsSidebarOpen(false); }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      activeTab === 'list_salary_payroll' 
+                        ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                        : 'text-gray-600 hover:text-indigo-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                      فیش‌های حقوقی
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans ${
+                      activeTab === 'list_salary_payroll' ? 'bg-indigo-200 text-indigo-800' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {formatNumber(transactions.filter(t => t.type === 'salary').length)}
                     </span>
                   </button>
                 </motion.div>
@@ -1091,7 +1238,7 @@ export default function App() {
             >
               <span className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-violet-500" />
-                <span>گزارش‌ها و تحلیل تراز</span>
+                <span>گزارش‌ها و تراز</span>
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.reports ? 'rotate-180' : ''}`} />
             </button>
@@ -1116,7 +1263,7 @@ export default function App() {
                   >
                     <span className="flex items-center gap-2">
                       <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
-                      گزارش مالی و تراز کل
+                      گزارش مالی و تراز
                     </span>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 font-sans">تراز</span>
                   </button>
@@ -1132,7 +1279,7 @@ export default function App() {
                   >
                     <span className="flex items-center gap-2">
                       <User className="w-3.5 h-3.5 text-violet-500" />
-                      کارت حساب معین اشخاص
+                      دفتر معین اشخاص
                     </span>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 font-sans">معین</span>
                   </button>
@@ -1150,7 +1297,7 @@ export default function App() {
             >
               <span className="flex items-center gap-2">
                 <Store className="w-4 h-4 text-amber-500" />
-                <span>اطلاعات پایه سیستم</span>
+                <span>اطلاعات پایه</span>
               </span>
               <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${expandedGroups.base_info ? 'rotate-180' : ''}`} />
             </button>
@@ -1177,7 +1324,7 @@ export default function App() {
                       <Package className="w-3.5 h-3.5 text-amber-500" />
                       کالاها و خدمات
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-100 text-gray-600">
                       {formatNumber(products.length)}
                     </span>
                   </button>
@@ -1193,9 +1340,9 @@ export default function App() {
                   >
                     <span className="flex items-center gap-2">
                       <User className="w-3.5 h-3.5 text-amber-500" />
-                      طرف‌های حساب و اشخاص
+                      طرف‌های حساب
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-100 text-gray-600">
                       {formatNumber(persons.length)}
                     </span>
                   </button>
@@ -1213,7 +1360,7 @@ export default function App() {
                       <CreditCard className="w-3.5 h-3.5 text-amber-500" />
                       حساب‌های بانکی
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-100 text-gray-600">
                       {formatNumber(accounts.length)}
                     </span>
                   </button>
@@ -1231,7 +1378,7 @@ export default function App() {
                       <Wallet className="w-3.5 h-3.5 text-amber-500" />
                       صندوق‌‌ها و تنخواه
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-205 text-gray-600">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full font-sans bg-gray-100 text-gray-600">
                       {formatNumber(cashboxes.length)}
                     </span>
                   </button>
@@ -1253,7 +1400,7 @@ export default function App() {
             }`}
           >
             <Settings className="w-4 h-4 text-gray-500 hover:rotate-90 transition-transform duration-300" />
-            تنظیمات فروشگاه و تم
+            تنظیمات سیستم
           </button>
           
           <button
@@ -2000,6 +2147,447 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : activeTab === 'create_salary_payroll' ? (
+        /* Create Salary Document Form */
+        <div className="space-y-6 text-right" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-5">
+              <div>
+                <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
+                  <CreditCard className="w-6 h-6 text-indigo-600" />
+                  ثبت سند حقوق و دستمزد جدید
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  محاسبه اقلام حقوق، مزایا، کسورات بیمه و مالیات و صدور فیش حقوقی برای کارمندان
+                </p>
+              </div>
+
+              {salarySuccessMsg && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold border bg-emerald-50 text-emerald-800 border-emerald-100"
+                >
+                  {salarySuccessMsg}
+                </motion.div>
+              )}
+            </div>
+
+            {persons.filter(p => p.role === 'employee').length === 0 ? (
+              <div className="p-8 text-center bg-gray-50 rounded-2xl border border-gray-200" id="no-employees-alert">
+                <p className="text-gray-600 font-semibold mb-4">
+                  هنوز هیچ کارمندی در سیستم تعریف نشده است. لطفا جهت صدور سند حقوق ابتدا از بخش مدیریت طرف حساب‌ها کارمند جدید ایجاد کنید.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('persons'); }}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-sm"
+                >
+                  تعریف کارمند جدید
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitSalary} className="space-y-6" id="salary-voucher-form">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Select Employee */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <User className="w-4 h-4 text-indigo-500" />
+                      انتخاب کارمند مربوطه <span className="text-rose-500">*</span>
+                    </label>
+                    <Select
+                      isRtl
+                      value={salaryPersonId ? { value: salaryPersonId, label: persons.find(p => p.id === salaryPersonId)?.name } : null}
+                      onChange={(option: any) => setSalaryPersonId(option ? option.value : '')}
+                      options={persons.filter(p => p.role === 'employee').map(p => ({
+                        value: p.id,
+                        label: p.name
+                      }))}
+                      placeholder="انتخاب کارمند..."
+                      noOptionsMessage={() => "کارمندی یافت نشد"}
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          borderRadius: '0.75rem',
+                          borderColor: '#E5E7EB',
+                          padding: '2px',
+                          boxShadow: 'none',
+                          '&:hover': { borderColor: '#4F46E5' }
+                        })
+                      }}
+                      required
+                    />
+                  </div>
+
+                  {/* Date Picker */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-indigo-500" />
+                      تاریخ ثبت سند <span className="text-rose-500">*</span>
+                    </label>
+                    <DatePicker
+                      calendar={persian}
+                      locale={persian_fa}
+                      value={salaryDate}
+                      onChange={(val) => setSalaryDate(val || new Date())}
+                      inputClass="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm text-gray-900"
+                      containerClassName="w-full"
+                      required
+                    />
+                  </div>
+
+                  {/* Description / Period */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">توضیحات و بابت (دوره حقوقی)</label>
+                    <input
+                      type="text"
+                      value={salaryDescription}
+                      onChange={(e) => setSalaryDescription(e.target.value)}
+                      placeholder="مثال: حقوق و مزایای خرداد ماه ۱۴۰۵"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
+                  {/* Earnings (حقوق و مزایا) */}
+                  <div className="bg-emerald-50/30 border border-emerald-100/50 p-5 rounded-2xl space-y-4">
+                    <h3 className="text-sm font-extrabold text-emerald-900 border-b border-emerald-100/80 pb-2 flex items-center gap-2">
+                      <span>💰 حقوق ناخالص و مزایای رفاهی</span>
+                      <span className="text-xs font-medium text-emerald-600">(باعث افزایش خالص پرداختی می‌شود)</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5">حقوق پایه <span className="text-rose-500">*</span></label>
+                        <input
+                          type="number"
+                          value={salaryBaseAmount}
+                          onChange={(e) => setSalaryBaseAmount(e.target.value)}
+                          placeholder="مثال: ۱۵۰۰۰۰۰۰"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-left font-semibold"
+                          required
+                          dir="ltr"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5">حق مسکن</label>
+                        <input
+                          type="number"
+                          value={salaryHousingAllowance}
+                          onChange={(e) => setSalaryHousingAllowance(e.target.value)}
+                          placeholder="مثال: ۲۰۰۰۰۰۰"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-left font-semibold"
+                          dir="ltr"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5">بن خواربار و رفاهی</label>
+                        <input
+                          type="number"
+                          value={salaryGroceryAllowance}
+                          onChange={(e) => setSalaryGroceryAllowance(e.target.value)}
+                          placeholder="مثال: ۳۰۰۰۰۰۰"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-left font-semibold"
+                          dir="ltr"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5">اضافه کار و سایر مزایا</label>
+                        <input
+                          type="number"
+                          value={salaryOtherAllowances}
+                          onChange={(e) => setSalaryOtherAllowances(e.target.value)}
+                          placeholder="سایر مزایا..."
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-left font-semibold"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Deductions (کسورات حقوق) */}
+                  <div className="bg-rose-50/30 border border-rose-100/50 p-5 rounded-2xl space-y-4">
+                    <h3 className="text-sm font-extrabold text-rose-900 border-b border-rose-100/80 pb-2 flex items-center gap-2">
+                      <span>📉 کسورات قانونی و اختیاری</span>
+                      <span className="text-xs font-medium text-rose-600">(باعث کاهش خالص پرداختی می‌شود)</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5">بیمه سهم کارمند</label>
+                        <input
+                          type="number"
+                          value={salaryInsuranceDeduction}
+                          onChange={(e) => setSalaryInsuranceDeduction(e.target.value)}
+                          placeholder="مثال: ۱۰۵۰۰۰۰"
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-left font-semibold"
+                          dir="ltr"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5">مالیات بر حقوق</label>
+                        <input
+                          type="number"
+                          value={salaryTaxDeduction}
+                          onChange={(e) => setSalaryTaxDeduction(e.target.value)}
+                          placeholder="مالیات..."
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-left font-semibold"
+                          dir="ltr"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-1.5">مساعده / کسر کار / جریمه</label>
+                        <input
+                          type="number"
+                          value={salaryOtherDeductions}
+                          onChange={(e) => setSalaryOtherDeductions(e.target.value)}
+                          placeholder="مساعده..."
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-left font-semibold"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Settlement Options */}
+                <div className="bg-gray-50 border border-gray-100 p-5 rounded-2xl space-y-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="salaryDirectPayment"
+                      checked={salaryDirectPayment}
+                      onChange={(e) => setSalaryDirectPayment(e.target.checked)}
+                      className="w-4.5 h-4.5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 animate-pulse"
+                    />
+                    <label htmlFor="salaryDirectPayment" className="text-sm font-extrabold text-gray-800 cursor-pointer select-none">
+                      واریز فوری و تسویه نقدی بلافاصله از بانک یا صندوق خزانه‌داری
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mr-7">
+                    * در صورت عدم انتخاب این گزینه، حقوق صادره به حساب بستانکاری کارمند منظور می‌شود و او بستانکار خواهد شد تا بعداً با رسید پرداخت وجه تسویه گردد.
+                  </p>
+
+                  {salaryDirectPayment && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-gray-200/50 mr-7"
+                    >
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2">روش تامین وجه (صندوق/بانک)</label>
+                        <div className="grid grid-cols-2 gap-2 bg-gray-100 p-1 rounded-xl">
+                          <button
+                            type="button"
+                            onClick={() => { setSalaryResourceType('bank'); setSalaryResourceId(''); }}
+                            className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                              salaryResourceType === 'bank' ? 'bg-white shadow-sm text-indigo-700' : 'text-gray-500'
+                            }`}
+                          >
+                            💳 حساب بانکی
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSalaryResourceType('cashbox'); setSalaryResourceId(''); }}
+                            className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                              salaryResourceType === 'cashbox' ? 'bg-white shadow-sm text-indigo-700' : 'text-gray-500'
+                            }`}
+                          >
+                            💵 صندوق نقدی
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-600 mb-2">انتخاب صندوق یا حساب بانکی مبدا کسر وجه</label>
+                        <select
+                          value={salaryResourceId}
+                          onChange={(e) => setSalaryResourceId(Number(e.target.value) || '')}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                          required={salaryDirectPayment}
+                        >
+                          <option value="">-- انتخاب منبع مالی کسر وجه --</option>
+                          {salaryResourceType === 'bank'
+                            ? accounts.map(acc => (
+                                <option key={acc.id} value={acc.id}>
+                                  {acc.bankName} (مانده: {formatNumber(acc.balance)} {storeSettings.currency})
+                                </option>
+                              ))
+                            : cashboxes.map(cb => (
+                                <option key={cb.id} value={cb.id}>
+                                  {cb.name} (مانده: {formatNumber(cb.balance)} {storeSettings.currency})
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* dynamic slip calculations */}
+                {(() => {
+                  const base = Number(salaryBaseAmount) || 0;
+                  const housing = Number(salaryHousingAllowance) || 0;
+                  const grocery = Number(salaryGroceryAllowance) || 0;
+                  const otherAllow = Number(salaryOtherAllowances) || 0;
+                  const insDeduct = Number(salaryInsuranceDeduction) || 0;
+                  const taxDeduct = Number(salaryTaxDeduction) || 0;
+                  const penaltyDeduct = Number(salaryOtherDeductions) || 0;
+
+                  const gross = base + housing + grocery + otherAllow;
+                  const deductTotal = insDeduct + taxDeduct + penaltyDeduct;
+                  const net = gross - deductTotal;
+
+                  const emp = persons.find(p => p.id === Number(salaryPersonId));
+
+                  return (
+                    <div className="bg-indigo-900 text-white rounded-2xl p-6 shadow-lg border border-indigo-950 flex flex-col md:flex-row justify-between items-center gap-6 mt-6">
+                      <div className="space-y-2 text-center md:text-right">
+                        <span className="bg-indigo-800 text-white text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider">پردازنده‌ هوشمند و فیش حقوقی لوکس</span>
+                        <h4 className="text-lg font-bold text-indigo-100 flex items-center justify-center md:justify-start gap-2">
+                          <User className="w-5 h-5 text-indigo-300" />
+                          <span>کارمند: </span>
+                          <span className="text-white font-extrabold">{emp ? emp.name : '---'}</span>
+                        </h4>
+                        <div className="text-xs text-indigo-200 font-medium space-x-reverse space-x-4">
+                          <span>حقوق ناخالص: {formatNumber(gross)} {storeSettings.currency}</span>
+                          <span>|</span>
+                          <span>کل کسورات: {formatNumber(deductTotal)} {storeSettings.currency}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-center md:text-left">
+                        <span className="text-xs text-indigo-300 font-bold block mb-1">خالص حقوق پرداختی (مبلغ سند)</span>
+                        <span className="text-3xl font-black text-amber-300 tracking-tight">
+                          {formatNumber(net)}{' '}
+                          <span className="text-xs text-white">{storeSettings.currency}</span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Submit voucher button */}
+                <div className="flex justify-end pt-4 border-t border-gray-100">
+                  <button
+                    type="submit"
+                    disabled={submittingSalary}
+                    className="w-full md:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl text-sm font-extrabold shadow-md transition-all flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-5 h-5" />
+                    {submittingSalary ? 'در حال صدور فیش...' : 'ثبت قطعی و صدور سند حقوق'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      ) : activeTab === 'list_salary_payroll' ? (
+        /* Salary Vouchers list Tab */
+        <div className="space-y-6 text-right" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 animate-pulse-slow">
+                <FileText className="w-5 h-5 text-indigo-500" />
+                لیست اسناد حقوق و فیش‌های حقوقی کارمندان
+              </h2>
+            </div>
+
+            <div className="overflow-x-auto" id="salaries-list-table">
+              {transactions.filter(t => t.type === 'salary').length === 0 ? (
+                <div className="p-12 text-center text-gray-500">
+                  <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p>هیچ فیش حقوقی در سیستم ثبت نشده است.</p>
+                </div>
+              ) : (
+                <table className="w-full text-right whitespace-nowrap min-w-[800px]">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-semibold text-sm">
+                      <th className="py-4 px-6 text-right">کد سند</th>
+                      <th className="py-4 px-6 text-right">تاریخ فیش</th>
+                      <th className="py-4 px-6 text-right">کارمند همکار</th>
+                      <th className="py-4 px-6 text-right">بابت دوره حقوقی</th>
+                      <th className="py-4 px-6 text-right">مبلغ خالص دریافتی ({storeSettings.currency})</th>
+                      <th className="py-4 px-6 text-right">وضعیت تسویه</th>
+                      <th className="py-4 px-6 text-center">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {transactions
+                      .filter(t => t.type === 'salary')
+                      .map((t) => {
+                        let parsedDesc: any = null;
+                        if (t.description && t.description.startsWith('{')) {
+                          try {
+                            parsedDesc = JSON.parse(t.description);
+                          } catch (e) {}
+                        }
+
+                        const userNote = parsedDesc?.userNote || t.description || 'سند حقوق و دستمزد';
+                        const isSettledDirectly = t.resourceType && t.resourceType !== 'none';
+
+                        return (
+                          <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="py-4 px-6 font-semibold text-gray-700">
+                              #{t.id}
+                            </td>
+                            <td className="py-4 px-6 text-gray-600">
+                              {t.jalaliDate || t.date}
+                            </td>
+                            <td className="py-4 px-6 font-bold text-gray-900">
+                              {t.personName}
+                            </td>
+                            <td className="py-4 px-6 text-sm text-gray-500">
+                              {userNote}
+                            </td>
+                            <td className="py-4 px-6 font-extrabold text-base text-indigo-600 bg-indigo-50/20">
+                              {formatNumber(t.amount)}
+                            </td>
+                            <td className="py-4 px-6">
+                              {isSettledDirectly ? (
+                                <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs rounded-full font-semibold border border-emerald-100">
+                                  💳 تسویه فوری {t.resourceType === 'bank' ? 'بانک' : 'صندوق'}
+                                </span>
+                              ) : (
+                                <span className="bg-amber-50 text-amber-700 px-2.5 py-1 text-xs rounded-full font-semibold border border-amber-100">
+                                  ⏳ تعهدی (سند طلبکاری بستانکاری)
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 px-6 text-center space-x-reverse space-x-2">
+                              {parsedDesc?.isPayslip && (
+                                <button
+                                  onClick={() => setViewingPayslip({ ...t, parsed: parsedDesc })}
+                                  className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200 transition-all text-xs font-bold inline-flex items-center gap-1"
+                                  title="نمایش فیش حقوقی رسمی"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  مشاهده فیش
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteTransaction(t.id)}
+                                className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-2 rounded-lg transition-all inline-block"
+                                title="حذف سند حقوق"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       ) : (activeTab === 'list_receive_receipt' || activeTab === 'list_pay_receipt') ? (
@@ -2841,15 +3429,47 @@ export default function App() {
               .filter(t => Number(t.personId) === Number(ledgerPersonId))
               .map(t => {
                 const isReceive = t.type === 'receive';
+                const isSalary = t.type === 'salary';
+                
+                let debit = 0;
+                let credit = 0;
+                let typeLabel = '';
+                
+                if (isSalary) {
+                  debit = 0;
+                  credit = t.amount;
+                  typeLabel = 'سند حقوق و دستمزد';
+                } else if (isReceive) {
+                  debit = 0;
+                  credit = t.amount;
+                  typeLabel = 'رسید دریافت وجه (وصول)';
+                } else {
+                  debit = t.amount;
+                  credit = 0;
+                  typeLabel = 'رسید پرداخت وجه (پرداخت)';
+                }
+
+                let desc = t.description;
+                if (t.description && t.description.startsWith('{')) {
+                  try {
+                    const parsed = JSON.parse(t.description);
+                    if (parsed.isPayslip) {
+                      desc = `ثبت حقوق و دستمزد: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || 'حقوق دوره‌ای'})`;
+                    }
+                  } catch (e) {
+                    desc = t.description;
+                  }
+                }
+
                 return {
                   id: `tx-${t.id}`,
                   refId: `سند #${t.id}`,
                   date: t.date,
                   jalaliDate: t.jalaliDate || new Date(t.date).toLocaleDateString('fa-IR'),
-                  type: isReceive ? 'رسید دریافت وجه (وصول)' : 'رسید پرداخت وجه (پرداخت)',
-                  desc: t.description || (isReceive ? 'بابت تسویه حساب مالی' : 'بابت پرداخت به طرف حساب'),
-                  debit: isReceive ? 0 : t.amount,  // Paying them debits their account
-                  credit: isReceive ? t.amount : 0, // Receiving from them credits their account
+                  type: typeLabel,
+                  desc: desc || (isSalary ? 'ثبت حقوق و دستمزد کارمند' : (isReceive ? 'بابت تسویه حساب مالی' : 'بابت پرداخت به طرف حساب')),
+                  debit,
+                  credit,
                   rawItem: t,
                   entryType: 'transaction'
                 };
@@ -3255,6 +3875,193 @@ export default function App() {
       ) : null}
 
       <AnimatePresence>
+        {viewingPayslip && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/55 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-3xl max-h-[95vh] flex flex-col"
+              id="printable-payslip-area"
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 no-print">
+                <h3 className="text-lg font-bold text-indigo-700 flex items-center gap-2">
+                  <FileText className="w-5 h-5 animate-pulse-slow" />
+                  پیش‌نمایش فیش رسمی حقوق کارمند
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setViewingPayslip(null)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors border border-gray-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Printable Body */}
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm">
+                
+                {/* Official Slip Header */}
+                <div className="border-4 border-double border-gray-300 p-5 rounded-2xl bg-gray-50/20 shadow-inner flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="text-right space-y-1">
+                    <span className="text-xs text-indigo-600 font-bold tracking-wider">سند مالی شماره #{viewingPayslip.id}</span>
+                    <h2 className="text-xl font-black text-gray-950">{storeSettings.name || 'مجموعه تجاری و مالی صبا'}</h2>
+                    <p className="text-xs text-gray-500 font-medium">{viewingPayslip.parsed?.userNote || 'فیش رسمی حقوق و دستمزد کارمند'}</p>
+                  </div>
+                  <div className="text-center bg-white border border-gray-200 py-2.5 px-4 rounded-xl min-w-[150px] shadow-sm">
+                    <span className="text-xs text-gray-400 font-semibold block m-0">تاریخ صدور سند</span>
+                    <span className="text-sm font-extrabold text-gray-900 font-sans mt-0.5 block">{viewingPayslip.jalaliDate || viewingPayslip.date}</span>
+                  </div>
+                </div>
+
+                {/* Employee and Period Meta */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50/20 border border-indigo-100 rounded-xl p-4">
+                  <div>
+                    <span className="text-gray-500 font-medium">نام و نام خانوادگی کارمند:</span>
+                    <span className="font-extrabold text-indigo-950 text-base mr-2">{viewingPayslip.personName}</span>
+                  </div>
+                  <div className="md:text-left">
+                    <span className="text-gray-500 font-medium">مشتمل بر دوره پرداخت:</span>
+                    <span className="font-semibold text-gray-800 mr-2">{viewingPayslip.parsed?.userNote || 'بدون بابت'}</span>
+                  </div>
+                </div>
+
+                {/* Comparison Columns: Earnings vs Deductions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  
+                  {/* Earnings */}
+                  <div className="border border-emerald-100 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-emerald-600 text-white font-extrabold px-4 py-2.5 text-center flex justify-between items-center text-xs">
+                      <span>حقوق ناخالص و مزایا (ریال/تومان)</span>
+                      <span>بستانکار</span>
+                    </div>
+                    <table className="w-full text-right divide-y divide-gray-100 text-xs text-right">
+                      <tbody>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حقوق پایه و کارکرد ماهانه</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.base || 0)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حق مسکن و معیشت رفاهی</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.housing || 0)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حق بن و خواربار رفاهی</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.grocery || 0)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">اضافه کار و سایر مزایا</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.other || 0)}</td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-emerald-50/50 font-extrabold text-emerald-950 border-t border-emerald-100">
+                          <td className="py-3 px-4 text-right">جمع مبالغ ناخالص:</td>
+                          <td className="py-3 px-4 font-sans text-left text-sm text-emerald-800">
+                            {formatNumber(
+                              (viewingPayslip.parsed?.base || 0) +
+                              (viewingPayslip.parsed?.allowances?.housing || 0) +
+                              (viewingPayslip.parsed?.allowances?.grocery || 0) +
+                              (viewingPayslip.parsed?.allowances?.other || 0)
+                            )}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* Deductions */}
+                  <div className="border border-rose-100 rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-rose-600 text-white font-extrabold px-4 py-2.5 text-center flex justify-between items-center text-xs">
+                      <span>حق بیمه سهم کارمند و مالیات (ریال/تومان)</span>
+                      <span>بدهکار</span>
+                    </div>
+                    <table className="w-full text-right divide-y divide-gray-100 text-xs text-right">
+                      <tbody>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">بیمه تامین اجتماعی سهم کارمند</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.insurance || 0)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">مالیات حقوق و درآمد معین</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.tax || 0)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">مساعده دریافتی و سایر کسورات</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.penalty || 0)}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50 transition-colors">
+                          <td className="py-2.5 px-4 text-gray-400/50 text-[10px] text-right">---</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-400/50 font-sans text-left text-[10px]">۰</td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-rose-50/50 font-extrabold text-rose-950 border-t border-rose-100">
+                          <td className="py-3 px-4 text-right">جمع مبالغ کسورات:</td>
+                          <td className="py-3 px-4 font-sans text-left text-sm text-rose-800">
+                            {formatNumber(
+                              (viewingPayslip.parsed?.deductions?.insurance || 0) +
+                              (viewingPayslip.parsed?.deductions?.tax || 0) +
+                              (viewingPayslip.parsed?.deductions?.penalty || 0)
+                            )}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                </div>
+
+                {/* Grand Total Net Salary */}
+                <div className="bg-indigo-950 text-white rounded-2xl p-5 border border-indigo-950 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-right shadow">
+                  <div>
+                    <h4 className="text-sm font-bold text-indigo-200">مبلغ خالص دریافتی پرداختنی کارمند</h4>
+                    <p className="text-xs text-indigo-300 mt-1">حقوق پرداختی حاصل از کسر حقوق و مزایا از کسورات معین</p>
+                  </div>
+                  <div>
+                    <span className="text-2xl font-black text-amber-300 tracking-tight block">
+                      {formatNumber(viewingPayslip.parsed?.netSalary || viewingPayslip.amount)}{' '}
+                      <span className="text-sm text-indigo-200">{storeSettings.currency}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Stamp & Signatures Block */}
+                <div className="border-t border-dashed border-gray-300 pt-7 grid grid-cols-2 text-center text-xs mt-8">
+                  <div className="space-y-12">
+                    <span className="font-extrabold text-gray-700 block">مهر و امضا امور مالی مجموعه</span>
+                    <div className="w-24 h-1 bg-gray-200/50 mx-auto rounded-full"></div>
+                  </div>
+                  <div className="space-y-12">
+                    <span className="font-extrabold text-gray-700 block">امضای دریافت کننده (همکار)</span>
+                    <div className="w-24 h-1 bg-gray-200/50 mx-auto rounded-full"></div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 no-print">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-extrabold shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  پرینت فیش حقوقی
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewingPayslip(null)}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl text-sm font-bold transition-all"
+                >
+                  بستن
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isProductModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
             <motion.div
