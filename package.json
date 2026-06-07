@@ -23,6 +23,8 @@
     "react-dom": "^19.0.1",
     "react-multi-date-picker": "^4.5.2",
     "react-select": "^5.10.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^6.0.1",
     "vite": "^6.2.3"
   },
   "devDependencies": {
