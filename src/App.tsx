@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -76,7 +76,7 @@ const showInvoiceCurrency = (c: string) => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger'>('create_sale');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
     sales_purchases: true,
@@ -1524,6 +1524,19 @@ export default function App() {
         <div className="p-3 border-t border-gray-100 bg-gray-50/50 flex flex-col gap-2">
           <button
             type="button"
+            onClick={() => { setActiveTab('checklist'); setIsSidebarOpen(false); }}
+            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              activeTab === 'checklist' 
+                ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm' 
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm'
+            }`}
+          >
+            <ListTodo className="w-4 h-4 text-gray-500 hover:scale-110 transition-transform duration-300" />
+            چک‌لیست توسعه
+          </button>
+          
+          <button
+            type="button"
             onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
             className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               activeTab === 'settings' 
@@ -1598,6 +1611,18 @@ export default function App() {
 
           {/* Global actions: settings and update */}
           <div className="flex items-center gap-2.5 min-w-[240px] justify-end">
+            <button
+              type="button"
+              onClick={() => setActiveTab('checklist')}
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer border shadow-2xs hover:scale-[1.02] active:scale-95 ${
+                activeTab === 'checklist' 
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-amber-100' 
+                  : 'bg-white text-gray-700 hover:text-amber-600 hover:bg-amber-50/20 border-gray-200'
+              }`}
+            >
+              <ListTodo className={`w-4 h-4 ${activeTab === 'checklist' ? 'text-white' : 'text-gray-400'} transition-transform duration-500`} />
+              چک‌لیست
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab('settings')}
@@ -4639,6 +4664,94 @@ export default function App() {
                 </>
               )}
             </button>
+          </div>
+        </motion.div>
+      ) : activeTab === 'checklist' ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-4xl mx-auto"
+        >
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-6 border-b border-amber-100 flex items-center gap-4">
+            <div className="bg-amber-500 text-white p-3 rounded-2xl shadow-sm shadow-amber-200">
+              <CheckSquare className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-amber-950">چک‌لیست نهایی‌سازی پروژه</h2>
+              <p className="text-xs font-semibold text-amber-700 mt-1">لیست دقیق مواردی که باید مرحله به مرحله برای تکمیل نهایی سیستم انجام شوند.</p>
+            </div>
+          </div>
+          
+          <div className="p-6 md:p-8 space-y-6">
+            <div className="grid grid-cols-1 gap-4">
+              
+              {/* Task 1 */}
+              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <input type="checkbox" className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-gray-900 text-sm">پیاده‌سازی نمودارهای پیشرفته تحلیل مالی (تکمیل داشبورد)</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">
+                    گزارشات فعلی پایه‌ای هستند. نیاز است با استفاده از کتابخانه‌ای مانند Recharts، نمودارهای خطی سود و زیان ماهانه، و نمودار دایره‌ای تفکیک هزینه‌ها به داشبورد اضافه شود.
+                  </p>
+                </div>
+              </div>
+
+              {/* Task 2 */}
+              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <input type="checkbox" className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-gray-900 text-sm">اتصال به پایگاه داده ابری (CloudSQL/Firestore)</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">
+                    در حال حاضر اطلاعات در State یا ذخیره‌ساز محلی (Local) نگهداری می‌شوند. برای استفاده عملیاتی، ساختار دیتابیس باید ایجاد و به سرویس‌های ذخیره‌سازی ابری متصل گردد.
+                  </p>
+                </div>
+              </div>
+
+              {/* Task 3 */}
+              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <input type="checkbox" className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-gray-900 text-sm">سیستم بکاپ‌گیری و خروجی اکسل (Excel/CSV Export)</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">
+                    افزودن قابلیت تبدیل لیست فاکتورها، اشخاص، و گردش حساب‌ها به فایل اکسل. این یک نیاز حیاتی برای حسابداران جهت ارائه فایل‌ها به سازمان امور مالیاتی است.
+                  </p>
+                </div>
+              </div>
+
+              {/* Task 4 */}
+              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <input type="checkbox" className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-gray-900 text-sm">تعریف سطوح دسترسی (Authentication & Authorization)</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">
+                    ایجاد صفحه ورود (Login) و اختصاص نقش به کاربران (مثلاً: مدیر کل، حسابدار، صندوق‌دار). صندوق‌دار نباید به بخش ترازنامه یا دستمزدها دسترسی داشته باشد.
+                  </p>
+                </div>
+              </div>
+
+              {/* Task 5 */}
+              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <input type="checkbox" className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-gray-900 text-sm">امکان آپلود عکس/لوگوی فروشگاه و امضا</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">
+                    در بخش تنظیمات، باید سرویس آپلود فایل پیاده شود تا کاربران بتوانند لوگوی شخصی و تصویر امضا را برای درج در برگه چاپ فاکتورها بارگذاری کنند.
+                  </p>
+                </div>
+              </div>
+
+              {/* Task 6 */}
+              <div className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <input type="checkbox" className="mt-1 w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-gray-900 text-sm">کنترل موجودی انبار (Inventory Management)</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">
+                    با ثبت فاکتور فروش، از موجودی کالا به‌طور اتوماتیک کسر شود و در فاکتور خرید، موجودی افزایش یابد. همچنین سیستم آلارم افت موجودی فعال شود.
+                  </p>
+                </div>
+              </div>
+
+            </div>
           </div>
         </motion.div>
       ) : null}
