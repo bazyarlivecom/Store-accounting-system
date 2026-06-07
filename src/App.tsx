@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
+import { useAuth } from './lib/AuthContext';
+import { getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
 
 // Type Definitions
 type Person = { 
-  id: number; 
+  id: string | number; 
   name: string; 
   firstName?: string;
   lastName?: string;
@@ -20,10 +22,10 @@ type Person = {
   role: 'customer' | 'employee' | 'supplier'; 
   phone: string; 
 };
-type Product = { id: number; name: string; price: number; type: 'product' | 'service'; category: string };
+type Product = { id: string | number; name: string; price: number; type: 'product' | 'service'; category: string };
 
 type Account = {
-  id: number;
+  id: string | number;
   bankName: string;
   branchName?: string;
   accountNumber?: string;
@@ -34,7 +36,7 @@ type Account = {
 };
 
 type Cashbox = {
-  id: number;
+  id: string | number;
   name: string;
   manager?: string;
   balance: number;
@@ -76,6 +78,7 @@ const showInvoiceCurrency = (c: string) => {
 };
 
 export default function App() {
+  const { user, loading: authLoading, signIn, signOut } = useAuth();
   const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
@@ -105,21 +108,21 @@ export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [storeSettings, setStoreSettings] = useState({ name: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان' });
+  const [storeSettings, setStoreSettings] = useState({ storeName: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان' });
   const [loading, setLoading] = useState(true);
 
   // Receipts & Payments Form State
-  const [receiptPersonId, setReceiptPersonId] = useState<number | ''>('');
+  const [receiptPersonId, setReceiptPersonId] = useState<string | number | ''>('');
   const [receiptDate, setReceiptDate] = useState<Date | any>(new Date());
   const [receiptAmount, setReceiptAmount] = useState<string>('');
   const [receiptResourceType, setReceiptResourceType] = useState<'bank' | 'cashbox'>('bank');
-  const [receiptResourceId, setReceiptResourceId] = useState<number | ''>('');
+  const [receiptResourceId, setReceiptResourceId] = useState<string | number | ''>('');
   const [receiptDescription, setReceiptDescription] = useState<string>('');
   const [submittingReceipt, setSubmittingReceipt] = useState<boolean>(false);
   const [receiptSuccessMsg, setReceiptSuccessMsg] = useState<string>('');
 
   // Salary form state
-  const [salaryPersonId, setSalaryPersonId] = useState<number | ''>('');
+  const [salaryPersonId, setSalaryPersonId] = useState<string | number | ''>('');
   const [salaryDate, setSalaryDate] = useState<any>(new Date());
   const [salaryBaseAmount, setSalaryBaseAmount] = useState<string>('');
   const [salaryHousingAllowance, setSalaryHousingAllowance] = useState<string>('');
@@ -131,13 +134,13 @@ export default function App() {
   const [salaryDescription, setSalaryDescription] = useState<string>('');
   const [salaryDirectPayment, setSalaryDirectPayment] = useState<boolean>(false);
   const [salaryResourceType, setSalaryResourceType] = useState<'bank' | 'cashbox'>('bank');
-  const [salaryResourceId, setSalaryResourceId] = useState<number | ''>('');
+  const [salaryResourceId, setSalaryResourceId] = useState<string | number | ''>('');
   const [salarySuccessMsg, setSalarySuccessMsg] = useState<string>('');
   const [submittingSalary, setSubmittingSalary] = useState<boolean>(false);
   const [viewingPayslip, setViewingPayslip] = useState<any | null>(null);
 
   // Person Ledger state
-  const [ledgerPersonId, setLedgerPersonId] = useState<number | ''>('');
+  const [ledgerPersonId, setLedgerPersonId] = useState<string | number | ''>('');
 
   // Invoice Print & Preview State
   const [viewingInvoice, setViewingInvoice] = useState<any>(null);
@@ -160,7 +163,7 @@ export default function App() {
   const [exchangeRateInput, setExchangeRateInput] = useState<string>('1');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [date, setDate] = useState<Date | any>(new Date());
-  const [customerId, setCustomerId] = useState<number | ''>('');
+  const [customerId, setCustomerId] = useState<string | number | ''>('');
   
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [overallDiscountPercent, setOverallDiscountPercent] = useState<number>(0);
@@ -207,22 +210,20 @@ export default function App() {
   const [newCashboxBalance, setNewCashboxBalance] = useState('');
   const [submittingCashbox, setSubmittingCashbox] = useState(false);
 
-  const [editingProductId, setEditingProductId] = useState<number | null>(null);
-  const [editingPersonId, setEditingPersonId] = useState<number | null>(null);
-  const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
-  const [editingCashboxId, setEditingCashboxId] = useState<number | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | number | null>(null);
+  const [editingPersonId, setEditingPersonId] = useState<string | number | null>(null);
+  const [editingAccountId, setEditingAccountId] = useState<string | number | null>(null);
+  const [editingCashboxId, setEditingCashboxId] = useState<string | number | null>(null);
 
   // Settings form state
-  const [settingsForm, setSettingsForm] = useState({ name: '', address: '', phone: '', logoUrl: '', currency: 'تومان' });
+  const [settingsForm, setSettingsForm] = useState({ storeName: '', address: '', phone: '', logoUrl: '', currency: 'تومان' });
   const [submittingSettings, setSubmittingSettings] = useState(false);
 
   // Fetch API data on mount
   const fetchInvoices = async () => {
     try {
-      const res = await fetch('/api/invoices');
-      if (res.ok) {
-        setInvoices(await res.json());
-      }
+      const data = await getInvoices();
+      setInvoices(data as any);
     } catch (error) {
       console.error('Error fetching invoices', error);
     }
@@ -230,10 +231,8 @@ export default function App() {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch('/api/products');
-      if (res.ok) {
-        setProducts(await res.json());
-      }
+      const data = await getProducts();
+      setProducts(data as any);
     } catch (error) {
       console.error('Error fetching products', error);
     }
@@ -246,30 +245,30 @@ export default function App() {
     setSubmittingProduct(true);
     try {
       const isEdit = editingProductId !== null;
-      const url = isEdit ? `/api/products/${editingProductId}` : '/api/products';
-      const method = isEdit ? 'PUT' : 'POST';
+      const payload = { 
+        name: newProductName, 
+        price: Number(newProductPrice),
+        buyPrice: Number(newProductPrice), // Adding for firebase blueprint validation
+        sellPrice: Number(newProductPrice), // Adding for firebase blueprint validation
+        type: newProductType,
+        category: newProductCategory || 'عمومی'
+      };
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          name: newProductName, 
-          price: Number(newProductPrice),
-          type: newProductType,
-          category: newProductCategory || 'عمومی'
-        })
-      });
-      if (res.ok) {
-        await fetchProducts();
-        setNewProductName('');
-        setNewProductPrice('');
-        setNewProductType('product');
-        setNewProductCategory('');
-        setEditingProductId(null);
-        setIsProductModalOpen(false);
-        setSuccessMsg(isEdit ? 'کالا با موفقیت ویرایش شد' : 'کالا یا خدمات با موفقیت اضافه شد');
-        setTimeout(() => setSuccessMsg(''), 3000);
+      if (isEdit) {
+        await updateProduct(editingProductId.toString(), payload);
+      } else {
+        await addProduct(payload);
       }
+      
+      await fetchProducts();
+      setNewProductName('');
+      setNewProductPrice('');
+      setNewProductType('product');
+      setNewProductCategory('');
+      setEditingProductId(null);
+      setIsProductModalOpen(false);
+      setSuccessMsg(isEdit ? 'کالا با موفقیت ویرایش شد' : 'کالا یا خدمات با موفقیت اضافه شد');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (error) {
       console.error('Error saving product', error);
     } finally {
@@ -277,13 +276,11 @@ export default function App() {
     }
   };
 
-  const handleDeleteProduct = async (id: number) => {
+  const handleDeleteProduct = async (id: number | string) => {
     if (!confirm('آیا از حذف این کالا اطمینان دارید؟')) return;
     try {
-      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchProducts();
-      }
+      await deleteProduct(id.toString());
+      await fetchProducts();
     } catch (error) {
       console.error('Error deleting product', error);
     }
@@ -291,10 +288,8 @@ export default function App() {
 
   const fetchPersons = async () => {
     try {
-      const res = await fetch('/api/persons');
-      if (res.ok) {
-        setPersons(await res.json());
-      }
+      const data = await getPersons();
+      setPersons(data as any);
     } catch (error) {
       console.error('Error fetching persons', error);
     }
@@ -308,39 +303,48 @@ export default function App() {
     setSubmittingPerson(true);
     try {
       const isEdit = editingPersonId !== null;
-      const url = isEdit ? `/api/persons/${editingPersonId}` : '/api/persons';
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          personType: newPersonType,
-          firstName: newPersonFirstName,
-          lastName: newPersonLastName,
-          companyName: newPersonCompanyName,
-          fatherName: newPersonFatherName,
-          nationalId: newPersonNationalId,
-          address: newPersonAddress,
-          role: newPersonRole,
-          phone: newPersonPhone
-        })
-      });
-      if (res.ok) {
-        await fetchPersons();
-        setNewPersonFirstName('');
-        setNewPersonLastName('');
-        setNewPersonCompanyName('');
-        setNewPersonFatherName('');
-        setNewPersonNationalId('');
-        setNewPersonAddress('');
-        setNewPersonPhone('');
-        setNewPersonRole('customer');
-        setEditingPersonId(null);
-        setIsPersonModalOpen(false);
-        setSuccessMsg(isEdit ? 'شخص با موفقیت ویرایش شد' : 'شخص با موفقیت اضافه شد');
-        setTimeout(() => setSuccessMsg(''), 3000);
+      let name = '';
+      if (newPersonType === 'legal') {
+        name = newPersonCompanyName || '';
+      } else {
+        name = `${newPersonFirstName || ''} ${newPersonLastName || ''}`.trim();
       }
+
+      const payload = {
+        type: newPersonRole,           // Firebase db maps roles to type
+        name: name,
+        fullName: name,
+        personType: newPersonType,
+        firstName: newPersonFirstName,
+        lastName: newPersonLastName,
+        companyName: newPersonCompanyName,
+        fatherName: newPersonFatherName,
+        nationalId: newPersonNationalId,
+        address: newPersonAddress,
+        role: newPersonRole,
+        phone: newPersonPhone,
+        initialBalance: 0
+      };
+
+      if (isEdit) {
+        await updatePerson(editingPersonId.toString(), payload);
+      } else {
+        await addPerson(payload);
+      }
+      
+      await fetchPersons();
+      setNewPersonFirstName('');
+      setNewPersonLastName('');
+      setNewPersonCompanyName('');
+      setNewPersonFatherName('');
+      setNewPersonNationalId('');
+      setNewPersonAddress('');
+      setNewPersonPhone('');
+      setNewPersonRole('customer');
+      setEditingPersonId(null);
+      setIsPersonModalOpen(false);
+      setSuccessMsg(isEdit ? 'شخص با موفقیت ویرایش شد' : 'شخص با موفقیت اضافه شد');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (error) {
       console.error('Error saving person', error);
     } finally {
@@ -348,13 +352,11 @@ export default function App() {
     }
   };
 
-  const handleDeletePerson = async (id: number) => {
+  const handleDeletePerson = async (id: number | string) => {
     if (!confirm('آیا از حذف این شخص اطمینان دارید؟')) return;
     try {
-      const res = await fetch(`/api/persons/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchPersons();
-      }
+      await deletePerson(id.toString());
+      await fetchPersons();
     } catch (error) {
       console.error('Error deleting person', error);
     }
@@ -362,10 +364,8 @@ export default function App() {
 
   const fetchAccounts = async () => {
     try {
-      const res = await fetch('/api/accounts');
-      if (res.ok) {
-        setAccounts(await res.json());
-      }
+      const data = await getAccounts();
+      setAccounts(data as any);
     } catch (error) {
       console.error('Error fetching accounts', error);
     }
@@ -377,36 +377,36 @@ export default function App() {
     setSubmittingAccount(true);
     try {
       const isEdit = editingAccountId !== null;
-      const url = isEdit ? `/api/accounts/${editingAccountId}` : '/api/accounts';
-      const method = isEdit ? 'PUT' : 'POST';
+      const payload = {
+        bankName: newAccountBankName,
+        branchName: newAccountBranchName,
+        accountNumber: newAccountNumber,
+        cardNumber: newAccountCardNumber,
+        sheba: newAccountShebaNumber,
+        shebaNumber: newAccountShebaNumber,
+        initialBalance: Number(newAccountBalance) || 0,
+        balance: Number(newAccountBalance) || 0,
+        accountHolder: newAccountHolder
+      };
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bankName: newAccountBankName,
-          branchName: newAccountBranchName,
-          accountNumber: newAccountNumber,
-          cardNumber: newAccountCardNumber,
-          shebaNumber: newAccountShebaNumber,
-          balance: Number(newAccountBalance) || 0,
-          accountHolder: newAccountHolder
-        })
-      });
-      if (res.ok) {
-        await fetchAccounts();
-        setNewAccountBankName('');
-        setNewAccountBranchName('');
-        setNewAccountNumber('');
-        setNewAccountCardNumber('');
-        setNewAccountShebaNumber('');
-        setNewAccountBalance('');
-        setNewAccountHolder('');
-        setEditingAccountId(null);
-        setIsAccountModalOpen(false);
-        setSuccessMsg(isEdit ? 'حساب بانکی با موفقیت ویرایش شد' : 'حساب بانکی با موفقیت ثبت شد');
-        setTimeout(() => setSuccessMsg(''), 3000);
+      if (isEdit) {
+        await updateAccount(editingAccountId.toString(), payload as any);
+      } else {
+        await addAccount(payload as any);
       }
+      
+      await fetchAccounts();
+      setNewAccountBankName('');
+      setNewAccountBranchName('');
+      setNewAccountNumber('');
+      setNewAccountCardNumber('');
+      setNewAccountShebaNumber('');
+      setNewAccountBalance('');
+      setNewAccountHolder('');
+      setEditingAccountId(null);
+      setIsAccountModalOpen(false);
+      setSuccessMsg(isEdit ? 'حساب بانکی با موفقیت ویرایش شد' : 'حساب بانکی با موفقیت ثبت شد');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (error) {
       console.error('Error saving account', error);
     } finally {
@@ -414,13 +414,11 @@ export default function App() {
     }
   };
 
-  const handleDeleteAccount = async (id: number) => {
+  const handleDeleteAccount = async (id: number | string) => {
     if (!confirm('آیا از حذف این حساب بانکی اطمینان دارید؟')) return;
     try {
-      const res = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchAccounts();
-      }
+      await deleteAccount(id.toString());
+      await fetchAccounts();
     } catch (error) {
       console.error('Error deleting account', error);
     }
@@ -428,10 +426,8 @@ export default function App() {
 
   const fetchCashboxes = async () => {
     try {
-      const res = await fetch('/api/cashboxes');
-      if (res.ok) {
-        setCashboxes(await res.json());
-      }
+      const data = await getCashboxes();
+      setCashboxes(data as any);
     } catch (error) {
       console.error('Error fetching cashboxes', error);
     }
@@ -439,10 +435,8 @@ export default function App() {
 
   const fetchTransactions = async () => {
     try {
-      const res = await fetch('/api/transactions');
-      if (res.ok) {
-        setTransactions(await res.json());
-      }
+      const data = await getTransactions();
+      setTransactions(data as any);
     } catch (error) {
       console.error('Error fetching transactions', error);
     }
@@ -457,43 +451,35 @@ export default function App() {
 
     setSubmittingReceipt(true);
     try {
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          personId: Number(receiptPersonId),
-          amount: Number(receiptAmount),
-          date: typeof receiptDate.toDate === 'function' ? receiptDate.toDate().toISOString() : new Date(receiptDate).toISOString(),
-          jalaliDate: new Date(receiptDate).toLocaleDateString('fa-IR'),
-          resourceType: receiptResourceType,
-          resourceId: Number(receiptResourceId),
-          description: receiptDescription
-        })
-      });
+      const payload = {
+        type,
+        personId: receiptPersonId,
+        amount: Number(receiptAmount),
+        date: typeof receiptDate.toDate === 'function' ? receiptDate.toDate().toISOString() : new Date(receiptDate).toISOString(),
+        jalaliDate: new Date(receiptDate).toLocaleDateString('fa-IR'),
+        resourceType: receiptResourceType,
+        resourceId: receiptResourceId,
+        description: receiptDescription
+      };
+      await addTransaction(payload as any);
 
-      if (res.ok) {
-        setReceiptSuccessMsg(type === 'receive' ? 'رسید دریافت با موفقیت صادر شد' : 'رسید پرداخت با موفقیت صادر شد');
-        setReceiptPersonId('');
-        setReceiptAmount('');
-        setReceiptResourceType('bank');
-        setReceiptResourceId('');
-        setReceiptDescription('');
-        setReceiptDate(new Date());
-        
-        await Promise.all([
-          fetchTransactions(),
-          fetchAccounts(),
-          fetchCashboxes()
-        ]);
+      setReceiptSuccessMsg(type === 'receive' ? 'رسید دریافت با موفقیت صادر شد' : 'رسید پرداخت با موفقیت صادر شد');
+      setReceiptPersonId('');
+      setReceiptAmount('');
+      setReceiptResourceType('bank');
+      setReceiptResourceId('');
+      setReceiptDescription('');
+      setReceiptDate(new Date());
+      
+      await Promise.all([
+        fetchTransactions(),
+        fetchAccounts(),
+        fetchCashboxes()
+      ]);
 
-        setTimeout(() => {
-          setReceiptSuccessMsg('');
-        }, 3000);
-      } else {
-        const err = await res.json();
-        alert(err.message || 'خطایی رخ داد');
-      }
+      setTimeout(() => {
+        setReceiptSuccessMsg('');
+      }, 3000);
     } catch (error) {
       console.error('Error submitting receipt', error);
       alert('خطایی در ارتباط با سرور رخ داد');
@@ -526,7 +512,7 @@ export default function App() {
 
     setSubmittingSalary(true);
     try {
-      const p = persons.find(item => item.id === Number(salaryPersonId));
+      const p = persons.find(item => item.id.toString() === salaryPersonId.toString());
       const personName = p ? p.name : 'کارمند';
 
       // Build payslip breakdown to store in description as JSON string
@@ -548,46 +534,38 @@ export default function App() {
         userNote: salaryDescription || 'سند حقوق و دستمزد کارمند'
       });
 
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'salary',
-          personId: Number(salaryPersonId),
-          amount: netSalary,
-          date: typeof salaryDate.toDate === 'function' ? salaryDate.toDate().toISOString() : new Date(salaryDate).toISOString(),
-          jalaliDate: new Date(salaryDate).toLocaleDateString('fa-IR'),
-          resourceType: salaryDirectPayment ? salaryResourceType : 'none',
-          resourceId: salaryDirectPayment ? Number(salaryResourceId) : 0,
-          description: payloadDescription
-        })
-      });
+      const payload = {
+        type: 'salary',
+        personId: salaryPersonId,
+        amount: netSalary,
+        date: typeof salaryDate.toDate === 'function' ? salaryDate.toDate().toISOString() : new Date(salaryDate).toISOString(),
+        jalaliDate: new Date(salaryDate).toLocaleDateString('fa-IR'),
+        resourceType: salaryDirectPayment ? salaryResourceType : 'none',
+        resourceId: salaryDirectPayment ? salaryResourceId : 0,
+        description: payloadDescription
+      };
+      await addTransaction(payload as any);
 
-      if (res.ok) {
-        setSalarySuccessMsg('سند حقوق و دستمزد با موفقیت صادر شد.');
-        setSalaryBaseAmount('');
-        setSalaryHousingAllowance('');
-        setSalaryGroceryAllowance('');
-        setSalaryOtherAllowances('');
-        setSalaryInsuranceDeduction('');
-        setSalaryTaxDeduction('');
-        setSalaryOtherDeductions('');
-        setSalaryDescription('');
-        setSalaryDirectPayment(false);
-        setSalaryResourceId('');
-        
-        await Promise.all([
-          fetchTransactions(),
-          fetchInvoices(),
-          fetchAccounts(),
-          fetchCashboxes()
-        ]);
+      setSalarySuccessMsg('سند حقوق و دستمزد با موفقیت صادر شد.');
+      setSalaryBaseAmount('');
+      setSalaryHousingAllowance('');
+      setSalaryGroceryAllowance('');
+      setSalaryOtherAllowances('');
+      setSalaryInsuranceDeduction('');
+      setSalaryTaxDeduction('');
+      setSalaryOtherDeductions('');
+      setSalaryDescription('');
+      setSalaryDirectPayment(false);
+      setSalaryResourceId('');
+      
+      await Promise.all([
+        fetchTransactions(),
+        fetchInvoices(),
+        fetchAccounts(),
+        fetchCashboxes()
+      ]);
 
-        setTimeout(() => setSalarySuccessMsg(''), 4000);
-      } else {
-        const err = await res.json();
-        alert(err.message || 'خطا در ثبت سند حقوق');
-      }
+      setTimeout(() => setSalarySuccessMsg(''), 4000);
     } catch (error) {
       console.error('Error submitting salary', error);
       alert('خطای سیستمی رخ داد');
@@ -596,17 +574,15 @@ export default function App() {
     }
   };
 
-  const handleDeleteTransaction = async (id: number) => {
+  const handleDeleteTransaction = async (id: number | string) => {
     if (!confirm('آیا از حذف این سند اطمینان دارید؟ مانده حساب مربوطه اصلاح خواهد شد.')) return;
     try {
-      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await Promise.all([
-          fetchTransactions(),
-          fetchAccounts(),
-          fetchCashboxes()
-        ]);
-      }
+      await deleteTransaction(id.toString());
+      await Promise.all([
+        fetchTransactions(),
+        fetchAccounts(),
+        fetchCashboxes()
+      ]);
     } catch (error) {
       console.error('Error deleting transaction', error);
     }
@@ -618,28 +594,28 @@ export default function App() {
     setSubmittingCashbox(true);
     try {
       const isEdit = editingCashboxId !== null;
-      const url = isEdit ? `/api/cashboxes/${editingCashboxId}` : '/api/cashboxes';
-      const method = isEdit ? 'PUT' : 'POST';
+      const payload = {
+        name: newCashboxName,
+        manager: newCashboxManager,
+        description: newCashboxManager, // For firebase checking description
+        initialBalance: Number(newCashboxBalance) || 0,
+        balance: Number(newCashboxBalance) || 0
+      };
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newCashboxName,
-          manager: newCashboxManager,
-          balance: Number(newCashboxBalance) || 0
-        })
-      });
-      if (res.ok) {
-        await fetchCashboxes();
-        setNewCashboxName('');
-        setNewCashboxManager('');
-        setNewCashboxBalance('');
-        setEditingCashboxId(null);
-        setIsCashboxModalOpen(false);
-        setSuccessMsg(isEdit ? 'صندوق با موفقیت ویرایش شد' : 'صندوق با موفقیت ثبت شد');
-        setTimeout(() => setSuccessMsg(''), 3000);
+      if (isEdit) {
+        await updateCashbox(editingCashboxId.toString(), payload as any);
+      } else {
+        await addCashbox(payload as any);
       }
+      
+      await fetchCashboxes();
+      setNewCashboxName('');
+      setNewCashboxManager('');
+      setNewCashboxBalance('');
+      setEditingCashboxId(null);
+      setIsCashboxModalOpen(false);
+      setSuccessMsg(isEdit ? 'صندوق با موفقیت ویرایش شد' : 'صندوق با موفقیت ثبت شد');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (error) {
       console.error('Error saving cashbox', error);
     } finally {
@@ -647,13 +623,11 @@ export default function App() {
     }
   };
 
-  const handleDeleteCashbox = async (id: number) => {
+  const handleDeleteCashbox = async (id: number | string) => {
     if (!confirm('آیا از حذف این صندوق اطمینان دارید؟')) return;
     try {
-      const res = await fetch(`/api/cashboxes/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        await fetchCashboxes();
-      }
+      await deleteCashbox(id.toString());
+      await fetchCashboxes();
     } catch (error) {
       console.error('Error deleting cashbox', error);
     }
@@ -704,11 +678,10 @@ export default function App() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/settings');
-      if (res.ok) {
-        const data = await res.json();
-        setStoreSettings(data);
-        setSettingsForm(data);
+      const data = await getStoreSettings();
+      if (data) {
+        setStoreSettings(data as any);
+        setSettingsForm(data as any);
         setInvoiceCurrency(data.currency || 'تومان');
         setExchangeRate(1);
         setExchangeRateInput('1');
@@ -722,16 +695,10 @@ export default function App() {
     e.preventDefault();
     setSubmittingSettings(true);
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settingsForm)
-      });
-      if (res.ok) {
-        await fetchSettings();
-        setSuccessMsg('تنظیمات فروشگاه با موفقیت ذخیره شد');
-        setTimeout(() => setSuccessMsg(''), 3000);
-      }
+      await saveStoreSettings(settingsForm as any);
+      await fetchSettings();
+      setSuccessMsg('تنظیمات فروشگاه با موفقیت ذخیره شد');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (error) {
       console.error('Error saving settings', error);
     } finally {
@@ -803,9 +770,14 @@ export default function App() {
     };
 
     // Initialize with one empty row
-    handleAddItem();
-    fetchData();
-  }, []);
+    if (items.length === 0) {
+      handleAddItem();
+    }
+    
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   const handleAddItem = () => {
     setItems((prevItems) => [
@@ -885,39 +857,27 @@ export default function App() {
     };
 
     try {
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      await addInvoice(payload as any);
       
-      if (response.ok) {
-        const data = await response.json();
-        setSuccessMsg(data.message || 'فاکتور با موفقیت ثبت شد!');
-        await fetchInvoices();
-        
-        // Reset form after short delay
-        setTimeout(() => {
-          if (invoiceMode === 'manual') setInvoiceNumber('');
-          setCustomerId('');
-          setItems([]);
-          setOverallDiscountPercent(0);
-          setInvoiceCurrency(storeSettings.currency || 'تومان');
-          setExchangeRate(1);
-          setExchangeRateInput('1');
-          setInvoiceType('sale');
-          setInvoiceTitle('فاکتور فروش کالا');
-          handleAddItem();
-          setSuccessMsg('');
-          setPreviewInvoiceData(null); // Clear preview modal
-        }, 1500);
-        return true;
-      } else {
-        const err = await response.json();
-        alert(`خطا در ثبت فاکتور: ${err.message || 'خطای ناخواسته'}`);
-      }
+      setSuccessMsg('فاکتور با موفقیت ثبت شد!');
+      await fetchInvoices();
+      
+      // Reset form after short delay
+      setTimeout(() => {
+        if (invoiceMode === 'manual') setInvoiceNumber('');
+        setCustomerId('');
+        setItems([]);
+        setOverallDiscountPercent(0);
+        setInvoiceCurrency(storeSettings.currency || 'تومان');
+        setExchangeRate(1);
+        setExchangeRateInput('1');
+        setInvoiceType('sale');
+        setInvoiceTitle('فاکتور فروش کالا');
+        handleAddItem();
+        setSuccessMsg('');
+        setPreviewInvoiceData(null); // Clear preview modal
+      }, 1500);
+      return true;
     } catch (error) {
       console.error('Error submitting invoice:', error);
       alert('خطا در ارتباط با سرور.');
@@ -1097,6 +1057,42 @@ export default function App() {
     );
   }
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 font-medium">در حال بررسی احراز هویت...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50/50 p-6" dir="rtl">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white p-8 rounded-2xl shadow-xl shadow-indigo-100 border border-gray-100 max-w-md w-full text-center"
+        >
+          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Store className="w-8 h-8 text-indigo-600" />
+          </div>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">به سیستم حسابداری خوش آمدید</h1>
+          <p className="text-gray-500 font-medium mb-8">برای دسترسی به اطلاعات فروشگاه، لطفاً وارد شوید.</p>
+          <button
+            onClick={signIn}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-200"
+          >
+            <LogIn className="w-5 h-5" />
+            ورود با حساب کاربری گوگل
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/50 font-sans font-medium" dir="rtl">
       
@@ -1114,7 +1110,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             {storeSettings.logoUrl ? (
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm flex items-center justify-center bg-white border border-gray-100">
-                <img src={storeSettings.logoUrl} alt={storeSettings.name} className="w-full h-full object-contain" onError={(e) => {
+                <img src={storeSettings.logoUrl} alt={storeSettings.storeName} className="w-full h-full object-contain" onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.parentElement?.classList.add('bg-indigo-600');
                   e.currentTarget.parentElement!.innerHTML = '<svg class="w-6 h-6 text-white overflow-visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M3 15h6"/><path d="M3 18h6"/></svg>';
@@ -1126,7 +1122,7 @@ export default function App() {
               </div>
             )}
             <div>
-              <h1 className="text-base font-bold text-gray-900 tracking-tight truncate max-w-[130px]" title={storeSettings.name}>{storeSettings.name || 'سیستم فاکتور'}</h1>
+              <h1 className="text-base font-bold text-gray-900 tracking-tight truncate max-w-[130px]" title={storeSettings.storeName}>{storeSettings.storeName || 'سیستم فاکتور'}</h1>
               <p className="text-xs text-gray-500 mt-1 font-medium">{storeSettings.phone ? `تلفن: ${storeSettings.phone}` : 'مدیریت جامع فروش'}</p>
             </div>
             <button 
@@ -1573,7 +1569,7 @@ export default function App() {
           <div className="flex items-center gap-3.5 min-w-[240px]">
             {storeSettings.logoUrl ? (
               <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-xs flex items-center justify-center bg-white border border-gray-100 transition-all duration-300 hover:scale-105">
-                <img src={storeSettings.logoUrl} alt={storeSettings.name} className="w-full h-full object-contain" onError={(e) => {
+                <img src={storeSettings.logoUrl} alt={storeSettings.storeName} className="w-full h-full object-contain" onError={(e) => {
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.parentElement?.classList.add('bg-indigo-600');
                   e.currentTarget.parentElement!.innerHTML = '<svg class="w-5 h-5 text-white overflow-visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M3 15h6"/><path d="M3 18h6"/></svg>';
@@ -1585,8 +1581,8 @@ export default function App() {
               </div>
             )}
             <div>
-              <h1 className="text-sm font-extrabold text-gray-900 tracking-tight truncate max-w-[170px]" title={storeSettings.name}>
-                {storeSettings.name || 'سیستم فاکتور'}
+              <h1 className="text-sm font-extrabold text-gray-900 tracking-tight truncate max-w-[170px]" title={storeSettings.storeName}>
+                {storeSettings.storeName || 'سیستم فاکتور'}
               </h1>
               <p className="text-[10px] text-gray-400 font-bold mt-0.5 leading-none">
                 {storeSettings.phone ? `تلفن: ${storeSettings.phone}` : 'سیستم مدیریت مـالی و حسابداری'}
@@ -2164,7 +2160,7 @@ export default function App() {
                   if (a.role === targetRole && b.role !== targetRole) return -1;
                   if (a.role !== targetRole && b.role === targetRole) return 1;
                   return 0;
-                }).map(c => ({ value: c.id, label: `${c.name} (${c.role === 'customer' ? 'مشتری' : c.role === 'supplier' ? 'تامین کننده' : 'کارمند'})` }))}
+                }).map(c => ({ value: c.id.toString(), label: `${c.name} (${c.role === 'customer' ? 'مشتری' : c.role === 'supplier' ? 'تامین کننده' : 'کارمند'})` })) as any}
                 placeholder={invoiceType === 'sale' ? "جستجو و انتخاب خریدار..." : "جستجو و انتخاب فروشنده..."}
                 noOptionsMessage={() => "نتیجه‌ای یافت نشد"}
                 styles={{
@@ -2343,7 +2339,7 @@ export default function App() {
                           isSearchable={true}
                           value={item.productId ? { value: item.productId, label: item.productName || products.find(p => p.id === item.productId)?.name } : null}
                           onChange={(option: any) => handleItemChange(item.id, 'productId', option ? option.value : '')}
-                          options={products.map(p => ({ value: p.id, label: p.name }))}
+                          options={products.map(p => ({ value: p.id.toString(), label: p.name })) as any}
                           placeholder="جستجوی کالا..."
                           noOptionsMessage={() => "کالایی یافت نشد"}
                           styles={{
@@ -2687,9 +2683,9 @@ export default function App() {
                     value={receiptPersonId ? { value: receiptPersonId, label: persons.find(p => p.id === receiptPersonId)?.name } : null}
                     onChange={(option: any) => setReceiptPersonId(option ? option.value : '')}
                     options={persons.map(p => ({
-                      value: p.id,
+                      value: p.id.toString(),
                       label: `${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'})`
-                    }))}
+                    })) as any}
                     placeholder="انتخاب طرف حساب..."
                     noOptionsMessage={() => "شخصی یافت نشد"}
                     styles={{
@@ -2908,9 +2904,9 @@ export default function App() {
                       value={salaryPersonId ? { value: salaryPersonId, label: persons.find(p => p.id === salaryPersonId)?.name } : null}
                       onChange={(option: any) => setSalaryPersonId(option ? option.value : '')}
                       options={persons.filter(p => p.role === 'employee').map(p => ({
-                        value: p.id,
+                        value: p.id.toString(),
                         label: p.name
-                      }))}
+                      })) as any}
                       placeholder="انتخاب کارمند..."
                       noOptionsMessage={() => "کارمندی یافت نشد"}
                       styles={{
@@ -3152,7 +3148,7 @@ export default function App() {
                   const deductTotal = insDeduct + taxDeduct + penaltyDeduct;
                   const net = gross - deductTotal;
 
-                  const emp = persons.find(p => p.id === Number(salaryPersonId));
+                  const emp = persons.find(p => p.id.toString() === salaryPersonId.toString());
 
                   return (
                     <div className="bg-indigo-900 text-white rounded-2xl p-6 shadow-lg border border-indigo-950 flex flex-col md:flex-row justify-between items-center gap-6 mt-6">
@@ -4063,12 +4059,12 @@ export default function App() {
               </label>
               <Select
                 isRtl
-                value={ledgerPersonId ? { value: ledgerPersonId, label: persons.find(p => p.id === Number(ledgerPersonId))?.name } : null}
+                value={ledgerPersonId ? { value: ledgerPersonId, label: persons.find(p => p.id.toString() === ledgerPersonId.toString())?.name } : null}
                 onChange={(option: any) => setLedgerPersonId(option ? option.value : '')}
                 options={persons.map(p => ({
-                  value: p.id,
+                  value: p.id.toString(),
                   label: `${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'})`
-                }))}
+                })) as any}
                 placeholder="انتخاب یا جستجوی نام شخص..."
                 noOptionsMessage={() => "شخصی یافت نشد"}
                 isClearable
@@ -4100,7 +4096,7 @@ export default function App() {
               );
             }
 
-            const selectedPerson = persons.find(p => p.id === Number(ledgerPersonId));
+            const selectedPerson = persons.find(p => p.id.toString() === ledgerPersonId.toString());
             if (!selectedPerson) {
               return (
                 <div className="bg-white rounded-2xl p-8 text-center text-rose-500 border border-rose-100 shadow-sm">
@@ -4112,7 +4108,7 @@ export default function App() {
             // Calculations
             // Invoices
             const invoiceEntries = invoices
-              .filter(inv => Number(inv.customerId) === Number(ledgerPersonId))
+              .filter(inv => inv.customerId?.toString() === ledgerPersonId.toString())
               .map(inv => {
                 const isSale = inv.type !== 'purchase';
                 const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
@@ -4132,7 +4128,7 @@ export default function App() {
 
             // Transactions
             const transactionEntries = transactions
-              .filter(t => Number(t.personId) === Number(ledgerPersonId))
+              .filter(t => t.personId?.toString() === ledgerPersonId.toString())
               .map(t => {
                 const isReceive = t.type === 'receive';
                 const isSalary = t.type === 'salary';
@@ -4456,8 +4452,8 @@ export default function App() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">نام فروشگاه / شرکت</label>
                   <input
                     type="text"
-                    value={settingsForm.name}
-                    onChange={e => setSettingsForm({...settingsForm, name: e.target.value})}
+                    value={settingsForm.storeName}
+                    onChange={e => setSettingsForm({...settingsForm, storeName: e.target.value})}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
                     required
                   />
@@ -4708,7 +4704,7 @@ export default function App() {
                     <input type="checkbox" className="mt-1 w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-blue-700 transition-colors">{item.title}</h4>
+                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-blue-700 transition-colors"><span className="text-gray-400 font-normal ml-1">{idx + 1}.</span> {item.title}</h4>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
                           item.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : 
                           item.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
@@ -4746,7 +4742,7 @@ export default function App() {
                     <input type="checkbox" className="mt-1 w-5 h-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-purple-700 transition-colors">{item.title}</h4>
+                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-purple-700 transition-colors"><span className="text-gray-400 font-normal ml-1">{idx + 9}.</span> {item.title}</h4>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
                           item.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : 
                           item.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
@@ -4784,7 +4780,7 @@ export default function App() {
                     <input type="checkbox" className="mt-1 w-5 h-5 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-emerald-700 transition-colors">{item.title}</h4>
+                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-emerald-700 transition-colors"><span className="text-gray-400 font-normal ml-1">{idx + 16}.</span> {item.title}</h4>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
                           item.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : 
                           item.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
@@ -4822,7 +4818,7 @@ export default function App() {
                     <input type="checkbox" className="mt-1 w-5 h-5 text-rose-600 rounded border-gray-300 focus:ring-rose-500 cursor-pointer" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-rose-700 transition-colors">{item.title}</h4>
+                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-rose-700 transition-colors"><span className="text-gray-400 font-normal ml-1">{idx + 23}.</span> {item.title}</h4>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
                           item.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : 
                           item.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
@@ -4857,7 +4853,7 @@ export default function App() {
                     <input type="checkbox" className="mt-1 w-5 h-5 text-pink-600 rounded border-gray-300 focus:ring-pink-500 cursor-pointer" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-pink-700 transition-colors">{item.title}</h4>
+                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-pink-700 transition-colors"><span className="text-gray-400 font-normal ml-1">{idx + 30}.</span> {item.title}</h4>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
                           item.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : 
                           item.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
@@ -4895,7 +4891,7 @@ export default function App() {
                     <input type="checkbox" className="mt-1 w-5 h-5 text-amber-600 rounded border-gray-300 focus:ring-amber-500 cursor-pointer" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-amber-700 transition-colors">{item.title}</h4>
+                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-amber-700 transition-colors"><span className="text-gray-400 font-normal ml-1">{idx + 34}.</span> {item.title}</h4>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
                           item.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : 
                           item.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
@@ -4933,7 +4929,7 @@ export default function App() {
                     <input type="checkbox" className="mt-1 w-5 h-5 text-cyan-600 rounded border-gray-300 focus:ring-cyan-500 cursor-pointer" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-cyan-700 transition-colors">{item.title}</h4>
+                        <h4 className="font-extrabold text-gray-800 text-[13px] group-hover:text-cyan-700 transition-colors"><span className="text-gray-400 font-normal ml-1">{idx + 41}.</span> {item.title}</h4>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
                           item.priority === 'high' ? 'bg-red-50 text-red-600 border-red-200' : 
                           item.priority === 'medium' ? 'bg-orange-50 text-orange-600 border-orange-200' : 
@@ -4985,7 +4981,7 @@ export default function App() {
                 <div className="border-4 border-double border-gray-300 p-5 rounded-2xl bg-gray-50/20 shadow-inner flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-right space-y-1">
                     <span className="text-xs text-indigo-600 font-bold tracking-wider">سند مالی شماره #{viewingPayslip.id}</span>
-                    <h2 className="text-xl font-black text-gray-950">{storeSettings.name || 'مجموعه تجاری و مالی صبا'}</h2>
+                    <h2 className="text-xl font-black text-gray-950">{storeSettings.storeName || 'مجموعه تجاری و مالی صبا'}</h2>
                     <p className="text-xs text-gray-500 font-medium">{viewingPayslip.parsed?.userNote || 'فیش رسمی حقوق و دستمزد کارمند'}</p>
                   </div>
                   <div className="text-center bg-white border border-gray-200 py-2.5 px-4 rounded-xl min-w-[150px] shadow-sm">
@@ -5732,7 +5728,7 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6 border-b border-gray-100 items-center">
                     {/* Store Title */}
                     <div className="text-right space-y-1">
-                      <h2 className="text-xl font-black text-gray-900">{storeSettings.name || 'مجموعه تجاری فاکتور پیشرفته'}</h2>
+                      <h2 className="text-xl font-black text-gray-900">{storeSettings.storeName || 'مجموعه تجاری فاکتور پیشرفته'}</h2>
                       <p className="text-xs text-gray-500 font-bold">تلفن پیگیری: {storeSettings.phone || 'ثبت نشده'}</p>
                       <p className="text-[11px] text-gray-400 font-medium">آدرس: {storeSettings.address || 'ثبت نشده'}</p>
                     </div>
@@ -5908,7 +5904,7 @@ export default function App() {
                   {/* Header info */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6 border-b border-gray-100 items-center">
                     <div className="text-right space-y-1">
-                      <h2 className="text-lg font-black text-gray-900">{storeSettings.name || 'مجموعه تجاری پیش‌فرض'}</h2>
+                      <h2 className="text-lg font-black text-gray-900">{storeSettings.storeName || 'مجموعه تجاری پیش‌فرض'}</h2>
                       <p className="text-xs text-gray-500 font-bold">تلفن: {storeSettings.phone || 'ثبت نشده'}</p>
                       <p className="text-[10px] text-gray-400 leading-none">آدرس: {storeSettings.address || 'ثبت نشده'}</p>
                     </div>

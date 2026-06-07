@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "CompanySettings": {
+      "title": "Company Settings",
+      "description": "Global store/company settings",
+      "type": "object",
+      "properties": {
+        "storeName": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" }
+      },
+      "required": ["storeName"]
+    },
+    "Person": {
+      "title": "Person",
+      "description": "Customers, suppliers, employees",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["customer", "supplier", "employee", "marketer"] },
+        "fullName": { "type": "string" },
+        "nationalId": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "initialBalance": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["type", "fullName", "createdAt", "updatedAt"]
+    },
+    "Account": {
+      "title": "Bank Account",
+      "description": "Bank account details",
+      "type": "object",
+      "properties": {
+        "bankName": { "type": "string" },
+        "branch": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "sheba": { "type": "string" },
+        "initialBalance": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["bankName", "createdAt", "updatedAt"]
+    },
+    "Cashbox": {
+      "title": "Cashbox",
+      "description": "Cashbox details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "initialBalance": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["name", "createdAt", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Product details",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "barcode": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "unit": { "type": "string" },
+        "buyPrice": { "type": "number" },
+        "sellPrice": { "type": "number" },
+        "stock": { "type": "number" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["name", "buyPrice", "sellPrice", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "settings/{settingId}": {
+      "schema": "CompanySettings",
+      "description": "Store settings (e.g. settingId=company_profile)"
+    },
+    "persons/{personId}": {
+      "schema": "Person",
+      "description": "List of persons"
+    },
+    "accounts/{accountId}": {
+      "schema": "Account",
+      "description": "List of bank accounts"
+    },
+    "cashboxes/{cashboxId}": {
+      "schema": "Cashbox",
+      "description": "List of cashboxes"
+    },
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "List of products"
+    }
+  }
+}
