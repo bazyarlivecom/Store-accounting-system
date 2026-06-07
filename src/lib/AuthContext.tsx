@@ -1,9 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth, signInWithGoogle, logOut } from './firebase';
+import React, { createContext, useContext, useState } from 'react';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   loading: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -11,7 +9,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  loading: true,
+  loading: false,
   signIn: async () => {},
   signOut: async () => {},
 });
@@ -19,25 +17,12 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any | null>({ email: 'local@store.com', uid: 'local-user' });
+  const [loading] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
+  const signIn = async () => {};
 
-    return () => unsubscribe();
-  }, []);
-
-  const signIn = async () => {
-    await signInWithGoogle();
-  };
-
-  const handleSignOut = async () => {
-    await logOut();
-  };
+  const handleSignOut = async () => {};
 
   return (
     <AuthContext.Provider value={{ user, loading, signIn, signOut: handleSignOut }}>

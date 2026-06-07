@@ -1,6 +1,3 @@
-import { collection, doc, getDoc, setDoc, getDocs, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase';
-
 export interface CompanySettings {
   storeName: string;
   phone?: string;
@@ -9,261 +6,249 @@ export interface CompanySettings {
   currency?: string;
 }
 
-export const getStoreSettings = async (): Promise<CompanySettings | null> => {
+const getLocalData = <T>(key: string, defaultValue: T): T => {
   try {
-    const docRef = doc(db, 'settings', 'company_profile');
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return docSnap.data() as CompanySettings;
-    }
-    return null;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultValue;
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, 'settings/company_profile');
-    return null;
+    console.error(`Error reading ${key} from localStorage`, error);
+    return defaultValue;
   }
+};
+
+const saveLocalData = <T>(key: string, data: T): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Error saving ${key} to localStorage`, error);
+  }
+};
+
+const generateId = () => Math.random().toString(36).substring(2, 15);
+
+export const getStoreSettings = async (): Promise<CompanySettings | null> => {
+  return getLocalData<CompanySettings | null>('company_profile', null);
 };
 
 export const saveStoreSettings = async (settings: CompanySettings): Promise<void> => {
-  try {
-    const docRef = doc(db, 'settings', 'company_profile');
-    await setDoc(docRef, settings, { merge: true });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, 'settings/company_profile');
-  }
+  saveLocalData('company_profile', settings);
 };
 
+// Persons
 export const getPersons = async () => {
-  try {
-    const q = query(collection(db, 'persons'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'persons');
-    return [];
-  }
+  const persons = getLocalData<any[]>('persons', []);
+  return persons.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addPerson = async (person: any) => {
-  try {
-    const newDocRef = doc(collection(db, 'persons'));
-    const now = Date.now();
-    const data = { ...person, createdAt: now, updatedAt: now };
-    await setDoc(newDocRef, data);
-    return { id: newDocRef.id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, 'persons');
-  }
+  const persons = getLocalData<any[]>('persons', []);
+  const now = Date.now();
+  const newPerson = { ...person, id: generateId(), createdAt: now, updatedAt: now };
+  persons.push(newPerson);
+  saveLocalData('persons', persons);
+  return newPerson;
 };
 
 export const updatePerson = async (id: string, person: any) => {
-  try {
-    const docRef = doc(db, 'persons', id);
-    const data = { ...person, updatedAt: Date.now() };
-    await updateDoc(docRef, data);
-    return { id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `persons/${id}`);
+  const persons = getLocalData<any[]>('persons', []);
+  const index = persons.findIndex(p => p.id === id);
+  if (index !== -1) {
+    persons[index] = { ...persons[index], ...person, updatedAt: Date.now() };
+    saveLocalData('persons', persons);
+    return persons[index];
   }
+  return null;
 };
 
 export const deletePerson = async (id: string) => {
-  try {
-    const docRef = doc(db, 'persons', id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `persons/${id}`);
-  }
+  const persons = getLocalData<any[]>('persons', []);
+  saveLocalData('persons', persons.filter(p => p.id !== id));
 };
 
+// Accounts
 export const getAccounts = async () => {
-  try {
-    const q = query(collection(db, 'accounts'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'accounts');
-    return [];
-  }
+  const accounts = getLocalData<any[]>('accounts', []);
+  return accounts.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addAccount = async (account: any) => {
-  try {
-    const newDocRef = doc(collection(db, 'accounts'));
-    const now = Date.now();
-    const data = { ...account, createdAt: now, updatedAt: now };
-    await setDoc(newDocRef, data);
-    return { id: newDocRef.id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, 'accounts');
-  }
+  const accounts = getLocalData<any[]>('accounts', []);
+  const now = Date.now();
+  const newAccount = { ...account, id: generateId(), createdAt: now, updatedAt: now };
+  accounts.push(newAccount);
+  saveLocalData('accounts', accounts);
+  return newAccount;
 };
 
 export const updateAccount = async (id: string, account: any) => {
-  try {
-    const docRef = doc(db, 'accounts', id);
-    const data = { ...account, updatedAt: Date.now() };
-    await updateDoc(docRef, data);
-    return { id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `accounts/${id}`);
+  const accounts = getLocalData<any[]>('accounts', []);
+  const index = accounts.findIndex(p => p.id === id);
+  if (index !== -1) {
+    accounts[index] = { ...accounts[index], ...account, updatedAt: Date.now() };
+    saveLocalData('accounts', accounts);
+    return accounts[index];
   }
+  return null;
 };
 
 export const deleteAccount = async (id: string) => {
-  try {
-    const docRef = doc(db, 'accounts', id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `accounts/${id}`);
-  }
+  const accounts = getLocalData<any[]>('accounts', []);
+  saveLocalData('accounts', accounts.filter(p => p.id !== id));
 };
 
+// Cashboxes
 export const getCashboxes = async () => {
-  try {
-    const q = query(collection(db, 'cashboxes'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'cashboxes');
-    return [];
-  }
+  const cashboxes = getLocalData<any[]>('cashboxes', []);
+  return cashboxes.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addCashbox = async (cashbox: any) => {
-  try {
-    const newDocRef = doc(collection(db, 'cashboxes'));
-    const now = Date.now();
-    const data = { ...cashbox, createdAt: now, updatedAt: now };
-    await setDoc(newDocRef, data);
-    return { id: newDocRef.id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, 'cashboxes');
-  }
+  const cashboxes = getLocalData<any[]>('cashboxes', []);
+  const now = Date.now();
+  const newCashbox = { ...cashbox, id: generateId(), createdAt: now, updatedAt: now };
+  cashboxes.push(newCashbox);
+  saveLocalData('cashboxes', cashboxes);
+  return newCashbox;
 };
 
 export const updateCashbox = async (id: string, cashbox: any) => {
-  try {
-    const docRef = doc(db, 'cashboxes', id);
-    const data = { ...cashbox, updatedAt: Date.now() };
-    await updateDoc(docRef, data);
-    return { id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `cashboxes/${id}`);
+  const cashboxes = getLocalData<any[]>('cashboxes', []);
+  const index = cashboxes.findIndex(p => p.id === id);
+  if (index !== -1) {
+    cashboxes[index] = { ...cashboxes[index], ...cashbox, updatedAt: Date.now() };
+    saveLocalData('cashboxes', cashboxes);
+    return cashboxes[index];
   }
+  return null;
 };
 
 export const deleteCashbox = async (id: string) => {
-  try {
-    const docRef = doc(db, 'cashboxes', id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `cashboxes/${id}`);
-  }
+  const cashboxes = getLocalData<any[]>('cashboxes', []);
+  saveLocalData('cashboxes', cashboxes.filter(p => p.id !== id));
 };
 
+// Products
 export const getProducts = async () => {
-  try {
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'products');
-    return [];
-  }
+  const products = getLocalData<any[]>('products', []);
+  return products.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addProduct = async (product: any) => {
-  try {
-    const newDocRef = doc(collection(db, 'products'));
-    const now = Date.now();
-    const data = { ...product, createdAt: now, updatedAt: now };
-    await setDoc(newDocRef, data);
-    return { id: newDocRef.id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, 'products');
-  }
+  const products = getLocalData<any[]>('products', []);
+  const now = Date.now();
+  const newProduct = { ...product, id: generateId(), createdAt: now, updatedAt: now };
+  products.push(newProduct);
+  saveLocalData('products', products);
+  return newProduct;
 };
 
 export const updateProduct = async (id: string, product: any) => {
-  try {
-    const docRef = doc(db, 'products', id);
-    const data = { ...product, updatedAt: Date.now() };
-    await updateDoc(docRef, data);
-    return { id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
+  const products = getLocalData<any[]>('products', []);
+  const index = products.findIndex(p => p.id === id);
+  if (index !== -1) {
+    products[index] = { ...products[index], ...product, updatedAt: Date.now() };
+    saveLocalData('products', products);
+    return products[index];
   }
+  return null;
 };
 
 export const deleteProduct = async (id: string) => {
-  try {
-    const docRef = doc(db, 'products', id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `products/${id}`);
-  }
+  const products = getLocalData<any[]>('products', []);
+  saveLocalData('products', products.filter(p => p.id !== id));
 };
 
+// Transactions
 export const getTransactions = async () => {
-  try {
-    const q = query(collection(db, 'transactions'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'transactions');
-    return [];
-  }
+  const transactions = getLocalData<any[]>('transactions', []);
+  return transactions.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addTransaction = async (transaction: any) => {
-  try {
-    const newDocRef = doc(collection(db, 'transactions'));
-    const now = Date.now();
-    const data = { ...transaction, createdAt: now, updatedAt: now };
-    await setDoc(newDocRef, data);
-    return { id: newDocRef.id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, 'transactions');
+  const transactions = getLocalData<any[]>('transactions', []);
+  const now = Date.now();
+  const newTransaction = { ...transaction, id: generateId(), createdAt: now, updatedAt: now };
+
+  if (transaction.type === 'receive' || transaction.type === 'pay' || transaction.type === 'salary') {
+    const amount = Number(transaction.amount) || 0;
+    if (transaction.resourceType === 'bank') {
+      const accounts = getLocalData<any[]>('accounts', []);
+      const index = accounts.findIndex(a => a.id === transaction.resourceId);
+      if (index !== -1) {
+        if (transaction.type === 'receive') {
+          accounts[index].balance += amount;
+        } else {
+          accounts[index].balance -= amount;
+        }
+        saveLocalData('accounts', accounts);
+      }
+    } else if (transaction.resourceType === 'cashbox') {
+      const cashboxes = getLocalData<any[]>('cashboxes', []);
+      const index = cashboxes.findIndex(c => c.id === transaction.resourceId);
+      if (index !== -1) {
+        if (transaction.type === 'receive') {
+          cashboxes[index].balance += amount;
+        } else {
+          cashboxes[index].balance -= amount;
+        }
+        saveLocalData('cashboxes', cashboxes);
+      }
+    }
   }
+
+  transactions.push(newTransaction);
+  saveLocalData('transactions', transactions);
+  return newTransaction;
 };
 
 export const deleteTransaction = async (id: string) => {
-  try {
-    const docRef = doc(db, 'transactions', id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `transactions/${id}`);
+  const transactions = getLocalData<any[]>('transactions', []);
+  const t = transactions.find(tx => tx.id === id);
+  if (t) {
+    const amount = Number(t.amount) || 0;
+    if (t.resourceType === 'bank') {
+      const accounts = getLocalData<any[]>('accounts', []);
+      const index = accounts.findIndex(a => a.id === t.resourceId);
+      if (index !== -1) {
+        if (t.type === 'receive') {
+          accounts[index].balance -= amount;
+        } else {
+          accounts[index].balance += amount;
+        }
+        saveLocalData('accounts', accounts);
+      }
+    } else if (t.resourceType === 'cashbox') {
+      const cashboxes = getLocalData<any[]>('cashboxes', []);
+      const index = cashboxes.findIndex(c => c.id === t.resourceId);
+      if (index !== -1) {
+        if (t.type === 'receive') {
+          cashboxes[index].balance -= amount;
+        } else {
+          cashboxes[index].balance += amount;
+        }
+        saveLocalData('cashboxes', cashboxes);
+      }
+    }
   }
+  saveLocalData('transactions', transactions.filter(p => p.id !== id));
 };
 
+// Invoices
 export const getInvoices = async () => {
-  try {
-    const q = query(collection(db, 'invoices'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, 'invoices');
-    return [];
-  }
+  const invoices = getLocalData<any[]>('invoices', []);
+  return invoices.sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addInvoice = async (invoice: any) => {
-  try {
-    const newDocRef = doc(collection(db, 'invoices'));
-    const now = Date.now();
-    const data = { ...invoice, createdAt: now, updatedAt: now };
-    await setDoc(newDocRef, data);
-    return { id: newDocRef.id, ...data };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, 'invoices');
-  }
+  const invoices = getLocalData<any[]>('invoices', []);
+  const now = Date.now();
+  const newInvoice = { ...invoice, id: generateId(), createdAt: now, updatedAt: now };
+  invoices.push(newInvoice);
+  saveLocalData('invoices', invoices);
+  return newInvoice;
 };
 
 export const deleteInvoice = async (id: string) => {
-  try {
-    const docRef = doc(db, 'invoices', id);
-    await deleteDoc(docRef);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `invoices/${id}`);
-  }
+  const invoices = getLocalData<any[]>('invoices', []);
+  saveLocalData('invoices', invoices.filter(p => p.id !== id));
 };

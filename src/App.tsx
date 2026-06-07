@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -119,7 +119,7 @@ export default function App() {
   const [receiptResourceId, setReceiptResourceId] = useState<string | number | ''>('');
   const [receiptDescription, setReceiptDescription] = useState<string>('');
   const [submittingReceipt, setSubmittingReceipt] = useState<boolean>(false);
-  const [receiptSuccessMsg, setReceiptSuccessMsg] = useState<string>('');
+  const receiptSuccessMsg = false;
 
   // Salary form state
   const [salaryPersonId, setSalaryPersonId] = useState<string | number | ''>('');
@@ -135,7 +135,7 @@ export default function App() {
   const [salaryDirectPayment, setSalaryDirectPayment] = useState<boolean>(false);
   const [salaryResourceType, setSalaryResourceType] = useState<'bank' | 'cashbox'>('bank');
   const [salaryResourceId, setSalaryResourceId] = useState<string | number | ''>('');
-  const [salarySuccessMsg, setSalarySuccessMsg] = useState<string>('');
+  const salarySuccessMsg = false;
   const [submittingSalary, setSubmittingSalary] = useState<boolean>(false);
   const [viewingPayslip, setViewingPayslip] = useState<any | null>(null);
 
@@ -169,7 +169,21 @@ export default function App() {
   const [overallDiscountPercent, setOverallDiscountPercent] = useState<number>(0);
   
   const [submitting, setSubmitting] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
+  
+  const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const setSuccessMsg = (msg: string) => msg ? showNotification(msg, 'success') : null;
+  const setReceiptSuccessMsg = (msg: string) => msg ? showNotification(msg, 'success') : null;
+  const setSalarySuccessMsg = (msg: string) => msg ? showNotification(msg, 'success') : null;
+  const customAlert = (msg: string) => showNotification(msg, 'error');
+
+  const successMsg = false;
+
   
   // Product state
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -268,7 +282,7 @@ export default function App() {
       setEditingProductId(null);
       setIsProductModalOpen(false);
       setSuccessMsg(isEdit ? 'کالا با موفقیت ویرایش شد' : 'کالا یا خدمات با موفقیت اضافه شد');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      
     } catch (error) {
       console.error('Error saving product', error);
     } finally {
@@ -344,7 +358,7 @@ export default function App() {
       setEditingPersonId(null);
       setIsPersonModalOpen(false);
       setSuccessMsg(isEdit ? 'شخص با موفقیت ویرایش شد' : 'شخص با موفقیت اضافه شد');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      
     } catch (error) {
       console.error('Error saving person', error);
     } finally {
@@ -406,7 +420,7 @@ export default function App() {
       setEditingAccountId(null);
       setIsAccountModalOpen(false);
       setSuccessMsg(isEdit ? 'حساب بانکی با موفقیت ویرایش شد' : 'حساب بانکی با موفقیت ثبت شد');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      
     } catch (error) {
       console.error('Error saving account', error);
     } finally {
@@ -445,7 +459,7 @@ export default function App() {
   const handleSubmitReceipt = async (type: 'receive' | 'pay', e: React.FormEvent) => {
     e.preventDefault();
     if (!receiptPersonId || !receiptAmount || !receiptResourceType || !receiptResourceId) {
-      alert('لطفا تمام اطلاعات الزامی فرم را وارد کنید.');
+      customAlert('لطفا تمام اطلاعات الزامی فرم را وارد کنید.');
       return;
     }
 
@@ -477,12 +491,10 @@ export default function App() {
         fetchCashboxes()
       ]);
 
-      setTimeout(() => {
-        setReceiptSuccessMsg('');
-      }, 3000);
+      
     } catch (error) {
       console.error('Error submitting receipt', error);
-      alert('خطایی در ارتباط با سرور رخ داد');
+      customAlert('خطایی در ارتباط با سرور رخ داد');
     } finally {
       setSubmittingReceipt(false);
     }
@@ -491,7 +503,7 @@ export default function App() {
   const handleSubmitSalary = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!salaryPersonId || !salaryBaseAmount) {
-      alert('لطفا کارمند و مبلغ حقوق پایه را تعیین کنید');
+      customAlert('لطفا کارمند و مبلغ حقوق پایه را تعیین کنید');
       return;
     }
 
@@ -506,7 +518,7 @@ export default function App() {
     const netSalary = (base + housing + grocery + otherAllow) - (insDeduct + taxDeduct + penaltyDeduct);
 
     if (netSalary <= 0) {
-      alert('مبلغ خالص حقوق باید بزرگتر از صفر باشد');
+      customAlert('مبلغ خالص حقوق باید بزرگتر از صفر باشد');
       return;
     }
 
@@ -565,10 +577,10 @@ export default function App() {
         fetchCashboxes()
       ]);
 
-      setTimeout(() => setSalarySuccessMsg(''), 4000);
+      
     } catch (error) {
       console.error('Error submitting salary', error);
-      alert('خطای سیستمی رخ داد');
+      customAlert('خطای سیستمی رخ داد');
     } finally {
       setSubmittingSalary(false);
     }
@@ -615,7 +627,7 @@ export default function App() {
       setEditingCashboxId(null);
       setIsCashboxModalOpen(false);
       setSuccessMsg(isEdit ? 'صندوق با موفقیت ویرایش شد' : 'صندوق با موفقیت ثبت شد');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      
     } catch (error) {
       console.error('Error saving cashbox', error);
     } finally {
@@ -698,7 +710,7 @@ export default function App() {
       await saveStoreSettings(settingsForm as any);
       await fetchSettings();
       setSuccessMsg('تنظیمات فروشگاه با موفقیت ذخیره شد');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      
     } catch (error) {
       console.error('Error saving settings', error);
     } finally {
@@ -881,7 +893,7 @@ export default function App() {
       return true;
     } catch (error) {
       console.error('Error submitting invoice:', error);
-      alert('خطا در ارتباط با سرور.');
+      customAlert('خطا در ارتباط با سرور.');
     } finally {
       setSubmitting(false);
     }
@@ -891,7 +903,7 @@ export default function App() {
   const submitInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerId || items.length === 0 || items.some(i => i.productId === '')) {
-      alert('لطفاً همه فیلدهای ضروری را پر کنید.');
+      customAlert('لطفاً همه فیلدهای ضروری را پر کنید.');
       return;
     }
     await saveInvoiceData();
@@ -899,7 +911,7 @@ export default function App() {
 
   const handleInvoicePreviewTrigger = () => {
     if (!customerId || items.length === 0 || items.some(i => i.productId === '')) {
-      alert('لطفاً همه فیلدهای ضروری را پر کنید.');
+      customAlert('لطفاً همه فیلدهای ضروری را پر کنید.');
       return;
     }
 
@@ -1097,6 +1109,23 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/50 font-sans font-medium" dir="rtl">
       
+      {notification && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className={`px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3 border ${
+            notification.type === 'error' ? 'bg-red-500 text-white border-red-400' :
+            notification.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' :
+            notification.type === 'warning' ? 'bg-orange-500 text-white border-orange-400' :
+            'bg-indigo-600 text-white border-indigo-400'
+          }`}>
+            {notification.type === 'success' && <CheckCircle className="w-5 h-5 shrink-0" />}
+            {notification.type === 'error' && <AlertCircle className="w-5 h-5 shrink-0" />}
+            {notification.type === 'warning' && <AlertTriangle className="w-5 h-5 shrink-0" />}
+            {notification.type === 'info' && <Info className="w-5 h-5 shrink-0" />}
+            <p className="font-bold text-sm tracking-tight">{notification.message}</p>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Menu Overlay */}
       {isSidebarOpen && (
         <div 
@@ -2799,7 +2828,7 @@ export default function App() {
                   </label>
                   <select
                     value={receiptResourceId}
-                    onChange={(e) => setReceiptResourceId(Number(e.target.value) || '')}
+                    onChange={(e) => setReceiptResourceId(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
                     required
                   >
@@ -3113,7 +3142,7 @@ export default function App() {
                         <label className="block text-xs font-bold text-gray-600 mb-2">انتخاب صندوق یا حساب بانکی مبدا کسر وجه</label>
                         <select
                           value={salaryResourceId}
-                          onChange={(e) => setSalaryResourceId(Number(e.target.value) || '')}
+                          onChange={(e) => setSalaryResourceId(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm"
                           required={salaryDirectPayment}
                         >
@@ -3236,6 +3265,7 @@ export default function App() {
 
                         const userNote = parsedDesc?.userNote || t.description || 'سند حقوق و دستمزد';
                         const isSettledDirectly = t.resourceType && t.resourceType !== 'none';
+                        const person = persons.find(p => p.id === t.personId || p.id.toString() === t.personId?.toString());
 
                         return (
                           <tr key={t.id} className="hover:bg-gray-50 transition-colors">
@@ -3246,7 +3276,7 @@ export default function App() {
                               {t.jalaliDate || t.date}
                             </td>
                             <td className="py-4 px-6 font-bold text-gray-900">
-                              {t.personName}
+                              {person ? person.name : 'نامشخص'}
                             </td>
                             <td className="py-4 px-6 text-sm text-gray-500">
                               {userNote}
@@ -3268,7 +3298,7 @@ export default function App() {
                             <td className="py-4 px-6 text-center space-x-reverse space-x-2">
                               {parsedDesc?.isPayslip && (
                                 <button
-                                  onClick={() => setViewingPayslip({ ...t, parsed: parsedDesc })}
+                                  onClick={() => setViewingPayslip({ ...t, parsed: parsedDesc, computedPersonName: person ? person.name : 'نامشخص' })}
                                   className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200 transition-all text-xs font-bold inline-flex items-center gap-1"
                                   title="نمایش فیش حقوقی رسمی"
                                 >
@@ -3327,7 +3357,18 @@ export default function App() {
                   <tbody className="divide-y divide-gray-50">
                     {transactions
                       .filter(t => t.type === (activeTab === 'list_receive_receipt' ? 'receive' : 'pay'))
-                      .map((t) => (
+                      .map((t) => {
+                        const person = persons.find(p => p.id === t.personId || p.id.toString() === t.personId?.toString());
+                        let resourceName = '';
+                        if (t.resourceType === 'bank') {
+                          const acc = accounts.find(a => a.id === t.resourceId || a.id.toString() === t.resourceId?.toString());
+                          resourceName = acc ? `${acc.bankName} (${acc.accountNumber || acc.cardNumber || ''})` : 'حساب نامشخص';
+                        } else if (t.resourceType === 'cashbox') {
+                          const cb = cashboxes.find(c => c.id === t.resourceId || c.id.toString() === t.resourceId?.toString());
+                          resourceName = cb ? cb.name : 'صندوق نامشخص';
+                        }
+                        
+                        return (
                         <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-6 font-semibold text-gray-700">
                             #{t.id}
@@ -3336,12 +3377,12 @@ export default function App() {
                             {t.jalaliDate || t.date}
                           </td>
                           <td className="py-4 px-6 font-bold text-gray-900">
-                            {t.personName}
+                            {person ? person.name : 'نامشخص'}
                           </td>
                           <td className="py-4 px-6 font-medium text-gray-700">
                             <div className="flex items-center gap-2">
                               {t.resourceType === 'bank' ? '💳 بانک: ' : '💵 صندوق: '}
-                              <span className="text-indigo-600">{t.resourceName}</span>
+                              <span className="text-indigo-600">{resourceName}</span>
                             </div>
                           </td>
                           <td className={`py-4 px-6 font-extrabold text-base ${activeTab === 'list_receive_receipt' ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -3360,7 +3401,7 @@ export default function App() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                      )})}
                   </tbody>
                 </table>
               )}
@@ -4163,6 +4204,19 @@ export default function App() {
                     desc = t.description;
                   }
                 }
+                
+                let resourceLabel = '';
+                if (t.resourceType && t.resourceType !== 'none') {
+                  if (t.resourceType === 'bank') {
+                    const acc = accounts.find(a => a.id === t.resourceId || a.id.toString() === t.resourceId?.toString());
+                    resourceLabel = acc ? `از/به بانک ${acc.bankName}` : '';
+                  } else {
+                    const cb = cashboxes.find(c => c.id === t.resourceId || c.id.toString() === t.resourceId?.toString());
+                    resourceLabel = cb ? `از/به صندوق ${cb.name}` : '';
+                  }
+                }
+                
+                const finalDesc = desc ? `${desc} ${resourceLabel ? `(${resourceLabel})` : ''}` : (isSalary ? `ثبت حقوق و دستمزد کارمند ${resourceLabel ? `(${resourceLabel})` : ''}` : (isReceive ? `بابت تسویه حساب مالی ${resourceLabel ? `(${resourceLabel})` : ''}` : `بابت پرداخت به طرف حساب ${resourceLabel ? `(${resourceLabel})` : ''}`));
 
                 return {
                   id: `tx-${t.id}`,
@@ -4170,7 +4224,7 @@ export default function App() {
                   date: t.date,
                   jalaliDate: t.jalaliDate || new Date(t.date).toLocaleDateString('fa-IR'),
                   type: typeLabel,
-                  desc: desc || (isSalary ? 'ثبت حقوق و دستمزد کارمند' : (isReceive ? 'بابت تسویه حساب مالی' : 'بابت پرداخت به طرف حساب')),
+                  desc: finalDesc,
                   debit,
                   credit,
                   rawItem: t,
@@ -4995,7 +5049,7 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50/20 border border-indigo-100 rounded-xl p-4">
                   <div>
                     <span className="text-gray-500 font-medium">نام و نام خانوادگی کارمند:</span>
-                    <span className="font-extrabold text-indigo-950 text-base mr-2">{viewingPayslip.personName}</span>
+                    <span className="font-extrabold text-indigo-950 text-base mr-2">{viewingPayslip.computedPersonName || viewingPayslip.personName}</span>
                   </div>
                   <div className="md:text-left">
                     <span className="text-gray-500 font-medium">مشتمل بر دوره پرداخت:</span>
