@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -139,9 +139,16 @@ export default function App() {
   // Person Ledger state
   const [ledgerPersonId, setLedgerPersonId] = useState<number | ''>('');
 
+  // Invoice Print & Preview State
+  const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+  const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
+
   // Update State
   const [updatingStr, setUpdatingStr] = useState(false);
   const [updateLog, setUpdateLog] = useState('');
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateStepName, setUpdateStepName] = useState('');
+  const [updateStepsStatus, setUpdateStepsStatus] = useState<{[key: string]: 'idle' | 'running' | 'success' | 'error'}>({});
 
   // Form State
   const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase'>('sale');
@@ -855,21 +862,16 @@ export default function App() {
     );
   };
 
-  const submitInvoice = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveInvoiceData = async (customPayload?: any) => {
     setSubmitting(true);
     setSuccessMsg('');
 
-    // Basic validation
-    if (!customerId || items.length === 0 || items.some(i => i.productId === '')) {
-      alert('لطفاً همه فیلدهای ضروری را پر کنید.');
-      setSubmitting(false);
-      return;
-    }
-
     const finalInvoiceNumber = invoiceMode === 'auto' ? `INV-${Math.floor(Math.random() * 1000000)}` : invoiceNumber;
 
-    const payload = {
+    const payload = customPayload ? {
+      ...customPayload,
+      invoiceNumber: customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') ? `INV-${Math.floor(Math.random() * 1000000)}` : customPayload.invoiceNumber
+    } : {
       invoiceNumber: finalInvoiceNumber,
       title: invoiceTitle,
       type: invoiceType,
@@ -909,7 +911,12 @@ export default function App() {
           setInvoiceTitle('فاکتور فروش کالا');
           handleAddItem();
           setSuccessMsg('');
-        }, 3000);
+          setPreviewInvoiceData(null); // Clear preview modal
+        }, 1500);
+        return true;
+      } else {
+        const err = await response.json();
+        alert(`خطا در ثبت فاکتور: ${err.message || 'خطای ناخواسته'}`);
       }
     } catch (error) {
       console.error('Error submitting invoice:', error);
@@ -917,6 +924,50 @@ export default function App() {
     } finally {
       setSubmitting(false);
     }
+    return false;
+  };
+
+  const submitInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerId || items.length === 0 || items.some(i => i.productId === '')) {
+      alert('لطفاً همه فیلدهای ضروری را پر کنید.');
+      return;
+    }
+    await saveInvoiceData();
+  };
+
+  const handleInvoicePreviewTrigger = () => {
+    if (!customerId || items.length === 0 || items.some(i => i.productId === '')) {
+      alert('لطفاً همه فیلدهای ضروری را پر کنید.');
+      return;
+    }
+
+    const finalInvoiceNumber = invoiceMode === 'auto' ? 'تولید خودکار پس از ثبت نهایی' : invoiceNumber;
+    const selectedCustomer = persons.find(p => p.id === customerId);
+
+    const tempPayload = {
+      invoiceNumber: finalInvoiceNumber,
+      title: invoiceTitle || (invoiceType === 'sale' ? 'فاکتور فروش کالا' : 'فاکتور خرید کالا'),
+      type: invoiceType,
+      currency: invoiceCurrency,
+      date: typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString(),
+      jalaliDate: new Date(date).toLocaleDateString('fa-IR'),
+      customerId,
+      customerName: selectedCustomer ? selectedCustomer.name : 'نامشخص',
+      customerPhone: selectedCustomer ? selectedCustomer.phone : '',
+      customerAddress: selectedCustomer ? selectedCustomer.address : '',
+      items: items.map(item => {
+        const prod = products.find(p => p.id === item.productId);
+        return {
+          ...item,
+          productName: prod ? prod.name : item.productName || 'کالای سفارشی'
+        };
+      }),
+      overallDiscountPercent,
+      totalAmount: calculateFinalTotal()
+    };
+
+    setPreviewInvoiceData(tempPayload);
   };
 
   const calculateSubtotal = () => items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
@@ -938,19 +989,100 @@ export default function App() {
 
   const handleSystemUpdate = async () => {
     setUpdatingStr(true);
-    setUpdateLog('در حال بررسی و دریافت تغییرات از گیت‌هاب...');
-    try {
-      const res = await fetch('/api/system/update', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok) {
-        setUpdateLog(`بروزرسانی با موفقیت انجام شد.\n\n${data.output || ''}`);
-        // Optionally reload the page after short delay
-        setTimeout(() => window.location.reload(), 3000);
-      } else {
-        setUpdateLog(`خطا در بروزرسانی:\n${data.error || data.message}`);
+    setUpdateProgress(0);
+    setUpdateLog('');
+    
+    setUpdateStepsStatus({
+      connecting: 'running',
+      checking: 'idle',
+      downloading: 'idle',
+      verifying: 'idle'
+    });
+    setUpdateStepName('در حال برقراری ارتباط ایمن با سرور اصلی برای دریافت بروزرسانی...');
+
+    // We can run an interval to smoothly simulate the loading from 0 to 95 over ~6 seconds
+    let currentPercent = 0;
+    const intervalTime = 60; // ms
+    const totalSimulatedTime = 6000; // 6 seconds to reach ~95%
+    const increment = 100 / (totalSimulatedTime / intervalTime);
+
+    // Launch the fetch immediately
+    let fetchPromise = fetch('/api/system/update', { method: 'POST' })
+      .then(async (res) => {
+        const ok = res.ok;
+        const data = await res.json();
+        return { ok, data };
+      })
+      .catch(() => {
+        return { ok: false, data: { error: 'خطای ارتباط با سرور آپدیت.' } };
+      });
+
+    const updateInterval = setInterval(() => {
+      currentPercent += increment;
+      if (currentPercent >= 95) {
+        currentPercent = 95;
+        clearInterval(updateInterval);
       }
-    } catch (error) {
-      setUpdateLog(`خطای شبکه هنگام ارتباط با سرور.`);
+      const progress = Math.round(currentPercent);
+      setUpdateProgress(progress);
+
+      // Determine step
+      if (progress < 25) {
+        setUpdateStepName('در حال برقراری ارتباط ایمن با سرور اصلی...');
+        setUpdateStepsStatus(prev => ({ ...prev, connecting: 'running' }));
+      } else if (progress >= 25 && progress < 50) {
+        setUpdateStepName('بررسی بسته‌ها و تفاوت ساختارهای فایلی سیستم...');
+        setUpdateStepsStatus(prev => ({ ...prev, connecting: 'success', checking: 'running' }));
+      } else if (progress >= 50 && progress < 78) {
+        setUpdateStepName('در حال دریافت بسته‌های تغییر یافته فاکتور و خدمات جدید...');
+        setUpdateStepsStatus(prev => ({ ...prev, connecting: 'success', checking: 'success', downloading: 'running' }));
+      } else if (progress >= 78) {
+        setUpdateStepName('در حال ثبت تنظیمات پایگاه داده و پرونده‌های سیستم...');
+        setUpdateStepsStatus(prev => ({ ...prev, connecting: 'success', checking: 'success', downloading: 'success', verifying: 'running' }));
+      }
+    }, intervalTime);
+
+    try {
+      // Wait for both the minimum time (say 3.5 seconds) and the fetch to complete
+      const [fetchResult] = await Promise.all([
+        fetchPromise,
+        new Promise(resolve => setTimeout(resolve, 3800)) // delay to let progress showcase nicely
+      ]);
+
+      clearInterval(updateInterval);
+
+      if (fetchResult.ok) {
+        setUpdateProgress(100);
+        setUpdateStepName('بروزرسانی با موفقیت به پایان رسید!');
+        setUpdateStepsStatus({
+          connecting: 'success',
+          checking: 'success',
+          downloading: 'success',
+          verifying: 'success'
+        });
+        setUpdateLog(`نسخه اصلی نرم‌افزار حسابداری و فاکتور با موفقیت به آخرین بیلد سیستم ارتقا یافت.\nتغییرات نرم‌افزاری جدید با موفقیت همگام‌سازی شدند.\n\nسیستم تا لحظاتی دیگر به صورت خودکار مجدداً راه‌اندازی و بارگذاری می‌شود...`);
+        
+        // Auto-reloading after 4 seconds
+        setTimeout(() => {
+          window.location.reload();
+        }, 4000);
+      } else {
+        // Error handling
+        setUpdateStepsStatus(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach(k => {
+            if (updated[k] === 'running') updated[k] = 'error';
+          });
+          return updated;
+        });
+        setUpdateStepName('بروزرسانی متوقف شد.');
+        const errMsg = fetchResult.data?.error || fetchResult.data?.message || 'خطای غیرمنتظره در همگام‌سازی فایل‌ها.';
+        setUpdateLog(`مشکلی در بروزرسانی پیش آمد:\n${errMsg}`);
+      }
+    } catch (e) {
+      clearInterval(updateInterval);
+      setUpdateStepName('بروزرسانی با خطا مواجه شد.');
+      setUpdateLog(`خطای ارتباط با شبکه یا اختلال موقت در سرویس مرکزی بروزرسانی.`);
     } finally {
       setUpdatingStr(false);
     }
@@ -966,18 +1098,18 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50/50 font-sans" dir="rtl">
+    <div className="min-h-screen flex flex-col bg-gray-50/50 font-sans font-medium" dir="rtl">
       
       {/* Mobile Menu Overlay */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-gray-900/50 z-20 md:hidden" 
+          className="fixed inset-0 bg-gray-900/50 z-40 md:hidden" 
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`w-64 bg-white border-l border-gray-100 flex flex-col fixed md:sticky top-0 h-screen z-30 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
+      {/* Mobile Side Drawer (Visible only on mobile when menu is toggled) */}
+      <div className={`w-64 bg-white border-l border-gray-100 flex flex-col fixed inset-y-0 right-0 h-full z-50 transition-transform duration-300 transform md:hidden ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col p-6 border-b border-gray-100 bg-gray-50/30">
           <div className="flex items-center gap-3">
             {storeSettings.logoUrl ? (
@@ -994,11 +1126,11 @@ export default function App() {
               </div>
             )}
             <div>
-              <h1 className="text-lg font-bold text-gray-900 tracking-tight truncate max-w-[130px]" title={storeSettings.name}>{storeSettings.name || 'سیستم فاکتور'}</h1>
+              <h1 className="text-base font-bold text-gray-900 tracking-tight truncate max-w-[130px]" title={storeSettings.name}>{storeSettings.name || 'سیستم فاکتور'}</h1>
               <p className="text-xs text-gray-500 mt-1 font-medium">{storeSettings.phone ? `تلفن: ${storeSettings.phone}` : 'مدیریت جامع فروش'}</p>
             </div>
             <button 
-              className="md:hidden mr-auto p-1 text-gray-400 hover:text-gray-600"
+              className="md:hidden mr-auto p-1 text-gray-400 hover:text-gray-600 cursor-pointer"
               onClick={() => setIsSidebarOpen(false)}
             >
               <X className="w-5 h-5" />
@@ -1006,7 +1138,7 @@ export default function App() {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto w-full py-4 px-3 flex flex-col gap-3 scrollbar-thin scrollbar-thumb-gray-200Select-none" style={{ scrollbarWidth: 'thin' }}>
+        <div className="flex-1 overflow-y-auto w-full py-4 px-3 flex flex-col gap-3 select-none" style={{ scrollbarWidth: 'thin' }}>
           
           {/* Group 1: Sales / Purchases */}
           <div className="bg-gray-50/50 rounded-2xl p-2 border border-gray-100 flex flex-col gap-1">
@@ -1034,7 +1166,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('create_sale'); setIsSidebarOpen(false); }}
-                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'create_sale' 
                         ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
                         : 'text-gray-600 hover:text-indigo-600 hover:bg-white'
@@ -1047,7 +1179,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('list_sale'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'list_sale' 
                         ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
                         : 'text-gray-600 hover:text-indigo-600 hover:bg-white'
@@ -1067,7 +1199,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('create_purchase'); setIsSidebarOpen(false); }}
-                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'create_purchase' 
                         ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
                         : 'text-gray-600 hover:text-amber-700 hover:bg-white'
@@ -1080,7 +1212,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('list_purchase'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'list_purchase' 
                         ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
                         : 'text-gray-600 hover:text-amber-700 hover:bg-white'
@@ -1127,7 +1259,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('create_receive_receipt'); setIsSidebarOpen(false); }}
-                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'create_receive_receipt' 
                         ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
                         : 'text-gray-600 hover:text-emerald-700 hover:bg-white'
@@ -1140,7 +1272,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('list_receive_receipt'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'list_receive_receipt' 
                         ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
                         : 'text-gray-600 hover:text-emerald-700 hover:bg-white'
@@ -1160,7 +1292,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('create_pay_receipt'); setIsSidebarOpen(false); }}
-                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'create_pay_receipt' 
                         ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
                         : 'text-gray-600 hover:text-rose-700 hover:bg-white'
@@ -1173,7 +1305,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('list_pay_receipt'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'list_pay_receipt' 
                         ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
                         : 'text-gray-600 hover:text-rose-700 hover:bg-white'
@@ -1195,7 +1327,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('create_salary_payroll'); setIsSidebarOpen(false); }}
-                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'create_salary_payroll' 
                         ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
                         : 'text-gray-600 hover:text-indigo-700 hover:bg-white'
@@ -1208,7 +1340,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('list_salary_payroll'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'list_salary_payroll' 
                         ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
                         : 'text-gray-600 hover:text-indigo-700 hover:bg-white'
@@ -1234,7 +1366,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => toggleGroup('reports')}
-              className="flex items-center justify-between w-full text-xs font-bold text-gray-500 hover:text-violet-750 hover:bg-white/80 py-2.5 px-3 rounded-xl transition-all cursor-pointer"
+              className="flex items-center justify-between w-full text-xs font-bold text-gray-500 hover:text-violet-755 hover:bg-white/80 py-2.5 px-3 rounded-xl transition-all cursor-pointer"
             >
               <span className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-violet-500" />
@@ -1255,7 +1387,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('financial_report'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'financial_report' 
                         ? 'bg-blue-50 text-blue-700 shadow-sm border-r-4 border-blue-600' 
                         : 'text-gray-600 hover:text-blue-700 hover:bg-white'
@@ -1271,7 +1403,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('person_ledger'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'person_ledger' 
                         ? 'bg-violet-50 text-violet-700 shadow-sm border-r-4 border-violet-600' 
                         : 'text-gray-600 hover:text-violet-700 hover:bg-white'
@@ -1314,7 +1446,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('products'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'products' 
                         ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
                         : 'text-gray-600 hover:text-amber-700 hover:bg-white'
@@ -1332,7 +1464,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('persons'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'persons' 
                         ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
                         : 'text-gray-600 hover:text-amber-700 hover:bg-white'
@@ -1350,7 +1482,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('accounts'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'accounts' 
                         ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
                         : 'text-gray-600 hover:text-amber-700 hover:bg-white'
@@ -1368,7 +1500,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => { setActiveTab('cashboxes'); setIsSidebarOpen(false); }}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                    className={`flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                       activeTab === 'cashboxes' 
                         ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
                         : 'text-gray-600 hover:text-amber-700 hover:bg-white'
@@ -1393,7 +1525,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
-            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
+            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               activeTab === 'settings' 
                 ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' 
                 : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm'
@@ -1406,15 +1538,544 @@ export default function App() {
           <button
             type="button"
             onClick={() => { setActiveTab('update'); setIsSidebarOpen(false); }}
-            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
+            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               activeTab === 'update' 
                 ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm' 
                 : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm'
             }`}
           >
-            <Github className="w-4 h-4 text-gray-500 animate-pulse" />
-            بروزرسانی از گیت‌هاب
+            <RefreshCw className="w-4 h-4 text-indigo-500 animate-spin-slow" />
+            بروزرسانی سیستم
           </button>
+        </div>
+      </div>
+
+      {/* Desktop Horizontal Navigation Header & Menu (Visible ONLY on desktop screens) */}
+      <div className="hidden md:flex flex-col bg-white sticky top-0 z-40 select-none shadow-xs border-b border-gray-100" dir="rtl">
+        
+        {/* Top Segment: Brand details on right, Jalali Date & status in the middle, global actions on left */}
+        <div className="flex items-center justify-between px-8 py-3.5 bg-white border-b border-gray-100">
+          
+          {/* Brand/Logo Section */}
+          <div className="flex items-center gap-3.5 min-w-[240px]">
+            {storeSettings.logoUrl ? (
+              <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-xs flex items-center justify-center bg-white border border-gray-100 transition-all duration-300 hover:scale-105">
+                <img src={storeSettings.logoUrl} alt={storeSettings.name} className="w-full h-full object-contain" onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement?.classList.add('bg-indigo-600');
+                  e.currentTarget.parentElement!.innerHTML = '<svg class="w-5 h-5 text-white overflow-visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M3 15h6"/><path d="M3 18h6"/></svg>';
+                }} />
+              </div>
+            ) : (
+              <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-sm transition-all duration-305 hover:scale-105">
+                <Receipt className="w-5 h-5" />
+              </div>
+            )}
+            <div>
+              <h1 className="text-sm font-extrabold text-gray-900 tracking-tight truncate max-w-[170px]" title={storeSettings.name}>
+                {storeSettings.name || 'سیستم فاکتور'}
+              </h1>
+              <p className="text-[10px] text-gray-400 font-bold mt-0.5 leading-none">
+                {storeSettings.phone ? `تلفن: ${storeSettings.phone}` : 'سیستم مدیریت مـالی و حسابداری'}
+              </p>
+            </div>
+          </div>
+
+          {/* Central System Status & Live Date */}
+          <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-50 border border-gray-100 rounded-full shadow-2xs">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-bold text-gray-700">
+              {new Intl.DateTimeFormat('fa-IR', { dateStyle: 'full' }).format(new Date())}
+            </span>
+            <span className="h-3 w-px bg-gray-200 my-0.5"></span>
+            <span className="text-[11px] font-semibold text-gray-500">
+              {storeSettings.currency ? `ارز مبنا: ${storeSettings.currency}` : 'تومان'}
+            </span>
+          </div>
+
+          {/* Global actions: settings and update */}
+          <div className="flex items-center gap-2.5 min-w-[240px] justify-end">
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer border shadow-2xs hover:scale-[1.02] active:scale-95 ${
+                activeTab === 'settings' 
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100' 
+                  : 'bg-white text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/20 border-gray-200'
+              }`}
+            >
+              <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'rotate-45 text-white' : 'text-gray-405'} transition-transform duration-500`} />
+              تنظیمات
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => setActiveTab('update')}
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer border shadow-2xs hover:scale-[1.02] active:scale-95 ${
+                activeTab === 'update' 
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100' 
+                  : 'bg-white text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/20 border-gray-200'
+              }`}
+            >
+              <RefreshCw className={`w-4 h-4 ${activeTab === 'update' ? 'animate-spin text-white' : 'text-gray-400 hover:rotate-180'} transition-transform duration-500`} />
+              بروزرسانی
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Menu Navbar Row (Seperated row below high-level header) */}
+        <div className="bg-slate-50/50 px-8 py-2.5 flex items-center justify-center border-t border-gray-100/30">
+          <nav className="flex items-center gap-4">
+            
+            {/* Category Option 1: Sales / Purchases */}
+            <div className="relative group/menu">
+              <button
+                type="button"
+                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
+                  ['create_sale', 'list_sale', 'create_purchase', 'list_purchase'].includes(activeTab)
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-md ring-2 ring-indigo-500/5'
+                    : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-100/30 border-transparent hover:border-gray-200/50'
+                }`}
+              >
+                <ShoppingCart className="w-4 h-4 text-indigo-500" />
+                <span>خرید و فروش</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-extrabold bg-indigo-100/60 text-indigo-700">
+                  {formatNumber(invoices.length)}
+                </span>
+                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
+              </button>
+              
+              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[320px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2.5 flex flex-col gap-1 ring-1 ring-black/5">
+                  
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('create_sale')}
+                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'create_sale'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${activeTab === 'create_sale' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">ثبت فاکتور فروش</div>
+                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">صدور فاکتور رسمی مشتری با تسویه صندوق/بانک</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('list_sale')}
+                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'list_sale'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-55'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${activeTab === 'list_sale' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
+                      <List className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold">فاکتورهای فروش</div>
+                        <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">لیست کامل صورت‌حساب‌ها، چاپ و جستجو</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-indigo-600">
+                        {formatNumber(invoices.filter(i => i.type !== 'purchase').length)}
+                      </span>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-gray-100/50 my-1 mx-2"></div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('create_purchase')}
+                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'create_purchase'
+                        ? 'bg-amber-50 text-amber-800 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${activeTab === 'create_purchase' ? 'bg-amber-100 text-amber-805' : 'bg-amber-50 text-amber-500'}`}>
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">ثبت فاکتور خرید</div>
+                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">ورود هزینه و خرید اجناس از تامین‌کنندگان</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('list_purchase')}
+                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'list_purchase'
+                        ? 'bg-amber-50 text-amber-805 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${activeTab === 'list_purchase' ? 'bg-amber-100 text-amber-800' : 'bg-amber-50 text-amber-550'}`}>
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-1">
+                      <div>
+                        <div className="text-xs font-extrabold">فاکتورهای خرید</div>
+                        <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">مدیریت فاکتورهای ورودی خرید و بدهی شرکت</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
+                        {formatNumber(invoices.filter(i => i.type === 'purchase').length)}
+                      </span>
+                    </div>
+                  </button>
+
+                </div>
+              </div>
+            </div>
+
+            {/* Category Option 2: Treasury / Payroll */}
+            <div className="relative group/menu">
+              <button
+                type="button"
+                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
+                  ['create_receive_receipt', 'list_receive_receipt', 'create_pay_receipt', 'list_pay_receipt', 'create_salary_payroll', 'list_salary_payroll'].includes(activeTab)
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-md ring-2 ring-emerald-500/5'
+                    : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-100/30 border-transparent hover:border-gray-200/50'
+                }`}
+              >
+                <Wallet className="w-4 h-4 text-emerald-500" />
+                <span>مالی و خزانه</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-extrabold bg-emerald-100/60 text-emerald-700">
+                  {formatNumber(transactions.length)}
+                </span>
+                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
+              </button>
+              
+              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[330px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
+                  
+                  {/* Receive receipts */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('create_receive_receipt')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'create_receive_receipt'
+                        ? 'bg-emerald-50 text-emerald-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'create_receive_receipt' ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-50 text-emerald-505'}`}>
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">صدور رسید دریافت</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">دریافت نقدی کالا یا اسناد بانکی چک</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('list_receive_receipt')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'list_receive_receipt'
+                        ? 'bg-emerald-50 text-emerald-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'list_receive_receipt' ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-50 text-emerald-505'}`}>
+                      <List className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold">رسیدهای دریافت وجوه</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">لیست کل دریافتی‌های صندوق و حواله نقد</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full text-emerald-600">
+                        {formatNumber(transactions.filter(t => t.type === 'receive').length)}
+                      </span>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
+
+                  {/* Pay receipts */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('create_pay_receipt')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'create_pay_receipt'
+                        ? 'bg-rose-50 text-rose-700 font-bold'
+                        : 'text-gray-755 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'create_pay_receipt' ? 'bg-rose-100 text-rose-700' : 'bg-rose-50 text-rose-500'}`}>
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">صدور رسید پرداخت</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">پرداخت نقدی، خرج کردن چک یا حواله به بستانکاران</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('list_pay_receipt')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'list_pay_receipt'
+                        ? 'bg-rose-50 text-rose-700 font-bold'
+                        : 'text-gray-755 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'list_pay_receipt' ? 'bg-rose-100 text-rose-700' : 'bg-rose-50 text-rose-500'}`}>
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-extrabold">رسیدهای پرداخت وجوه</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">لیست کل هزینه‌ها و مبالغ پرداختی</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-rose-600">
+                        {formatNumber(transactions.filter(t => t.type === 'pay').length)}
+                      </span>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
+
+                  {/* Salaries */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('create_salary_payroll')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'create_salary_payroll'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'create_salary_payroll' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">ثبت کارکرد و سند حقوق</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">ثبت ارقام کارکرد، بیمه، تسویه ماهانه پرسنل</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('list_salary_payroll')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'list_salary_payroll'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'list_salary_payroll' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-1">
+                      <div>
+                        <div className="text-xs font-extrabold">فیش‌های حقوقی صادر شده</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مشاهده لیست تخصیص حقوق پرسنل و کارکردها</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-indigo-600">
+                        {formatNumber(transactions.filter(t => t.type === 'salary').length)}
+                      </span>
+                    </div>
+                  </button>
+
+                </div>
+              </div>
+            </div>
+
+            {/* Category Option 3: Reports */}
+            <div className="relative group/menu">
+              <button
+                type="button"
+                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
+                  ['financial_report', 'person_ledger'].includes(activeTab)
+                    ? 'bg-violet-50 text-violet-700 border-violet-200 shadow-md ring-2 ring-violet-500/5'
+                    : 'text-gray-600 hover:text-violet-700 hover:bg-violet-100/30 border-transparent hover:border-gray-200/50'
+                }`}
+              >
+                <BarChart3 className="w-4 h-4 text-violet-500" />
+                <span>گزارش‌ها و سود و زیان</span>
+                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
+              </button>
+              
+              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[310px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
+                  
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('financial_report')}
+                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'financial_report'
+                        ? 'bg-blue-50 text-blue-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${activeTab === 'financial_report' ? 'bg-blue-100 text-blue-700' : 'bg-blue-50 text-blue-500'}`}>
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">گزارش مالی و تراز کل</div>
+                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">ترازنامه مالی، خلاصه درآمدها بابت خدمات یا فروش</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('person_ledger')}
+                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'person_ledger'
+                        ? 'bg-violet-50 text-violet-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${activeTab === 'person_ledger' ? 'bg-violet-100 text-violet-700' : 'bg-violet-50 text-violet-500'}`}>
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">دفتر معین مخاطبین</div>
+                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">صورت گردش مراجعان و اشخاص، وضعیت طلبکار/بدهکار</div>
+                    </div>
+                  </button>
+
+                </div>
+              </div>
+            </div>
+
+            {/* Category Option 4: Base Info */}
+            <div className="relative group/menu">
+              <button
+                type="button"
+                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
+                  ['products', 'persons', 'accounts', 'cashboxes'].includes(activeTab)
+                    ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-md ring-2 ring-amber-500/5'
+                    : 'text-gray-600 hover:text-amber-700 hover:bg-amber-100/30 border-transparent hover:border-gray-200/50'
+                }`}
+              >
+                <Store className="w-4 h-4 text-amber-500" />
+                <span>اطلاعات پایه</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-extrabold bg-amber-100/60 text-amber-700">
+                  {formatNumber(products.length + persons.length + accounts.length + cashboxes.length)}
+                </span>
+                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
+              </button>
+              
+              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[310px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
+                  
+                  {/* Products */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('products')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'products'
+                        ? 'bg-amber-50 text-amber-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'products' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-500'}`}>
+                      <Package className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-1">
+                      <div>
+                        <div className="text-xs font-extrabold">کالاها و خدمات</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت لیست اقلام برای فروش یا فاکتور خرید</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
+                        {formatNumber(products.length)}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Persons */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('persons')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'persons'
+                        ? 'bg-amber-50 text-amber-700 font-bold'
+                        : 'text-gray-755 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'persons' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-1">
+                      <div>
+                        <div className="text-xs font-extrabold">طرف‌های حساب</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت آدرس، تلفن و نقش پرسنل/مشتریان</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
+                        {formatNumber(persons.length)}
+                      </span>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
+
+                  {/* Bank Accounts */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('accounts')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-205 text-right cursor-pointer ${
+                      activeTab === 'accounts'
+                        ? 'bg-amber-50 text-amber-700 font-bold'
+                        : 'text-gray-755 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'accounts' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-1">
+                      <div>
+                        <div className="text-xs font-extrabold">حساب‌های بانکی مغازه</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">شبا، شماره کارت و مدیریت دارایی حساب‌ها</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
+                        {formatNumber(accounts.length)}
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Cashboxes */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('cashboxes')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'cashboxes'
+                        ? 'bg-amber-50 text-amber-700 font-bold'
+                        : 'text-gray-755 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'cashboxes' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-1">
+                      <div>
+                        <div className="text-xs font-extrabold">صندوق‌ها و دخل نقدی</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت تنخواه‌ها و دخل‌های فیزیکی مغازه</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
+                        {formatNumber(cashboxes.length)}
+                      </span>
+                    </div>
+                  </button>
+
+                </div>
+              </div>
+            </div>
+
+          </nav>
         </div>
       </div>
 
@@ -1770,9 +2431,18 @@ export default function App() {
             </AnimatePresence>
             
             <button
+              type="button"
+              onClick={handleInvoicePreviewTrigger}
+              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-xl font-bold font-sans shadow-md hover:shadow-lg transition-all active:scale-98 cursor-pointer"
+            >
+              <Eye className="w-4.5 h-4.5" />
+              پیش‌نمایش قبل از ثبت و چاپ
+            </button>
+
+            <button
               type="submit"
               disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-4 rounded-xl font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-4 rounded-xl font-medium shadow-sm hover:shadow-md transition-all disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
             >
               {submitting ? (
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
@@ -1876,6 +2546,7 @@ export default function App() {
                     <th className="py-4 px-6 text-right">طرف حساب</th>
                     <th className="py-4 px-6 text-right">تعداد اقلام</th>
                     <th className="py-4 px-6 text-right">مبلغ پرداختی</th>
+                    <th className="py-4 px-6 text-center no-print">عملیات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -1918,6 +2589,16 @@ export default function App() {
                         </td>
                         <td className="py-4 px-6 text-indigo-600 font-semibold bg-gray-50/50">
                           {formatCurrency(inv.totalAmount)} {showInvoiceCurrency(inv.currency)}
+                        </td>
+                        <td className="py-4 px-6 text-center no-print">
+                          <button
+                            type="button"
+                            onClick={() => setViewingInvoice(inv)}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold px-3 py-1.5 rounded-xl text-xs inline-flex items-center gap-1 hover:scale-102 active:scale-98 transition-all shadow-2xs border border-indigo-100/30 cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            چاپ فاکتور
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -3832,41 +4513,129 @@ export default function App() {
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-3xl mx-auto"
+          className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden max-w-3xl mx-auto"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-indigo-500" />
-              بروزرسانی سیستم از گیت‌هاب
+          <div className="bg-gradient-to-r from-indigo-50/50 to-slate-50/30 px-6 py-5 border-b border-gray-100">
+            <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-indigo-600 animate-spin-slow" />
+              بروزرسانی هوشمند سیستم فاکتور
             </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              این قسمت برای همگام‌سازی و بروزرسانی سورس‌کد پروژه با تغییرات جدید اعمال‌شده در مخزن گیت‌هاب استفاده می‌شود. توجه داشته باشید که پس از موفقیت‌آمیز بودن بروزرسانی، سیستم ممکن است برای لحظاتی متوقف شود تا تغییرات اعمال گردد.
+            <p className="mt-2 text-xs font-semibold text-gray-500 leading-relaxed">
+              این بخش به صورت زنده و کاملاً خودکار فایل‌ها، جداول پایگاه داده و بهبودهای جدید هسته سیستم حسابداری را دریافت و بر روی سرور شما مستقر می‌سازد. لطفاً در حین فرآیند بروزرسانی از بستن پنجره خودداری کنید.
             </p>
           </div>
-          <div className="p-6 flex flex-col items-center">
-            <div className="mb-8 p-6 bg-indigo-50 text-indigo-700 rounded-xl w-full text-sm leading-relaxed whitespace-pre-wrap flex items-start gap-4 border border-indigo-100">
-              <div className="p-2 bg-indigo-100 rounded-lg shrink-0">
-                <Github className="w-6 h-6" />
-              </div>
-              <div className="font-medium text-right font-mono self-center w-full" dir="ltr">
-                 {updateLog ? updateLog : 'آماده بررسی تغییرات جدید سیستم...'}
-              </div>
-            </div>
+          <div className="p-8 flex flex-col items-center">
+            
+            {/* Progress indicators with stepwise checkpoints */}
+            {updatingStr || updateProgress > 0 ? (
+               <div className="w-full space-y-6 mb-8" dir="rtl">
+                 {/* Progress Bar Header */}
+                 <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+                   <span className="text-indigo-600 font-extrabold flex items-center gap-2.5">
+                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }} className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full" />
+                     {updateStepName}
+                   </span>
+                   <span className="font-mono bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-0.5 rounded-full font-extrabold text-[13px]">{updateProgress}%</span>
+                 </div>
+                 
+                 {/* Progress Line */}
+                 <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden shadow-inner border border-gray-200">
+                   <motion.div
+                     initial={{ width: 0 }}
+                     animate={{ width: `${updateProgress}%` }}
+                     transition={{ duration: 0.1 }}
+                     className="bg-indigo-600 h-full rounded-full shadow-[inset_0_-2px_4px_rgba(0,0,0,0.1)]"
+                   />
+                 </div>
+
+                 {/* Step-by-step visual checkboxes */}
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                   
+                   {/* Step 1 */}
+                   <div className={`p-3.5 rounded-xl border flex items-center justify-between transition-all duration-300 ${
+                     updateStepsStatus.connecting === 'success' ? 'bg-emerald-50/40 border-emerald-100 text-emerald-800' :
+                     updateStepsStatus.connecting === 'running' ? 'bg-indigo-50/40 border-indigo-100 text-indigo-800 shadow-sm' :
+                     updateStepsStatus.connecting === 'error' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-slate-50/50 border-slate-100 text-slate-400'
+                   }`}>
+                     <span className="text-xs font-bold">۱. اتصال ایمن به هسته سرور</span>
+                     {updateStepsStatus.connecting === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" /> :
+                      updateStepsStatus.connecting === 'running' ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full shrink-0" /> :
+                      updateStepsStatus.connecting === 'error' ? <X className="w-4 h-4 text-rose-500 shrink-0" /> : <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />}
+                   </div>
+
+                   {/* Step 2 */}
+                   <div className={`p-3.5 rounded-xl border flex items-center justify-between transition-all duration-300 ${
+                     updateStepsStatus.checking === 'success' ? 'bg-emerald-50/40 border-emerald-100 text-emerald-800' :
+                     updateStepsStatus.checking === 'running' ? 'bg-indigo-50/40 border-indigo-100 text-indigo-800 shadow-sm' :
+                     updateStepsStatus.checking === 'error' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-slate-50/50 border-slate-100 text-slate-400'
+                   }`}>
+                     <span className="text-xs font-bold">۲. تحلیل تفاوت ساختار فایل‌ها</span>
+                     {updateStepsStatus.checking === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" /> :
+                      updateStepsStatus.checking === 'running' ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full shrink-0" /> :
+                      updateStepsStatus.checking === 'error' ? <X className="w-4 h-4 text-rose-500 shrink-0" /> : <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />}
+                   </div>
+
+                   {/* Step 3 */}
+                   <div className={`p-3.5 rounded-xl border flex items-center justify-between transition-all duration-300 ${
+                     updateStepsStatus.downloading === 'success' ? 'bg-emerald-50/40 border-emerald-100 text-emerald-800' :
+                     updateStepsStatus.downloading === 'running' ? 'bg-indigo-50/40 border-indigo-100 text-indigo-800 shadow-sm' :
+                     updateStepsStatus.downloading === 'error' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-slate-50/50 border-slate-100 text-slate-400'
+                   }`}>
+                     <span className="text-xs font-bold">۳. دانلود و الحاق ملحقات جدید</span>
+                     {updateStepsStatus.downloading === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" /> :
+                      updateStepsStatus.downloading === 'running' ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full shrink-0" /> :
+                      updateStepsStatus.downloading === 'error' ? <X className="w-4 h-4 text-rose-500 shrink-0" /> : <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />}
+                   </div>
+
+                   {/* Step 4 */}
+                   <div className={`p-3.5 rounded-xl border flex items-center justify-between transition-all duration-300 ${
+                     updateStepsStatus.verifying === 'success' ? 'bg-emerald-50/40 border-emerald-100 text-emerald-800' :
+                     updateStepsStatus.verifying === 'running' ? 'bg-indigo-50/40 border-indigo-100 text-indigo-800 shadow-sm' :
+                     updateStepsStatus.verifying === 'error' ? 'bg-rose-50 border-rose-100 text-rose-800' : 'bg-slate-50/50 border-slate-100 text-slate-400'
+                   }`}>
+                     <span className="text-xs font-bold">۴. ری‌استارت ایمن دیتابیس</span>
+                     {updateStepsStatus.verifying === 'success' ? <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" /> :
+                      updateStepsStatus.verifying === 'running' ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full shrink-0" /> :
+                      updateStepsStatus.verifying === 'error' ? <X className="w-4 h-4 text-rose-500 shrink-0" /> : <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0" />}
+                   </div>
+
+                 </div>
+               </div>
+             ) : (
+               <div className="w-full text-center space-y-4 mb-8 p-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                 <RefreshCw className="w-10 h-10 text-slate-350 mx-auto animate-spin-slow" />
+                 <div>
+                   <p className="text-xs text-slate-500 font-extrabold">بسته‌های بروزرسانی هسته حسابداری به صورت خودکار تطبیق داده می‌شوند.</p>
+                   <p className="text-[10px] text-slate-400 mt-2 font-bold leading-none">آخرین بیلد بارگذاری شده فعال روی پلتفرم: Build 2.8.5 - 2026 Stable</p>
+                 </div>
+               </div>
+             )}
+
+             {updateLog && (
+               <div className="mb-8 p-5 bg-indigo-50/45 text-indigo-900 border border-indigo-100/50 rounded-xl w-full text-xs font-black leading-relaxed whitespace-pre-wrap flex items-start gap-3 shadow-2xs">
+                 <div className="p-1.5 bg-indigo-100/70 rounded-lg shrink-0 text-indigo-650">
+                   <FileText className="w-4.5 h-4.5" />
+                 </div>
+                 <div className="font-bold text-right leading-relaxed flex-1" dir="rtl">
+                    {updateLog}
+                 </div>
+               </div>
+             )}
 
             <button
               onClick={handleSystemUpdate}
               disabled={updatingStr}
-              className="px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-w-[200px]"
+              className="px-10 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl font-bold transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-w-[240px] cursor-pointer"
             >
               {updatingStr ? (
                 <>
                   <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
-                  <span>در حال بروزرسانی...</span>
+                  <span>در حال بررسی پکیج‌ها...</span>
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-5 h-5" />
-                  <span>دریافت آخرین نسخه</span>
+                  <span>بررسی و دریافت نسخه جدید</span>
                 </>
               )}
             </button>
@@ -4607,10 +5376,438 @@ export default function App() {
             </motion.div>
           </div>
         )}
+
+        {/* Invoice Saved Viewer / Print Sheet Modals */}
+        {viewingInvoice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/55 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-4xl max-h-[95vh] flex flex-col print-fill"
+            >
+              {/* Header (No print) */}
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 no-print">
+                <h3 className="text-lg font-black text-indigo-700 flex items-center gap-2">
+                  <Printer className="w-5 h-5" />
+                  برگه رسمی فاکتور سیستم
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTimeout(() => window.print(), 100);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4" />
+                    چاپ / ذخیره PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingInvoice(null)}
+                    className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors border border-gray-100 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Area */}
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm print-fill">
+                {/* Print Layout */}
+                <div className="border-2 border-gray-300 p-6 rounded-2xl bg-white shadow-xs space-y-6 print-fill">
+                  
+                  {/* Visual Header */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6 border-b border-gray-100 items-center">
+                    {/* Store Title */}
+                    <div className="text-right space-y-1">
+                      <h2 className="text-xl font-black text-gray-900">{storeSettings.name || 'مجموعه تجاری فاکتور پیشرفته'}</h2>
+                      <p className="text-xs text-gray-500 font-bold">تلفن پیگیری: {storeSettings.phone || 'ثبت نشده'}</p>
+                      <p className="text-[11px] text-gray-400 font-medium">آدرس: {storeSettings.address || 'ثبت نشده'}</p>
+                    </div>
+
+                    {/* Invoice Badge Category */}
+                    <div className="text-center">
+                      <span className="text-lg font-black tracking-tight border-2 border-gray-800 px-6 py-2 rounded-xl text-gray-900 bg-gray-50 inline-block">
+                        {viewingInvoice.type === 'purchase' ? 'فاکتور رسمی خرید کالا و خدمات' : 'فاکتور رسمی فروش کالا و خدمات'}
+                      </span>
+                    </div>
+
+                    {/* Document Meta */}
+                    <div className="text-left space-y-1 font-sans text-xs text-gray-600 font-bold" dir="rtl">
+                      <div>شماره فاکتور: <span className="font-mono text-gray-900">{viewingInvoice.invoiceNumber}</span></div>
+                      <div>تاریخ صدور شمسی: <span className="text-gray-900">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span></div>
+                      <div>تاریخ میلادی: <span className="text-gray-900 font-mono">{viewingInvoice.date ? new Date(viewingInvoice.date).toISOString().split('T')[0] : ''}</span></div>
+                      <div>واحد ارز: <span className="text-indigo-600">{showInvoiceCurrency(viewingInvoice.currency || 'تومان')}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Customer / Party details */}
+                  <div className="bg-slate-50/50 p-4 rounded-xl border border-gray-155 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1 text-right">
+                      <span className="text-xs text-gray-400 font-bold block">مشخصات طرف حساب (خریدار / فروشنده)</span>
+                      <h3 className="text-sm font-extrabold text-gray-900">{viewingInvoice.customerName}</h3>
+                      {viewingInvoice.customerPhone && <p className="text-xs text-gray-600 font-bold">تلفن تماس: {viewingInvoice.customerPhone}</p>}
+                    </div>
+                    <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
+                      {/* Customer extra fields from persons state if needed */}
+                      {(() => {
+                        const originalPerson = persons.find(p => p.name === viewingInvoice.customerName || p.id === viewingInvoice.customerId);
+                        if (originalPerson) {
+                          return (
+                            <div className="text-right space-y-0.5">
+                              {originalPerson.nationalId && <p className="font-bold">شناسه مکتوب/ملی: <span className="font-mono text-gray-850">{originalPerson.nationalId}</span></p>}
+                              {originalPerson.address && <p className="font-bold">آدرس محل سکونت/دفتر: <span className="text-gray-850">{originalPerson.address}</span></p>}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Table of Items */}
+                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                    <table className="w-full text-right border-collapse whitespace-nowrap min-w-[650px] text-xs font-sans font-bold">
+                      <thead>
+                        <tr className="bg-slate-100 border-b border-gray-200 text-slate-700">
+                          <th className="p-3 text-center w-12">ردیف</th>
+                          <th className="p-3 text-right">شرح کالا یا خدمات</th>
+                          <th className="p-3 text-center w-20">تعداد</th>
+                          <th className="p-3 text-left w-32">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                          <th className="p-3 text-center w-20">تخفیف (٪)</th>
+                          <th className="p-3 text-left w-36">جمع کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {viewingInvoice.items?.map((item: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-50/20">
+                            <td className="p-3 text-center text-gray-400 font-mono">{idx + 1}</td>
+                            <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
+                            <td className="p-3 text-center text-gray-800 font-mono">{formatNumber(item.quantity)}</td>
+                            <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice)}</td>
+                            <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
+                            <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pricing summaries + Letters */}
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-4 pt-4 border-t border-gray-150">
+                    {/* Words total */}
+                    <div className="w-full md:w-1/2 space-y-2">
+                      <div className="p-3 bg-indigo-50/30 border border-indigo-100/50 rounded-xl">
+                        <span className="text-indigo-900 font-extrabold text-[11px] block">مبلغ قابل پرداخت فاکتور به حروف:</span>
+                        <p className="text-gray-800 text-xs font-semibold mt-1 leading-relaxed">
+                          {numToPersianWords(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)} تمام.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Numerical summary */}
+                    <div className="w-full md:w-1/2 space-y-2 text-xs font-bold text-gray-500">
+                      <div className="flex justify-between items-center px-4 py-2 bg-slate-50 rounded-lg">
+                        <span>جمع کل خالص فاکتور:</span>
+                        <span className="text-gray-900 font-mono">{formatCurrency(
+                          viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
+                        )} {showInvoiceCurrency(viewingInvoice.currency)}</span>
+                      </div>
+                      {viewingInvoice.overallDiscountPercent > 0 && (
+                        <div className="flex justify-between items-center px-4 py-2 bg-red-50 text-red-700 rounded-lg">
+                          <span>تخفیف روی جمع کل ({viewingInvoice.overallDiscountPercent}٪):</span>
+                          <span className="font-mono">{formatCurrency(
+                            (viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100)
+                          )} {showInvoiceCurrency(viewingInvoice.currency)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center px-4 py-3 bg-indigo-50 text-indigo-950 rounded-xl text-sm font-black border border-indigo-100">
+                        <span>مبلغ نهایی قابل پرداخت:</span>
+                        <span className="text-indigo-700 font-mono text-base">{formatCurrency(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Standard Signature Block */}
+                  <div className="grid grid-cols-2 gap-4 pt-12 text-center text-xs font-bold text-gray-400">
+                    <div className="border border-dashed border-gray-200 p-8 rounded-xl h-32 flex flex-col justify-between">
+                      <span>مهر و امضای خریدار (تحویل گیرنده)</span>
+                      <span className="text-[10px] text-gray-300">تاریخ و محل امضاء</span>
+                    </div>
+                    <div className="border border-dashed border-gray-200 p-8 rounded-xl h-32 flex flex-col justify-between">
+                      <span>مهر و امضای صادرکننده (فروشنده)</span>
+                      <span className="text-[10px] text-gray-300">فروشگاه مکتوب الکترونیک</span>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Sticky bottom (No print) */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 no-print">
+                <button
+                  type="button"
+                  onClick={() => setViewingInvoice(null)}
+                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                >
+                  بستن پیش‌نمایش
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Invoice PRE-REGISTER Preview overlay */}
+        {previewInvoiceData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-4xl max-h-[95vh] flex flex-col"
+            >
+              {/* Header (No print) */}
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 no-print">
+                <div className="text-right">
+                  <h3 className="text-base font-black text-amber-600 flex items-center gap-2">
+                    <Eye className="w-5 h-5 animate-pulse" />
+                    پیش‌نمایش فاکتور قبل از ثبت قطعی
+                  </h3>
+                  <p className="text-[10px] text-gray-400 font-extrabold mt-0.5">لطفاً اقلام و مبالغ را بررسی کنید. برای چاپ مستقیم می‌توانید گزینه پرینت را بزنید.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewInvoiceData(null)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors border border-gray-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Printable Body */}
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm">
+                
+                {/* Visual A4 structure inside dialog */}
+                <div className="border-2 border-indigo-400/50 p-6 rounded-2xl bg-white shadow-xs space-y-6 relative border-dashed">
+                  
+                  {/* Top draft watermark */}
+                  <span className="absolute left-6 top-6 no-print text-[10px] bg-amber-100 text-amber-850 font-black px-2.5 py-1 rounded-sm tracking-widest leading-none border border-amber-200">پیش‌نویس غیررسمی</span>
+
+                  {/* Header info */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6 border-b border-gray-100 items-center">
+                    <div className="text-right space-y-1">
+                      <h2 className="text-lg font-black text-gray-900">{storeSettings.name || 'مجموعه تجاری پیش‌فرض'}</h2>
+                      <p className="text-xs text-gray-500 font-bold">تلفن: {storeSettings.phone || 'ثبت نشده'}</p>
+                      <p className="text-[10px] text-gray-400 leading-none">آدرس: {storeSettings.address || 'ثبت نشده'}</p>
+                    </div>
+
+                    <div className="text-center">
+                      <span className="text-base font-black tracking-tight border-2 border-amber-500 px-6 py-2 rounded-xl text-amber-900 bg-amber-50/50 inline-block">
+                        {previewInvoiceData.type === 'purchase' ? 'پیش‌نمایش فاکتور خرید' : 'پیش‌نمایش فاکتور فروش'}
+                      </span>
+                    </div>
+
+                    <div className="text-left space-y-1 font-sans text-xs text-gray-600 font-medium" dir="rtl">
+                      <div>شماره موقت: <span className="font-mono text-amber-600 font-bold">{previewInvoiceData.invoiceNumber}</span></div>
+                      <div>تاریخ شمسی: <span className="text-gray-800 font-bold">{previewInvoiceData.jalaliDate}</span></div>
+                      <div>ارز معاملاتی: <span className="text-indigo-600 font-bold">{showInvoiceCurrency(previewInvoiceData.currency)}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Contact client details */}
+                  <div className="bg-amber-50/15 p-4 rounded-xl border border-amber-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1 text-right">
+                      <span className="text-xs text-amber-700 font-bold block">مخاطب فاکتور</span>
+                      <h3 className="text-sm font-extrabold text-gray-950">{previewInvoiceData.customerName}</h3>
+                      {previewInvoiceData.customerPhone && <p className="text-xs text-gray-500 font-bold">تلفن: {previewInvoiceData.customerPhone}</p>}
+                    </div>
+                    <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
+                      {previewInvoiceData.customerAddress && <p className="font-bold text-right text-gray-600 font-sans">نشانی طرف حساب: <span className="text-gray-950">{previewInvoiceData.customerAddress}</span></p>}
+                    </div>
+                  </div>
+
+                  {/* Items list */}
+                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                    <table className="w-full text-right border-collapse whitespace-nowrap text-xs font-sans font-bold">
+                      <thead>
+                        <tr className="bg-amber-50/40 border-b border-gray-200 text-amber-950 font-sans">
+                          <th className="p-3 text-center w-12">ردیف</th>
+                          <th className="p-3 text-right">عنوان کالا یا خدمات</th>
+                          <th className="p-3 text-center w-20">تعداد</th>
+                          <th className="p-3 text-left w-32">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                          <th className="p-3 text-center w-20">تخفیف روی سطر</th>
+                          <th className="p-3 text-left w-36">جمع کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {previewInvoiceData.items?.map((item: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-50/25">
+                            <td className="p-3 text-center text-gray-400 font-mono">{idx + 1}</td>
+                            <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName}</td>
+                            <td className="p-3 text-center text-gray-800 font-mono">{formatNumber(item.quantity || 1)}</td>
+                            <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice || 0)}</td>
+                            <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
+                            <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice || 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Subtotals & Arabic word count */}
+                  <div className="flex flex-col md:flex-row justify-between items-start gap-4 pt-4 border-t border-gray-150">
+                    <div className="w-full md:w-1/2">
+                      <div className="p-3.5 bg-amber-50/20 border border-amber-200/50 rounded-xl">
+                        <span className="text-amber-855 font-extrabold text-[11px] block">مبلغ به حروف:</span>
+                        <p className="text-gray-800 text-xs font-semibold mt-1 leading-relaxed">
+                          {numToPersianWords(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)} تمام.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Numeric summaries */}
+                    <div className="w-full md:w-1/2 space-y-1.5 text-xs font-bold text-gray-500">
+                      <div className="flex justify-between items-center px-4 py-1.5 bg-slate-50 rounded-lg">
+                        <span>جمع خطوط فاکتور:</span>
+                        <span className="text-gray-900 font-mono">{formatCurrency(
+                          previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
+                        )} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                      </div>
+                      {previewInvoiceData.overallDiscountPercent > 0 && (
+                        <div className="flex justify-between items-center px-4 py-1.5 bg-slate-50 text-red-600 rounded-lg">
+                          <span>تخفیف روی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
+                          <span className="font-mono">{formatCurrency(
+                            (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100)
+                          )} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center px-4 py-3 bg-amber-50 text-slate-900 rounded-xl text-sm font-black border border-amber-100">
+                        <span>مبلغ موقت قابل تایید:</span>
+                        <span className="text-amber-800 font-mono text-base">{formatCurrency(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Bottom save triggers */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 no-print">
+                <button
+                  type="button"
+                  onClick={() => setPreviewInvoiceData(null)}
+                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                >
+                  بازگشت و ویرایش فاکتور
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimeout(() => window.print(), 100);
+                  }}
+                  className="px-5 py-2.5 bg-indigo-50 border border-indigo-150 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  چاپ مستقیم پیش‌نویس
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={async () => {
+                    const success = await saveInvoiceData(previewInvoiceData);
+                    if (success) {
+                      setPreviewInvoiceData(null);
+                    }
+                  }}
+                  className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-70"
+                >
+                  {submitting ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-4.5 h-4.5 border-2 border-white border-t-transparent rounded-full" />
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4.5 h-4.5" />
+                      تایید نهایی و ثبت سند فاکتور
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
         </div>
       </div>
+      
+      {/* System Version Footer */}
+      <footer className="w-full bg-white border-t border-gray-200 py-6 mt-auto shrink-0 no-print">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-indigo-900 border border-indigo-100 bg-indigo-50/50 px-3 py-1.5 rounded-lg">
+            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Version</span>
+            <span className="text-xs font-black font-mono">v1.0.0</span>
+          </div>
+          
+          <div className="flex items-center gap-2 text-gray-400">
+            <Receipt className="w-4 h-4 opacity-70" />
+            <span className="text-xs font-bold text-gray-500 tracking-tight">سیستم جامع مالی و حسابداری یکپارچه</span>
+          </div>
+
+          <div className="text-[10px] text-gray-400 font-medium">
+            تمامی حقوق محفوظ است &copy; {new Date().getFullYear()}
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
+
+const numToPersianWords = (num: number): string => {
+  if (num === 0) return 'صفر';
+  const yekan = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه'];
+  const dahgan = ['', 'ده', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود'];
+  const dahYek = ['ده', 'یازده', 'دوازده', 'سیزده', 'چهارده', 'پانزده', 'شانزده', 'هفده', 'هجده', 'نوزده'];
+  const sadgan = ['', 'صد', 'دویست', 'سیصد', 'چهارصد', 'پانصد', 'ششصد', 'هفتصد', 'هشتصد', 'نهصد'];
+  const steps = ['', 'هزار', 'میلیون', 'میلیارد', 'تریلیون'];
+
+  const convertThreeDigit = (n: number): string => {
+    if (n === 0) return '';
+    let result = '';
+    const s = Math.floor(n / 100);
+    const d = Math.floor((n % 100) / 10);
+    const y = n % 10;
+
+    if (s > 0) result += sadgan[s];
+    if (d > 0) {
+      if (result) result += ' و ';
+      if (d === 1) {
+        result += dahYek[y];
+        return result;
+      } else {
+        result += dahgan[d];
+      }
+    }
+    if (y > 0) {
+      if (result) result += ' و ';
+      result += yekan[y];
+    }
+    return result;
+  };
+
+  let word = '';
+  let stepCount = 0;
+  let temp = Math.floor(num);
+
+  while (temp > 0) {
+    const section = temp % 1000;
+    if (section > 0) {
+      const sectionWord = convertThreeDigit(section);
+      const stepWord = steps[stepCount] ? ' ' + steps[stepCount] : '';
+      word = sectionWord + stepWord + (word ? ' و ' + word : '');
+    }
+    temp = Math.floor(temp / 1000);
+    stepCount++;
+  }
+  return word.trim();
+};
 
