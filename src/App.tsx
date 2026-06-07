@@ -109,7 +109,7 @@ export default function App() {
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [storeSettings, setStoreSettings] = useState({ storeName: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان' });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Receipts & Payments Form State
   const [receiptPersonId, setReceiptPersonId] = useState<string | number | ''>('');
@@ -751,6 +751,7 @@ export default function App() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         await Promise.all([
           fetchPersons(),
