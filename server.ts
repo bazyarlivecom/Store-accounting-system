@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
+import { exec } from 'child_process';
 
 // Mock data for the API
 let persons = [
@@ -115,6 +116,15 @@ async function startServer() {
       success: true, 
       message: 'فاکتور با موفقیت ثبت شد', 
       invoiceId: newInvoice.id 
+    });
+  });
+
+  app.post('/api/system/update', (req, res) => {
+    exec('git pull origin main', (error, stdout, stderr) => {
+      if (error) {
+        return res.status(500).json({ success: false, message: 'خطا در دریافت بروزرسانی از گیت‌هاب', error: stderr || error.message });
+      }
+      res.json({ success: true, message: 'بروزرسانی با موفقیت انجام شد', output: stdout });
     });
   });
 

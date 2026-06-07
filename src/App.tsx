@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X } from 'lucide-react';
+import { Plus, Trash2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -33,12 +33,17 @@ type InvoiceItem = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'products' | 'persons'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'products' | 'persons' | 'update'>('create');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [persons, setPersons] = useState<Person[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Update State
+  const [updatingStr, setUpdatingStr] = useState(false);
+  const [updateLog, setUpdateLog] = useState('');
 
   // Form State
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
@@ -359,6 +364,26 @@ export default function App() {
     return new Intl.NumberFormat('fa-IR').format(num);
   };
 
+  const handleSystemUpdate = async () => {
+    setUpdatingStr(true);
+    setUpdateLog('در حال بررسی و دریافت تغییرات از گیت‌هاب...');
+    try {
+      const res = await fetch('/api/system/update', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setUpdateLog(`بروزرسانی با موفقیت انجام شد.\n\n${data.output || ''}`);
+        // Optionally reload the page after short delay
+        setTimeout(() => window.location.reload(), 3000);
+      } else {
+        setUpdateLog(`خطا در بروزرسانی:\n${data.error || data.message}`);
+      }
+    } catch (error) {
+      setUpdateLog(`خطای شبکه هنگام ارتباط با سرور.`);
+    } finally {
+      setUpdatingStr(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500 font-medium text-lg">
@@ -369,69 +394,130 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto font-sans">
+    <div className="min-h-screen flex bg-gray-50/50 font-sans" dir="rtl">
       
-      {/* Header and Tabs */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Receipt className="w-8 h-8 text-indigo-600" />
-            سیستم مدیریت فاکتور
-          </h1>
-          <p className="mt-2 text-gray-500 text-sm">ثبت و مدیریت فاکتورهای فروش</p>
+      {/* Mobile Menu Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-gray-900/50 z-20 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`w-64 bg-white border-l border-gray-100 flex flex-col fixed md:sticky top-0 h-screen z-30 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
+        <div className="flex flex-col p-6 border-b border-gray-100 bg-gray-50/30">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-md shadow-indigo-200">
+              <Receipt className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight">سیستم فاکتور</h1>
+              <p className="text-xs text-gray-500 mt-1 font-medium">مدیریت جامع فروش</p>
+            </div>
+            <button 
+              className="md:hidden mr-auto p-1 text-gray-400 hover:text-gray-600"
+              onClick={() => setIsSidebarOpen(false)}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         
-        <div className="flex bg-gray-100 p-1 rounded-xl">
+        <div className="flex-1 overflow-y-auto w-full py-6 px-4 flex flex-col gap-2">
+          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider">عملیات اصلی</div>
           <button
             type="button"
-            onClick={() => setActiveTab('create')}
-            className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+            onClick={() => { setActiveTab('create'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
               activeTab === 'create' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
             }`}
           >
-            <FilePlus className="w-4 h-4" />
+            <FilePlus className="w-5 h-5" />
             ثبت فاکتور جدید
           </button>
+          
           <button
             type="button"
-            onClick={() => setActiveTab('list')}
-            className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+            onClick={() => { setActiveTab('list'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
               activeTab === 'list' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
             }`}
           >
-            <List className="w-4 h-4" />
+            <List className="w-5 h-5" />
             لیست فاکتورها
           </button>
+
+          <div className="w-full h-px bg-gray-100 my-4"></div>
+          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider">اطلاعات پایه</div>
+
           <button
             type="button"
-            onClick={() => setActiveTab('products')}
-            className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+            onClick={() => { setActiveTab('products'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
               activeTab === 'products' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
             }`}
           >
-            <Package className="w-4 h-4" />
-            مدیریت کالاها
+            <Package className="w-5 h-5" />
+            مدیریت کالا / خدمات
           </button>
+          
           <button
             type="button"
-            onClick={() => setActiveTab('persons')}
-            className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
+            onClick={() => { setActiveTab('persons'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
               activeTab === 'persons' 
-                ? 'bg-white text-indigo-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
+                : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
             }`}
           >
-            <User className="w-4 h-4" />
+            <User className="w-5 h-5" />
             مدیریت اشخاص
           </button>
         </div>
+
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('update'); setIsSidebarOpen(false); }}
+            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              activeTab === 'update' 
+                ? 'bg-gray-900 text-white shadow-sm' 
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm'
+            }`}
+          >
+            <Github className="w-4 h-4" />
+            بروزرسانی از گیت‌هاب
+          </button>
+        </div>
       </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col w-full min-w-0">
+        
+        {/* Mobile Header */}
+        <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
+              <Receipt className="w-5 h-5" />
+            </div>
+            <h1 className="text-lg font-bold text-gray-900">سیستم فاکتور</h1>
+          </div>
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="flex-1 p-4 md:p-8 lg:p-10 max-w-6xl mx-auto w-full">
 
       {activeTab === 'create' ? (
       <form onSubmit={submitInvoice} className="space-y-6">
@@ -1010,6 +1096,50 @@ export default function App() {
             )}
           </div>
         </motion.div>
+      ) : activeTab === 'update' ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-3xl mx-auto"
+        >
+          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-indigo-500" />
+              بروزرسانی سیستم از گیت‌هاب
+            </h2>
+            <p className="mt-2 text-sm text-gray-500">
+              این قسمت برای همگام‌سازی و بروزرسانی سورس‌کد پروژه با تغییرات جدید اعمال‌شده در مخزن گیت‌هاب استفاده می‌شود. توجه داشته باشید که پس از موفقیت‌آمیز بودن بروزرسانی، سیستم ممکن است برای لحظاتی متوقف شود تا تغییرات اعمال گردد.
+            </p>
+          </div>
+          <div className="p-6 flex flex-col items-center">
+            <div className="mb-8 p-6 bg-indigo-50 text-indigo-700 rounded-xl w-full text-sm leading-relaxed whitespace-pre-wrap flex items-start gap-4 border border-indigo-100">
+              <div className="p-2 bg-indigo-100 rounded-lg shrink-0">
+                <Github className="w-6 h-6" />
+              </div>
+              <div className="font-medium text-right font-mono self-center w-full" dir="ltr">
+                 {updateLog ? updateLog : 'آماده بررسی تغییرات جدید سیستم...'}
+              </div>
+            </div>
+
+            <button
+              onClick={handleSystemUpdate}
+              disabled={updatingStr}
+              className="px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-w-[200px]"
+            >
+              {updatingStr ? (
+                <>
+                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                  <span>در حال بروزرسانی...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-5 h-5" />
+                  <span>دریافت آخرین نسخه</span>
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
       ) : null}
 
       <AnimatePresence>
@@ -1313,6 +1443,8 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }
