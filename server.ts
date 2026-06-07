@@ -33,6 +33,11 @@ let cashboxes = [
   { id: 2, name: 'تنخواه‌گردان دفتر', manager: 'سارا احمدی', balance: 12000000 },
 ];
 
+let transactions = [
+  { id: 1, type: 'receive', personId: 1, amount: 15000000, date: '2026-06-05T12:00:00.000Z', jalaliDate: '۱۴۰۵/۰۳/۱۵', resourceType: 'bank', resourceId: 1, description: 'پیش‌پرداخت خرید کالا' },
+  { id: 2, type: 'pay', personId: 4, amount: 8000000, date: '2026-06-06T10:00:00.000Z', jalaliDate: '۱۴۰۵/۰۳/۱۶', resourceType: 'cashbox', resourceId: 1, description: 'پرداخت تنخواه هزینه‌های جاری' }
+];
+
 let storeSettings = {
   name: 'فروشگاه پیش‌فرض',
   address: '',
@@ -239,6 +244,101 @@ async function startServer() {
     const id = parseInt(req.params.id);
     cashboxes = cashboxes.filter(c => c.id !== id);
     res.json({ success: true, message: 'صندوق با موفقیت حذف شد' });
+  });
+
+  // Transactions API (Receipts & Payments)
+  app.get('/api/transactions', (req, res) => {
+    const enrichedTransactions = transactions.map(t => {
+      const person = persons.find(p => p.id === t.personId);
+      let resourceName = '';
+      if (t.resourceType === 'bank') {
+        const acc = accounts.find(a => a.id === t.resourceId);
+        resourceName = acc ? `${acc.bankName} (${acc.accountNumber || acc.cardNumber || ''})` : 'حساب نامشخص';
+      } else {
+        const cb = cashboxes.find(c => c.id === t.resourceId);
+        resourceName = cb ? cb.name : 'صندوق نامشخص';
+      }
+      return {
+        ...t,
+        personName: person ? person.name : 'نامشخص',
+        resourceName
+      };
+    });
+    res.json(enrichedTransactions.reverse());
+  });
+
+  app.post('/api/transactions', (req, res) => {
+    const { type, personId, amount, date, jalaliDate, resourceType, resourceId, description } = req.body;
+    
+    if (!type || !personId || !amount || !resourceType || !resourceId) {
+      return res.status(400).json({ success: false, message: 'لطفا تمام اطلاعات لازم از جمله طرف حساب، مبلغ و صندوق/بانک را وارد کنید' });
+    }
+
+    const tAmount = Number(amount);
+    
+    if (resourceType === 'bank') {
+      const acc = accounts.find(a => a.id === Number(resourceId));
+      if (!acc) return res.status(404).json({ success: false, message: 'حساب بانکی انتخاب شده یافت نشد' });
+      if (type === 'receive') {
+        acc.balance += tAmount;
+      } else {
+        acc.balance -= tAmount;
+      }
+    } else {
+      const cb = cashboxes.find(c => c.id === Number(resourceId));
+      if (!cb) return res.status(404).json({ success: false, message: 'صندوق انتخاب شده یافت نشد' });
+      if (type === 'receive') {
+        cb.balance += tAmount;
+      } else {
+        cb.balance -= tAmount;
+      }
+    }
+
+    const newTransaction = {
+      id: Math.floor(Math.random() * 100000),
+      type,
+      personId: Number(personId),
+      amount: tAmount,
+      date: date || new Date().toISOString(),
+      jalaliDate: jalaliDate || new Date().toLocaleDateString('fa-IR'),
+      resourceType,
+      resourceId: Number(resourceId),
+      description: description || ''
+    };
+
+    transactions.push(newTransaction);
+    res.json({ success: true, message: 'سند با موفقیت صادر و مانده حساب بروزرسانی شد', transaction: newTransaction });
+  });
+
+  app.delete('/api/transactions/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const index = transactions.findIndex(t => t.id === id);
+    if (index !== -1) {
+      const t = transactions[index];
+      if (t.resourceType === 'bank') {
+        const acc = accounts.find(a => a.id === t.resourceId);
+        if (acc) {
+          if (t.type === 'receive') {
+            acc.balance -= t.amount;
+          } else {
+            acc.balance += t.amount;
+          }
+        }
+      } else {
+        const cb = cashboxes.find(c => c.id === t.resourceId);
+        if (cb) {
+          if (t.type === 'receive') {
+            cb.balance -= t.amount;
+          } else {
+            cb.balance += t.amount;
+          }
+        }
+      }
+      transactions.splice(index, 1);
+      res.json({ success: true, message: 'سند با موفقیت حذف و مانده حساب اصلاح شد' });
+    } else {
+      res.status(404).json({ success: false, message: 'سند یافت نشد' });
+    }
   });
 
   // Store Settings API

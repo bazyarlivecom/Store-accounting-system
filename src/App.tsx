@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -76,7 +76,7 @@ const showInvoiceCurrency = (c: string) => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings'>('create_sale');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -94,8 +94,22 @@ export default function App() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [storeSettings, setStoreSettings] = useState({ name: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان' });
   const [loading, setLoading] = useState(true);
+
+  // Receipts & Payments Form State
+  const [receiptPersonId, setReceiptPersonId] = useState<number | ''>('');
+  const [receiptDate, setReceiptDate] = useState<Date | any>(new Date());
+  const [receiptAmount, setReceiptAmount] = useState<string>('');
+  const [receiptResourceType, setReceiptResourceType] = useState<'bank' | 'cashbox'>('bank');
+  const [receiptResourceId, setReceiptResourceId] = useState<number | ''>('');
+  const [receiptDescription, setReceiptDescription] = useState<string>('');
+  const [submittingReceipt, setSubmittingReceipt] = useState<boolean>(false);
+  const [receiptSuccessMsg, setReceiptSuccessMsg] = useState<string>('');
+
+  // Person Ledger state
+  const [ledgerPersonId, setLedgerPersonId] = useState<number | ''>('');
 
   // Update State
   const [updatingStr, setUpdatingStr] = useState(false);
@@ -388,6 +402,87 @@ export default function App() {
     }
   };
 
+  const fetchTransactions = async () => {
+    try {
+      const res = await fetch('/api/transactions');
+      if (res.ok) {
+        setTransactions(await res.json());
+      }
+    } catch (error) {
+      console.error('Error fetching transactions', error);
+    }
+  };
+
+  const handleSubmitReceipt = async (type: 'receive' | 'pay', e: React.FormEvent) => {
+    e.preventDefault();
+    if (!receiptPersonId || !receiptAmount || !receiptResourceType || !receiptResourceId) {
+      alert('لطفا تمام اطلاعات الزامی فرم را وارد کنید.');
+      return;
+    }
+
+    setSubmittingReceipt(true);
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          personId: Number(receiptPersonId),
+          amount: Number(receiptAmount),
+          date: typeof receiptDate.toDate === 'function' ? receiptDate.toDate().toISOString() : new Date(receiptDate).toISOString(),
+          jalaliDate: new Date(receiptDate).toLocaleDateString('fa-IR'),
+          resourceType: receiptResourceType,
+          resourceId: Number(receiptResourceId),
+          description: receiptDescription
+        })
+      });
+
+      if (res.ok) {
+        setReceiptSuccessMsg(type === 'receive' ? 'رسید دریافت با موفقیت صادر شد' : 'رسید پرداخت با موفقیت صادر شد');
+        setReceiptPersonId('');
+        setReceiptAmount('');
+        setReceiptResourceType('bank');
+        setReceiptResourceId('');
+        setReceiptDescription('');
+        setReceiptDate(new Date());
+        
+        await Promise.all([
+          fetchTransactions(),
+          fetchAccounts(),
+          fetchCashboxes()
+        ]);
+
+        setTimeout(() => {
+          setReceiptSuccessMsg('');
+        }, 3000);
+      } else {
+        const err = await res.json();
+        alert(err.message || 'خطایی رخ داد');
+      }
+    } catch (error) {
+      console.error('Error submitting receipt', error);
+      alert('خطایی در ارتباط با سرور رخ داد');
+    } finally {
+      setSubmittingReceipt(false);
+    }
+  };
+
+  const handleDeleteTransaction = async (id: number) => {
+    if (!confirm('آیا از حذف این سند اطمینان دارید؟ مانده حساب مربوطه اصلاح خواهد شد.')) return;
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await Promise.all([
+          fetchTransactions(),
+          fetchAccounts(),
+          fetchCashboxes()
+        ]);
+      }
+    } catch (error) {
+      console.error('Error deleting transaction', error);
+    }
+  };
+
   const handleSubmitCashbox = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCashboxName) return;
@@ -566,7 +661,8 @@ export default function App() {
           fetchProducts(),
           fetchAccounts(),
           fetchCashboxes(),
-          fetchSettings()
+          fetchSettings(),
+          fetchTransactions()
         ]);
         
         await fetchInvoices();
@@ -843,7 +939,88 @@ export default function App() {
           </button>
 
           <div className="w-full h-px bg-gray-100 my-4"></div>
-          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider">اطلاعات پایه</div>
+          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider text-right">خزانه‌داری و امور مالی</div>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('create_receive_receipt'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'create_receive_receipt' 
+                ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
+                : 'text-gray-600 hover:text-emerald-800 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <Wallet className="w-5 h-5 text-emerald-500" />
+            صدور رسید دریافت
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('list_receive_receipt'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'list_receive_receipt' 
+                ? 'bg-emerald-50 text-emerald-700 shadow-sm border-r-4 border-emerald-600' 
+                : 'text-gray-600 hover:text-emerald-800 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <List className="w-5 h-5 text-emerald-500" />
+            لیست رسیدهای دریافت
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('create_pay_receipt'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'create_pay_receipt' 
+                ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
+                : 'text-gray-600 hover:text-rose-800 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <CreditCard className="w-5 h-5 text-rose-500" />
+            صدور رسید پرداخت
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('list_pay_receipt'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'list_pay_receipt' 
+                ? 'bg-rose-50 text-rose-700 shadow-sm border-r-4 border-rose-600' 
+                : 'text-gray-600 hover:text-rose-800 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <FileText className="w-5 h-5 text-rose-500" />
+            لیست رسیدهای پرداخت
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('financial_report'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'financial_report' 
+                ? 'bg-blue-50 text-blue-700 shadow-sm border-r-4 border-blue-600' 
+                : 'text-gray-600 hover:text-blue-800 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5 text-blue-500" />
+            گزارش مالی و تراز
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('person_ledger'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'person_ledger' 
+                ? 'bg-violet-50 text-violet-700 shadow-sm border-r-4 border-violet-600' 
+                : 'text-gray-600 hover:text-violet-800 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <User className="w-5 h-5 text-violet-500" />
+            کارت حساب اشخاص
+          </button>
+
+          <div className="w-full h-px bg-gray-100 my-4"></div>
+          <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider text-right">اطلاعات پایه</div>
 
           <button
             type="button"
@@ -1435,6 +1612,303 @@ export default function App() {
             )}
           </div>
         </motion.div>
+      ) : (activeTab === 'create_receive_receipt' || activeTab === 'create_pay_receipt') ? (
+        /* Receipts & Payments creation form */
+        <div className="space-y-6 text-right" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-5">
+              <div>
+                <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
+                  {activeTab === 'create_receive_receipt' ? (
+                    <>
+                      <Wallet className="w-6 h-6 text-emerald-600" />
+                      رسید دریافت جدید (ورود وجه)
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-6 h-6 text-rose-600" />
+                      رسید پرداخت جدید (خروج وجه)
+                    </>
+                  )}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {activeTab === 'create_receive_receipt' 
+                    ? 'ثبت سند دریافت وجه نقد یا واریز به بانک از طرف حساب‌ها' 
+                    : 'ثبت سند پرداخت وجه نقد یا واریز به بانک به طرف حساب‌ها'}
+                </p>
+              </div>
+
+              {receiptSuccessMsg && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border ${
+                    activeTab === 'create_receive_receipt' 
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
+                      : 'bg-rose-50 text-rose-800 border-rose-100'
+                  }`}
+                >
+                  {receiptSuccessMsg}
+                </motion.div>
+              )}
+            </div>
+
+            <form onSubmit={(e) => handleSubmitReceipt(activeTab === 'create_receive_receipt' ? 'receive' : 'pay', e)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                {/* Contact Selection */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-400" />
+                    طرف حساب مربوطه <span className="text-rose-500">*</span>
+                  </label>
+                  <Select
+                    isRtl
+                    value={receiptPersonId ? { value: receiptPersonId, label: persons.find(p => p.id === receiptPersonId)?.name } : null}
+                    onChange={(option: any) => setReceiptPersonId(option ? option.value : '')}
+                    options={persons.map(p => ({
+                      value: p.id,
+                      label: `${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'})`
+                    }))}
+                    placeholder="انتخاب طرف حساب..."
+                    noOptionsMessage={() => "شخصی یافت نشد"}
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        borderRadius: '0.75rem',
+                        borderColor: '#E5E7EB',
+                        padding: '2px',
+                        boxShadow: 'none',
+                        '&:hover': { borderColor: '#4F46E5' }
+                      })
+                    }}
+                    required
+                  />
+                </div>
+
+                {/* Date Picker */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    تاریخ ثبت سند <span className="text-rose-500">*</span>
+                  </label>
+                  <DatePicker
+                    calendar={persian}
+                    locale={persian_fa}
+                    value={receiptDate}
+                    onChange={(val) => setReceiptDate(val)}
+                    inputClass="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm text-gray-900"
+                    containerClassName="w-full"
+                    required
+                  />
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-gray-400" />
+                    مبلغ تراکنش ({storeSettings.currency}) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={receiptAmount}
+                      onChange={(e) => setReceiptAmount(e.target.value)}
+                      placeholder="مثال: ۵۰۰۰۰۰۰"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-semibold text-left"
+                      required
+                      dir="ltr"
+                    />
+                  </div>
+                  {receiptAmount && (
+                    <span className="text-xs text-indigo-600 font-semibold mt-1 block">
+                      {formatNumber(Number(receiptAmount))} {storeSettings.currency}
+                    </span>
+                  )}
+                </div>
+
+                {/* Resource Type Selection */}
+                <div className="md:col-span-2 lg:col-span-1">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-gray-400" />
+                    روش تسویه / واریز <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3 bg-gray-50 border border-gray-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReceiptResourceType('bank');
+                        setReceiptResourceId('');
+                      }}
+                      className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                        receiptResourceType === 'bank'
+                          ? 'bg-white shadow-sm text-indigo-700 border border-gray-200 font-semibold'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      💳 حساب بانکی
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReceiptResourceType('cashbox');
+                        setReceiptResourceId('');
+                      }}
+                      className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                        receiptResourceType === 'cashbox'
+                          ? 'bg-white shadow-sm text-indigo-700 border border-gray-200 font-semibold'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      💵 صندوق نقدی
+                    </button>
+                  </div>
+                </div>
+
+                {/* Specific Resource Select Dropdown */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    {receiptResourceType === 'bank' ? (
+                      <>
+                        <CreditCard className="w-4 h-4 text-indigo-500" />
+                        انتخاب حساب بانکی مقصد/مبدا <span className="text-rose-500">*</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="w-4 h-4 text-amber-500" />
+                        انتخاب صندوق نقدی مقصد/مبدا <span className="text-rose-500">*</span>
+                      </>
+                    )}
+                  </label>
+                  <select
+                    value={receiptResourceId}
+                    onChange={(e) => setReceiptResourceId(Number(e.target.value) || '')}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                    required
+                  >
+                    <option value="">
+                      {receiptResourceType === 'bank' ? '-- انتخاب حساب بانکی --' : '-- انتخاب صندوق نقدی --'}
+                    </option>
+                    {receiptResourceType === 'bank'
+                      ? accounts.map(acc => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.bankName} - صاحب حساب: {acc.accountHolder || 'نامشخص'} (مانده فعلی: {formatNumber(acc.balance)} {storeSettings.currency})
+                          </option>
+                        ))
+                      : cashboxes.map(cb => (
+                          <option key={cb.id} value={cb.id}>
+                            {cb.name} - مسئول: {cb.manager || 'نامشخص'} (مانده فعلی: {formatNumber(cb.balance)} {storeSettings.currency})
+                          </option>
+                        ))}
+                  </select>
+                </div>
+
+                {/* Description input */}
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">توضیحات و بابت</label>
+                  <textarea
+                    value={receiptDescription}
+                    onChange={(e) => setReceiptDescription(e.target.value)}
+                    placeholder="مثال: بابت فروش یک دستگاه سرور و تجهیزات جانبی"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white text-right"
+                    rows={2}
+                  />
+                </div>
+
+              </div>
+
+              {/* Submit button */}
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={submittingReceipt}
+                  className={`w-full md:w-auto px-8 py-3.5 text-sm font-bold rounded-xl text-white shadow-md transition-all flex items-center justify-center gap-2 ${
+                    activeTab === 'create_receive_receipt' 
+                      ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-300' 
+                      : 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:bg-rose-300'
+                  }`}
+                >
+                  <Save className="w-5 h-5" />
+                  {submittingReceipt ? 'در حال ثبت سند...' : 'ثبت قطعی و صدور سند'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : (activeTab === 'list_receive_receipt' || activeTab === 'list_pay_receipt') ? (
+        /* Receipts & Payments list */
+        <div className="space-y-6 text-right" dir="rtl">
+          {/* List of Registered Receipts */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <List className="w-5 h-5 text-indigo-500" />
+                {activeTab === 'list_receive_receipt' ? 'لیست رسیدهای دریافت ثبت شده' : 'لیست رسیدهای پرداخت ثبت شده'}
+              </h2>
+            </div>
+
+            <div className="overflow-x-auto">
+              {transactions.filter(t => t.type === (activeTab === 'list_receive_receipt' ? 'receive' : 'pay')).length === 0 ? (
+                <div className="p-12 text-center text-gray-500">
+                  <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p>هیچ سندی در این دسته‌بندی یافت نشد.</p>
+                </div>
+              ) : (
+                <table className="w-full text-right whitespace-nowrap min-w-[800px]">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 font-semibold text-sm">
+                      <th className="py-4 px-6 text-right">کد سند</th>
+                      <th className="py-4 px-6 text-right">تاریخ</th>
+                      <th className="py-4 px-6 text-right">طرف حساب</th>
+                      <th className="py-4 px-6 text-right">نوع حساب دریافتی/پرداختی</th>
+                      <th className="py-4 px-6 text-right">مبلغ ({storeSettings.currency})</th>
+                      <th className="py-4 px-6 text-right">توضیحات</th>
+                      <th className="py-4 px-6 text-center">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {transactions
+                      .filter(t => t.type === (activeTab === 'list_receive_receipt' ? 'receive' : 'pay'))
+                      .map((t) => (
+                        <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-4 px-6 font-semibold text-gray-700">
+                            #{t.id}
+                          </td>
+                          <td className="py-4 px-6 text-gray-600">
+                            {t.jalaliDate || t.date}
+                          </td>
+                          <td className="py-4 px-6 font-bold text-gray-900">
+                            {t.personName}
+                          </td>
+                          <td className="py-4 px-6 font-medium text-gray-700">
+                            <div className="flex items-center gap-2">
+                              {t.resourceType === 'bank' ? '💳 بانک: ' : '💵 صندوق: '}
+                              <span className="text-indigo-600">{t.resourceName}</span>
+                            </div>
+                          </td>
+                          <td className={`py-4 px-6 font-extrabold text-base ${activeTab === 'list_receive_receipt' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {formatNumber(t.amount)}
+                          </td>
+                          <td className="py-4 px-6 text-gray-500 text-sm whitespace-normal max-w-xs">
+                            {t.description || '---'}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <button
+                              onClick={() => handleDeleteTransaction(t.id)}
+                              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-2 rounded-lg transition-all"
+                              title="حذف سند"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
       ) : activeTab === 'products' ? (
         /* Products List & Manage */
         <motion.div 
@@ -1617,6 +2091,16 @@ export default function App() {
                       </td>
                       <td className="py-4 px-6 text-center">
                         <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              setLedgerPersonId(p.id);
+                              setActiveTab('person_ledger');
+                            }}
+                            className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors inline-block"
+                            title="مشاهده کارت حساب"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleEditPerson(p)}
                             className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
@@ -1827,6 +2311,627 @@ export default function App() {
               </table>
             )}
           </div>
+        </motion.div>
+      ) : activeTab === 'financial_report' ? (
+        /* Financial Report & Treasury View */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6 text-right"
+          dir="rtl"
+        >
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
+                <BarChart3 className="w-6 h-6 text-indigo-600 font-bold" />
+                گزارش مالی و تراز خزانه‌داری
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                نگاهی خلاصه به عملکرد خرید، فروش، نقدینگی صندوق‌ها و تراز کلی حساب‌های بانکی
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                await Promise.all([
+                  fetchInvoices(),
+                  fetchTransactions(),
+                  fetchAccounts(),
+                  fetchCashboxes()
+                ]);
+              }}
+              className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-indigo-100 shadow-sm"
+            >
+              <RefreshCw className="w-4 h-4 animate-spin-slow" />
+              بروزرسانی داده‌ها
+            </button>
+          </div>
+
+          {/* Top KPI Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Sales Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
+              <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-indigo-500"></div>
+              <div className="p-3.5 bg-indigo-50 rounded-2xl text-indigo-600">
+                <ShoppingCart className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xs font-semibold text-gray-400">مجموع کل فروش (فاکتورها)</h3>
+                <span className="text-xl font-extrabold text-gray-900 block mt-1">
+                  {formatNumber(
+                    invoices
+                      .filter(inv => inv.type !== 'purchase')
+                      .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+                  )}{' '}
+                  <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+                </span>
+                <span className="text-xs text-indigo-600 font-bold mt-1 block">
+                  {formatNumber(invoices.filter(inv => inv.type !== 'purchase').length)} فاکتور فروش ثبت شده
+                </span>
+              </div>
+            </div>
+
+            {/* Purchases Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
+              <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-500"></div>
+              <div className="p-3.5 bg-amber-50 rounded-2xl text-amber-600">
+                <Receipt className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xs font-semibold text-gray-400">مجموع کل خرید (فاکتورها)</h3>
+                <span className="text-xl font-extrabold text-gray-900 block mt-1">
+                  {formatNumber(
+                    invoices
+                      .filter(inv => inv.type === 'purchase')
+                      .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+                  )}{' '}
+                  <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+                </span>
+                <span className="text-xs text-amber-600 font-bold mt-1 block">
+                  {formatNumber(invoices.filter(inv => inv.type === 'purchase').length)} فاکتور خرید ثبت شده
+                </span>
+              </div>
+            </div>
+
+            {/* Net Difference Card */}
+            {(() => {
+              const salesVal = invoices
+                .filter(inv => inv.type !== 'purchase')
+                .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const purchasesVal = invoices
+                .filter(inv => inv.type === 'purchase')
+                .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const netVal = salesVal - purchasesVal;
+              const isPositive = netVal >= 0;
+
+              return (
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
+                  <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                  <div className={`p-3.5 rounded-2xl ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                    {isPositive ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xs font-semibold text-gray-400">تفاضل معاملات (فروش - خرید)</h3>
+                    <span className={`text-xl font-extrabold block mt-1 ${isPositive ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      {formatNumber(netVal)}{' '}
+                      <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+                    </span>
+                    <span className={`text-xs font-bold mt-1 block ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {isPositive ? 'موازنه مثبت (سود تجاری ناخالص)' : 'موازنه منفی (زیان تجاری ناخالص)'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Grand Treasury Liquid Total Section */}
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-emerald-600 text-white rounded-2xl shadow-md shadow-emerald-200">
+                <Wallet className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-emerald-950">مجموع کل نقدینگی و تراز خزانه‌داری</h3>
+                <p className="text-xs text-emerald-700 mt-1">
+                  مجموع مانده حساب‌های بانکی و موجودی واقعی صندوق‌های ثبت شده در سیستم
+                </p>
+              </div>
+            </div>
+            <div className="text-center md:text-left">
+              <span className="text-xs text-emerald-700 font-semibold block mb-1">دارایی نقدی کل</span>
+              <span className="text-3xl font-extrabold text-emerald-900 tracking-tight">
+                {formatNumber(
+                  accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0) +
+                  cashboxes.reduce((sum, cb) => sum + (cb.balance || 0), 0)
+                )}{' '}
+                <span className="text-sm font-bold text-emerald-900">{storeSettings.currency}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Accounts vs Cashboxes Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Bank Accounts Segment */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-indigo-500" />
+                تراز و مانده حساب‌های بانکی
+              </h3>
+              
+              {accounts.length === 0 ? (
+                <p className="text-sm text-gray-500 py-6 text-center">هیچ حساب بانکی ثبت نشده است.</p>
+              ) : (
+                <div className="space-y-4">
+                  {accounts.map(acc => (
+                    <div key={acc.id} className="bg-gray-50 hover:bg-gray-100/70 py-3.5 px-4 rounded-xl border border-gray-100 transition-colors flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-gray-900 block text-sm">{acc.bankName}</span>
+                        <span className="text-xs text-gray-500 mt-0.5 block">
+                          صاحب حساب: {acc.accountHolder || 'ثبت نشده'} | شماره کارت: {acc.cardNumber || '---'}
+                        </span>
+                      </div>
+                      <div className="text-left">
+                        <span className="text-sm font-extrabold text-indigo-600 block">
+                          {formatNumber(acc.balance || 0)}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-semibold">{storeSettings.currency}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="border-t border-dashed border-gray-200 pt-3 flex items-center justify-between text-gray-900">
+                    <span className="text-sm font-bold">مجموع مانده بانک‌ها:</span>
+                    <span className="text-base font-black text-indigo-700">
+                      {formatNumber(accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0))} {storeSettings.currency}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cashboxes Segment */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-amber-500" />
+                تراز و موجودی صندوق‌ها
+              </h3>
+              
+              {cashboxes.length === 0 ? (
+                <p className="text-sm text-gray-500 py-6 text-center">هیچ صندوق نقدی ثبت نشده است.</p>
+              ) : (
+                <div className="space-y-4">
+                  {cashboxes.map(cb => (
+                    <div key={cb.id} className="bg-gray-50 hover:bg-gray-100/70 py-3.5 px-4 rounded-xl border border-gray-100 transition-colors flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-gray-900 block text-sm">{cb.name}</span>
+                        <span className="text-xs text-gray-500 mt-0.5 block">
+                          مسئول صندوق: {cb.manager || 'ثبت نشده'}
+                        </span>
+                      </div>
+                      <div className="text-left">
+                        <span className="text-sm font-extrabold text-amber-600 block">
+                          {formatNumber(cb.balance || 0)}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-semibold">{storeSettings.currency}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="border-t border-dashed border-gray-200 pt-3 flex items-center justify-between text-gray-900">
+                    <span className="text-sm font-bold">مجموع موجودی صندوق‌ها:</span>
+                    <span className="text-base font-black text-amber-700">
+                      {formatNumber(cashboxes.reduce((sum, cb) => sum + (cb.balance || 0), 0))} {storeSettings.currency}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Cash Flow Summary for Transactions (Receipts & Payments) */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4">
+              خلاصه گردش اسناد دریافت و پرداخت خزانه‌داری
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/50 flex justify-between items-center">
+                <div>
+                  <span className="text-xs text-emerald-800 font-bold block">مجموع دریافت‌ها (رسید دریافت)</span>
+                  <span className="text-[10px] text-gray-500 font-semibold">(آمارهای حاصل از اسناد دریافتی صادره)</span>
+                </div>
+                <span className="text-lg font-black text-emerald-700 font-sans">
+                  {formatNumber(transactions.filter(t => t.type === 'receive').reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
+                </span>
+              </div>
+              <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100/50 flex justify-between items-center">
+                <div>
+                  <span className="text-xs text-rose-800 font-bold block">مجموع پرداخت‌ها (رسید پرداخت)</span>
+                  <span className="text-[10px] text-gray-500 font-semibold">(آمارهای حاصل از اسناد پرداختی صادره)</span>
+                </div>
+                <span className="text-lg font-black text-rose-700 font-sans">
+                  {formatNumber(transactions.filter(t => t.type === 'pay').reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              * ارقام مربوط به گردش اسناد براساس مبالغ ثبت شده در رسیدهای دریافت و پرداخت رسمی صادر شده در بخش خزانه‌داری محاسبه شده و مستقیماً روی تراز مالی صندوق‌ها و حساب‌های بانکی بالا اثرگذار بوده‌اند.
+            </p>
+          </div>
+        </motion.div>
+      ) : activeTab === 'person_ledger' ? (
+        /* Contact/Person Ledger Card View (کارت حساب اشخاص) */
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6 text-right"
+          dir="rtl"
+        >
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
+                <User className="w-6 h-6 text-violet-600 font-bold" />
+                کارت حساب و دفتر معین اشخاص
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                گزارش یکپارچه و به ترتیب زمان از تمام فاکتورهای فروش/خرید و رسیدهای دریافت/پرداخت هر یک از طرف حساب‌ها
+              </p>
+            </div>
+            
+            {/* Quick Refresh */}
+            <button
+              onClick={async () => {
+                await Promise.all([
+                  fetchInvoices(),
+                  fetchTransactions(),
+                  fetchPersons()
+                ]);
+              }}
+              className="px-4 py-2 bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-violet-100 shadow-sm"
+            >
+              <RefreshCw className="w-4 h-4 animate-spin-slow" />
+              بروزرسانی اطلاعات
+            </button>
+          </div>
+
+          {/* Selector Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="max-w-xl">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <User className="w-4 h-4 text-violet-500" />
+                شخص مورد نظر را انتخاب کنید:
+              </label>
+              <Select
+                isRtl
+                value={ledgerPersonId ? { value: ledgerPersonId, label: persons.find(p => p.id === Number(ledgerPersonId))?.name } : null}
+                onChange={(option: any) => setLedgerPersonId(option ? option.value : '')}
+                options={persons.map(p => ({
+                  value: p.id,
+                  label: `${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'})`
+                }))}
+                placeholder="انتخاب یا جستجوی نام شخص..."
+                noOptionsMessage={() => "شخصی یافت نشد"}
+                isClearable
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderRadius: '0.75rem',
+                    borderColor: '#E5E7EB',
+                    padding: '3px',
+                    boxShadow: 'none',
+                    '&:hover': { borderColor: '#7C3AED' }
+                  })
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Ledger Content */}
+          {(() => {
+            if (!ledgerPersonId) {
+              return (
+                <div className="bg-white rounded-2xl p-12 text-center text-gray-500 border border-gray-100 shadow-sm">
+                  <User className="w-16 h-16 text-violet-200 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold text-gray-700 mb-1">مکانیزم صدور صورتحساب هوشمند</h3>
+                  <p className="text-sm text-gray-400 max-w-md mx-auto">
+                    برای بررسی گردش مالی، ریز فاکتورها، واریزی‌ها و دریافت/پرداخت‌ها، لطفاً از کادر بالا یک شخص را انتخاب و بررسی کنید.
+                  </p>
+                </div>
+              );
+            }
+
+            const selectedPerson = persons.find(p => p.id === Number(ledgerPersonId));
+            if (!selectedPerson) {
+              return (
+                <div className="bg-white rounded-2xl p-8 text-center text-rose-500 border border-rose-100 shadow-sm">
+                  شخص مورد نظر در سیستم یافت نشد.
+                </div>
+              );
+            }
+
+            // Calculations
+            // Invoices
+            const invoiceEntries = invoices
+              .filter(inv => Number(inv.customerId) === Number(ledgerPersonId))
+              .map(inv => {
+                const isSale = inv.type !== 'purchase';
+                const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+                return {
+                  id: `inv-${inv.id}`,
+                  refId: inv.invoiceNumber || `#${inv.id}`,
+                  date: inv.date,
+                  jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString('fa-IR'),
+                  type: inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا',
+                  desc: inv.title || (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور'),
+                  debit: isSale ? amount : 0,  // Sale increases how much they owe us
+                  credit: isSale ? 0 : amount, // Purchase decreases how much they owe us
+                  rawItem: inv,
+                  entryType: 'invoice'
+                };
+              });
+
+            // Transactions
+            const transactionEntries = transactions
+              .filter(t => Number(t.personId) === Number(ledgerPersonId))
+              .map(t => {
+                const isReceive = t.type === 'receive';
+                return {
+                  id: `tx-${t.id}`,
+                  refId: `سند #${t.id}`,
+                  date: t.date,
+                  jalaliDate: t.jalaliDate || new Date(t.date).toLocaleDateString('fa-IR'),
+                  type: isReceive ? 'رسید دریافت وجه (وصول)' : 'رسید پرداخت وجه (پرداخت)',
+                  desc: t.description || (isReceive ? 'بابت تسویه حساب مالی' : 'بابت پرداخت به طرف حساب'),
+                  debit: isReceive ? 0 : t.amount,  // Paying them debits their account
+                  credit: isReceive ? t.amount : 0, // Receiving from them credits their account
+                  rawItem: t,
+                  entryType: 'transaction'
+                };
+              });
+
+            // Combine and sort chronologically
+            const allEntries = [...invoiceEntries, ...transactionEntries].sort((a, b) => {
+              return new Date(a.date).getTime() - new Date(b.date).getTime();
+            });
+
+            // Running progressive balance
+            let runningSum = 0;
+            const ledgerEntries = allEntries.map(entry => {
+              runningSum += (entry.debit - entry.credit);
+              return {
+                ...entry,
+                runningBalance: runningSum
+              };
+            });
+
+            const totalDebits = allEntries.reduce((sum, entry) => sum + entry.debit, 0);
+            const totalCredits = allEntries.reduce((sum, entry) => sum + entry.credit, 0);
+            const finalBalance = totalDebits - totalCredits;
+
+            return (
+              <div className="space-y-6">
+                
+                {/* Person Summary KPI Panel */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Persona Info Card */}
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                          selectedPerson.role === 'customer' 
+                            ? 'bg-indigo-50 text-indigo-700' 
+                            : selectedPerson.role === 'supplier' 
+                              ? 'bg-emerald-50 text-emerald-700' 
+                              : 'bg-purple-50 text-purple-700'
+                        }`}>
+                          {selectedPerson.role === 'customer' ? 'مشتری' : selectedPerson.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">کد شخص: #{selectedPerson.id}</span>
+                      </div>
+                      <h2 className="text-lg font-extrabold text-gray-900 mb-3">{selectedPerson.name}</h2>
+                      
+                      <div className="space-y-2 text-sm text-gray-600">
+                        {selectedPerson.phone && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-xs font-semibold">تلفن تماس:</span>
+                            <span className="font-mono text-gray-800 font-semibold" dir="ltr">{selectedPerson.phone}</span>
+                          </div>
+                        )}
+                        {selectedPerson.nationalId && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-xs font-semibold">کد ملی / شناسه ملی:</span>
+                            <span className="font-mono text-gray-800" dir="ltr">{selectedPerson.nationalId}</span>
+                          </div>
+                        )}
+                        {selectedPerson.fatherName && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-xs font-semibold">نام پدر:</span>
+                            <span className="text-gray-800 font-medium">{selectedPerson.fatherName}</span>
+                          </div>
+                        )}
+                        {selectedPerson.address && (
+                          <div className="pt-2 border-t border-gray-50 text-xs text-gray-500">
+                            <span className="text-gray-400 block mb-1 font-semibold">نشانی:</span>
+                            <span className="leading-relaxed block">{selectedPerson.address}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Operational Turns KPI Card */}
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide border-b border-gray-100 pb-3 mb-3">آمار کارکرد و گردش حساب</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-semibold text-gray-600 block">جمع کل بدهکار (فروش‌ها / مخارج پرداختی)</span>
+                          <span className="text-[10px] text-gray-450">افزایش دارایی ما / افزایش تعهد شخص</span>
+                        </div>
+                        <span className="text-base font-black text-gray-900 font-sans">
+                          {formatNumber(totalDebits)} <span className="text-xs font-normal text-gray-400">{storeSettings.currency}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+                        <div>
+                          <span className="text-sm font-semibold text-gray-600 block">جمع کل بستانکار (خریدها / دریافت‌ها)</span>
+                          <span className="text-[10px] text-gray-450">کاهش تعهد شخص / افزایش تعهد ما</span>
+                        </div>
+                        <span className="text-base font-black text-gray-900 font-sans">
+                          {formatNumber(totalCredits)} <span className="text-xs font-normal text-gray-400">{storeSettings.currency}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-455 mt-2 font-medium">
+                       تعداد کل اسناد مرتبط: {formatNumber(allEntries.length)} سند (شامل {formatNumber(invoiceEntries.length)} فاکتور و {formatNumber(transactionEntries.length)} رسید مالی)
+                    </div>
+                  </div>
+
+                  {/* Net Balanced Status Card */}
+                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden">
+                    {(() => {
+                      const isOwedToUs = finalBalance > 0;
+                      const isClear = finalBalance === 0;
+                      const borderStripe = isClear ? 'bg-emerald-500' : (isOwedToUs ? 'bg-amber-500' : 'bg-rose-500');
+                      
+                      return (
+                        <>
+                          <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${borderStripe}`}></div>
+                          <div>
+                            <span className="text-xs font-bold text-gray-400 block mb-2">وضعیت نهایی تراز حساب شخص</span>
+                            <div className="py-2 font-semibold">
+                              <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-md inline-block mb-2 ${
+                                isClear 
+                                  ? 'bg-emerald-50 text-emerald-700' 
+                                  : isOwedToUs 
+                                    ? 'bg-amber-50 text-amber-700' 
+                                    : 'bg-rose-50 text-rose-700'
+                              }`}>
+                                {isClear ? '✔ کاملاً تسویه شده' : isOwedToUs ? '🔺 بدهکار به فروشگاه' : '🔻 بستانکار از فروشگاه'}
+                              </span>
+                              
+                              <span className={`text-2xl font-black block tracking-tight ${
+                                isClear ? 'text-emerald-700' : isOwedToUs ? 'text-amber-700' : 'text-rose-700'
+                              }`}>
+                                {formatNumber(Math.abs(finalBalance))}{' '}
+                                <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-100/50 mt-2">
+                            {isClear ? (
+                              'هیچ بدهی یا طلبی بین ما و این شخص وجود ندارد.'
+                            ) : isOwedToUs ? (
+                              'شخص مبالغ فروشگاه را بدهکار است و باید دریافت شود.'
+                            ) : (
+                              'فروشگاه به این شخص تعهد مالی (بدهی) دارد یا پرداخت اضافه داشته است.'
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                </div>
+
+                {/* Ledger Detail Table */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="font-extrabold text-gray-800 flex items-center gap-2">
+                      <List className="w-5 h-5 text-violet-500" />
+                      ریز و گردش جزئیات حساب معین (کارت حساب اشخاص)
+                    </h3>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    {ledgerEntries.length === 0 ? (
+                      <div className="p-12 text-center text-gray-400">
+                        <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        هیچ گردش مالی یا سندی برای این شخص ثبت نشده است.
+                      </div>
+                    ) : (
+                      <table className="w-full text-right whitespace-nowrap min-w-[900px] text-sm">
+                        <thead>
+                          <tr className="bg-gray-50/70 text-gray-500 border-b border-gray-100 font-semibold text-xs">
+                            <th className="py-4 px-6 text-center w-14">ردیف</th>
+                            <th className="py-4 px-6 text-right w-24">تاریخ ثبت</th>
+                            <th className="py-4 px-6 text-right w-36">نوع مدرک</th>
+                            <th className="py-4 px-6 text-right w-40">شماره ارجاع</th>
+                            <th className="py-4 px-6 text-right">شرح و بابت</th>
+                            <th className="py-4 px-6 text-left w-36">بدهکار (+ افزایش بدهی)</th>
+                            <th className="py-4 px-6 text-left w-36">بستانکار (- کاهش بدهی)</th>
+                            <th className="py-4 px-6 text-left w-40">مانده ردیف</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 font-medium">
+                          {ledgerEntries.map((entry, index) => {
+                            const isDeb = entry.runningBalance > 0;
+                            const isCred = entry.runningBalance < 0;
+                            const isBalZero = entry.runningBalance === 0;
+
+                            return (
+                              <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="py-4 px-6 text-center text-gray-400 font-sans">
+                                  {index + 1}
+                                </td>
+                                <td className="py-4 px-6 text-gray-600 font-sans">
+                                  {entry.jalaliDate}
+                                </td>
+                                <td className="py-4 px-6">
+                                  <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
+                                    entry.type.includes('فروش') 
+                                      ? 'bg-blue-50 text-blue-700' 
+                                      : entry.type.includes('خرید') 
+                                        ? 'bg-amber-50 text-amber-700' 
+                                        : entry.type.includes('دریافت')
+                                          ? 'bg-emerald-50 text-emerald-700'
+                                          : 'bg-rose-50 text-rose-700'
+                                  }`}>
+                                    {entry.type}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-6 font-mono font-bold text-gray-700">
+                                  {entry.refId}
+                                </td>
+                                <td className="py-4 px-6 text-gray-500 whitespace-normal max-w-sm text-xs md:text-sm">
+                                  {entry.desc}
+                                </td>
+                                <td className="py-4 px-6 text-left font-sans text-indigo-600 font-bold">
+                                  {entry.debit > 0 ? formatNumber(entry.debit) : '---'}
+                                </td>
+                                <td className="py-4 px-6 text-left font-sans text-emerald-600 font-bold">
+                                  {entry.credit > 0 ? formatNumber(entry.credit) : '---'}
+                                </td>
+                                <td className={`py-4 px-6 text-left font-sans font-extrabold ${
+                                  isBalZero 
+                                    ? 'text-emerald-600' 
+                                    : isDeb 
+                                      ? 'text-amber-700' 
+                                      : 'text-rose-700'
+                                }`}>
+                                  {isBalZero ? (
+                                    'تسویه'
+                                  ) : (
+                                    <>
+                                      {formatNumber(Math.abs(entry.runningBalance))}
+                                      <span className="text-[10px] font-bold mr-1">
+                                        {isDeb ? 'بدهکار' : 'بستانکار'}
+                                      </span>
+                                    </>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()}
         </motion.div>
       ) : activeTab === 'settings' ? (
         <motion.div
