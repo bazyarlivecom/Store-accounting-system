@@ -50,9 +50,44 @@ type InvoiceItem = {
   totalPrice: number;
 };
 
+const getBaseValueInToman = (cur: string) => {
+  if (!cur) return 1;
+  if (cur.includes('تومان')) return 1;
+  if (cur.includes('ریال')) return 0.1;
+  if (cur.includes('دلار') || cur.includes('USD')) return 70000;
+  if (cur.includes('یورو') || cur.includes('EUR')) return 75000;
+  if (cur.includes('درهم') || cur.includes('AED')) return 19000;
+  return 1;
+};
+
+const getDefaultExchangeRate = (invoiceCur: string, storeCur: string) => {
+  if (invoiceCur === storeCur) return 1;
+  const invToman = getBaseValueInToman(invoiceCur);
+  const storeToman = getBaseValueInToman(storeCur);
+  return invToman / storeToman;
+};
+
+const showInvoiceCurrency = (c: string) => {
+  if (!c) return 'تومان';
+  if (c === 'IRT' || c === 'toman') return 'تومان';
+  if (c === 'IRR' || c === 'rial') return 'ریال';
+  if (c === 'USD' || c === 'dollar') return 'دلار';
+  return c;
+};
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings'>('create');
+  const [activeTab, setActiveTab] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'create_sale') {
+      setInvoiceType('sale');
+      setInvoiceTitle('فاکتور فروش کالا');
+    } else if (activeTab === 'create_purchase') {
+      setInvoiceType('purchase');
+      setInvoiceTitle('فاکتور خرید کالا');
+    }
+  }, [activeTab]);
   
   const [persons, setPersons] = useState<Person[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,9 +102,13 @@ export default function App() {
   const [updateLog, setUpdateLog] = useState('');
 
   // Form State
+  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase'>('sale');
+  const [listFilter, setListFilter] = useState<'all' | 'sale' | 'purchase'>('all');
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
-  const [currency, setCurrency] = useState<'IRT' | 'IRR' | 'USD'>('IRT');
+  const [invoiceCurrency, setInvoiceCurrency] = useState<string>('تومان');
+  const [exchangeRate, setExchangeRate] = useState<number>(1);
+  const [exchangeRateInput, setExchangeRateInput] = useState<string>('1');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [date, setDate] = useState<Date | any>(new Date());
   const [customerId, setCustomerId] = useState<number | ''>('');
@@ -446,6 +485,9 @@ export default function App() {
         const data = await res.json();
         setStoreSettings(data);
         setSettingsForm(data);
+        setInvoiceCurrency(data.currency || 'تومان');
+        setExchangeRate(1);
+        setExchangeRateInput('1');
       }
     } catch (error) {
       console.error('Error fetching settings', error);
@@ -470,6 +512,49 @@ export default function App() {
       console.error('Error saving settings', error);
     } finally {
       setSubmittingSettings(false);
+    }
+  };
+
+  const handleCurrencyChange = (newCurrency: string) => {
+    const oldRate = exchangeRate;
+    const newRate = getDefaultExchangeRate(newCurrency, storeSettings.currency);
+    setInvoiceCurrency(newCurrency);
+    setExchangeRate(newRate);
+    setExchangeRateInput(newRate.toString());
+    
+    if (oldRate > 0 && newRate > 0) {
+      setItems(prevItems => 
+        prevItems.map(item => {
+          const updatedPrice = item.unitPrice * (oldRate / newRate);
+          const subtotal = item.quantity * updatedPrice;
+          const total = subtotal * (1 - (item.discountPercent / 100));
+          return {
+            ...item,
+            unitPrice: Number(updatedPrice.toFixed(4)),
+            totalPrice: Number(total.toFixed(4))
+          };
+        })
+      );
+    }
+  };
+
+  const handleExchangeRateChange = (newRate: number) => {
+    const oldRate = exchangeRate;
+    setExchangeRate(newRate);
+    
+    if (oldRate > 0 && newRate > 0) {
+      setItems(prevItems => 
+        prevItems.map(item => {
+          const updatedPrice = item.unitPrice * (oldRate / newRate);
+          const subtotal = item.quantity * updatedPrice;
+          const total = subtotal * (1 - (item.discountPercent / 100));
+          return {
+            ...item,
+            unitPrice: Number(updatedPrice.toFixed(4)),
+            totalPrice: Number(total.toFixed(4))
+          };
+        })
+      );
     }
   };
 
@@ -527,8 +612,9 @@ export default function App() {
             const product = products.find(p => p.id === Number(value));
             if (product) {
               updatedItem.productName = product.name;
-              updatedItem.unitPrice = product.price;
-              const subtotal = product.price * updatedItem.quantity;
+              const convertedPrice = exchangeRate > 0 ? (product.price / exchangeRate) : product.price;
+              updatedItem.unitPrice = Number(convertedPrice.toFixed(4));
+              const subtotal = convertedPrice * updatedItem.quantity;
               updatedItem.totalPrice = Math.max(0, subtotal * (1 - (updatedItem.discountPercent / 100)));
             }
           }
@@ -568,7 +654,8 @@ export default function App() {
     const payload = {
       invoiceNumber: finalInvoiceNumber,
       title: invoiceTitle,
-      currency,
+      type: invoiceType,
+      currency: invoiceCurrency,
       date: typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString(),
       jalaliDate: new Date(date).toLocaleDateString('fa-IR'),
       customerId,
@@ -597,6 +684,11 @@ export default function App() {
           setCustomerId('');
           setItems([]);
           setOverallDiscountPercent(0);
+          setInvoiceCurrency(storeSettings.currency || 'تومان');
+          setExchangeRate(1);
+          setExchangeRateInput('1');
+          setInvoiceType('sale');
+          setInvoiceTitle('فاکتور فروش کالا');
           handleAddItem();
           setSuccessMsg('');
         }, 3000);
@@ -620,7 +712,7 @@ export default function App() {
     return new Intl.NumberFormat('fa-IR').format(amount);
   };
 
-  const currencyLabel = activeTab === 'create' ? (currency === 'IRT' ? 'تومان' : currency === 'IRR' ? 'ریال' : 'دلار') : storeSettings.currency;
+  const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase') ? invoiceCurrency : storeSettings.currency;
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fa-IR').format(num);
@@ -700,28 +792,54 @@ export default function App() {
           <div className="text-xs font-bold text-gray-400 mb-2 px-3 uppercase tracking-wider">عملیات اصلی</div>
           <button
             type="button"
-            onClick={() => { setActiveTab('create'); setIsSidebarOpen(false); }}
+            onClick={() => { setActiveTab('create_sale'); setIsSidebarOpen(false); }}
             className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'create' 
+              activeTab === 'create_sale' 
                 ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
                 : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
             }`}
           >
-            <FilePlus className="w-5 h-5" />
-            ثبت فاکتور جدید
+            <ShoppingCart className="w-5 h-5 text-indigo-500" />
+            ثبت فاکتور فروش
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('create_purchase'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'create_purchase' 
+                ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                : 'text-gray-600 hover:text-amber-700 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <Receipt className="w-5 h-5 text-amber-500" />
+            ثبت فاکتور خرید
           </button>
           
           <button
             type="button"
-            onClick={() => { setActiveTab('list'); setIsSidebarOpen(false); }}
+            onClick={() => { setActiveTab('list_sale'); setIsSidebarOpen(false); }}
             className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
-              activeTab === 'list' 
+              activeTab === 'list_sale' 
                 ? 'bg-indigo-50 text-indigo-700 shadow-sm border-r-4 border-indigo-600' 
                 : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50 border-r-4 border-transparent'
             }`}
           >
-            <List className="w-5 h-5" />
-            لیست فاکتورها
+            <List className="w-5 h-5 text-indigo-500" />
+            لیست فاکتورهای فروش
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('list_purchase'); setIsSidebarOpen(false); }}
+            className={`flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all ${
+              activeTab === 'list_purchase' 
+                ? 'bg-amber-50 text-amber-700 shadow-sm border-r-4 border-amber-600' 
+                : 'text-gray-600 hover:text-amber-700 hover:bg-gray-50 border-r-4 border-transparent'
+            }`}
+          >
+            <FileText className="w-5 h-5 text-amber-500" />
+            لیست فاکتورهای خرید
           </button>
 
           <div className="w-full h-px bg-gray-100 my-4"></div>
@@ -830,7 +948,7 @@ export default function App() {
 
         <div className="flex-1 p-4 md:p-8 lg:p-10 max-w-6xl mx-auto w-full">
 
-      {activeTab === 'create' ? (
+      {(activeTab === 'create_sale' || activeTab === 'create_purchase') ? (
       <form onSubmit={submitInvoice} className="space-y-6">
         
         {/* Document Info Card */}
@@ -841,13 +959,13 @@ export default function App() {
             <div className="lg:col-span-4 pb-2 border-b border-gray-100">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-400" />
-                عنوان فاکتور
+                {invoiceType === 'sale' ? 'عنوان فاکتور فروش' : 'عنوان فاکتور خرید'}
               </label>
               <input
                 type="text"
                 value={invoiceTitle}
                 onChange={(e) => setInvoiceTitle(e.target.value)}
-                placeholder="مثال: فاکتور فروش تجهیزات کامپیوتری"
+                placeholder={invoiceType === 'sale' ? 'مثال: فاکتور فروش تجهیزات کامپیوتری' : 'مثال: فاکتور خرید مواد اولیه'}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors shadow-sm bg-gray-50 focus:bg-white text-gray-900 text-lg font-medium"
                 required
               />
@@ -857,15 +975,20 @@ export default function App() {
             <div className="lg:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <User className="w-4 h-4 text-gray-400" />
-                مشتری / طرف حساب
+                {invoiceType === 'sale' ? 'مشتری / خریدار' : 'تأمین‌کننده / فروشنده'}
               </label>
               <Select
                 isRtl
                 isSearchable={true}
                 value={customerId ? { value: customerId, label: persons.find(c => c.id === customerId)?.name } : null}
                 onChange={(option: any) => setCustomerId(option ? option.value : '')}
-                options={persons.map(c => ({ value: c.id, label: `${c.name} (${c.role === 'customer' ? 'مشتری' : c.role === 'supplier' ? 'تامین کننده' : 'کارمند'})` }))}
-                placeholder="انتخاب یا جستجو..."
+                options={[...persons].sort((a, b) => {
+                  const targetRole = invoiceType === 'sale' ? 'customer' : 'supplier';
+                  if (a.role === targetRole && b.role !== targetRole) return -1;
+                  if (a.role !== targetRole && b.role === targetRole) return 1;
+                  return 0;
+                }).map(c => ({ value: c.id, label: `${c.name} (${c.role === 'customer' ? 'مشتری' : c.role === 'supplier' ? 'تامین کننده' : 'کارمند'})` }))}
+                placeholder={invoiceType === 'sale' ? "جستجو و انتخاب خریدار..." : "جستجو و انتخاب فروشنده..."}
                 noOptionsMessage={() => "نتیجه‌ای یافت نشد"}
                 styles={{
                   control: (base) => ({
@@ -933,26 +1056,69 @@ export default function App() {
             </div>
 
             {/* Currency */}
-            <div className="lg:col-span-4 pt-4 border-t border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-800">تنظیمات مالی</span>
-                <span className="text-xs text-gray-500">واحد پولی فاکتور را انتخاب کنید</span>
+            <div className="lg:col-span-4 pt-4 border-t border-gray-100 flex flex-col gap-4 text-right">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-800">واحد پولی فاکتور</span>
+                  <span className="text-xs text-gray-500">
+                    واحد پولی که فاکتور با آن صادر می‌شود را انتخاب کنید (تنظیمات اصلی: <span className="font-semibold text-indigo-600">{storeSettings.currency}</span>)
+                  </span>
+                </div>
+                
+                <div className="flex flex-wrap bg-gray-50 border border-gray-200 p-1 rounded-xl w-fit gap-1" dir="rtl">
+                  {Array.from(new Set([storeSettings.currency, 'تومان', 'ریال', 'دلار', 'یورو', 'درهم'].filter(Boolean))).map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => handleCurrencyChange(c)}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-all border border-transparent ${
+                        invoiceCurrency === c ? 'bg-white shadow-sm text-indigo-700 border-gray-200 font-semibold' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
               </div>
-              
-              <div className="flex bg-gray-50 border border-gray-200 p-1 rounded-xl w-fit">
-                {(['IRT', 'IRR', 'USD'] as const).map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setCurrency(c)}
-                    className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all border border-transparent ${
-                      currency === c ? 'bg-white shadow-sm text-indigo-700 border-gray-200' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-                    }`}
-                  >
-                    {c === 'IRT' ? 'تومان' : c === 'IRR' ? 'ریال' : 'دلار'}
-                  </button>
-                ))}
-              </div>
+
+              {invoiceCurrency !== storeSettings.currency && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-right"
+                >
+                  <div className="flex flex-col msg-part">
+                    <span className="text-sm font-semibold text-indigo-900">ضریب و نرخ تبدیل ارز</span>
+                    <span className="text-xs text-indigo-700 mt-1">
+                      هر ۱ {invoiceCurrency} برابر با چند {storeSettings.currency} است؟ تمام مبالغ کالاها و فاکتور بر این اساس تبدیل و ثبت می‌شوند.
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 self-end md:self-auto" dir="rtl">
+                    <span className="text-sm text-gray-600 font-medium whitespace-nowrap">هر ۱ {invoiceCurrency} =</span>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="any"
+                        value={exchangeRateInput}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setExchangeRateInput(val);
+                          const num = parseFloat(val);
+                          if (num > 0) {
+                            handleExchangeRateChange(num);
+                          }
+                        }}
+                        className="w-36 px-3 py-2 pr-2 text-left font-mono font-medium rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 bg-white"
+                        placeholder="نرخ تبدیل"
+                        required
+                        dir="ltr"
+                      />
+                    </div>
+                    <span className="text-sm text-gray-600 font-medium whitespace-nowrap">{storeSettings.currency}</span>
+                  </div>
+                </motion.div>
+              )}
             </div>
             
           </div>
@@ -1175,22 +1341,35 @@ export default function App() {
           
         </div>
       </form>
-      ) : activeTab === 'list' ? (
+      ) : (activeTab === 'list_sale' || activeTab === 'list_purchase') ? (
         /* Invoice List */
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <List className="w-5 h-5 text-indigo-500" />
-              لیست فاکتورهای ثبت شده
+              {activeTab === 'list_sale' ? (
+                <>
+                  <List className="w-5 h-5 text-indigo-500" />
+                  لیست فاکتورهای فروش ثبت شده
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5 text-amber-500" />
+                  لیست فاکتورهای خرید ثبت شده
+                </>
+              )}
             </h2>
           </div>
           
           <div className="p-0 overflow-x-auto">
-            {invoices.length === 0 ? (
+            {invoices.filter(inv => {
+              if (activeTab === 'list_sale') return inv.type !== 'purchase';
+              if (activeTab === 'list_purchase') return inv.type === 'purchase';
+              return true;
+            }).length === 0 ? (
               <div className="p-12 text-center text-gray-500">
                 <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p>هیچ فاکتوری یافت نشد.</p>
@@ -1203,37 +1382,54 @@ export default function App() {
                     <th className="py-4 px-6 text-right">شماره فاکتور</th>
                     <th className="py-4 px-6 text-right">تاریخ میلادی</th>
                     <th className="py-4 px-6 text-right">تاریخ شمسی</th>
-                    <th className="py-4 px-6 text-right">مشتری</th>
+                    <th className="py-4 px-6 text-right">طرف حساب</th>
                     <th className="py-4 px-6 text-right">تعداد اقلام</th>
                     <th className="py-4 px-6 text-right">مبلغ پرداختی</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {invoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-6 font-medium text-gray-900 border-r-2 border-transparent">
-                        {inv.title || 'فاکتور بدون عنوان'}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600">
-                        {inv.invoiceNumber}
-                      </td>
-                      <td className="py-4 px-6 text-gray-500 text-sm" dir="ltr">
-                        {inv.date ? new Date(inv.date).toISOString().split('T')[0] : ''}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600">
-                        {inv.jalaliDate || (inv.date && new Date(inv.date).toLocaleDateString('fa-IR'))}
-                      </td>
-                      <td className="py-4 px-6 text-gray-800 font-medium">
-                        {inv.customerName}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600">
-                        {formatNumber(inv.items?.length || 0)} قلم
-                      </td>
-                      <td className="py-4 px-6 text-indigo-600 font-semibold bg-gray-50/50">
-                        {formatCurrency(inv.totalAmount)} {inv.currency === 'USD' ? 'دلار' : inv.currency === 'IRR' ? 'ریال' : 'تومان'}
-                      </td>
-                    </tr>
-                  ))}
+                  {invoices
+                    .filter(inv => {
+                      if (activeTab === 'list_sale') return inv.type !== 'purchase';
+                      if (activeTab === 'list_purchase') return inv.type === 'purchase';
+                      return true;
+                    })
+                    .map((inv) => (
+                      <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-6 font-medium text-gray-900 border-r-2 border-transparent">
+                          <div className="flex items-center gap-2">
+                            <span>{inv.title || 'فاکتور بدون عنوان'}</span>
+                            {inv.type === 'purchase' ? (
+                              <span className="bg-amber-50 text-amber-700 text-[10px] px-2 py-0.5 rounded-full font-semibold border border-amber-100 flex items-center">
+                                فاکتور خرید
+                              </span>
+                            ) : (
+                              <span className="bg-indigo-50 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full font-semibold border border-indigo-100 flex items-center">
+                                فاکتور فروش
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">
+                          {inv.invoiceNumber}
+                        </td>
+                        <td className="py-4 px-6 text-gray-500 text-sm" dir="ltr">
+                          {inv.date ? new Date(inv.date).toISOString().split('T')[0] : ''}
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">
+                          {inv.jalaliDate || (inv.date && new Date(inv.date).toLocaleDateString('fa-IR'))}
+                        </td>
+                        <td className="py-4 px-6 text-gray-800 font-medium">
+                          {inv.customerName}
+                        </td>
+                        <td className="py-4 px-6 text-gray-600">
+                          {formatNumber(inv.items?.length || 0)} قلم
+                        </td>
+                        <td className="py-4 px-6 text-indigo-600 font-semibold bg-gray-50/50">
+                          {formatCurrency(inv.totalAmount)} {showInvoiceCurrency(inv.currency)}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             )}
