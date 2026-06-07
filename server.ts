@@ -33,6 +33,14 @@ let cashboxes = [
   { id: 2, name: 'تنخواه‌گردان دفتر', manager: 'سارا احمدی', balance: 12000000 },
 ];
 
+let storeSettings = {
+  name: 'فروشگاه پیش‌فرض',
+  address: '',
+  phone: '',
+  logoUrl: '',
+  currency: 'تومان'
+};
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -70,6 +78,24 @@ async function startServer() {
     res.json({ success: true, message: 'شخص با موفقیت اضافه شد', person: newPerson });
   });
 
+  app.put('/api/persons/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const index = persons.findIndex(p => p.id === id);
+    if (index !== -1) {
+      const { role, phone, personType, firstName, lastName, companyName, nationalId, fatherName, address } = req.body;
+      let name = '';
+      if (personType === 'legal') {
+        name = companyName || '';
+      } else {
+        name = `${firstName || ''} ${lastName || ''}`.trim();
+      }
+      persons[index] = { ...persons[index], ...req.body, name, id };
+      res.json({ success: true, message: 'شخص با موفقیت ویرایش شد', person: persons[index] });
+    } else {
+      res.status(404).json({ success: false, message: 'شخص یافت نشد' });
+    }
+  });
+
   app.delete('/api/persons/:id', (req, res) => {
     const id = parseInt(req.params.id);
     persons = persons.filter(p => p.id !== id);
@@ -92,6 +118,18 @@ async function startServer() {
     };
     products.push(newProduct);
     res.json({ success: true, message: 'کالا/خدمات با موفقیت اضافه شد', product: newProduct });
+  });
+
+  app.put('/api/products/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const index = products.findIndex(p => p.id === id);
+    if (index !== -1) {
+      const { price } = req.body;
+      products[index] = { ...products[index], ...req.body, price: Number(price) || 0, id };
+      res.json({ success: true, message: 'کالا با موفقیت ویرایش شد', product: products[index] });
+    } else {
+      res.status(404).json({ success: false, message: 'کالا یافت نشد' });
+    }
   });
 
   app.delete('/api/products/:id', (req, res) => {
@@ -150,6 +188,18 @@ async function startServer() {
     res.json({ success: true, message: 'حساب بانکی با موفقیت ثبت شد', account: newAccount });
   });
 
+  app.put('/api/accounts/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const index = accounts.findIndex(a => a.id === id);
+    if (index !== -1) {
+      const { balance } = req.body;
+      accounts[index] = { ...accounts[index], ...req.body, balance: Number(balance) || 0, id };
+      res.json({ success: true, message: 'حساب بانکی با موفقیت ویرایش شد', account: accounts[index] });
+    } else {
+      res.status(404).json({ success: false, message: 'حساب بانکی یافت نشد' });
+    }
+  });
+
   app.delete('/api/accounts/:id', (req, res) => {
     const id = parseInt(req.params.id);
     accounts = accounts.filter(a => a.id !== id);
@@ -173,10 +223,32 @@ async function startServer() {
     res.json({ success: true, message: 'صندوق با موفقیت ثبت شد', cashbox: newCashbox });
   });
 
+  app.put('/api/cashboxes/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const index = cashboxes.findIndex(c => c.id === id);
+    if (index !== -1) {
+      const { balance } = req.body;
+      cashboxes[index] = { ...cashboxes[index], ...req.body, balance: Number(balance) || 0, id };
+      res.json({ success: true, message: 'صندوق با موفقیت ویرایش شد', cashbox: cashboxes[index] });
+    } else {
+      res.status(404).json({ success: false, message: 'صندوق یافت نشد' });
+    }
+  });
+
   app.delete('/api/cashboxes/:id', (req, res) => {
     const id = parseInt(req.params.id);
     cashboxes = cashboxes.filter(c => c.id !== id);
     res.json({ success: true, message: 'صندوق با موفقیت حذف شد' });
+  });
+
+  // Store Settings API
+  app.get('/api/settings', (req, res) => {
+    res.json(storeSettings);
+  });
+
+  app.post('/api/settings', (req, res) => {
+    storeSettings = { ...storeSettings, ...req.body };
+    res.json({ success: true, message: 'تنظیمات با موفقیت ذخیره شد', settings: storeSettings });
   });
 
   app.post('/api/system/update', (req, res) => {

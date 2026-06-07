@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -51,7 +51,7 @@ type InvoiceItem = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'list' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings'>('create');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [persons, setPersons] = useState<Person[]>([]);
@@ -59,6 +59,7 @@ export default function App() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [storeSettings, setStoreSettings] = useState({ name: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان' });
   const [loading, setLoading] = useState(true);
 
   // Update State
@@ -118,6 +119,15 @@ export default function App() {
   const [newCashboxBalance, setNewCashboxBalance] = useState('');
   const [submittingCashbox, setSubmittingCashbox] = useState(false);
 
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [editingPersonId, setEditingPersonId] = useState<number | null>(null);
+  const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
+  const [editingCashboxId, setEditingCashboxId] = useState<number | null>(null);
+
+  // Settings form state
+  const [settingsForm, setSettingsForm] = useState({ name: '', address: '', phone: '', logoUrl: '', currency: 'تومان' });
+  const [submittingSettings, setSubmittingSettings] = useState(false);
+
   // Fetch API data on mount
   const fetchInvoices = async () => {
     try {
@@ -147,8 +157,12 @@ export default function App() {
     
     setSubmittingProduct(true);
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
+      const isEdit = editingProductId !== null;
+      const url = isEdit ? `/api/products/${editingProductId}` : '/api/products';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           name: newProductName, 
@@ -163,12 +177,13 @@ export default function App() {
         setNewProductPrice('');
         setNewProductType('product');
         setNewProductCategory('');
+        setEditingProductId(null);
         setIsProductModalOpen(false);
-        setSuccessMsg('کالا یا خدمات با موفقیت اضافه شد');
+        setSuccessMsg(isEdit ? 'کالا با موفقیت ویرایش شد' : 'کالا یا خدمات با موفقیت اضافه شد');
         setTimeout(() => setSuccessMsg(''), 3000);
       }
     } catch (error) {
-      console.error('Error adding product', error);
+      console.error('Error saving product', error);
     } finally {
       setSubmittingProduct(false);
     }
@@ -204,8 +219,12 @@ export default function App() {
     
     setSubmittingPerson(true);
     try {
-      const res = await fetch('/api/persons', {
-        method: 'POST',
+      const isEdit = editingPersonId !== null;
+      const url = isEdit ? `/api/persons/${editingPersonId}` : '/api/persons';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           personType: newPersonType,
@@ -229,12 +248,13 @@ export default function App() {
         setNewPersonAddress('');
         setNewPersonPhone('');
         setNewPersonRole('customer');
+        setEditingPersonId(null);
         setIsPersonModalOpen(false);
-        setSuccessMsg('شخص با موفقیت اضافه شد');
+        setSuccessMsg(isEdit ? 'شخص با موفقیت ویرایش شد' : 'شخص با موفقیت اضافه شد');
         setTimeout(() => setSuccessMsg(''), 3000);
       }
     } catch (error) {
-      console.error('Error adding person', error);
+      console.error('Error saving person', error);
     } finally {
       setSubmittingPerson(false);
     }
@@ -268,8 +288,12 @@ export default function App() {
     if (!newAccountBankName) return;
     setSubmittingAccount(true);
     try {
-      const res = await fetch('/api/accounts', {
-        method: 'POST',
+      const isEdit = editingAccountId !== null;
+      const url = isEdit ? `/api/accounts/${editingAccountId}` : '/api/accounts';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bankName: newAccountBankName,
@@ -290,12 +314,13 @@ export default function App() {
         setNewAccountShebaNumber('');
         setNewAccountBalance('');
         setNewAccountHolder('');
+        setEditingAccountId(null);
         setIsAccountModalOpen(false);
-        setSuccessMsg('حساب بانکی با موفقیت ثبت شد');
+        setSuccessMsg(isEdit ? 'حساب بانکی با موفقیت ویرایش شد' : 'حساب بانکی با موفقیت ثبت شد');
         setTimeout(() => setSuccessMsg(''), 3000);
       }
     } catch (error) {
-      console.error('Error adding account', error);
+      console.error('Error saving account', error);
     } finally {
       setSubmittingAccount(false);
     }
@@ -329,8 +354,12 @@ export default function App() {
     if (!newCashboxName) return;
     setSubmittingCashbox(true);
     try {
-      const res = await fetch('/api/cashboxes', {
-        method: 'POST',
+      const isEdit = editingCashboxId !== null;
+      const url = isEdit ? `/api/cashboxes/${editingCashboxId}` : '/api/cashboxes';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newCashboxName,
@@ -343,12 +372,13 @@ export default function App() {
         setNewCashboxName('');
         setNewCashboxManager('');
         setNewCashboxBalance('');
+        setEditingCashboxId(null);
         setIsCashboxModalOpen(false);
-        setSuccessMsg('صندوق با موفقیت ثبت شد');
+        setSuccessMsg(isEdit ? 'صندوق با موفقیت ویرایش شد' : 'صندوق با موفقیت ثبت شد');
         setTimeout(() => setSuccessMsg(''), 3000);
       }
     } catch (error) {
-      console.error('Error adding cashbox', error);
+      console.error('Error saving cashbox', error);
     } finally {
       setSubmittingCashbox(false);
     }
@@ -366,6 +396,83 @@ export default function App() {
     }
   };
 
+  const handleEditProduct = (p: Product) => {
+    setEditingProductId(p.id);
+    setNewProductName(p.name);
+    setNewProductPrice(p.price.toString());
+    setNewProductType(p.type);
+    setNewProductCategory(p.category);
+    setIsProductModalOpen(true);
+  };
+
+  const handleEditPerson = (p: Person) => {
+    setEditingPersonId(p.id);
+    setNewPersonType(p.personType);
+    setNewPersonFirstName(p.firstName || '');
+    setNewPersonLastName(p.lastName || '');
+    setNewPersonCompanyName(p.companyName || '');
+    setNewPersonFatherName(p.fatherName || '');
+    setNewPersonNationalId(p.nationalId || '');
+    setNewPersonAddress(p.address || '');
+    setNewPersonPhone(p.phone || '');
+    setNewPersonRole(p.role);
+    setIsPersonModalOpen(true);
+  };
+
+  const handleEditAccount = (acc: Account) => {
+    setEditingAccountId(acc.id);
+    setNewAccountBankName(acc.bankName);
+    setNewAccountBranchName(acc.branchName || '');
+    setNewAccountNumber(acc.accountNumber || '');
+    setNewAccountCardNumber(acc.cardNumber || '');
+    setNewAccountShebaNumber(acc.shebaNumber || '');
+    setNewAccountBalance(acc.balance.toString());
+    setNewAccountHolder(acc.accountHolder || '');
+    setIsAccountModalOpen(true);
+  };
+
+  const handleEditCashbox = (box: Cashbox) => {
+    setEditingCashboxId(box.id);
+    setNewCashboxName(box.name);
+    setNewCashboxManager(box.manager || '');
+    setNewCashboxBalance(box.balance.toString());
+    setIsCashboxModalOpen(true);
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        setStoreSettings(data);
+        setSettingsForm(data);
+      }
+    } catch (error) {
+      console.error('Error fetching settings', error);
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingSettings(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settingsForm)
+      });
+      if (res.ok) {
+        await fetchSettings();
+        setSuccessMsg('تنظیمات فروشگاه با موفقیت ذخیره شد');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving settings', error);
+    } finally {
+      setSubmittingSettings(false);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -373,7 +480,8 @@ export default function App() {
           fetchPersons(),
           fetchProducts(),
           fetchAccounts(),
-          fetchCashboxes()
+          fetchCashboxes(),
+          fetchSettings()
         ]);
         
         await fetchInvoices();
@@ -512,7 +620,7 @@ export default function App() {
     return new Intl.NumberFormat('fa-IR').format(amount);
   };
 
-  const currencyLabel = currency === 'IRT' ? 'تومان' : currency === 'IRR' ? 'ریال' : 'دلار';
+  const currencyLabel = activeTab === 'create' ? (currency === 'IRT' ? 'تومان' : currency === 'IRR' ? 'ریال' : 'دلار') : storeSettings.currency;
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fa-IR').format(num);
@@ -562,12 +670,22 @@ export default function App() {
       <div className={`w-64 bg-white border-l border-gray-100 flex flex-col fixed md:sticky top-0 h-screen z-30 transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
         <div className="flex flex-col p-6 border-b border-gray-100 bg-gray-50/30">
           <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-md shadow-indigo-200">
-              <Receipt className="w-6 h-6" />
-            </div>
+            {storeSettings.logoUrl ? (
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm flex items-center justify-center bg-white border border-gray-100">
+                <img src={storeSettings.logoUrl} alt={storeSettings.name} className="w-full h-full object-contain" onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement?.classList.add('bg-indigo-600');
+                  e.currentTarget.parentElement!.innerHTML = '<svg class="w-6 h-6 text-white overflow-visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M3 15h6"/><path d="M3 18h6"/></svg>';
+                }} />
+              </div>
+            ) : (
+              <div className="bg-indigo-600 p-2 rounded-xl text-white shadow-md shadow-indigo-200">
+                <Receipt className="w-6 h-6" />
+              </div>
+            )}
             <div>
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">سیستم فاکتور</h1>
-              <p className="text-xs text-gray-500 mt-1 font-medium">مدیریت جامع فروش</p>
+              <h1 className="text-lg font-bold text-gray-900 tracking-tight truncate max-w-[130px]" title={storeSettings.name}>{storeSettings.name || 'سیستم فاکتور'}</h1>
+              <p className="text-xs text-gray-500 mt-1 font-medium">{storeSettings.phone ? `تلفن: ${storeSettings.phone}` : 'مدیریت جامع فروش'}</p>
             </div>
             <button 
               className="md:hidden mr-auto p-1 text-gray-400 hover:text-gray-600"
@@ -662,7 +780,20 @@ export default function App() {
           </button>
         </div>
 
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
+            className={`flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              activeTab === 'settings' 
+                ? 'bg-gray-900 text-white shadow-sm' 
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 shadow-sm'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            تنظیمات فروشگاه
+          </button>
+          
           <button
             type="button"
             onClick={() => { setActiveTab('update'); setIsSidebarOpen(false); }}
@@ -1121,7 +1252,14 @@ export default function App() {
               مدیریت کالا / خدمات
             </h2>
             <button
-              onClick={() => setIsProductModalOpen(true)}
+              onClick={() => {
+                setEditingProductId(null);
+                setNewProductName('');
+                setNewProductPrice('');
+                setNewProductType('product');
+                setNewProductCategory('');
+                setIsProductModalOpen(true);
+              }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
@@ -1172,16 +1310,25 @@ export default function App() {
                         {p.category}
                       </td>
                       <td className="py-4 px-6 text-indigo-600 font-medium">
-                        {formatCurrency(p.price)}
+                        {formatCurrency(p.price)} <span className="text-xs font-normal mr-1">{storeSettings.currency}</span>
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <button
-                          onClick={() => handleDeleteProduct(p.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                          title="حذف کالا"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEditProduct(p)}
+                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                            title="ویرایش کالا"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduct(p.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            title="حذف کالا"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1203,7 +1350,19 @@ export default function App() {
               مدیریت اشخاص
             </h2>
             <button
-              onClick={() => setIsPersonModalOpen(true)}
+              onClick={() => {
+                setEditingPersonId(null);
+                setNewPersonType('real');
+                setNewPersonFirstName('');
+                setNewPersonLastName('');
+                setNewPersonCompanyName('');
+                setNewPersonFatherName('');
+                setNewPersonNationalId('');
+                setNewPersonAddress('');
+                setNewPersonPhone('');
+                setNewPersonRole('customer');
+                setIsPersonModalOpen(true);
+              }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
@@ -1261,13 +1420,22 @@ export default function App() {
                         {p.phone || '-'}
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <button
-                          onClick={() => handleDeletePerson(p.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                          title="حذف شخص"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEditPerson(p)}
+                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                            title="ویرایش شخص"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePerson(p.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            title="حذف شخص"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1288,7 +1456,17 @@ export default function App() {
               مدیریت حساب‌های بانکی
             </h2>
             <button
-              onClick={() => setIsAccountModalOpen(true)}
+              onClick={() => {
+                setEditingAccountId(null);
+                setNewAccountBankName('');
+                setNewAccountBranchName('');
+                setNewAccountNumber('');
+                setNewAccountCardNumber('');
+                setNewAccountShebaNumber('');
+                setNewAccountBalance('');
+                setNewAccountHolder('');
+                setIsAccountModalOpen(true);
+              }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
@@ -1339,16 +1517,25 @@ export default function App() {
                       <td className="py-4 px-6 text-sm font-mono text-left" dir="ltr">{acc.shebaNumber || '-'}</td>
                       <td className="py-4 px-6 text-sm">{acc.branchName || '-'}</td>
                       <td className="py-4 px-6 text-sm font-semibold text-indigo-600 font-mono text-left" dir="ltr">
-                        {formatNumber(acc.balance)}
+                        {formatNumber(acc.balance)} <span className="text-xs font-normal font-sans ml-1">{storeSettings.currency}</span>
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <button
-                          onClick={() => handleDeleteAccount(acc.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                          title="حذف حساب"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEditAccount(acc)}
+                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                            title="ویرایش حساب"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAccount(acc.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            title="حذف حساب"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1369,7 +1556,13 @@ export default function App() {
               مدیریت صندوق‌ها و تنخواه
             </h2>
             <button
-              onClick={() => setIsCashboxModalOpen(true)}
+              onClick={() => {
+                setEditingCashboxId(null);
+                setNewCashboxName('');
+                setNewCashboxManager('');
+                setNewCashboxBalance('');
+                setIsCashboxModalOpen(true);
+              }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
@@ -1412,22 +1605,139 @@ export default function App() {
                       </td>
                       <td className="py-4 px-6 text-sm">{box.manager || 'نامشخص'}</td>
                       <td className="py-4 px-6 text-sm font-semibold text-teal-600 font-mono text-left" dir="ltr">
-                        {formatNumber(box.balance)}
+                        {formatNumber(box.balance)} <span className="text-xs font-normal font-sans ml-1">{storeSettings.currency}</span>
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <button
-                          onClick={() => handleDeleteCashbox(box.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                          title="حذف صندوق"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEditCashbox(box)}
+                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                            title="ویرایش صندوق"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCashbox(box.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            title="حذف صندوق"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
+          </div>
+        </motion.div>
+      ) : activeTab === 'settings' ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-3xl mx-auto"
+        >
+          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Store className="w-5 h-5 text-indigo-500" />
+              تنظیمات فروشگاه و کسب و کار
+            </h2>
+            <p className="mt-2 text-sm text-gray-500">
+              اطلاعات پایه از قبیل نام کسب و کار، آدرس، تلفن و واحد پولی را مدیریت کنید.
+            </p>
+          </div>
+
+          {successMsg && (
+            <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100 mb-0">
+              <CheckCircle className="w-5 h-5" />
+              {successMsg}
+            </div>
+          )}
+
+          <div className="p-6">
+            <form id="settingsForm" onSubmit={handleSaveSettings} className="flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="w-full text-right md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">نام فروشگاه / شرکت</label>
+                  <input
+                    type="text"
+                    value={settingsForm.name}
+                    onChange={e => setSettingsForm({...settingsForm, name: e.target.value})}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                    required
+                  />
+                </div>
+                
+                <div className="w-full text-right">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">واحد پولی سیستم</label>
+                  <select
+                    value={settingsForm.currency}
+                    onChange={e => setSettingsForm({...settingsForm, currency: e.target.value})}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                  >
+                    <option value="تومان">تومان</option>
+                    <option value="ریال">ریال</option>
+                    <option value="دلار">دلار (USD)</option>
+                    <option value="یورو">یورو (EUR)</option>
+                    <option value="درهم">درهم امارات (AED)</option>
+                  </select>
+                </div>
+
+                <div className="w-full text-right">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">شماره تماس پشتیبانی / فروشگاه</label>
+                  <input
+                    type="text"
+                    value={settingsForm.phone}
+                    onChange={e => setSettingsForm({...settingsForm, phone: e.target.value})}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="w-full text-right md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">آدرس</label>
+                  <textarea
+                    value={settingsForm.address}
+                    onChange={e => setSettingsForm({...settingsForm, address: e.target.value})}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="w-full text-right md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">آدرس لوگوی فروشگاه (URL)</label>
+                  <input
+                    type="url"
+                    value={settingsForm.logoUrl}
+                    onChange={e => setSettingsForm({...settingsForm, logoUrl: e.target.value})}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-left"
+                    dir="ltr"
+                    placeholder="https://example.com/logo.png"
+                  />
+                  {settingsForm.logoUrl && (
+                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4 inline-block">
+                      <img src={settingsForm.logoUrl} alt="Logo Preview" className="h-16 object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-start border-t border-gray-100 pt-6 mt-2">
+                <button
+                  type="submit"
+                  disabled={submittingSettings}
+                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {submittingSettings ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                  ) : (
+                    <Save className="w-5 h-5" />
+                  )}
+                  <span>ذخیره تنظیمات</span>
+                </button>
+              </div>
+            </form>
           </div>
         </motion.div>
       ) : activeTab === 'update' ? (
