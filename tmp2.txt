@@ -1,0 +1,196 @@
+148-  const [salaryDirectPayment, setSalaryDirectPayment] = useState<boolean>(false);
+149-  const [salaryResourceType, setSalaryResourceType] = useState<'bank' | 'cashbox'>('bank');
+150-  const [salaryResourceId, setSalaryResourceId] = useState<string | number | ''>('');
+151-  const salarySuccessMsg = false;
+152-  const [submittingSalary, setSubmittingSalary] = useState<boolean>(false);
+153:  const [viewingPayslip, setViewingPayslip] = useState<any | null>(null);
+154-
+155-  // Person Ledger state
+156-  const [ledgerPersonId, setLedgerPersonId] = useState<string | number | ''>('');
+157-
+158-  // Invoice Print & Preview State
+159-  const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+160-  const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
+161-
+162-  // Update State
+163-  const [updatingStr, setUpdatingStr] = useState(false);
+164-  const [updateLog, setUpdateLog] = useState('');
+165-  const [updateProgress, setUpdateProgress] = useState(0);
+166-  const [updateStepName, setUpdateStepName] = useState('');
+167-  const [updateStepsStatus, setUpdateStepsStatus] = useState<{[key: string]: 'idle' | 'running' | 'success' | 'error'}>({});
+168-
+169-  // Form State
+170-  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase'>('sale');
+171-  const [listFilter, setListFilter] = useState<'all' | 'sale' | 'purchase'>('all');
+172-  const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
+173-  const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
+--
+2725-      ) : activeTab === 'checklist' ? (
+2726-        <SystemChecklist />
+2727-      ) : null}
+2728-
+2729-      <AnimatePresence>
+2730:        {viewingPayslip && (
+2731-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/55 backdrop-blur-sm" dir="rtl">
+2732-            <motion.div
+2733-              initial={{ opacity: 0, scale: 0.95 }}
+2734-              animate={{ opacity: 1, scale: 1 }}
+2735-              exit={{ opacity: 0, scale: 0.95 }}
+2736-              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-3xl max-h-[95vh] flex flex-col"
+2737-              id="printable-payslip-area"
+2738-            >
+2739-              {/* Header */}
+2740-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 no-print">
+2741-                <h3 className="text-lg font-bold text-indigo-700 flex items-center gap-2">
+2742-                  <FileText className="w-5 h-5 animate-pulse-slow" />
+2743-                  پیش‌نمایش فیش رسمی حقوق کارمند
+2744-                </h3>
+2745-                <button
+2746-                  type="button"
+2747-                  onClick={() => setViewingPayslip(null)}
+2748-                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors border border-gray-100"
+2749-                >
+2750-                  <X className="w-5 h-5" />
+--
+2755-              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm">
+2756-                
+2757-                {/* Official Slip Header */}
+2758-                <div className="border-4 border-double border-gray-300 p-5 rounded-2xl bg-gray-50/20 shadow-inner flex flex-col sm:flex-row items-center justify-between gap-4">
+2759-                  <div className="text-right space-y-1">
+2760:                    <span className="text-xs text-indigo-600 font-bold tracking-wider">سند مالی شماره #{viewingPayslip.id}</span>
+2761-                    <h2 className="text-xl font-black text-gray-950">{storeSettings.storeName || 'مجموعه تجاری و مالی صبا'}</h2>
+2762:                    <p className="text-xs text-gray-500 font-medium">{viewingPayslip.parsed?.userNote || 'فیش رسمی حقوق و دستمزد کارمند'}</p>
+2763-                  </div>
+2764-                  <div className="text-center bg-white border border-gray-200 py-2.5 px-4 rounded-xl min-w-[150px] shadow-sm">
+2765-                    <span className="text-xs text-gray-400 font-semibold block m-0">تاریخ صدور سند</span>
+2766:                    <span className="text-sm font-extrabold text-gray-900 font-sans mt-0.5 block">{viewingPayslip.jalaliDate || viewingPayslip.date}</span>
+2767-                  </div>
+2768-                </div>
+2769-
+2770-                {/* Employee and Period Meta */}
+2771-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-indigo-50/20 border border-indigo-100 rounded-xl p-4">
+2772-                  <div>
+2773-                    <span className="text-gray-500 font-medium">نام و نام خانوادگی کارمند:</span>
+2774:                    <span className="font-extrabold text-indigo-950 text-base mr-2">{viewingPayslip.computedPersonName || viewingPayslip.personName}</span>
+2775-                  </div>
+2776-                  <div className="md:text-left">
+2777-                    <span className="text-gray-500 font-medium">مشتمل بر دوره پرداخت:</span>
+2778:                    <span className="font-semibold text-gray-800 mr-2">{viewingPayslip.parsed?.userNote || 'بدون بابت'}</span>
+2779-                  </div>
+2780-                </div>
+2781-
+2782-                {/* Comparison Columns: Earnings vs Deductions */}
+2783-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+2784-                  
+2785-                  {/* Earnings */}
+2786-                  <div className="border border-emerald-100 rounded-xl overflow-hidden shadow-sm">
+2787-                    <div className="bg-emerald-600 text-white font-extrabold px-4 py-2.5 text-center flex justify-between items-center text-xs">
+2788-                      <span>حقوق ناخالص و مزایا (ریال/تومان)</span>
+2789-                      <span>بستانکار</span>
+2790-                    </div>
+2791-                    <table className="w-full text-right divide-y divide-gray-100 text-xs text-right">
+2792-                      <tbody>
+2793-                        <tr className="hover:bg-gray-50 transition-colors">
+2794-                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حقوق پایه و کارکرد ماهانه</td>
+2795:                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.base || 0)}</td>
+2796-                        </tr>
+2797-                        <tr className="hover:bg-gray-50 transition-colors">
+2798-                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حق مسکن و معیشت رفاهی</td>
+2799:                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.housing || 0)}</td>
+2800-                        </tr>
+2801-                        <tr className="hover:bg-gray-50 transition-colors">
+2802-                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حق بن و خواربار رفاهی</td>
+2803:                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.grocery || 0)}</td>
+2804-                        </tr>
+2805-                        <tr className="hover:bg-gray-50 transition-colors">
+2806-                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">اضافه کار و سایر مزایا</td>
+2807:                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.other || 0)}</td>
+2808-                        </tr>
+2809-                      </tbody>
+2810-                      <tfoot>
+2811-                        <tr className="bg-emerald-50/50 font-extrabold text-emerald-950 border-t border-emerald-100">
+2812-                          <td className="py-3 px-4 text-right">جمع مبالغ ناخالص:</td>
+2813-                          <td className="py-3 px-4 font-sans text-left text-sm text-emerald-800">
+2814-                            {formatNumber(
+2815:                              (viewingPayslip.parsed?.base || 0) +
+2816:                              (viewingPayslip.parsed?.allowances?.housing || 0) +
+2817:                              (viewingPayslip.parsed?.allowances?.grocery || 0) +
+2818:                              (viewingPayslip.parsed?.allowances?.other || 0)
+2819-                            )}
+2820-                          </td>
+2821-                        </tr>
+2822-                      </tfoot>
+2823-                    </table>
+2824-                  </div>
+2825-
+2826-                  {/* Deductions */}
+2827-                  <div className="border border-rose-100 rounded-xl overflow-hidden shadow-sm">
+2828-                    <div className="bg-rose-600 text-white font-extrabold px-4 py-2.5 text-center flex justify-between items-center text-xs">
+2829-                      <span>حق بیمه سهم کارمند و مالیات (ریال/تومان)</span>
+2830-                      <span>بدهکار</span>
+2831-                    </div>
+2832-                    <table className="w-full text-right divide-y divide-gray-100 text-xs text-right">
+2833-                      <tbody>
+2834-                        <tr className="hover:bg-gray-50 transition-colors">
+2835-                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">بیمه تامین اجتماعی سهم کارمند</td>
+2836:                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.insurance || 0)}</td>
+2837-                        </tr>
+2838-                        <tr className="hover:bg-gray-50 transition-colors">
+2839-                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">مالیات حقوق و درآمد معین</td>
+2840:                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.tax || 0)}</td>
+2841-                        </tr>
+2842-                        <tr className="hover:bg-gray-50 transition-colors">
+2843-                          <td className="py-2.5 px-4 text-gray-600 font-medium text-right">مساعده دریافتی و سایر کسورات</td>
+2844:                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.penalty || 0)}</td>
+2845-                        </tr>
+2846-                        <tr className="hover:bg-gray-50 transition-colors">
+2847-                          <td className="py-2.5 px-4 text-gray-400/50 text-[10px] text-right">---</td>
+2848-                          <td className="py-2.5 px-4 font-bold text-gray-400/50 font-sans text-left text-[10px]">۰</td>
+2849-                        </tr>
+2850-                      </tbody>
+2851-                      <tfoot>
+2852-                        <tr className="bg-rose-50/50 font-extrabold text-rose-950 border-t border-rose-100">
+2853-                          <td className="py-3 px-4 text-right">جمع مبالغ کسورات:</td>
+2854-                          <td className="py-3 px-4 font-sans text-left text-sm text-rose-800">
+2855-                            {formatNumber(
+2856:                              (viewingPayslip.parsed?.deductions?.insurance || 0) +
+2857:                              (viewingPayslip.parsed?.deductions?.tax || 0) +
+2858:                              (viewingPayslip.parsed?.deductions?.penalty || 0)
+2859-                            )}
+2860-                          </td>
+2861-                        </tr>
+2862-                      </tfoot>
+2863-                    </table>
+2864-                  </div>
+2865-
+2866-                </div>
+2867-
+2868-                {/* Grand Total Net Salary */}
+2869-                <div className="bg-indigo-950 text-white rounded-2xl p-5 border border-indigo-950 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-right shadow">
+2870-                  <div>
+2871-                    <h4 className="text-sm font-bold text-indigo-200">مبلغ خالص دریافتی پرداختنی کارمند</h4>
+2872-                    <p className="text-xs text-indigo-300 mt-1">حقوق پرداختی حاصل از کسر حقوق و مزایا از کسورات معین</p>
+2873-                  </div>
+2874-                  <div>
+2875-                    <span className="text-2xl font-black text-amber-300 tracking-tight block">
+2876:                      {formatNumber(viewingPayslip.parsed?.netSalary || viewingPayslip.amount)}{' '}
+2877-                      <span className="text-sm text-indigo-200">{storeSettings.currency}</span>
+2878-                    </span>
+2879-                  </div>
+2880-                </div>
+2881-
+2882-                {/* Stamp & Signatures Block */}
+2883-                <div className="border-t border-dashed border-gray-300 pt-7 grid grid-cols-2 text-center text-xs mt-8">
+2884-                  <div className="space-y-12">
+2885-                    <span className="font-extrabold text-gray-700 block">مهر و امضا امور مالی مجموعه</span>
+2886-                    <div className="w-24 h-1 bg-gray-200/50 mx-auto rounded-full"></div>
+2887-                  </div>
+2888-                  <div className="space-y-12">
+2889-                    <span className="font-extrabold text-gray-700 block">امضای دریافت کننده (همکار)</span>
+2890-                    <div className="w-24 h-1 bg-gray-200/50 mx-auto rounded-full"></div>
+2891-                  </div>
+2892-                </div>
+2893-
+2894-              </div>
+2895-
+2896-              {/* Action Buttons */}
