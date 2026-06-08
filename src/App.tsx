@@ -3642,7 +3642,11 @@ export default function App() {
 
             // Combine and sort chronologically
             const allEntries = [...invoiceEntries, ...transactionEntries].sort((a, b) => {
-              return new Date(a.date).getTime() - new Date(b.date).getTime();
+              const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+              if (dateDiff === 0) {
+                return (a.rawItem?.createdAt || 0) - (b.rawItem?.createdAt || 0);
+              }
+              return dateDiff;
             });
 
             // Running progressive balance
