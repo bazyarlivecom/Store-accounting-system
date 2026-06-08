@@ -1298,15 +1298,17 @@ export default function App() {
                 items: [
                   { id: 'create_sale', label: 'ثبت فاکتور فروش', icon: <Plus className="w-4 h-4" /> },
                   { id: 'create_purchase', label: 'ثبت فاکتور خرید', icon: <ShoppingCart className="w-4 h-4" /> },
-                  { id: 'list_invoices', label: 'لیست فاکتورها', icon: <FileText className="w-4 h-4" /> },
+                  { id: 'list_sale', label: 'لیست فاکتورهای فروش', icon: <FileText className="w-4 h-4" /> },
+                  { id: 'list_purchase', label: 'لیست فاکتورهای خرید', icon: <FileText className="w-4 h-4" /> },
                 ]
               },
               {
                 title: 'خزانه‌داری',
                 items: [
-                  { id: 'create_receipt', label: 'دریافت وجه', icon: <ArrowDownToLine className="w-4 h-4" /> },
-                  { id: 'create_pay_receipt', label: 'پرداخت وجه', icon: <ArrowUpFromLine className="w-4 h-4" /> },
-                  { id: 'list_pay_receipt', label: 'اسناد نقد و بانک', icon: <FileSpreadsheet className="w-4 h-4" /> },
+                  { id: 'create_receive_receipt', label: 'دریافت وجه (نقد/بانک)', icon: <ArrowDownToLine className="w-4 h-4" /> },
+                  { id: 'list_receive_receipt', label: 'لیست رسیدهای دریافت', icon: <FileSpreadsheet className="w-4 h-4" /> },
+                  { id: 'create_pay_receipt', label: 'پرداخت وجه (نقد/بانک)', icon: <ArrowUpFromLine className="w-4 h-4" /> },
+                  { id: 'list_pay_receipt', label: 'لیست رسیدهای پرداخت', icon: <FileSpreadsheet className="w-4 h-4" /> },
                 ]
               },
               {
@@ -1380,10 +1382,14 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Invoice Title */}
-            <div className="lg:col-span-4 pb-2 border-b border-gray-100">
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-gray-400" />
-                {invoiceType === 'sale' ? 'عنوان فاکتور فروش' : 'عنوان فاکتور خرید'}
+            <div className="lg:col-span-4 pb-6 mb-4 border-b border-gray-100">
+              <h1 className="text-2xl font-black text-gray-900 flex flex-col gap-1 mb-6">
+                <span className="text-indigo-600">{invoiceType === 'sale' ? 'صدور فاکتور فروش مرجع' : 'ثبت فاکتور خرید مرجع'}</span>
+                <span className="text-sm font-medium text-gray-500">مشخصات اولیه و عنوان این سند را در فیلد زیر مشخص کنید.</span>
+              </h1>
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-500" />
+                {invoiceType === 'sale' ? 'عنوان یکتای فاکتور فروش' : 'عنوان یکتای فاکتور خرید'}
               </label>
               <input
                 type="text"
@@ -1781,20 +1787,14 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              {activeTab === 'list_sale' ? (
-                <>
-                  <List className="w-5 h-5 text-indigo-500" />
-                  لیست فاکتورهای فروش ثبت شده
-                </>
-              ) : (
-                <>
-                  <FileText className="w-5 h-5 text-amber-500" />
-                  لیست فاکتورهای خرید ثبت شده
-                </>
-              )}
-            </h2>
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <List className="w-6 h-6 text-indigo-600" />
+                {activeTab === 'list_sale' ? 'بایگانی فاکتورهای فروش' : 'بایگانی فاکتورهای خرید'}
+              </h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">مدیریت اعتبارات، تسویه فاکتورها، و صورت‌حساب‌های رسمی صادر شده</p>
+            </div>
           </div>
           
           <div className="p-0 overflow-x-auto">
@@ -1885,23 +1885,23 @@ export default function App() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-5">
               <div>
-                <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
+                <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2.5">
                   {activeTab === 'create_receive_receipt' ? (
                     <>
-                      <Wallet className="w-6 h-6 text-emerald-600" />
-                      رسید دریافت جدید (ورود وجه)
+                      <Wallet className="w-7 h-7 text-emerald-600" />
+                      صدور رسید مستند دریافت وجه
                     </>
                   ) : (
                     <>
-                      <CreditCard className="w-6 h-6 text-rose-600" />
-                      رسید پرداخت جدید (خروج وجه)
+                      <CreditCard className="w-7 h-7 text-rose-600" />
+                      صدور رسید مستند پرداخت وجه
                     </>
                   )}
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
+                </h1>
+                <p className="text-sm text-gray-500 mt-2 font-medium">
                   {activeTab === 'create_receive_receipt' 
-                    ? 'ثبت سند دریافت وجه نقد یا واریز به بانک از طرف حساب‌ها' 
-                    : 'ثبت سند پرداخت وجه نقد یا واریز به بانک به طرف حساب‌ها'}
+                    ? 'گزارش واریز نقدی و بانکی مشتریان خود را به عنوان یک سند دریافت ثبت کنید.' 
+                    : 'گزارش خروج نقدی و بانکی برای پرداخت به تامین‌کنندگان یا پرسنل را به عنوان یک سند پرداخت ثبت کنید.'}
                 </p>
               </div>
 
@@ -2447,11 +2447,14 @@ export default function App() {
         /* Salary Vouchers list Tab */
         <div className="space-y-6 text-right" dir="rtl">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2 animate-pulse-slow">
-                <FileText className="w-5 h-5 text-indigo-500" />
-                لیست اسناد حقوق و فیش‌های حقوقی کارمندان
-              </h2>
+            <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-6 h-6 text-indigo-600" />
+                  لیست اسناد حقوق و فیش‌های حقوقی کارمندان
+                </h1>
+                <p className="text-sm text-gray-500 font-medium mt-1">مدیریت لیست کارکرد و فیش‌های حقوقی صادر شده پرسنل</p>
+              </div>
             </div>
 
             <div className="overflow-x-auto" id="salaries-list-table">
@@ -2556,11 +2559,14 @@ export default function App() {
         <div className="space-y-6 text-right" dir="rtl">
           {/* List of Registered Receipts */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <List className="w-5 h-5 text-indigo-500" />
-                {activeTab === 'list_receive_receipt' ? 'لیست رسیدهای دریافت ثبت شده' : 'لیست رسیدهای پرداخت ثبت شده'}
-              </h2>
+            <div className="bg-gradient-to-l from-emerald-50 to-white px-8 py-6 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                  <List className="w-6 h-6 text-emerald-600" />
+                  {activeTab === 'list_receive_receipt' ? 'کلاسمان رسیدهای دریافت وجه' : 'کلاسمان رسیدهای پرداخت وجه'}
+                </h1>
+                <p className="text-sm text-gray-500 font-medium mt-1">مشاهده و مدیریت اسناد و تراکنش‌های نقدی و بانکی صادر شده</p>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -2649,11 +2655,14 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <List className="w-5 h-5 text-indigo-500" />
-              مدیریت گروه‌بندی کالاها
-            </h2>
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <List className="w-6 h-6 text-indigo-600" />
+                مدیریت گروه‌بندی کالاها
+              </h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">ایجاد، ویرایش و مشاهده ساختار درختی رسته‌ها و گروه‌های ارائه‌ی خدمات و کالا</p>
+            </div>
             <button
               onClick={() => {
                 setEditingCategoryId(null);
@@ -2687,40 +2696,66 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {productCategories.map((c, index) => (
-                    <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-6 text-gray-500 w-16 text-center">
-                        {index + 1}
-                      </td>
-                      <td className="py-4 px-6 font-bold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
-                        {c.name}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600 text-sm whitespace-normal">
-                        {c.parentId ? productCategories.find(p => p.id === c.parentId || p.id.toString() === c.parentId?.toString())?.name : '-'}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600 text-sm whitespace-normal w-1/2">
-                        {c.description || '---'}
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleEditCategory(c)}
-                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
-                            title="ویرایش گروه"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCategory(c.id)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                            title="حذف گروه"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    const buildTree = (items, parentId = null, depth = 0) => {
+                      let result = [];
+                      const children = items.filter(c => 
+                        (parentId === null && !c.parentId) || 
+                        (parentId !== null && (c.parentId === parentId || c.parentId?.toString() === parentId?.toString()))
+                      );
+                      
+                      children.forEach(child => {
+                        result.push({ ...child, depth });
+                        result = result.concat(buildTree(items, child.id, depth + 1));
+                      });
+                      
+                      return result;
+                    };
+                    
+                    const flatTree = buildTree(productCategories);
+                    
+                    if (flatTree.length === 0) return null;
+                    
+                    return flatTree.map((c: any, index: number) => (
+                      <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-6 text-gray-500 w-16 text-center">
+                          {index + 1}
+                        </td>
+                        <td className="py-4 px-6 font-bold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
+                           <div className="flex items-center" style={{ paddingRight: `${c.depth * 20}px` }}>
+                             {c.depth > 0 && <span className="text-gray-300 ml-2">↳</span>}
+                             {c.name}
+                           </div>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600 text-sm whitespace-normal text-right">
+                           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                             {c.parentId ? productCategories.find(p => p.id === c.parentId || p.id.toString() === c.parentId?.toString())?.name : 'دسته اصلی'}
+                           </span>
+                        </td>
+                        <td className="py-4 px-6 text-gray-600 text-sm whitespace-normal w-1/3">
+                          {c.description || '---'}
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditCategory(c)}
+                              className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                              title="ویرایش گروه"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(c.id)}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                              title="حذف گروه"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
                 </tbody>
               </table>
             )}
@@ -2733,11 +2768,14 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <Package className="w-5 h-5 text-indigo-500" />
-              مدیریت کالا / خدمات
-            </h2>
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <Package className="w-6 h-6 text-indigo-600" />
+                مدیریت کالا / خدمات
+              </h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">تعریف و بروزرسانی بارکد، قیمت و اطلاعات پایه کلیه محصولات و سرویس‌ها</p>
+            </div>
             <button
               onClick={() => {
                 setEditingProductId(null);
@@ -2866,11 +2904,14 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <User className="w-5 h-5 text-indigo-500" />
-              مدیریت اشخاص
-            </h2>
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <User className="w-6 h-6 text-indigo-600" />
+                مدیریت اشخاص
+              </h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">پرونده‌ی اطلاعاتی جامع مشتریان، تامین‌کنندگان و کارمندان مجموعه</p>
+            </div>
             <button
               onClick={() => {
                 setEditingPersonId(null);
@@ -2990,11 +3031,14 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-indigo-500" />
-              مدیریت حساب‌های بانکی
-            </h2>
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <CreditCard className="w-6 h-6 text-indigo-600" />
+                مدیریت حساب‌های بانکی
+              </h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">فهرست و نظارت بر موجودی و گردش شبای درگاه‌های بانکی</p>
+            </div>
             <button
               onClick={() => {
                 setEditingAccountId(null);
@@ -3090,11 +3134,14 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-indigo-500" />
-              مدیریت صندوق‌ها و تنخواه
-            </h2>
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <Wallet className="w-6 h-6 text-indigo-600" />
+                مدیریت صندوق‌ها و تنخواه
+              </h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">مدیریت صندوق‌های نقدی درون‌سازمانی و تنخواه‌گردان‌ها</p>
+            </div>
             <button
               onClick={() => {
                 setEditingCashboxId(null);
@@ -3181,10 +3228,10 @@ export default function App() {
           dir="rtl"
         >
           {/* Header */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-gradient-to-l from-indigo-50 to-white rounded-2xl shadow-sm border border-gray-100 px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
-                <BarChart3 className="w-6 h-6 text-indigo-600 font-bold" />
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <BarChart3 className="w-6 h-6 text-indigo-600" />
                 گزارش مالی و تراز خزانه‌داری
               </h1>
               <p className="text-sm text-gray-500 mt-1">
@@ -3426,9 +3473,9 @@ export default function App() {
           dir="rtl"
         >
           {/* Header */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-gradient-to-l from-indigo-50 to-white rounded-2xl shadow-sm border border-gray-100 px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2.5">
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
                 <User className="w-6 h-6 text-violet-600 font-bold" />
                 کارت حساب و دفتر معین اشخاص
               </h1>
@@ -3863,11 +3910,11 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-3xl mx-auto"
         >
-          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <Store className="w-5 h-5 text-indigo-500" />
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100">
+            <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+              <Store className="w-6 h-6 text-indigo-600" />
               تنظیمات فروشگاه و کسب و کار
-            </h2>
+            </h1>
             <p className="mt-2 text-sm text-gray-500">
               اطلاعات پایه از قبیل نام کسب و کار، آدرس، تلفن و واحد پولی را مدیریت کنید.
             </p>
