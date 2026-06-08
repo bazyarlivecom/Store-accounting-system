@@ -11,6 +11,29 @@ body {
   background-color: #f3f4f6;
 }
 
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.styled-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.styled-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+.styled-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+.styled-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 @media print {
   body {
     background: white !important;
