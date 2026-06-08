@@ -67,8 +67,9 @@ export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [storeSettings, setStoreSettings] = useState({ storeName: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان' });
+  const [storeSettings, setStoreSettings] = useState<any>({ storeName: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان', isSetup: false });
   const [loading, setLoading] = useState(false);
+  const [requiresInitSetup, setRequiresInitSetup] = useState(false);
 
   // Receipts & Payments Form State
   const [receiptPersonId, setReceiptPersonId] = useState<string | number | ''>('');
@@ -167,6 +168,7 @@ export default function App() {
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
+  const [newCatParentId, setNewCatParentId] = useState<string | number | ''>('');
 
   const [submittingProduct, setSubmittingProduct] = useState(false);
 
@@ -293,10 +295,10 @@ export default function App() {
     
     try {
       if (editingCategoryId) {
-        await updateProductCategory(editingCategoryId, { name: newCatName, description: newCatDesc });
+        await updateProductCategory(editingCategoryId, { name: newCatName, description: newCatDesc, parentId: newCatParentId || null });
         setSuccessMsg('گروه‌بندی با موفقیت ویرایش شد.');
       } else {
-        await addProductCategory({ name: newCatName, description: newCatDesc });
+        await addProductCategory({ name: newCatName, description: newCatDesc, parentId: newCatParentId || null });
         setSuccessMsg('گروه‌بندی جدید ثبت شد.');
       }
       // re-fetch categories
@@ -324,6 +326,7 @@ export default function App() {
     setEditingCategoryId(cat.id);
     setNewCatName(cat.name);
     setNewCatDesc(cat.description || '');
+    setNewCatParentId(cat.parentId || '');
     setIsCategoryModalOpen(true);
   };
 
@@ -728,12 +731,15 @@ export default function App() {
   const fetchSettings = async () => {
     try {
       const data = await getStoreSettings();
-      if (data) {
+      if (data && (data as any).isSetup) {
         setStoreSettings(data as any);
         setSettingsForm(data as any);
         setInvoiceCurrency(data.currency || 'تومان');
         setExchangeRate(1);
         setExchangeRateInput('1');
+        setRequiresInitSetup(false);
+      } else {
+        setRequiresInitSetup(true);
       }
     } catch (error) {
       console.error('Error fetching settings', error);
@@ -744,10 +750,11 @@ export default function App() {
     e.preventDefault();
     setSubmittingSettings(true);
     try {
-      await saveStoreSettings(settingsForm as any);
+      const payload = { ...settingsForm, isSetup: true };
+      await saveStoreSettings(payload as any);
       await fetchSettings();
       setSuccessMsg('تنظیمات فروشگاه با موفقیت ذخیره شد');
-      
+      setRequiresInitSetup(false);
     } catch (error) {
       console.error('Error saving settings', error);
     } finally {
@@ -1143,6 +1150,80 @@ export default function App() {
     );
   }
 
+  if (requiresInitSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4" dir="rtl">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 max-w-lg w-full overflow-hidden flex flex-col"
+        >
+          <div className="bg-indigo-600 px-8 py-8 text-white flex flex-col items-center">
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-4">
+              <Store className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-black mb-1">راه‌اندازی اولیه فروشگاه</h2>
+            <p className="text-indigo-100 text-sm font-medium text-center">لطفاً اطلاعات اولیه سیستم را وارد کنید تا نرم‌افزار آماده استفاده شود.</p>
+          </div>
+          
+          <form onSubmit={handleSaveSettings} className="p-8 space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">نام شرکت / سیستم <span className="text-red-500">*</span></label>
+              <input 
+                type="text" 
+                required
+                value={settingsForm.storeName}
+                onChange={e => setSettingsForm({...settingsForm, storeName: e.target.value})}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 transition-colors"
+                placeholder="مثال: مدیریت یکپارچه کالا"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">شماره تماس/پشتیبانی</label>
+                <input 
+                  type="text" 
+                  value={settingsForm.phone}
+                  onChange={e => setSettingsForm({...settingsForm, phone: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 transition-colors text-right pl-4"
+                  dir="ltr"
+                  placeholder="021-..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">واحد پولی سیستم</label>
+                <select 
+                  value={settingsForm.currency}
+                  onChange={e => setSettingsForm({...settingsForm, currency: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 transition-colors font-bold text-indigo-700 bg-indigo-50"
+                >
+                  <option value="تومان">تومان</option>
+                  <option value="ریال">ریال</option>
+                  <option value="دلار">دلار (USD)</option>
+                  <option value="افغانی">افغانی (AFN)</option>
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1.5 font-bold flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  پس از ثبت قابل تغییر نمی‌باشد.
+                </p>
+              </div>
+            </div>
+            
+            <button 
+              type="submit" 
+              disabled={submittingSettings}
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-indigo-200 transition-all disabled:opacity-75 flex items-center justify-center gap-2"
+            >
+              <CheckCircle className="w-5 h-5" />
+              {submittingSettings ? 'در حال ثبت...' : 'تایید و ورود به نرم‌افزار'}
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <>
     <div className={`min-h-screen flex flex-col bg-gray-50/50 font-sans font-medium ${printingTransaction ? 'print:hidden' : ''}`} dir="rtl">
@@ -1172,8 +1253,8 @@ export default function App() {
         />
       )}
 
-      {/* Mobile Side Drawer (Visible only on mobile when menu is toggled) */}
-      <div className={`w-64 bg-white border-l border-gray-100 flex flex-col fixed inset-y-0 right-0 h-full z-50 transition-transform duration-300 transform md:hidden ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      {/* Sidebar */}
+      <aside className={`w-64 bg-white border-l border-gray-100 flex flex-col fixed inset-y-0 right-0 h-full z-40 transition-transform duration-300 transform md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col p-6 border-b border-gray-100 bg-gray-50/30">
           <div className="flex items-center gap-3">
             {storeSettings.logoUrl ? (
@@ -1638,40 +1719,18 @@ export default function App() {
             بروزرسانی سیستم
           </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Desktop Horizontal Navigation Header & Menu (Visible ONLY on desktop screens) */}
-      <div className="hidden md:flex flex-col bg-white sticky top-0 z-40 select-none shadow-xs border-b border-gray-100" dir="rtl">
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col w-full min-w-0 md:mr-64 transition-all duration-300">
         
-        {/* Top Segment: Brand details on right, Jalali Date & status in the middle, global actions on left */}
-        <div className="flex items-center justify-between px-8 py-3.5 bg-white border-b border-gray-100">
-          
-          {/* Brand/Logo Section */}
-          <div className="flex items-center gap-3.5 min-w-[240px]">
-            {storeSettings.logoUrl ? (
-              <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-xs flex items-center justify-center bg-white border border-gray-100 transition-all duration-300 hover:scale-105">
-                <img src={storeSettings.logoUrl} alt={storeSettings.storeName} className="w-full h-full object-contain" onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.parentElement?.classList.add('bg-indigo-600');
-                  e.currentTarget.parentElement!.innerHTML = '<svg class="w-5 h-5 text-white overflow-visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M3 15h6"/><path d="M3 18h6"/></svg>';
-                }} />
-              </div>
-            ) : (
-              <div className="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-sm transition-all duration-305 hover:scale-105">
-                <Receipt className="w-5 h-5" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-sm font-extrabold text-gray-900 tracking-tight truncate max-w-[170px]" title={storeSettings.storeName}>
-                {storeSettings.storeName || 'سیستم فاکتور'}
-              </h1>
-              <p className="text-[10px] text-gray-400 font-bold mt-0.5 leading-none">
-                {storeSettings.phone ? `تلفن: ${storeSettings.phone}` : 'سیستم مدیریت مـالی و حسابداری'}
-              </p>
-            </div>
+        {/* Desktop Header */}
+        <div className="hidden md:flex items-center justify-between p-4 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-3xs" dir="rtl">
+          <div className="text-gray-900 font-extrabold text-lg flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-indigo-600" />
+            سیستم مدیریت جامع شرکت
           </div>
-
-          {/* Central System Status & Live Date */}
           <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-50 border border-gray-100 rounded-full shadow-2xs">
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -1685,593 +1744,8 @@ export default function App() {
               {storeSettings.currency ? `ارز مبنا: ${storeSettings.currency}` : 'تومان'}
             </span>
           </div>
-
         </div>
 
-        {/* Bottom Menu Navbar Row (Seperated row below high-level header) */}
-        <div className="bg-slate-50/50 px-8 py-2.5 flex items-center justify-center border-t border-gray-100/30">
-          <nav className="flex flex-wrap items-center justify-center gap-4">
-
-            
-            {/* Category Option 1: Sales / Purchases */}
-            <div className="relative group/menu">
-              <button
-                type="button"
-                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
-                  ['create_sale', 'list_sale', 'create_purchase', 'list_purchase'].includes(activeTab)
-                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-md ring-2 ring-indigo-500/5'
-                    : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-100/30 border-transparent hover:border-gray-200/50'
-                }`}
-              >
-                <ShoppingCart className="w-4 h-4 text-indigo-500" />
-                <span>خرید و فروش</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-extrabold bg-indigo-100/60 text-indigo-700">
-                  {formatNumber(invoices.length)}
-                </span>
-                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
-              </button>
-              
-              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[320px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2.5 flex flex-col gap-1 ring-1 ring-black/5">
-                  
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('create_sale')}
-                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'create_sale'
-                        ? 'bg-indigo-50 text-indigo-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${activeTab === 'create_sale' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
-                      <Plus className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">ثبت فاکتور فروش</div>
-                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">صدور فاکتور رسمی مشتری با تسویه صندوق/بانک</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('list_sale')}
-                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'list_sale'
-                        ? 'bg-indigo-50 text-indigo-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-55'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${activeTab === 'list_sale' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
-                      <List className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-xs font-extrabold">فاکتورهای فروش</div>
-                        <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">لیست کامل صورت‌حساب‌ها، چاپ و جستجو</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-indigo-600">
-                        {formatNumber(invoices.filter(i => i.type !== 'purchase').length)}
-                      </span>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-gray-100/50 my-1 mx-2"></div>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('create_purchase')}
-                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'create_purchase'
-                        ? 'bg-amber-50 text-amber-800 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${activeTab === 'create_purchase' ? 'bg-amber-100 text-amber-805' : 'bg-amber-50 text-amber-500'}`}>
-                      <Plus className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">ثبت فاکتور خرید</div>
-                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">ورود هزینه و خرید اجناس از تامین‌کنندگان</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('list_purchase')}
-                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'list_purchase'
-                        ? 'bg-amber-50 text-amber-805 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${activeTab === 'list_purchase' ? 'bg-amber-100 text-amber-800' : 'bg-amber-50 text-amber-550'}`}>
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-extrabold">فاکتورهای خرید</div>
-                        <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">مدیریت فاکتورهای ورودی خرید و بدهی شرکت</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
-                        {formatNumber(invoices.filter(i => i.type === 'purchase').length)}
-                      </span>
-                    </div>
-                  </button>
-
-                </div>
-              </div>
-            </div>
-
-            {/* Category Option 2: Treasury / Payroll */}
-            <div className="relative group/menu">
-              <button
-                type="button"
-                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
-                  ['create_receive_receipt', 'list_receive_receipt', 'create_pay_receipt', 'list_pay_receipt', 'create_salary_payroll', 'list_salary_payroll'].includes(activeTab)
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-md ring-2 ring-emerald-500/5'
-                    : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-100/30 border-transparent hover:border-gray-200/50'
-                }`}
-              >
-                <Wallet className="w-4 h-4 text-emerald-500" />
-                <span>مالی و خزانه</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-extrabold bg-emerald-100/60 text-emerald-700">
-                  {formatNumber(transactions.length)}
-                </span>
-                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
-              </button>
-              
-              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[330px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
-                  
-                  {/* Receive receipts */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('create_receive_receipt')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'create_receive_receipt'
-                        ? 'bg-emerald-50 text-emerald-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'create_receive_receipt' ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-50 text-emerald-505'}`}>
-                      <Plus className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">صدور رسید دریافت</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">دریافت نقدی کالا یا اسناد بانکی چک</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('list_receive_receipt')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'list_receive_receipt'
-                        ? 'bg-emerald-50 text-emerald-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'list_receive_receipt' ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-50 text-emerald-505'}`}>
-                      <List className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-xs font-extrabold">رسیدهای دریافت وجوه</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">لیست کل دریافتی‌های صندوق و حواله نقد</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full text-emerald-600">
-                        {formatNumber(transactions.filter(t => t.type === 'receive').length)}
-                      </span>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
-
-                  {/* Pay receipts */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('create_pay_receipt')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'create_pay_receipt'
-                        ? 'bg-rose-50 text-rose-700 font-bold'
-                        : 'text-gray-755 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'create_pay_receipt' ? 'bg-rose-100 text-rose-700' : 'bg-rose-50 text-rose-500'}`}>
-                      <Plus className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">صدور رسید پرداخت</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">پرداخت نقدی، خرج کردن چک یا حواله به بستانکاران</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('list_pay_receipt')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'list_pay_receipt'
-                        ? 'bg-rose-50 text-rose-700 font-bold'
-                        : 'text-gray-755 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'list_pay_receipt' ? 'bg-rose-100 text-rose-700' : 'bg-rose-50 text-rose-500'}`}>
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-xs font-extrabold">رسیدهای پرداخت وجوه</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">لیست کل هزینه‌ها و مبالغ پرداختی</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full text-rose-600">
-                        {formatNumber(transactions.filter(t => t.type === 'pay').length)}
-                      </span>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
-
-                  {/* Salaries */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('create_salary_payroll')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'create_salary_payroll'
-                        ? 'bg-indigo-50 text-indigo-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'create_salary_payroll' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
-                      <Plus className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">ثبت کارکرد و سند حقوق</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">ثبت ارقام کارکرد، بیمه، تسویه ماهانه پرسنل</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('list_salary_payroll')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'list_salary_payroll'
-                        ? 'bg-indigo-50 text-indigo-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'list_salary_payroll' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-extrabold">فیش‌های حقوقی صادر شده</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مشاهده لیست تخصیص حقوق پرسنل و کارکردها</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full text-indigo-600">
-                        {formatNumber(transactions.filter(t => t.type === 'salary').length)}
-                      </span>
-                    </div>
-                  </button>
-
-                </div>
-              </div>
-            </div>
-
-            {/* Category Option 3: Reports */}
-            <div className="relative group/menu">
-              <button
-                type="button"
-                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
-                  ['financial_report', 'person_ledger'].includes(activeTab)
-                    ? 'bg-violet-50 text-violet-700 border-violet-200 shadow-md ring-2 ring-violet-500/5'
-                    : 'text-gray-600 hover:text-violet-700 hover:bg-violet-100/30 border-transparent hover:border-gray-200/50'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4 text-violet-500" />
-                <span>گزارش‌ها و سود و زیان</span>
-                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
-              </button>
-              
-              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[310px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
-                  
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('financial_report')}
-                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'financial_report'
-                        ? 'bg-blue-50 text-blue-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${activeTab === 'financial_report' ? 'bg-blue-100 text-blue-700' : 'bg-blue-50 text-blue-500'}`}>
-                      <BarChart3 className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">گزارش مالی و تراز کل</div>
-                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">ترازنامه مالی، خلاصه درآمدها بابت خدمات یا فروش</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('person_ledger')}
-                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'person_ledger'
-                        ? 'bg-violet-50 text-violet-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${activeTab === 'person_ledger' ? 'bg-violet-100 text-violet-700' : 'bg-violet-50 text-violet-500'}`}>
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">دفتر معین مخاطبین</div>
-                      <div className="text-[10px] text-gray-400 mt-1 font-medium leading-normal">صورت گردش مراجعان و اشخاص، وضعیت طلبکار/بدهکار</div>
-                    </div>
-                  </button>
-
-                </div>
-              </div>
-            </div>
-
-            {/* Category Option 4: Base Info */}
-            <div className="relative group/menu">
-              <button
-                type="button"
-                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
-                  ['products', 'persons', 'accounts', 'cashboxes'].includes(activeTab)
-                    ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-md ring-2 ring-amber-500/5'
-                    : 'text-gray-600 hover:text-amber-700 hover:bg-amber-100/30 border-transparent hover:border-gray-200/50'
-                }`}
-              >
-                <Store className="w-4 h-4 text-amber-500" />
-                <span>اطلاعات پایه</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-extrabold bg-amber-100/60 text-amber-700">
-                  {formatNumber(products.length + persons.length + accounts.length + cashboxes.length)}
-                </span>
-                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
-              </button>
-              
-              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[310px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
-                  
-                  {/* Product Categories */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('product_categories')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'product_categories'
-                        ? 'bg-amber-50 text-amber-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'product_categories' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-500'}`}>
-                      <List className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-extrabold">گروه‌بندی کالاها</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت دسته‌بندی اقلام</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
-                        {formatNumber(productCategories.length)}
-                      </span>
-                    </div>
-                  </button>
-                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
-                  
-                  {/* Products */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('products')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'products'
-                        ? 'bg-amber-50 text-amber-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'products' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-500'}`}>
-                      <Package className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-extrabold">کالاها و خدمات</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت لیست اقلام برای فروش یا فاکتور خرید</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
-                        {formatNumber(products.length)}
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Persons */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('persons')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'persons'
-                        ? 'bg-amber-50 text-amber-700 font-bold'
-                        : 'text-gray-755 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'persons' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-extrabold">طرف‌های حساب</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت آدرس، تلفن و نقش پرسنل/مشتریان</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
-                        {formatNumber(persons.length)}
-                      </span>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
-
-                  {/* Bank Accounts */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('accounts')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-205 text-right cursor-pointer ${
-                      activeTab === 'accounts'
-                        ? 'bg-amber-50 text-amber-700 font-bold'
-                        : 'text-gray-755 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'accounts' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-extrabold">حساب‌های بانکی مغازه</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">شبا، شماره کارت و مدیریت دارایی حساب‌ها</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
-                        {formatNumber(accounts.length)}
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Cashboxes */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('cashboxes')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'cashboxes'
-                        ? 'bg-amber-50 text-amber-700 font-bold'
-                        : 'text-gray-755 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'cashboxes' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
-                      <Wallet className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 flex items-center justify-between gap-1">
-                      <div>
-                        <div className="text-xs font-extrabold">صندوق‌ها و دخل نقدی</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت تنخواه‌ها و دخل‌های فیزیکی مغازه</div>
-                      </div>
-                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
-                        {formatNumber(cashboxes.length)}
-                      </span>
-                    </div>
-                  </button>
-
-                </div>
-              </div>
-            </div>
-
-            {/* Category Option 5: System Features */}
-            <div className="relative group/menu">
-              <button
-                type="button"
-                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
-                  ['checklist', 'settings', 'database', 'update'].includes(activeTab)
-                    ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-md ring-2 ring-rose-500/5'
-                    : 'text-gray-600 hover:text-rose-700 hover:bg-rose-100/30 border-transparent hover:border-gray-200/50'
-                }`}
-              >
-                <Settings className="w-4 h-4 text-rose-500" />
-                <span>امکانات سیستم</span>
-                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
-              </button>
-              
-              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[280px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
-                  
-                  {/* Checklist */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('checklist')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'checklist'
-                        ? 'bg-amber-50 text-amber-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'checklist' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
-                      <ListTodo className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">چک‌لیست توسعه</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">امکانات سیستم جامع</div>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
-
-                  {/* Settings */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('settings')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'settings'
-                        ? 'bg-indigo-50 text-indigo-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'settings' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
-                      <Settings className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">تنظیمات سیستمی</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت اطلاعات و لوگو</div>
-                    </div>
-                  </button>
-
-                  {/* Database */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('database')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'database'
-                        ? 'bg-rose-50 text-rose-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'database' ? 'bg-rose-100 text-rose-700' : 'bg-rose-50 text-rose-500'}`}>
-                      <Database className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">پایگاه داده (دیتابیس)</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت، پشتیبان‌گیری، بازیابی</div>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
-
-                  {/* Update */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('update')}
-                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
-                      activeTab === 'update'
-                        ? 'bg-emerald-50 text-emerald-700 font-bold'
-                        : 'text-gray-750 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg ${activeTab === 'update' ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-50 text-emerald-500'}`}>
-                      <RefreshCw className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-extrabold">بروزرسانی تغییرات</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">لود مجدد اپلیکیشن و سرور</div>
-                    </div>
-                  </button>
-
-                </div>
-              </div>
-            </div>
-
-          </nav>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col w-full min-w-0">
-        
         {/* Mobile Header */}
         <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center gap-3">
@@ -3577,6 +3051,7 @@ export default function App() {
                 setEditingCategoryId(null);
                 setNewCatName('');
                 setNewCatDesc('');
+                setNewCatParentId('');
                 setIsCategoryModalOpen(true);
               }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
@@ -3598,6 +3073,7 @@ export default function App() {
                   <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
                     <th className="py-4 px-6 text-right w-16 text-center">ردیف</th>
                     <th className="py-4 px-6 text-right">نام گروه</th>
+                    <th className="py-4 px-6 text-right">والد</th>
                     <th className="py-4 px-6 text-right">توضیحات</th>
                     <th className="py-4 px-6 w-24 text-center">عملیات</th>
                   </tr>
@@ -3610,6 +3086,9 @@ export default function App() {
                       </td>
                       <td className="py-4 px-6 font-bold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
                         {c.name}
+                      </td>
+                      <td className="py-4 px-6 text-gray-600 text-sm whitespace-normal">
+                        {c.parentId ? productCategories.find(p => p.id === c.parentId || p.id.toString() === c.parentId?.toString())?.name : '-'}
                       </td>
                       <td className="py-4 px-6 text-gray-600 text-sm whitespace-normal w-1/2">
                         {c.description || '---'}
@@ -4812,14 +4291,19 @@ export default function App() {
                   <select
                     value={settingsForm.currency}
                     onChange={e => setSettingsForm({...settingsForm, currency: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                    disabled={storeSettings.isSetup}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="تومان">تومان</option>
                     <option value="ریال">ریال</option>
                     <option value="دلار">دلار (USD)</option>
                     <option value="یورو">یورو (EUR)</option>
                     <option value="درهم">درهم امارات (AED)</option>
+                    <option value="افغانی">افغانی (AFN)</option>
                   </select>
+                  {storeSettings.isSetup && (
+                    <p className="text-[10px] text-gray-400 mt-1">واحد پولی سیستم پس از راه‌اندازی اولیه قابل تغییر نمی‌باشد.</p>
+                  )}
                 </div>
 
                 <div className="w-full text-right">
@@ -5237,6 +4721,22 @@ export default function App() {
                       onChange={(e) => setNewCatName(e.target.value)}
                       placeholder="مثال: لوازم بهداشتی"
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                    />
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      گروه والد (اختیاری)
+                    </label>
+                    <Select
+                      isRtl
+                      value={newCatParentId ? { value: newCatParentId, label: productCategories.find(c => c.id === newCatParentId || c.id.toString() === newCatParentId?.toString())?.name } : null}
+                      onChange={(option: any) => setNewCatParentId(option ? option.value : '')}
+                      options={productCategories.filter(c => c.id !== editingCategoryId).map(c => ({
+                        value: c.id.toString(),
+                        label: c.name
+                      })) as any}
+                      placeholder="انتخاب گروه والد..."
+                      isClearable
                     />
                   </div>
                   <div className="w-full">

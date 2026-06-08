@@ -17,7 +17,7 @@ export type ProductCategory = {
   id: string | number;
   name: string;
   description?: string;
-  parentId?: string | number;
+  parentId?: string | number | null;
 };
 
 export type Product = {
