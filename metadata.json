@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "سیستم مدیریت جامع شرکت",
+  "description": "نرم‌افزار جامع حسابداری فروشگاهی یکپارچه تحت وب",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
