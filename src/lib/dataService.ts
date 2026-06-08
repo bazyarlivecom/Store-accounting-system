@@ -297,3 +297,96 @@ export const deleteInvoice = async (id: string) => {
   const invoices = await getLocalData<any[]>('invoices', []);
   await saveLocalData('invoices', invoices.filter((p: any) => p.id !== id));
 };
+
+// Checkbooks
+export const getCheckbooks = async () => {
+  const data = await getLocalData<any[]>('checkbooks', []);
+  return data.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addCheckbook = async (record: any) => {
+  const data = await getLocalData<any[]>('checkbooks', []);
+  const now = Date.now();
+  const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
+  data.push(newItem);
+  await saveLocalData('checkbooks', data);
+  return newItem;
+};
+
+export const updateCheckbook = async (id: string, record: any) => {
+  const data = await getLocalData<any[]>('checkbooks', []);
+  const index = data.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    data[index] = { ...data[index], ...record, updatedAt: Date.now() };
+    await saveLocalData('checkbooks', data);
+    return data[index];
+  }
+  return null;
+};
+
+export const deleteCheckbook = async (id: string) => {
+  const data = await getLocalData<any[]>('checkbooks', []);
+  await saveLocalData('checkbooks', data.filter((p: any) => p.id !== id));
+};
+
+// Issued Checks
+export const getIssuedChecks = async () => {
+  const data = await getLocalData<any[]>('issued_checks', []);
+  return data.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addIssuedCheck = async (record: any) => {
+  const data = await getLocalData<any[]>('issued_checks', []);
+  const now = Date.now();
+  const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
+  data.push(newItem);
+  await saveLocalData('issued_checks', data);
+  return newItem;
+};
+
+export const updateIssuedCheck = async (id: string, record: any) => {
+  const data = await getLocalData<any[]>('issued_checks', []);
+  const index = data.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    data[index] = { ...data[index], ...record, updatedAt: Date.now() };
+    await saveLocalData('issued_checks', data);
+    return data[index];
+  }
+  return null;
+};
+
+export const deleteIssuedCheck = async (id: string) => {
+  const data = await getLocalData<any[]>('issued_checks', []);
+  await saveLocalData('issued_checks', data.filter((p: any) => p.id !== id));
+};
+
+// Received Checks
+export const getReceivedChecks = async () => {
+  const data = await getLocalData<any[]>('received_checks', []);
+  return data.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addReceivedCheck = async (record: any) => {
+  const data = await getLocalData<any[]>('received_checks', []);
+  const now = Date.now();
+  const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
+  data.push(newItem);
+  await saveLocalData('received_checks', data);
+  return newItem;
+};
+
+export const updateReceivedCheck = async (id: string, record: any) => {
+  const data = await getLocalData<any[]>('received_checks', []);
+  const index = data.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    data[index] = { ...data[index], ...record, updatedAt: Date.now() };
+    await saveLocalData('received_checks', data);
+    return data[index];
+  }
+  return null;
+};
+
+export const deleteReceivedCheck = async (id: string) => {
+  const data = await getLocalData<any[]>('received_checks', []);
+  await saveLocalData('received_checks', data.filter((p: any) => p.id !== id));
+};

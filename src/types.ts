@@ -11,6 +11,46 @@ export type Person = {
   personType: 'real' | 'legal';
   role: 'customer' | 'employee' | 'supplier'; 
   phone: string; 
+  bankName?: string;
+  bankAccountNumber?: string;
+  cardNumber?: string;
+  shebaNumber?: string;
+  additionalNotes?: string;
+};
+
+export type Checkbook = {
+  id: string | number;
+  accountId: string | number;
+  bankName?: string;
+  startNumber: string;
+  endNumber: string;
+  totalLeaves: number;
+  issuedDate: string;
+};
+
+export type IssuedCheck = {
+  id: string | number;
+  checkbookId: string | number;
+  checkNumber: string;
+  amount: number;
+  issueDate: string;
+  dueDate: string;
+  payeeId: string | number;
+  status: 'blank' | 'issued' | 'cashed' | 'bounced' | 'cancelled';
+  description?: string;
+};
+
+export type ReceivedCheck = {
+  id: string | number;
+  checkNumber: string;
+  bankName: string;
+  branchName?: string;
+  amount: number;
+  receiveDate: string;
+  dueDate: string;
+  payerId: string | number;
+  status: 'received' | 'deposited' | 'cashed' | 'bounced' | 'returned';
+  description?: string;
 };
 
 export type ProductCategory = {

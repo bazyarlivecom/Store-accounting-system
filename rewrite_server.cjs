@@ -1,4 +1,6 @@
-import express from 'express';
+const fs = require('fs');
+
+const serverCode = `import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { exec } from 'child_process';
@@ -12,12 +14,12 @@ let db: DatabaseSync;
 
 async function initDB() {
   db = new DatabaseSync(SQLITE_FILE);
-  db.exec(`
+  db.exec(\`
     CREATE TABLE IF NOT EXISTS store (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )
-  `);
+  \`);
 
   // Migrate JSON to SQLite if exists
   try {
@@ -108,9 +110,9 @@ async function startServer() {
         backupData[row.key] = JSON.parse(row.value);
       }
       
-      const fileName = `backup-${Date.now()}.json`;
+      const fileName = \`backup-\${Date.now()}.json\`;
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+      res.setHeader('Content-Disposition', \`attachment; filename=\${fileName}\`);
       res.send(JSON.stringify(backupData, null, 2));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -156,8 +158,11 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(\`Server running on http://localhost:\${PORT}\`);
   });
 }
 
 startServer();
+`
+
+fs.writeFileSync('server.ts', serverCode);

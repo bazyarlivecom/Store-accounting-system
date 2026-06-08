@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList , Activity, Clock, History } from 'lucide-react';
+import { Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addCommas, removeCommas, numberToWords } from './utils/format';
 import DatePicker from "react-multi-date-picker";
@@ -7,9 +7,12 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './lib/AuthContext';
-import { getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
+import { getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
 import DatabaseDashboard from './components/DatabaseDashboard';
 import SystemChecklist from './components/SystemChecklist';
+import ProductCardModal from './components/ProductCardModal';
+import CheckManagement from './components/CheckManagement';
+import FinancialTransfer from './components/FinancialTransfer';
 import { Person, Product, Account, Cashbox, InvoiceItem } from './types';
 
 const getBaseValueInToman = (cur: string) => {
@@ -39,7 +42,9 @@ const showInvoiceCurrency = (c: string) => {
 
 const customPersonFilter = (option: any, inputValue: string) => {
   if (!inputValue) return true;
-  return (option.data.searchStr || option.label || '').toLowerCase().includes(inputValue.toLowerCase());
+  const terms = inputValue.toLowerCase().split(' ').filter(Boolean);
+  const searchable = (option.data.searchStr || option.label || '').toLowerCase();
+  return terms.every(term => searchable.includes(term));
 };
 
 const mapPersonToOption = (p: any) => ({
@@ -117,8 +122,19 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+    const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [personSearchTerm, setPersonSearchTerm] = useState('');
+  const filteredPersons = persons.filter(p => {
+    if (!personSearchTerm) return true;
+    const terms = personSearchTerm.toLowerCase().split(' ').filter(Boolean);
+    const searchable = `${p.name || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.phone || ''} ${p.nationalId || ''} ${p.personCode || ''}`.toLowerCase();
+    return terms.every(term => searchable.includes(term));
+  });
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [checkbooks, setCheckbooks] = useState<any[]>([]);
+  const [issuedChecks, setIssuedChecks] = useState<any[]>([]);
+  const [receivedChecks, setReceivedChecks] = useState<any[]>([]);
+
   const [storeSettings, setStoreSettings] = useState<any>({ storeName: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان', isSetup: false });
   const [loading, setLoading] = useState(false);
   const [requiresInitSetup, setRequiresInitSetup] = useState(false);
@@ -245,6 +261,14 @@ export default function App() {
   const [newPersonRole, setNewPersonRole] = useState<'customer' | 'employee' | 'supplier'>('customer');
   const [newPersonPhone, setNewPersonPhone] = useState('');
   const [submittingPerson, setSubmittingPerson] = useState(false);
+  const [isPersonExtraModalOpen, setIsPersonExtraModalOpen] = useState(false);
+  const [personExtraId, setPersonExtraId] = useState<string|number|null>(null);
+  const [personBankName, setPersonBankName] = useState('');
+  const [personBankAcc, setPersonBankAcc] = useState('');
+  const [personCard, setPersonCard] = useState('');
+  const [personSheba, setPersonSheba] = useState('');
+  const [personNotes, setPersonNotes] = useState('');
+
 
   // Bank Account modal & form state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -264,6 +288,7 @@ export default function App() {
   const [newCashboxBalance, setNewCashboxBalance] = useState('');
   const [submittingCashbox, setSubmittingCashbox] = useState(false);
 
+  const [viewingProduct, setViewingProduct] = useState<any>(null);
   const [editingProductId, setEditingProductId] = useState<string | number | null>(null);
   const [editingPersonId, setEditingPersonId] = useState<string | number | null>(null);
   const [editingAccountId, setEditingAccountId] = useState<string | number | null>(null);
@@ -588,6 +613,7 @@ export default function App() {
       
       await Promise.all([
         fetchTransactions(),
+          fetchChecks(),
         fetchAccounts(),
         fetchCashboxes()
       ]);
@@ -873,7 +899,15 @@ export default function App() {
   }, [storeSettings?.storeName]);
 
   useEffect(() => {
-    const fetchData = async () => {
+      const fetchChecks = async () => {
+    try {
+      const cb = await getCheckbooks(); setCheckbooks(cb as any);
+      const ic = await getIssuedChecks(); setIssuedChecks(ic as any);
+      const rc = await getReceivedChecks(); setReceivedChecks(rc as any);
+    } catch(err) { console.error('fetchChecks error', err); }
+  };
+  const fetchData = async () => {
+
       setLoading(true);
       try {
         await Promise.all([
@@ -1275,6 +1309,8 @@ export default function App() {
               { id: 'product_categories', label: 'گروه بندی', icon: <List className="w-4 h-4" /> },
               { id: 'persons', label: 'اشخاص', icon: <Users className="w-4 h-4" /> },
               { id: 'accounts', label: 'حساب‌های بانکی', icon: <CreditCard className="w-4 h-4" /> },
+             { id: 'checks', label: 'چک‌ها', icon: <CreditCard className="w-4 h-4" /> },
+             { id: 'transfer', label: 'انتقال وجه', icon: <ArrowRightLeft className="w-4 h-4" /> },
               { id: 'cashboxes', label: 'صندوق‌ها', icon: <Wallet className="w-4 h-4" /> },
               { id: 'settings', label: 'تنظیمات', icon: <Settings className="w-4 h-4" /> },
               { id: 'database', label: 'پایگاه داده', icon: <Database className="w-4 h-4" /> },
@@ -1509,8 +1545,23 @@ export default function App() {
             </div>
           )}
           
+                    <div className="mx-6 mt-6">
+            <div className="relative">
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <Search className="w-5 h-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm"
+                placeholder="جستجوی سریع شخص (نام، شماره تماس، کد ملی، شماره شخص)..."
+                value={personSearchTerm}
+                onChange={(e) => setPersonSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          
           <div className="p-0 overflow-x-auto">
-            {persons.length === 0 ? (
+            {filteredPersons.length === 0 ? (
               <div className="p-12 text-center text-gray-500">
                 <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p>هیچ شخصی یافت نشد.</p>
@@ -1530,7 +1581,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {persons.map((p, index) => (
+                  {filteredPersons.map((p, index) => (
                     <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-4 px-6 text-gray-500 w-16 text-center">
                         {index + 1}
@@ -1570,6 +1621,21 @@ export default function App() {
                             title="مشاهده کارت حساب"
                           >
                             <FileText className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPersonExtraId(p.id);
+                              setPersonBankName(p.bankName || '');
+                              setPersonBankAcc(p.bankAccountNumber || '');
+                              setPersonCard(p.cardNumber || '');
+                              setPersonSheba(p.shebaNumber || '');
+                              setPersonNotes(p.additionalNotes || '');
+                              setIsPersonExtraModalOpen(true);
+                            }}
+                            className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors inline-block"
+                            title="اطلاعات تکمیلی"
+                          >
+                            <Info className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleEditPerson(p)}
@@ -2475,6 +2541,10 @@ export default function App() {
             );
           })()}
         </motion.div>
+            ) : activeTab === 'checks' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement /></motion.div>
+            ) : activeTab === 'transfer' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
       ) : activeTab === 'settings' ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -2725,7 +2795,7 @@ export default function App() {
       ) : activeTab === 'checklist' ? (
         <SystemChecklist />
       ) : null}
-          {(!['products', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'person_ledger', 'database', 'update', 'checklist'].includes(activeTab)) && renderTabContent()}
+          {(!['products', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'person_ledger', 'database', 'update', 'checklist', 'checks', 'transfer'].includes(activeTab)) && renderTabContent()}
 
 
       <AnimatePresence>
@@ -3002,7 +3072,110 @@ export default function App() {
           </div>
         )}
 
-        {isProductModalOpen && (
+                {isGroupPriceModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-2xl w-full max-w-xl flex flex-col shadow-xl">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                 <h3 className="text-lg font-bold flex items-center gap-2 text-gray-800"><Percent className="w-5 h-5 text-emerald-500" /> بروزرسانی گروهی لیست قیمت</h3>
+                 <button onClick={() => setIsGroupPriceModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-6">
+                <form id="groupPriceForm" onSubmit={(e) => {
+                  e.preventDefault();
+                  confirmAction('آیا از بروزرسانی گروهی قیمت‌ها اطمینان دارید؟', async () => {
+                     const isInc = groupUpdateDirection === 'increase';
+                     const isFix = groupUpdateAmountType === 'fixed';
+                     const val = Number(groupUpdateAmount.replace(/,/g, ''));
+                     let targets = products;
+                     
+                     if (groupUpdateType === 'category' && groupUpdateTargetCategory !== 'all') {
+                        targets = products.filter(p => p.category === groupUpdateTargetCategory || p.categoryId === groupUpdateTargetCategory);
+                     } else if (groupUpdateType === 'single' && groupUpdateTargetProduct) {
+                        targets = products.filter(p => p.id.toString() === groupUpdateTargetProduct);
+                     }
+                     
+                     for (let p of targets) {
+                        let newSell = Number(p.price || 0);
+                        let newBuy = Number(p.purchasePrice || 0);
+                        
+                        if (groupUpdatePriceTarget === 'sell' || groupUpdatePriceTarget === 'both') {
+                           if (isFix) { newSell = isInc ? newSell + val : newSell - val; }
+                           else { newSell = isInc ? newSell * (1 + val/100) : newSell * (1 - val/100); }
+                        }
+                        if (groupUpdatePriceTarget === 'buy' || groupUpdatePriceTarget === 'both') {
+                           if (isFix) { newBuy = isInc ? newBuy + val : newBuy - val; }
+                           else { newBuy = isInc ? newBuy * (1 + val/100) : newBuy * (1 - val/100); }
+                        }
+                        await updateProduct(p.id.toString(), { ...p, price: Math.max(0, newSell), purchasePrice: Math.max(0, newBuy) });
+                     }
+                     
+                     await fetchProducts();
+                     setIsGroupPriceModalOpen(false);
+                  });
+                }} className="space-y-5">
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="block text-sm font-bold mb-1">نوع بروزرسانی</label>
+                       <select value={groupUpdateType} onChange={e => setGroupUpdateType(e.target.value as any)} className="w-full p-2 border rounded-xl">
+                          <option value="category">روی دسته‌بندی</option>
+                          <option value="single">روی کالای خاص</option>
+                       </select>
+                     </div>
+                     <div>
+                       <label className="block text-sm font-bold mb-1">هدف اعمال</label>
+                       {groupUpdateType === 'category' ? (
+                          <select value={groupUpdateTargetCategory} onChange={e => setGroupUpdateTargetCategory(e.target.value)} className="w-full p-2 border rounded-xl">
+                             <option value="all">کلیه محصولات سیستم</option>
+                             {productCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                       ) : (
+                          <Select
+                            isRtl
+                            options={products.map(p => ({value: p.id.toString(), label: p.name}))}
+                            onChange={(o: any) => setGroupUpdateTargetProduct(o ? o.value : '')}
+                            placeholder="انتخاب کالا"
+                          />
+                       )}
+                     </div>
+                   </div>
+                   <div className="grid grid-cols-3 gap-4">
+                     <div>
+                       <label className="block text-sm font-bold mb-1">تغییر</label>
+                       <select value={groupUpdateDirection} onChange={e => setGroupUpdateDirection(e.target.value as any)} className="w-full p-2 border rounded-xl">
+                          <option value="increase">افزایش</option>
+                          <option value="decrease">کاهش</option>
+                       </select>
+                     </div>
+                     <div>
+                       <label className="block text-sm font-bold mb-1">نوع مقدار</label>
+                       <select value={groupUpdateAmountType} onChange={e => setGroupUpdateAmountType(e.target.value as any)} className="w-full p-2 border rounded-xl">
+                          <option value="percent">درصد (%)</option>
+                          <option value="fixed">مبلغ ثابت (تومان)</option>
+                       </select>
+                     </div>
+                     <div>
+                       <label className="block text-sm font-bold mb-1">اعمال قیمت</label>
+                       <select value={groupUpdatePriceTarget} onChange={e => setGroupUpdatePriceTarget(e.target.value as any)} className="w-full p-2 border rounded-xl">
+                          <option value="sell">قیمت فروش</option>
+                          <option value="buy">قیمت خرید</option>
+                          <option value="both">خرید و فروش</option>
+                       </select>
+                     </div>
+                   </div>
+                   <div>
+                       <label className="block text-sm font-bold mb-1">مقدار افزایشی/کاهشی</label>
+                       <CurrencyInput value={groupUpdateAmount} onChange={(e: any) => setGroupUpdateAmount(e.target.value)} placeholder={groupUpdateAmountType === 'percent' ? 'مثال: 15' : 'مثال: 10000'} className="w-full p-2 border rounded-xl" />
+                   </div>
+                </form>
+              </div>
+              <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+                 <button type="button" onClick={() => setIsGroupPriceModalOpen(false)} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-xl font-bold">انصراف</button>
+                 <button form="groupPriceForm" type="submit" className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold">اجرای تغییرات</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+{isProductModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -3213,6 +3386,88 @@ export default function App() {
           </div>
         )}
 
+        
+        {isPersonExtraModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-lg flex flex-col"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <Info className="w-5 h-5 text-emerald-500" />
+                  ثبت اطلاعات تکمیلی بانکی و یادداشت‌ها
+                </h3>
+                <button
+                  onClick={() => setIsPersonExtraModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <form id="personExtraForm" onSubmit={async (e) => {
+                  e.preventDefault();
+                  confirmAction('آیا از ذخیره اطلاعات بانکی و تکمیلی اطمینان دارید؟', async () => {
+                  if (personExtraId) {
+                    const existing = persons.find(p => p.id === personExtraId);
+                    if (existing) {
+                      const updated = await updatePerson(personExtraId as string, { ...existing, bankName: personBankName, bankAccountNumber: personBankAcc, cardNumber: personCard, shebaNumber: personSheba, additionalNotes: personNotes });
+                      if (updated) { setPersons(persons.map(p => p.id === personExtraId ? updated : p)); }
+                    }
+                  }
+                  setIsPersonExtraModalOpen(false);
+                });
+                }} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">نام بانک</label>
+                      <input type="text" value={personBankName} onChange={(e) => setPersonBankName(e.target.value)} className="w-full px-4 py-2 border rounded-xl" placeholder="مثال: ملت" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">شماره حساب</label>
+                      <input type="text" value={personBankAcc} onChange={(e) => setPersonBankAcc(e.target.value)} className="w-full px-4 py-2 border rounded-xl" dir="ltr" placeholder="123456789" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">شماره کارت</label>
+                      <input type="text" value={personCard} onChange={(e) => setPersonCard(e.target.value)} className="w-full px-4 py-2 border rounded-xl" dir="ltr" placeholder="6104-337X-XXXX-XXXX" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">شماره شبا</label>
+                      <div className="relative">
+                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-mono">IR</span>
+                         <input type="text" value={personSheba} onChange={(e) => setPersonSheba(e.target.value)} className="w-full px-4 py-2 pl-9 border rounded-xl text-left" dir="ltr" placeholder="123456..." />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">یادداشت‌های اضافی اطلاعات شخص (آدرس‌های بیشتر و ...)</label>
+                      <textarea value={personNotes} onChange={(e) => setPersonNotes(e.target.value)} className="w-full px-4 py-2 border rounded-xl" rows={3} placeholder="یادداشت و اطلاعات بیشتر خود را وارد کنید..." />
+                  </div>
+                </form>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 rounded-b-2xl">
+                <button
+                  type="button"
+                  onClick={() => setIsPersonExtraModalOpen(false)}
+                  className="px-5 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors text-sm"
+                >
+                  انصراف
+                </button>
+                <button
+                  form="personExtraForm"
+                  type="submit"
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors shadow-sm text-sm flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  ذخیره اطلاعات تکمیلی
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
         {isPersonModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
             <motion.div
@@ -4149,7 +4404,7 @@ export default function App() {
   );
 }
 
-const numToPersianWords = (num: number): string => {
+function numToPersianWords(num: number): string {
   if (num === 0) return 'صفر';
   const yekan = ['', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه'];
   const dahgan = ['', 'ده', 'بیست', 'سی', 'چهل', 'پنجاه', 'شصت', 'هفتاد', 'هشتاد', 'نود'];
