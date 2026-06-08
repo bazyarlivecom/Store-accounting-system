@@ -6,7 +6,7 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './lib/AuthContext';
-import { getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
+import { getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
 import DatabaseDashboard from './components/DatabaseDashboard';
 import SystemChecklist from './components/SystemChecklist';
 import { Person, Product, Account, Cashbox, InvoiceItem } from './types';
@@ -38,7 +38,7 @@ const showInvoiceCurrency = (c: string) => {
 
 export default function App() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database'>('create_sale');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'product_categories' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
     sales_purchases: true,
@@ -72,6 +72,7 @@ export default function App() {
 
   // Receipts & Payments Form State
   const [receiptPersonId, setReceiptPersonId] = useState<string | number | ''>('');
+  const [printingTransaction, setPrintingTransaction] = useState<any>(null);
   const [receiptDate, setReceiptDate] = useState<Date | any>(new Date());
   const [receiptAmount, setReceiptAmount] = useState<string>('');
   const [receiptResourceType, setReceiptResourceType] = useState<'bank' | 'cashbox'>('bank');
@@ -149,7 +150,24 @@ export default function App() {
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
   const [newProductType, setNewProductType] = useState<'product' | 'service'>('product');
-  const [newProductCategory, setNewProductCategory] = useState('');
+  const [newProductCategoryId, setNewProductCategoryId] = useState('');
+  
+  // Extended product fields
+  const [newProductCode, setNewProductCode] = useState('');
+  const [newProductBarcode, setNewProductBarcode] = useState('');
+  const [newProductPurchasePrice, setNewProductPurchasePrice] = useState('');
+  const [newProductStock, setNewProductStock] = useState('');
+  const [newProductMinStock, setNewProductMinStock] = useState('');
+  const [newProductUnit, setNewProductUnit] = useState('');
+  const [newProductDesc, setNewProductDesc] = useState('');
+
+  // Categories list
+  const [productCategories, setProductCategories] = useState<any[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+
   const [submittingProduct, setSubmittingProduct] = useState(false);
 
   // Person state
@@ -206,8 +224,11 @@ export default function App() {
     try {
       const data = await getProducts();
       setProducts(data as any);
+      
+      const cats = await getProductCategories();
+      setProductCategories(cats as any);
     } catch (error) {
-      console.error('Error fetching products', error);
+      console.error('Error fetching products or categories', error);
     }
   };
 
@@ -218,35 +239,92 @@ export default function App() {
     setSubmittingProduct(true);
     try {
       const isEdit = editingProductId !== null;
+      const catName = productCategories.find(c => String(c.id) === String(newProductCategoryId))?.name || 'عمومی';
+      
       const payload = { 
         name: newProductName, 
         price: Number(newProductPrice),
-        buyPrice: Number(newProductPrice), // Adding for firebase blueprint validation
+        buyPrice: Number(newProductPurchasePrice || 0), // Adding for firebase blueprint validation
         sellPrice: Number(newProductPrice), // Adding for firebase blueprint validation
         type: newProductType,
-        category: newProductCategory || 'عمومی'
+        categoryId: newProductCategoryId,
+        category: catName,
+        code: newProductCode,
+        barcode: newProductBarcode,
+        purchasePrice: Number(newProductPurchasePrice || 0),
+        stock: Number(newProductStock || 0),
+        minStock: Number(newProductMinStock || 0),
+        unit: newProductUnit,
+        description: newProductDesc
       };
 
       if (isEdit) {
         await updateProduct(editingProductId.toString(), payload);
+        setSuccessMsg('کالا با موفقیت ویرایش شد.');
       } else {
         await addProduct(payload);
+        setSuccessMsg('کالای جدید با موفقیت ثبت شد.');
       }
       
       await fetchProducts();
       setNewProductName('');
       setNewProductPrice('');
       setNewProductType('product');
-      setNewProductCategory('');
+      setNewProductCategoryId('');
+      setNewProductCode('');
+      setNewProductBarcode('');
+      setNewProductPurchasePrice('');
+      setNewProductStock('');
+      setNewProductMinStock('');
+      setNewProductUnit('');
+      setNewProductDesc('');
       setEditingProductId(null);
       setIsProductModalOpen(false);
-      setSuccessMsg(isEdit ? 'کالا با موفقیت ویرایش شد' : 'کالا یا خدمات با موفقیت اضافه شد');
-      
     } catch (error) {
       console.error('Error saving product', error);
+      setSuccessMsg('خطا در ثبت کالا.'); // We don't have showError apparently
     } finally {
       setSubmittingProduct(false);
     }
+  };
+
+  const handleSaveCategory = async () => {
+    if (!newCatName) return;
+    
+    try {
+      if (editingCategoryId) {
+        await updateProductCategory(editingCategoryId, { name: newCatName, description: newCatDesc });
+        setSuccessMsg('گروه‌بندی با موفقیت ویرایش شد.');
+      } else {
+        await addProductCategory({ name: newCatName, description: newCatDesc });
+        setSuccessMsg('گروه‌بندی جدید ثبت شد.');
+      }
+      // re-fetch categories
+      const fetchedCats = await getProductCategories();
+      setProductCategories(fetchedCats as any);
+      setIsCategoryModalOpen(false);
+    } catch (err) {
+      console.error('Error saving category', err);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm('آیا از حذف این گروه‌بندی اطمینان دارید؟')) return;
+    try {
+      await deleteProductCategory(id);
+      setSuccessMsg('گروه‌بندی حذف شد.');
+      const fetchedCats = await getProductCategories();
+      setProductCategories(fetchedCats as any);
+    } catch (err) {
+      console.error('Error deleting category', err);
+    }
+  };
+
+  const handleEditCategory = (cat: any) => {
+    setEditingCategoryId(cat.id);
+    setNewCatName(cat.name);
+    setNewCatDesc(cat.description || '');
+    setIsCategoryModalOpen(true);
   };
 
   const handleDeleteProduct = async (id: number | string) => {
@@ -609,7 +687,7 @@ export default function App() {
     setNewProductName(p.name);
     setNewProductPrice(p.price.toString());
     setNewProductType(p.type);
-    setNewProductCategory(p.category);
+    setNewProductCategoryId(p.category);
     setIsProductModalOpen(true);
   };
 
@@ -1066,7 +1144,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50/50 font-sans font-medium" dir="rtl">
+    <>
+    <div className={`min-h-screen flex flex-col bg-gray-50/50 font-sans font-medium ${printingTransaction ? 'print:hidden' : ''}`} dir="rtl">
       
       {notification && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -1957,6 +2036,31 @@ export default function App() {
               <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[310px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
                   
+                  {/* Product Categories */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('product_categories')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'product_categories'
+                        ? 'bg-amber-50 text-amber-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'product_categories' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-500'}`}>
+                      <List className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 flex items-center justify-between gap-1">
+                      <div>
+                        <div className="text-xs font-extrabold">گروه‌بندی کالاها</div>
+                        <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت دسته‌بندی اقلام</div>
+                      </div>
+                      <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
+                        {formatNumber(productCategories.length)}
+                      </span>
+                    </div>
+                  </button>
+                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
+                  
                   {/* Products */}
                   <button
                     type="button"
@@ -2218,14 +2322,14 @@ export default function App() {
               <Select
                 isRtl
                 isSearchable={true}
-                value={customerId ? { value: customerId, label: persons.find(c => c.id === customerId)?.name } : null}
+                value={customerId ? { value: customerId, label: persons.find(c => c.id === customerId)?.personCode ? '[' + persons.find(c => c.id === customerId)?.personCode + '] ' + persons.find(c => c.id === customerId)?.name : persons.find(c => c.id === customerId)?.name } : null}
                 onChange={(option: any) => setCustomerId(option ? option.value : '')}
                 options={[...persons].sort((a, b) => {
                   const targetRole = invoiceType === 'sale' ? 'customer' : 'supplier';
                   if (a.role === targetRole && b.role !== targetRole) return -1;
                   if (a.role !== targetRole && b.role === targetRole) return 1;
                   return 0;
-                }).map(c => ({ value: c.id.toString(), label: `${c.name} (${c.role === 'customer' ? 'مشتری' : c.role === 'supplier' ? 'تامین کننده' : 'کارمند'})` })) as any}
+                }).map(c => ({ value: c.id.toString(), label: `${c.personCode ? '[' + c.personCode + '] ' : ''}${c.name} (${c.role === 'customer' ? 'مشتری' : c.role === 'supplier' ? 'تامین کننده' : 'کارمند'})` })) as any}
                 placeholder={invoiceType === 'sale' ? "جستجو و انتخاب خریدار..." : "جستجو و انتخاب فروشنده..."}
                 noOptionsMessage={() => "نتیجه‌ای یافت نشد"}
                 styles={{
@@ -2745,11 +2849,11 @@ export default function App() {
                   </label>
                   <Select
                     isRtl
-                    value={receiptPersonId ? { value: receiptPersonId, label: persons.find(p => p.id === receiptPersonId)?.name } : null}
+                    value={receiptPersonId ? { value: receiptPersonId, label: persons.find(p => p.id === receiptPersonId)?.personCode ? '[' + persons.find(p => p.id === receiptPersonId)?.personCode + '] ' + persons.find(p => p.id === receiptPersonId)?.name : persons.find(p => p.id === receiptPersonId)?.name } : null}
                     onChange={(option: any) => setReceiptPersonId(option ? option.value : '')}
                     options={persons.map(p => ({
                       value: p.id.toString(),
-                      label: `${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'})`
+                      label: `${p.personCode ? '[' + p.personCode + '] ' : ''}${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند'})`
                     })) as any}
                     placeholder="انتخاب طرف حساب..."
                     noOptionsMessage={() => "شخصی یافت نشد"}
@@ -2966,11 +3070,11 @@ export default function App() {
                     </label>
                     <Select
                       isRtl
-                      value={salaryPersonId ? { value: salaryPersonId, label: persons.find(p => p.id === salaryPersonId)?.name } : null}
+                      value={salaryPersonId ? { value: salaryPersonId, label: persons.find(p => p.id === salaryPersonId)?.personCode ? '[' + persons.find(p => p.id === salaryPersonId)?.personCode + '] ' + persons.find(p => p.id === salaryPersonId)?.name : persons.find(p => p.id === salaryPersonId)?.name } : null}
                       onChange={(option: any) => setSalaryPersonId(option ? option.value : '')}
                       options={persons.filter(p => p.role === 'employee').map(p => ({
                         value: p.id.toString(),
-                        label: p.name
+                        label: p.personCode ? '[' + p.personCode + '] ' + p.name : p.name
                       })) as any}
                       placeholder="انتخاب کارمند..."
                       noOptionsMessage={() => "کارمندی یافت نشد"}
@@ -3342,6 +3446,13 @@ export default function App() {
                                 </button>
                               )}
                               <button
+                                onClick={() => setPrintingTransaction(t)}
+                                className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-2 rounded-lg transition-all inline-block"
+                                title="پیش‌نمایش و چاپ رسید"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                              <button
                                 onClick={() => handleDeleteTransaction(t.id)}
                                 className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-2 rounded-lg transition-all inline-block"
                                 title="حذف سند حقوق"
@@ -3428,6 +3539,13 @@ export default function App() {
                           </td>
                           <td className="py-4 px-6 text-center">
                             <button
+                              onClick={() => setPrintingTransaction(t)}
+                              className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-2 rounded-lg transition-all"
+                              title="پیش‌نمایش و چاپ سند"
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                            <button
                               onClick={() => handleDeleteTransaction(t.id)}
                               className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-2 rounded-lg transition-all"
                               title="حذف سند"
@@ -3443,6 +3561,84 @@ export default function App() {
             </div>
           </div>
         </div>
+      ) : activeTab === 'product_categories' ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div className="bg-gray-50/50 px-6 py-5 border-b border-gray-100 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <List className="w-5 h-5 text-indigo-500" />
+              مدیریت گروه‌بندی کالاها
+            </h2>
+            <button
+              onClick={() => {
+                setEditingCategoryId(null);
+                setNewCatName('');
+                setNewCatDesc('');
+                setIsCategoryModalOpen(true);
+              }}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              گروه جدید
+            </button>
+          </div>
+          
+          <div className="p-0 overflow-x-auto">
+            {productCategories.length === 0 ? (
+              <div className="p-12 text-center text-gray-500">
+                <List className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p>هیچ گروه‌بندی یافت نشد.</p>
+              </div>
+            ) : (
+              <table className="w-full text-right whitespace-nowrap min-w-[600px]">
+                <thead>
+                  <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
+                    <th className="py-4 px-6 text-right w-16 text-center">ردیف</th>
+                    <th className="py-4 px-6 text-right">نام گروه</th>
+                    <th className="py-4 px-6 text-right">توضیحات</th>
+                    <th className="py-4 px-6 w-24 text-center">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {productCategories.map((c, index) => (
+                    <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-6 text-gray-500 w-16 text-center">
+                        {index + 1}
+                      </td>
+                      <td className="py-4 px-6 font-bold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
+                        {c.name}
+                      </td>
+                      <td className="py-4 px-6 text-gray-600 text-sm whitespace-normal w-1/2">
+                        {c.description || '---'}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEditCategory(c)}
+                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                            title="ویرایش گروه"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(c.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            title="حذف گروه"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </motion.div>
       ) : activeTab === 'products' ? (
         /* Products List & Manage */
         <motion.div 
@@ -3461,7 +3657,14 @@ export default function App() {
                 setNewProductName('');
                 setNewProductPrice('');
                 setNewProductType('product');
-                setNewProductCategory('');
+                setNewProductCategoryId('');
+                setNewProductCode('');
+                setNewProductBarcode('');
+                setNewProductPurchasePrice('');
+                setNewProductStock('');
+                setNewProductMinStock('');
+                setNewProductUnit('');
+                setNewProductDesc('');
                 setIsProductModalOpen(true);
               }}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
@@ -3485,49 +3688,77 @@ export default function App() {
                 <p>هیچ کالایی یافت نشد.</p>
               </div>
             ) : (
-              <table className="w-full text-right whitespace-nowrap min-w-[600px]">
+              <table className="w-full text-right min-w-[1000px]">
                 <thead>
-                  <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
-                    <th className="py-4 px-6 text-right">ردیف</th>
-                    <th className="py-4 px-6 text-right">نام کالا / خدمات</th>
-                    <th className="py-4 px-6 text-right">نوع</th>
-                    <th className="py-4 px-6 text-right">گروه‌بندی</th>
-                    <th className="py-4 px-6 text-right">قیمت پایه (تومان)</th>
-                    <th className="py-4 px-6 w-24">عملیات</th>
+                  <tr className="text-xs font-bold text-gray-500 border-b border-gray-100 bg-gray-50/50 uppercase tracking-wider">
+                    <th className="py-4 px-6 text-center w-16">ردیف</th>
+                    <th className="py-4 px-6 text-right">عنوان کالا / خدمات</th>
+                    <th className="py-4 px-6 text-right">کد / بارکد</th>
+                    <th className="py-4 px-6 text-center">موجودی</th>
+                    <th className="py-4 px-6 text-right">قیمت خرید</th>
+                    <th className="py-4 px-6 text-right">قیمت فروش</th>
+                    <th className="py-4 px-6 text-center w-28">عملیات</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 text-sm">
                   {products.map((p, index) => (
-                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-6 text-gray-500 w-16 text-center">
-                        {index + 1}
+                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className="py-4 px-6 text-gray-400 font-sans text-center">
+                        <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm">
+                           {index + 1}
+                        </div>
                       </td>
-                      <td className="py-4 px-6 font-medium text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
-                        {p.name}
+                      <td className="py-4 px-6">
+                        <div className="flex flex-col gap-1.5">
+                          <span className="font-extrabold text-gray-800">{p.name}</span>
+                          <div className="flex items-center gap-2">
+                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center ${p.type === 'service' ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                               {p.type === 'service' ? 'خدمات' : 'کالا'}
+                             </span>
+                             {p.category && (
+                               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                 {p.category}
+                               </span>
+                             )}
+                          </div>
+                        </div>
                       </td>
-                      <td className="py-4 px-6 text-gray-600 text-sm">
-                        <span className={`px-2 py-1 rounded inline-flex items-center gap-1.5 ${p.type === 'service' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'}`}>
-                          {p.type === 'service' ? 'خدمات' : 'کالا'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-gray-600 text-sm">
-                        {p.category}
-                      </td>
-                      <td className="py-4 px-6 text-indigo-600 font-medium">
-                        {formatCurrency(p.price)} <span className="text-xs font-normal mr-1">{storeSettings.currency}</span>
+                      <td className="py-4 px-6 font-mono text-xs text-gray-500">
+                        {p.code ? <div className="mb-0.5"><span className="text-gray-400 ml-1">کد:</span>{p.code}</div> : null}
+                        {p.barcode ? <div><span className="text-gray-400 ml-1">بارکد:</span>{p.barcode}</div> : null}
+                        {!p.code && !p.barcode && '---'}
                       </td>
                       <td className="py-4 px-6 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                        {p.type === 'service' ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="font-sans font-bold text-gray-700 text-base">{p.stock || 0}</span>
+                            {p.unit && <span className="text-[10px] text-gray-500">{p.unit}</span>}
+                            {(p.stock || 0) <= (p.minStock || 0) && (p.minStock || 0) > 0 && (
+                              <span className="text-[10px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-100 mt-1">نیاز به شارژ</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 font-sans font-bold text-gray-600">
+                        {p.purchasePrice ? formatNumber(p.purchasePrice) : '---'}
+                      </td>
+                      <td className="py-4 px-6 font-sans font-black text-indigo-600 text-base">
+                        {formatNumber(p.price)}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-1 opacity-100">
                           <button
                             onClick={() => handleEditProduct(p)}
-                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
                             title="ویرایش کالا"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(p.id)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all inline-block"
                             title="حذف کالا"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -3592,6 +3823,7 @@ export default function App() {
                 <thead>
                   <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
                     <th className="py-4 px-6 text-right">ردیف</th>
+                    <th className="py-4 px-6 text-center">کد شخص</th>
                     <th className="py-4 px-6 text-right">نام / عنوان</th>
                     <th className="py-4 px-6 text-right">نوع کاربر</th>
                     <th className="py-4 px-6 text-right">کد / شناسه ملی</th>
@@ -3605,6 +3837,13 @@ export default function App() {
                     <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-4 px-6 text-gray-500 w-16 text-center">
                         {index + 1}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        {p.personCode ? (
+                          <span className="font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded text-xs">{p.personCode}</span>
+                        ) : (
+                          <span className="text-gray-300">-</span>
+                        )}
                       </td>
                       <td className="py-4 px-6 font-medium text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
                         {p.name}
@@ -4136,11 +4375,11 @@ export default function App() {
               </label>
               <Select
                 isRtl
-                value={ledgerPersonId ? { value: ledgerPersonId, label: persons.find(p => p.id.toString() === ledgerPersonId.toString())?.name } : null}
+                value={ledgerPersonId ? { value: ledgerPersonId, label: persons.find(p => p.id.toString() === ledgerPersonId.toString())?.personCode ? '[' + persons.find(p => p.id.toString() === ledgerPersonId.toString())?.personCode + '] ' + persons.find(p => p.id.toString() === ledgerPersonId.toString())?.name : persons.find(p => p.id.toString() === ledgerPersonId.toString())?.name } : null}
                 onChange={(option: any) => setLedgerPersonId(option ? option.value : '')}
                 options={persons.map(p => ({
                   value: p.id.toString(),
-                  label: `${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'})`
+                  label: `${p.personCode ? '[' + p.personCode + '] ' : ''}${p.name} (${p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند'})`
                 })) as any}
                 placeholder="انتخاب یا جستجوی نام شخص..."
                 noOptionsMessage={() => "شخصی یافت نشد"}
@@ -4305,7 +4544,7 @@ export default function App() {
                         }`}>
                           {selectedPerson.role === 'customer' ? 'مشتری' : selectedPerson.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'}
                         </span>
-                        <span className="text-xs text-gray-400 font-medium">کد شخص: #{selectedPerson.id}</span>
+                        <span className="text-xs text-gray-400 font-medium font-mono text-left">کد شخص: #{selectedPerson.personCode ? selectedPerson.personCode : selectedPerson.id}</span>
                       </div>
                       <h2 className="text-lg font-extrabold text-gray-900 mb-3">{selectedPerson.name}</h2>
                       
@@ -4965,6 +5204,76 @@ export default function App() {
           </div>
         )}
 
+        {isCategoryModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-md flex flex-col"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <List className="w-5 h-5 text-indigo-500" />
+                  ثبت گروه‌بندی جدید
+                </h3>
+                <button
+                  onClick={() => setIsCategoryModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                <div className="flex flex-col gap-5">
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      نام گروه <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      placeholder="مثال: لوازم بهداشتی"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                    />
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      توضیحات تکمیلی
+                    </label>
+                    <textarea
+                      value={newCatDesc}
+                      onChange={(e) => setNewCatDesc(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(false)}
+                  className="px-6 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCategory}
+                  className="px-8 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center justify-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  ثبت گروه
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isProductModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
             <motion.div
@@ -4987,60 +5296,169 @@ export default function App() {
               </div>
               
               <div className="p-6 overflow-y-auto">
-                <form id="productForm" onSubmit={handleSubmitProduct} className="flex flex-col gap-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="w-full">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        نام کالا / خدمت <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={newProductName}
-                        onChange={(e) => setNewProductName(e.target.value)}
-                        placeholder="مثال: طراحی رابط کاربری"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                        required
-                      />
+                <form id="productForm" onSubmit={handleSubmitProduct} className="flex flex-col gap-6">
+                  {/* General Info */}
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">اطلاعات عمومی</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          عنوان کالا / خدمات <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={newProductName}
+                          onChange={(e) => setNewProductName(e.target.value)}
+                          placeholder="مثال: گوشی موبایل"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                          required
+                        />
+                      </div>
+                      <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          نوع
+                        </label>
+                        <select
+                          value={newProductType}
+                          onChange={(e) => setNewProductType(e.target.value as 'product' | 'service')}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
+                        >
+                          <option value="product">کالا (فیزیکی)</option>
+                          <option value="service">خدمات (غیرفیزیکی)</option>
+                        </select>
+                      </div>
+                      <div className="w-full text-right">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          گروه‌بندی
+                        </label>
+                        <select
+                          value={newProductCategoryId}
+                          onChange={(e) => setNewProductCategoryId(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
+                        >
+                          <option value="">بدون گروه (عمومی)</option>
+                          {productCategories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          واحد سنجش
+                        </label>
+                        <input
+                          type="text"
+                          value={newProductUnit}
+                          onChange={(e) => setNewProductUnit(e.target.value)}
+                          placeholder="مثال: عدد، کیلوگرم، متر"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                        />
+                      </div>
                     </div>
-                    <div className="w-full">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        قیمت پایه (تومان) <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={newProductPrice}
-                        onChange={(e) => setNewProductPrice(e.target.value)}
-                        placeholder="مثال: 1500000"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                        required
-                      />
+                  </div>
+
+                  {/* Financial Info */}
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">اطلاعات مالی</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          قیمت خرید (تومان)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={newProductPurchasePrice}
+                          onChange={(e) => setNewProductPurchasePrice(e.target.value)}
+                          placeholder="مثال: 1000000"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                        />
+                      </div>
+                      <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          قیمت فروش (تومان) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={newProductPrice}
+                          onChange={(e) => setNewProductPrice(e.target.value)}
+                          placeholder="مثال: 1500000"
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="w-full">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        نوع
-                      </label>
-                      <select
-                        value={newProductType}
-                        onChange={(e) => setNewProductType(e.target.value as 'product' | 'service')}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
-                      >
-                        <option value="product">کالا</option>
-                        <option value="service">خدمات</option>
-                      </select>
+                  </div>
+
+                  {/* Stock and Barcode */}
+                  {newProductType === 'product' && (
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">انبار و شناسایی</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="w-full">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            موجودی اولیه
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={newProductStock}
+                            onChange={(e) => setNewProductStock(e.target.value)}
+                            placeholder="تعداد در انبار"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                          />
+                        </div>
+                        <div className="w-full">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            حداقل موجودی (هشدار شارژ)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={newProductMinStock}
+                            onChange={(e) => setNewProductMinStock(e.target.value)}
+                            placeholder="مثال: 5"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                          />
+                        </div>
+                        <div className="w-full">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            کد کالا
+                          </label>
+                          <input
+                            type="text"
+                            value={newProductCode}
+                            onChange={(e) => setNewProductCode(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                          />
+                        </div>
+                        <div className="w-full">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            بارکد
+                          </label>
+                          <input
+                            type="text"
+                            value={newProductBarcode}
+                            onChange={(e) => setNewProductBarcode(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 font-mono text-left"
+                            dir="ltr"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        گروه‌بندی
-                      </label>
-                      <input
-                        type="text"
-                        value={newProductCategory}
-                        onChange={(e) => setNewProductCategory(e.target.value)}
-                        placeholder="مثال: کالای دیجیتال"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                      />
-                    </div>
+                  )}
+
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      توضیحات تکمیلی
+                    </label>
+                    <textarea
+                      value={newProductDesc}
+                      onChange={(e) => setNewProductDesc(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 min-h-[80px]"
+                      rows={3}
+                    />
                   </div>
                 </form>
               </div>
@@ -5893,6 +6311,122 @@ export default function App() {
         </div>
       </footer>
     </div>
+    
+        {printingTransaction && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-lg flex flex-col print:shadow-none print:border-none print:w-full print:max-w-none"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 print:hidden">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-indigo-500" />
+                  پیش‌نمایش چاپ رسید
+                </h3>
+                <button
+                  onClick={() => setPrintingTransaction(null)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div id="print-area" className="p-8 print:p-0 bg-white">
+                <div className="text-center mb-6">
+                  {storeSettings?.logoUrl ? (
+                    <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 mx-auto object-cover rounded-xl mb-3" />
+                  ) : (
+                    <div className="w-16 h-16 mx-auto bg-indigo-50 rounded-xl flex items-center justify-center mb-3">
+                      <Store className="w-8 h-8 text-indigo-500" />
+                    </div>
+                  )}
+                  <h2 className="text-xl font-black text-gray-900 mb-1">{storeSettings?.storeName || 'فروشگاه من'}</h2>
+                  <p className="text-xs text-gray-500 font-medium">رسید {printingTransaction.type === 'receive' ? 'دریافت وجه' : printingTransaction.type === 'salary' ? 'حقوق و دستمزد' : 'پرداخت وجه'}</p>
+                </div>
+                
+                <div className="border border-gray-200 rounded-xl p-5 mb-6">
+                  <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
+                    <div className="text-right">
+                      <span className="block text-[10px] text-gray-400 font-bold mb-1">شماره سند</span>
+                      <span className="font-mono text-sm font-bold shadow-sm px-2 py-1 bg-gray-50 rounded border border-gray-100">#{printingTransaction.id}</span>
+                    </div>
+                    <div className="text-left">
+                      <span className="block text-[10px] text-gray-400 font-bold mb-1">تاریخ</span>
+                      <span className="text-sm font-bold text-gray-700">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">طرف حساب / ذینفع:</span>
+                      <span className="font-bold text-gray-900">
+                        {persons.find(p => p.id === printingTransaction.personId || p.id.toString() === printingTransaction.personId?.toString())?.name || 'نامشخص'}
+                      </span>
+                    </div>
+                    {printingTransaction.type !== 'salary' && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">حساب عملیاتی:</span>
+                        <span className="font-bold text-gray-900">
+                          {printingTransaction.resourceType === 'bank' 
+                            ? ('بانک ' + (accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || '')) 
+                            : printingTransaction.resourceType === 'cashbox' 
+                              ? ('صندوق ' + (cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || ''))
+                              : 'نامشخص'}
+                        </span>
+                      </div>
+                    )}
+                    {printingTransaction.description && (
+                      <div className="flex flex-col mt-4 pt-4 border-t border-gray-100">
+                        <span className="text-xs text-gray-500 mb-2 font-bold">بابت / توضیحات:</span>
+                        <span className="text-sm text-gray-800 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 text-right">{printingTransaction.description}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-xl p-5 flex flex-col items-center justify-center border border-gray-100 shadow-inner">
+                  <span className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-widest bg-gray-200/50 px-3 py-1 rounded-full text-[10px]">مبلغ تراکنش</span>
+                  <div className="flex items-end gap-2 text-indigo-900">
+                    <span className="text-3xl font-black">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
+                    <span className="text-sm font-bold opacity-75 mb-1.5">{storeSettings?.currency || 'تومان'}</span>
+                  </div>
+                </div>
+                
+                <div className="mt-12 flex justify-between px-6">
+                  <div className="text-center">
+                    <span className="block text-xs font-bold text-gray-400 mb-8">مُهر و امضای فروشگاه</span>
+                    <span className="block w-24 border-t border-gray-300 mx-auto"></span>
+                  </div>
+                  <div className="text-center">
+                    <span className="block text-xs font-bold text-gray-400 mb-8">امضای تحویل دهنده / گیرنده</span>
+                    <span className="block w-24 border-t border-gray-300 mx-auto"></span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden">
+                <button
+                  onClick={() => setPrintingTransaction(null)}
+                  className="px-6 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  بستن
+                </button>
+                <button
+                  onClick={() => {
+                    setTimeout(() => window.print(), 100);
+                  }}
+                  className="px-8 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center justify-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  شروع چاپ
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+    </>
   );
 }
 

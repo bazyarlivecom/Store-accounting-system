@@ -1,5 +1,6 @@
 export type Person = { 
   id: string | number; 
+  personCode?: string;
   name: string; 
   firstName?: string;
   lastName?: string;
@@ -12,7 +13,28 @@ export type Person = {
   phone: string; 
 };
 
-export type Product = { id: string | number; name: string; price: number; type: 'product' | 'service'; category: string };
+export type ProductCategory = {
+  id: string | number;
+  name: string;
+  description?: string;
+  parentId?: string | number;
+};
+
+export type Product = {
+  id: string | number;
+  code?: string;
+  barcode?: string;
+  name: string;
+  price: number;
+  purchasePrice?: number;
+  stock?: number;
+  minStock?: number;
+  unit?: string;
+  type: 'product' | 'service';
+  category: string;
+  categoryId?: string | number;
+  description?: string;
+};
 
 export type Account = {
   id: string | number;

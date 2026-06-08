@@ -47,8 +47,17 @@ export const getPersons = async () => {
 
 export const addPerson = async (person: any) => {
   const persons = await getLocalData<any[]>('persons', []);
+  
+  let nextCode = 10000;
+  if (persons.length > 0) {
+    const maxCode = Math.max(...persons.map(p => Number(p.personCode) || 0));
+    if (maxCode >= 10000) {
+      nextCode = maxCode + 1;
+    }
+  }
+
   const now = Date.now();
-  const newPerson = { ...person, id: generateId(), createdAt: now, updatedAt: now };
+  const newPerson = { ...person, personCode: String(nextCode), id: generateId(), createdAt: now, updatedAt: now };
   persons.push(newPerson);
   await saveLocalData('persons', persons);
   return newPerson;
@@ -130,6 +139,37 @@ export const updateCashbox = async (id: string, cashbox: any) => {
 export const deleteCashbox = async (id: string) => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
   await saveLocalData('cashboxes', cashboxes.filter((p: any) => p.id !== id));
+};
+
+// Product Categories
+export const getProductCategories = async () => {
+  const categories = await getLocalData<any[]>('product_categories', []);
+  return categories.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addProductCategory = async (category: any) => {
+  const categories = await getLocalData<any[]>('product_categories', []);
+  const now = Date.now();
+  const newCategory = { ...category, id: generateId(), createdAt: now, updatedAt: now };
+  categories.push(newCategory);
+  await saveLocalData('product_categories', categories);
+  return newCategory;
+};
+
+export const updateProductCategory = async (id: string, category: any) => {
+  const categories = await getLocalData<any[]>('product_categories', []);
+  const index = categories.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    categories[index] = { ...categories[index], ...category, updatedAt: Date.now() };
+    await saveLocalData('product_categories', categories);
+    return categories[index];
+  }
+  return null;
+};
+
+export const deleteProductCategory = async (id: string) => {
+  const categories = await getLocalData<any[]>('product_categories', []);
+  await saveLocalData('product_categories', categories.filter((p: any) => p.id !== id));
 };
 
 // Products
