@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database } from 'lucide-react';
+import { Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -1607,63 +1607,12 @@ export default function App() {
             </span>
           </div>
 
-          {/* Global actions: settings and update */}
-          <div className="flex items-center gap-2.5 min-w-[240px] justify-end">
-            <button
-              type="button"
-              onClick={() => setActiveTab('checklist')}
-              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer border shadow-2xs hover:scale-[1.02] active:scale-95 ${
-                activeTab === 'checklist' 
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-amber-100' 
-                  : 'bg-white text-gray-700 hover:text-amber-600 hover:bg-amber-50/20 border-gray-200'
-              }`}
-            >
-              <ListTodo className={`w-4 h-4 ${activeTab === 'checklist' ? 'text-white' : 'text-gray-400'} transition-transform duration-500`} />
-              چک‌لیست
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer border shadow-2xs hover:scale-[1.02] active:scale-95 ${
-                activeTab === 'settings' 
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100' 
-                  : 'bg-white text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/20 border-gray-200'
-              }`}
-            >
-              <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'rotate-45 text-white' : 'text-gray-405'} transition-transform duration-500`} />
-              تنظیمات
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => setActiveTab('database')}
-              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer border shadow-2xs hover:scale-[1.02] active:scale-95 ${
-                activeTab === 'database' 
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-rose-100' 
-                  : 'bg-white text-gray-700 hover:text-rose-600 hover:bg-rose-50/20 border-gray-200'
-              }`}
-            >
-              <Database className={`w-4 h-4 ${activeTab === 'database' ? 'text-white' : 'text-gray-405'} transition-transform duration-500`} />
-              دیتابیس
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('update')}
-              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer border shadow-2xs hover:scale-[1.02] active:scale-95 ${
-                activeTab === 'update' 
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100' 
-                  : 'bg-white text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/20 border-gray-200'
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${activeTab === 'update' ? 'animate-spin text-white' : 'text-gray-400 hover:rotate-180'} transition-transform duration-500`} />
-              بروزرسانی
-            </button>
-          </div>
         </div>
 
         {/* Bottom Menu Navbar Row (Seperated row below high-level header) */}
         <div className="bg-slate-50/50 px-8 py-2.5 flex items-center justify-center border-t border-gray-100/30">
-          <nav className="flex items-center gap-4">
+          <nav className="flex flex-wrap items-center justify-center gap-4">
+
             
             {/* Category Option 1: Sales / Purchases */}
             <div className="relative group/menu">
@@ -2103,6 +2052,108 @@ export default function App() {
                       <span className="text-[10px] font-sans font-extrabold bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full text-amber-700">
                         {formatNumber(cashboxes.length)}
                       </span>
+                    </div>
+                  </button>
+
+                </div>
+              </div>
+            </div>
+
+            {/* Category Option 5: System Features */}
+            <div className="relative group/menu">
+              <button
+                type="button"
+                className={`flex items-center gap-2 px-4.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 cursor-pointer border shadow-3xs ${
+                  ['checklist', 'settings', 'database', 'update'].includes(activeTab)
+                    ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-md ring-2 ring-rose-500/5'
+                    : 'text-gray-600 hover:text-rose-700 hover:bg-rose-100/30 border-transparent hover:border-gray-200/50'
+                }`}
+              >
+                <Settings className="w-4 h-4 text-rose-500" />
+                <span>امکانات سیستم</span>
+                <ChevronDown className="w-3 h-3 text-gray-400 group-hover/menu:rotate-180 transition-transform duration-300" />
+              </button>
+              
+              <div className="absolute right-1/2 translate-x-1/2 top-full pt-2 w-[280px] invisible opacity-0 translate-y-3 group-hover/menu:visible group-hover/menu:opacity-100 group-hover/menu:translate-y-0 transition-all duration-300 z-50">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 ring-1 ring-black/5">
+                  
+                  {/* Checklist */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('checklist')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'checklist'
+                        ? 'bg-amber-50 text-amber-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'checklist' ? 'bg-amber-100 text-amber-700' : 'bg-amber-50 text-amber-550'}`}>
+                      <ListTodo className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">چک‌لیست توسعه</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">امکانات سیستم جامع</div>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
+
+                  {/* Settings */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('settings')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'settings'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'settings' ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-500'}`}>
+                      <Settings className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">تنظیمات سیستمی</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت اطلاعات و لوگو</div>
+                    </div>
+                  </button>
+
+                  {/* Database */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('database')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'database'
+                        ? 'bg-rose-50 text-rose-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'database' ? 'bg-rose-100 text-rose-700' : 'bg-rose-50 text-rose-500'}`}>
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">پایگاه داده (دیتابیس)</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">مدیریت، پشتیبان‌گیری، بازیابی</div>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-gray-100/40 my-0.5 mx-2"></div>
+
+                  {/* Update */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('update')}
+                    className={`flex items-start gap-3 p-2 rounded-xl transition-all duration-200 text-right cursor-pointer ${
+                      activeTab === 'update'
+                        ? 'bg-emerald-50 text-emerald-700 font-bold'
+                        : 'text-gray-750 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg ${activeTab === 'update' ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-50 text-emerald-500'}`}>
+                      <RefreshCw className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs font-extrabold">بروزرسانی تغییرات</div>
+                      <div className="text-[10px] text-gray-400 mt-0.5 font-medium leading-normal">لود مجدد اپلیکیشن و سرور</div>
                     </div>
                   </button>
 
@@ -4378,75 +4429,94 @@ export default function App() {
                         هیچ گردش مالی یا سندی برای این شخص ثبت نشده است.
                       </div>
                     ) : (
-                      <table className="w-full text-right whitespace-nowrap min-w-[900px] text-sm">
+                      <table className="w-full text-right min-w-[950px] text-sm">
                         <thead>
-                          <tr className="bg-gray-50/70 text-gray-500 border-b border-gray-100 font-semibold text-xs">
-                            <th className="py-4 px-6 text-center w-14">ردیف</th>
-                            <th className="py-4 px-6 text-right w-24">تاریخ ثبت</th>
-                            <th className="py-4 px-6 text-right w-36">نوع مدرک</th>
-                            <th className="py-4 px-6 text-right w-40">شماره ارجاع</th>
-                            <th className="py-4 px-6 text-right">شرح و بابت</th>
-                            <th className="py-4 px-6 text-left w-36">بدهکار (+ افزایش بدهی)</th>
-                            <th className="py-4 px-6 text-left w-36">بستانکار (- کاهش بدهی)</th>
-                            <th className="py-4 px-6 text-left w-40">مانده ردیف</th>
+                          <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider">
+                            <th className="py-5 px-4 text-center w-10">ردیف</th>
+                            <th className="py-5 px-4 text-right w-36">تاریخ و ارجاع</th>
+                            <th className="py-5 px-6 text-right">عنوان و شرح جزئیات رویداد مالی</th>
+                            <th className="py-5 px-4 text-left w-36">بدهکار (افزایش بدهی)</th>
+                            <th className="py-5 px-4 text-left w-36">بستانکار (کاهش بدهی)</th>
+                            <th className="py-5 px-6 text-left w-44">مانده نهایی حساب</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 font-medium">
+                        <tbody className="divide-y divide-gray-100 font-medium">
                           {ledgerEntries.map((entry, index) => {
                             const isDeb = entry.runningBalance > 0;
                             const isCred = entry.runningBalance < 0;
                             const isBalZero = entry.runningBalance === 0;
 
+                            const isSale = entry.type.includes('فروش');
+                            const isPurchase = entry.type.includes('خرید');
+                            const isReceive = entry.type.includes('دریافت');
+                            const isPay = entry.type.includes('پرداخت');
+                            
+                            const badgeColor = isSale 
+                              ? 'bg-sky-50 text-sky-700 border-sky-200'
+                              : isPurchase
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : isReceive
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200';
+
                             return (
-                              <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="py-4 px-6 text-center text-gray-400 font-sans">
-                                  {index + 1}
+                              <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors group">
+                                <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6">
+                                  <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors">
+                                    {index + 1}
+                                  </div>
                                 </td>
-                                <td className="py-4 px-6 text-gray-600 font-sans">
-                                  {entry.jalaliDate}
+                                <td className="py-5 px-4 align-top pt-5">
+                                  <div className="flex flex-col gap-2.5">
+                                    <span className="text-gray-700 font-sans font-bold flex items-center gap-2">
+                                      <Calendar className="w-4 h-4 text-indigo-500/70" />
+                                      <span className="mt-0.5">{entry.jalaliDate}</span>
+                                    </span>
+                                    <span className="text-xs font-mono text-gray-600 bg-white border border-gray-200 px-2.5 py-1 rounded-lg inline-flex w-max items-center gap-1.5 shadow-sm">
+                                      <Tag className="w-3.5 h-3.5 text-gray-400" />
+                                      {entry.refId}
+                                    </span>
+                                  </div>
                                 </td>
-                                <td className="py-4 px-6">
-                                  <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${
-                                    entry.type.includes('فروش') 
-                                      ? 'bg-blue-50 text-blue-700' 
-                                      : entry.type.includes('خرید') 
-                                        ? 'bg-amber-50 text-amber-700' 
-                                        : entry.type.includes('دریافت')
-                                          ? 'bg-emerald-50 text-emerald-700'
-                                          : 'bg-rose-50 text-rose-700'
-                                  }`}>
-                                    {entry.type}
+                                <td className="py-5 px-6 align-top pt-5 max-w-sm">
+                                  <div className="flex flex-col items-start gap-2.5">
+                                    <span className={`w-max px-3 py-1 rounded-lg text-xs font-extrabold border shadow-sm ${badgeColor}`}>
+                                      {entry.type}
+                                    </span>
+                                    <p className="text-gray-700 text-[13px] whitespace-normal leading-loose font-medium break-words text-justify">
+                                      {entry.desc}
+                                    </p>
+                                  </div>
+                                </td>
+                                <td className="py-5 px-4 text-left font-sans align-top pt-6">
+                                  <span className={`font-black text-[15px] ${entry.debit > 0 ? 'text-indigo-600' : 'text-gray-300 font-medium'}`}>
+                                    {entry.debit > 0 ? formatNumber(entry.debit) : '---'}
                                   </span>
                                 </td>
-                                <td className="py-4 px-6 font-mono font-bold text-gray-700">
-                                  {entry.refId}
+                                <td className="py-5 px-4 text-left font-sans align-top pt-6">
+                                  <span className={`font-black text-[15px] ${entry.credit > 0 ? 'text-emerald-600' : 'text-gray-300 font-medium'}`}>
+                                    {entry.credit > 0 ? formatNumber(entry.credit) : '---'}
+                                  </span>
                                 </td>
-                                <td className="py-4 px-6 text-gray-500 whitespace-normal max-w-sm text-xs md:text-sm">
-                                  {entry.desc}
-                                </td>
-                                <td className="py-4 px-6 text-left font-sans text-indigo-600 font-bold">
-                                  {entry.debit > 0 ? formatNumber(entry.debit) : '---'}
-                                </td>
-                                <td className="py-4 px-6 text-left font-sans text-emerald-600 font-bold">
-                                  {entry.credit > 0 ? formatNumber(entry.credit) : '---'}
-                                </td>
-                                <td className={`py-4 px-6 text-left font-sans font-extrabold ${
-                                  isBalZero 
-                                    ? 'text-emerald-600' 
-                                    : isDeb 
-                                      ? 'text-amber-700' 
-                                      : 'text-rose-700'
-                                }`}>
-                                  {isBalZero ? (
-                                    'تسویه'
-                                  ) : (
-                                    <>
-                                      {formatNumber(Math.abs(entry.runningBalance))}
-                                      <span className="text-[10px] font-bold mr-1">
-                                        {isDeb ? 'بدهکار' : 'بستانکار'}
-                                      </span>
-                                    </>
-                                  )}
+                                <td className="py-5 px-6 text-left font-sans align-top pt-5">
+                                  <div className={`flex flex-col items-end gap-1.5 font-extrabold ${
+                                    isBalZero 
+                                      ? 'text-emerald-600' 
+                                      : isDeb 
+                                        ? 'text-amber-600' 
+                                        : 'text-rose-600'
+                                  }`}>
+                                    {isBalZero ? (
+                                      <span className="bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 text-xs shadow-sm mt-0.5">صفر (تسویه)</span>
+                                    ) : (
+                                      <>
+                                        <span className="text-[17px] tracking-tight">{formatNumber(Math.abs(entry.runningBalance))}</span>
+                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border shadow-sm ${isDeb ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+                                          {isDeb ? 'بدهکار به ما' : 'بستانکار (طلبکار)'}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
