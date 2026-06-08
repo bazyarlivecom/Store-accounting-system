@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList } from 'lucide-react';
+import { Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -40,6 +40,7 @@ export default function App() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
   const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'product_categories' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isFullWidth, setIsFullWidth] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
     sales_purchases: true,
     treasury_finance: true,
@@ -1268,8 +1269,16 @@ export default function App() {
               {storeSettings.logoUrl ? <img src={storeSettings.logoUrl} className="w-8 h-8 rounded" /> : <Receipt className="w-6 h-6 text-indigo-600" />}
               {storeSettings.storeName || 'سیستم مدیریت جامع شرکت'}
             </div>
-            <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-50 border border-gray-100 rounded-full shadow-inner">
-              <span className="flex h-2 w-2 relative">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsFullWidth(!isFullWidth)}
+                className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                title={isFullWidth ? 'نمایش جعبه‌ای' : 'نمایش تمام‌صفحه'}
+              >
+                {isFullWidth ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+              </button>
+              <div className="flex items-center gap-3 px-4 py-1.5 bg-slate-50 border border-gray-100 rounded-full shadow-inner">
+                <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
@@ -1280,6 +1289,7 @@ export default function App() {
               <span className="text-[11px] font-semibold text-gray-500">
                 {storeSettings.currency ? `ارز مبنا: ${storeSettings.currency}` : 'تومان'}
               </span>
+            </div>
             </div>
           </div>
           
@@ -1372,7 +1382,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 p-4 md:p-8 lg:p-10 max-w-6xl mx-auto w-full">
+        <div className={`flex-1 p-4 md:p-8 lg:p-10 mx-auto w-full transition-all duration-300 ${isFullWidth ? 'max-w-full xl:px-14' : 'max-w-6xl'}`}>
 
       {(activeTab === 'create_sale' || activeTab === 'create_purchase') ? (
       <form onSubmit={submitInvoice} className="space-y-6">
