@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent } from 'lucide-react';
+import { Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addCommas, removeCommas, numberToWords } from './utils/format';
 import DatePicker from "react-multi-date-picker";
@@ -98,6 +98,7 @@ export default function App() {
   const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'product_categories' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState(false);
+  const [menuLayout, setMenuLayout] = useState<'vertical' | 'horizontal'>('vertical');
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
     sales_purchases: true,
     treasury_finance: false,
@@ -2652,8 +2653,39 @@ export default function App() {
     </div>
   );
 
+  const renderHorizontalMenu = () => (
+    <div className="flex items-center gap-1.5 px-4 pb-2 flex-wrap border-t border-gray-50 pt-2" dir="rtl">
+      {sidebarGroups.map((group) => {
+        const visibleItems = group.items.filter(item => !user || item.roles.includes(user.role));
+        if (visibleItems.length === 0) return null;
+        const isActiveGroup = group.items.some(i => i.id === activeTab);
+        
+        return (
+          <div key={group.id} className="relative group shrink-0">
+            <button className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${isActiveGroup ? 'bg-indigo-50 text-indigo-700 border-indigo-100 shadow-sm' : 'text-slate-600 border-transparent hover:border-slate-200 bg-white hover:bg-slate-50 hover:text-slate-900 drop-shadow-sm'}`}>
+              {group.icon}
+              {group.label}
+              <ChevronDown className="w-3 h-3 group-hover:rotate-180 transition-transform" />
+            </button>
+            <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1.5 z-50 transform origin-top">
+              {visibleItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={`text-right w-full px-3 py-2.5 rounded-lg text-xs font-bold transition-colors ${activeTab === item.id ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <>      {/* Confirm Action Modal */}      {confirmState.isOpen && (        <div className="fixed inset-0 bg-slate-900/40 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">          <motion.div             initial={{ opacity: 0, scale: 0.95 }}            animate={{ opacity: 1, scale: 1 }}            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col items-center border border-gray-100"             dir="rtl"          >            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">               <AlertTriangle className="w-6 h-6" />            </div>            <h3 className="font-extrabold text-lg mb-2">تایید عملیات</h3>            <p className="text-gray-500 text-sm text-center mb-6">{confirmState.message}</p>            <div className="flex gap-3 w-full">               <button onClick={() => { confirmState.onConfirm(); setConfirmState({...confirmState, isOpen: false}) }} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">بله، تایید</button>               <button onClick={() => setConfirmState({...confirmState, isOpen: false})} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">انصراف</button>            </div>          </motion.div>        </div>      )}<div className="flex h-screen overflow-hidden bg-gray-50/50 text-gray-800 font-sans" dir="rtl">
+    <>      {/* Confirm Action Modal */}      {confirmState.isOpen && (        <div className="fixed inset-0 bg-slate-900/40 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">          <motion.div             initial={{ opacity: 0, scale: 0.95 }}            animate={{ opacity: 1, scale: 1 }}            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col items-center border border-gray-100"             dir="rtl"          >            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">               <AlertTriangle className="w-6 h-6" />            </div>            <h3 className="font-extrabold text-lg mb-2">تایید عملیات</h3>            <p className="text-gray-500 text-sm text-center mb-6">{confirmState.message}</p>            <div className="flex gap-3 w-full">               <button onClick={() => { confirmState.onConfirm(); setConfirmState({...confirmState, isOpen: false}) }} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">بله، تایید</button>               <button onClick={() => setConfirmState({...confirmState, isOpen: false})} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">انصراف</button>            </div>          </motion.div>        </div>      )}<div className={`flex ${menuLayout === 'horizontal' ? 'flex-col h-screen' : 'h-screen'} overflow-hidden bg-gray-50/50 text-gray-800 font-sans`} dir="rtl">
       {/* Sidebar Mobile Overlay */}
       {isSidebarOpen && (
         <div 
@@ -2663,6 +2695,7 @@ export default function App() {
       )}
 
       {/* Desktop Sidebar */}
+      {menuLayout === 'vertical' && (
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 shadow-2xl z-40 text-slate-300 flex-shrink-0 transition-all duration-300 overflow-y-auto" dir="rtl">
         <div className="p-5 border-b border-slate-800 flex flex-col justify-center">
           <div className="flex items-center gap-3">
@@ -2683,6 +2716,7 @@ export default function App() {
            </button>
         </div>
       </aside>
+      )}
 
       {/* Mobile Drawer Menu */}
       <div className={`fixed inset-y-0 right-0 w-72 bg-slate-900 text-slate-300 shadow-2xl z-40 transform transition-transform duration-300 md:hidden flex flex-col ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
@@ -2713,7 +2747,8 @@ export default function App() {
 
 
         {/* Top Header */}
-        <div className="flex flex-row items-center justify-between p-4 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 shadow-xs" dir="rtl">
+        <div className="flex flex-col bg-white border-b border-gray-100 sticky top-0 z-[60] shadow-sm">
+          <div className="flex flex-row items-center justify-between p-4 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 shadow-xs" dir="rtl">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(true)}
@@ -2729,6 +2764,14 @@ export default function App() {
           
           <div className="flex items-center gap-3">
             <button
+              onClick={() => setMenuLayout(menuLayout === 'vertical' ? 'horizontal' : 'vertical')}
+              className={`px-3 py-2 border rounded-xl transition-all cursor-pointer font-black gap-2 hidden md:flex items-center text-xs shadow-3xs active:scale-95 text-slate-600 hover:text-indigo-700 bg-white border-slate-200`}
+              title={menuLayout === 'vertical' ? "نمایش منوی افقی" : "نمایش منوی عمودی"}
+            >
+              {menuLayout === 'vertical' ? <LayoutList className="w-4 h-4" /> : <GripHorizontal className="w-4 h-4" />}
+              <span className="hidden sm:inline-block">{menuLayout === 'vertical' ? 'منوی افقی' : 'منوی عمودی'}</span>
+            </button>
+            <button
               onClick={() => setIsFullWidth(!isFullWidth)}
               className={`px-3 py-2 border rounded-xl transition-all cursor-pointer font-black gap-2 flex items-center text-xs shadow-3xs active:scale-95 ${isFullWidth ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-slate-600 hover:text-indigo-700 hover:bg-slate-50 bg-white border-slate-200'}`}
               title={isFullWidth ? "بازگشت به نمایش کلاسیک" : "حالت تمام صفحه گسترده"}
@@ -2739,7 +2782,10 @@ export default function App() {
           </div>
         </div>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50">
+        
+          {menuLayout === 'horizontal' && renderHorizontalMenu()}
+          </div>
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50">
           <div className={`mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-full xl:px-14' : 'max-w-6xl'}`}>
 
           {activeTab === 'products' ? (
