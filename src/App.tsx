@@ -1808,11 +1808,11 @@ export default function App() {
                               >
                                 -- انتخاب کنید --
                               </div>
-                              {persons.filter(p => 
-                                (p.alias || '').toLowerCase().includes(receiptPersonSearchText.toLowerCase()) || 
-                                (p.name || '').toLowerCase().includes(receiptPersonSearchText.toLowerCase()) || 
-                                (p.phone || '').includes(receiptPersonSearchText)
-                              ).map(p => (
+                              {persons.filter(p => {
+                                const st = receiptPersonSearchText.toLowerCase();
+                                const searchStr = `${p.name} ${p.alias || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.nationalId || ''} ${p.personCode || ''} ${p.phone || ''}`.toLowerCase();
+                                return searchStr.includes(st);
+                              }).map(p => (
                                 <div 
                                   key={p.id}
                                   className={`px-4 py-3 hover:bg-slate-50 cursor-pointer text-sm font-bold transition-colors border-b border-slate-50/50 flex flex-col gap-1 ${receiptPersonId?.toString() === p.id.toString() ? 'bg-indigo-50/50 text-indigo-700 border-indigo-100/50' : 'text-slate-800'}`}
@@ -1824,11 +1824,11 @@ export default function App() {
                                   </span>
                                 </div>
                               ))}
-                              {persons.filter(p => 
-                                (p.alias || '').toLowerCase().includes(receiptPersonSearchText.toLowerCase()) || 
-                                (p.name || '').toLowerCase().includes(receiptPersonSearchText.toLowerCase()) || 
-                                (p.phone || '').includes(receiptPersonSearchText)
-                              ).length === 0 && (
+                              {persons.filter(p => {
+                                const st = receiptPersonSearchText.toLowerCase();
+                                const searchStr = `${p.name} ${p.alias || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.nationalId || ''} ${p.personCode || ''} ${p.phone || ''}`.toLowerCase();
+                                return searchStr.includes(st);
+                              }).length === 0 && (
                                 <div className="px-4 py-6 text-center text-sm font-bold text-rose-500 bg-rose-50/30">شخصی با این مشخصات یافت نشد</div>
                               )}
                             </div>
