@@ -1596,50 +1596,61 @@ export default function App() {
                      </div>
 
                      <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
-                         <Calendar className="w-4 h-4"/> تاریخ سند
-                       </label>
-                       <DatePicker
-                         value={receiptDate}
-                         onChange={setReceiptDate}
-                         calendar={persian}
-                         locale={persian_fa}
-                         calendarPosition="bottom-right"
-                         inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center"
-                         containerClassName="w-full"
-                       />
-                     </div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> تاریخ سند (جلالی)
+                        </label>
+                        <div className="relative">
+                          <DatePicker
+                            value={receiptDate}
+                            onChange={setReceiptDate}
+                            calendar={persian}
+                            locale={persian_fa}
+                            calendarPosition="bottom-right"
+                            inputClass="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-base md:text-lg"
+                            containerClassName="w-full"
+                          />
+                          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
+                            <Calendar className="w-5 h-5" />
+                          </div>
+                        </div>
+                      </div>
 
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
-                         <DollarSign className="w-4 h-4"/> مبلغ سند ({storeSettings.currency || 'تومان'})
-                       </label>
-                       <input 
-                          type="number" 
-                          value={receiptAmount} 
-                          onChange={(e) => setReceiptAmount(e.target.value)} 
-                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950 text-base" 
-                          dir="ltr" 
-                          placeholder="مبلغ به عدد..."
-                          required 
-                        />
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                          <DollarSign className="w-4 h-4 text-emerald-500"/> مبلغ سند ({storeSettings.currency || 'تومان'})
+                        </label>
+                        <div className="relative">
+                          <input 
+                             type="number" 
+                             value={receiptAmount} 
+                             onChange={(e) => setReceiptAmount(e.target.value)} 
+                             className="w-full pl-16 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-sans font-mono font-black text-indigo-950 text-right text-lg md:text-xl transition-all shadow-sm" 
+                             dir="ltr" 
+                             placeholder="۰"
+                             required 
+                           />
+                           <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 font-bold text-xs select-none">
+                             {storeSettings?.currency || 'تومان'}
+                           </div>
+                        </div>
                         {receiptAmount && !isNaN(Number(receiptAmount)) && Number(receiptAmount) > 0 && (
-                          <div className="mt-2.5 p-3 bg-amber-50/25 border border-amber-200/50 rounded-xl text-xs leading-relaxed text-right space-y-1">
-                            <div className="text-gray-500 font-bold flex items-center gap-1.5 justify-start">
-                              <span>فرمت جداکننده:</span>
-                              <strong className="text-indigo-950 font-mono text-sm inline-block">{formatNumber(Number(receiptAmount))}</strong>
-                              <span className="text-gray-400 font-medium">{storeSettings.currency || 'تومان'}</span>
+                          <div className="mt-2.5 p-4 bg-gradient-to-br from-indigo-50/20 to-amber-50/30 border border-indigo-100/70 rounded-2xl text-xs leading-relaxed text-right space-y-2 shadow-sm">
+                            <div className="text-gray-500 font-bold flex items-center gap-2 justify-start">
+                              <span className="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-0.5 rounded-md font-extrabold font-sans font-mono">جمع عددی:</span>
+                              <strong className="text-indigo-950 font-sans font-black text-base md:text-lg tracking-wide inline-block">{formatNumber(Number(receiptAmount))}</strong>
+                              <span className="text-gray-400 font-semibold">{storeSettings?.currency || 'تومان'}</span>
                             </div>
-                            <div className="text-gray-500 font-bold flex items-baseline gap-1.5 justify-start flex-wrap">
-                              <span>به حروف:</span>
-                              <strong className="text-amber-800 font-black text-xs inline-block">{numToPersianWords(Number(receiptAmount))}</strong>
-                              <span className="text-gray-400 font-medium"> {storeSettings.currency || 'تومان'} تمام.</span>
+                            <div className="h-px bg-gray-100/70 w-full" />
+                            <div className="text-gray-500 font-bold flex items-baseline gap-2 justify-start flex-wrap">
+                              <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-md font-extrabold font-sans font-mono">به حروف:</span>
+                              <strong className="text-indigo-950 font-sans font-black text-xs md:text-sm inline-block leading-relaxed">{numToPersianWords(Number(receiptAmount))}</strong>
+                              <span className="text-gray-600 font-semibold"> {storeSettings?.currency || 'تومان'} تمام.</span>
                             </div>
                           </div>
                         )}
-                     </div>
+                      </div>
 
-                     <div>
+                      <div>
                        <label className="block text-sm font-bold text-gray-700 mb-1">نوع منبع مالی</label>
                        <select 
                          value={receiptResourceType} 
