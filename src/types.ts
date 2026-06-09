@@ -104,7 +104,16 @@ export type InvoiceItem = {
   totalPrice: number;
 };
 
-// Also we should keep CompanySettings type here 
+export type UserRole = 'admin' | 'accountant' | 'cashier' | 'viewer';
+
+export type User = {
+  id: string | number;
+  username: string;
+  password?: string;
+  name: string;
+  role: UserRole;
+  isActive: boolean;
+}; 
 export type CompanySettings = {
   companyName: string;
   phone: string;

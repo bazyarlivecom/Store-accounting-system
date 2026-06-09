@@ -39,6 +39,37 @@ export const saveStoreSettings = async (settings: CompanySettings): Promise<void
   await saveLocalData('company_profile', settings);
 };
 
+// Users
+export const getUsers = async () => {
+  const users = await getLocalData<any[]>('users', []);
+  return users.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addUser = async (user: any) => {
+  const users = await getLocalData<any[]>('users', []);
+  const now = Date.now();
+  const newUser = { ...user, id: generateId(), createdAt: now, updatedAt: now };
+  users.push(newUser);
+  await saveLocalData('users', users);
+  return newUser;
+};
+
+export const updateUser = async (id: string, user: any) => {
+  const users = await getLocalData<any[]>('users', []);
+  const index = users.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    users[index] = { ...users[index], ...user, updatedAt: Date.now() };
+    await saveLocalData('users', users);
+    return users[index];
+  }
+  return null;
+};
+
+export const deleteUser = async (id: string) => {
+  const users = await getLocalData<any[]>('users', []);
+  await saveLocalData('users', users.filter((p: any) => p.id !== id));
+};
+
 // Persons
 export const getPersons = async () => {
   const persons = await getLocalData<any[]>('persons', []);

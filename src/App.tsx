@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent } from 'lucide-react';
+import { Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addCommas, removeCommas, numberToWords } from './utils/format';
 import DatePicker from "react-multi-date-picker";
@@ -7,12 +7,13 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './lib/AuthContext';
-import { getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
+import { getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
 import DatabaseDashboard from './components/DatabaseDashboard';
 import SystemChecklist from './components/SystemChecklist';
 import ProductCardModal from './components/ProductCardModal';
 import CheckManagement from './components/CheckManagement';
 import FinancialTransfer from './components/FinancialTransfer';
+import UserManager from './components/UserManager';
 import { Person, Product, Account, Cashbox, InvoiceItem } from './types';
 
 const getBaseValueInToman = (cur: string) => {
@@ -94,19 +95,89 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'product_categories' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database'>('create_sale');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'product_categories' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
     sales_purchases: true,
-    treasury_finance: true,
-    base_info: false, // Collapse by default to make it look clean
+    treasury_finance: false,
+    base_info: false,
     reports: true,
+    settings: false
   });
 
   const toggleGroup = (group: string) => {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
   };
+
+  const sidebarGroups = [
+    {
+      id: 'reports',
+      label: 'داشبورد و گزارشات',
+      icon: <BarChart3 className="w-5 h-5" />,
+      items: [
+        { id: 'financial_report', label: 'داشبورد مالی', roles: ['admin', 'accountant'] },
+        { id: 'person_ledger', label: 'دفتر کل اشخاص', roles: ['admin', 'accountant', 'viewer'] },
+        { id: 'list_sale', label: 'لیست فاکتورهای فروش', roles: ['admin', 'cashier', 'accountant'] },
+        { id: 'list_purchase', label: 'لیست فاکتورهای خرید', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'sales_purchases',
+      label: 'خرید و فروش',
+      icon: <ShoppingCart className="w-5 h-5" />,
+      items: [
+        { id: 'create_sale', label: 'ثبت فاکتور فروش', roles: ['admin', 'cashier', 'accountant'] },
+        { id: 'create_purchase', label: 'ثبت فاکتور خرید', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'treasury_finance',
+      label: 'خزانه‌داری و مالی',
+      icon: <Wallet className="w-5 h-5" />,
+      items: [
+        { id: 'cashboxes', label: 'صندوق‌ها', roles: ['admin', 'accountant', 'cashier'] },
+        { id: 'accounts', label: 'حساب‌های بانکی', roles: ['admin', 'accountant'] },
+        { id: 'checks', label: 'چک‌ها', roles: ['admin', 'accountant'] },
+        { id: 'transfer', label: 'انتقال وجه', roles: ['admin', 'accountant'] },
+        { id: 'create_receive_receipt', label: 'ثبت رسید دریافت', roles: ['admin', 'accountant', 'cashier'] },
+        { id: 'list_receive_receipt', label: 'لیست رسید دریافت', roles: ['admin', 'accountant'] },
+        { id: 'create_pay_receipt', label: 'ثبت رسید پرداخت', roles: ['admin', 'accountant'] },
+        { id: 'list_pay_receipt', label: 'لیست رسید پرداخت', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'salary',
+      label: 'حقوق و دستمزد',
+      icon: <FileSpreadsheet className="w-5 h-5" />,
+      items: [
+        { id: 'create_salary_payroll', label: 'ثبت فیش حقوقی', roles: ['admin', 'accountant'] },
+        { id: 'list_salary_payroll', label: 'لیست فیش‌های حقوقی', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'base_info',
+      label: 'اطلاعات سیستم',
+      icon: <Package className="w-5 h-5" />,
+      items: [
+        { id: 'products', label: 'کالاها و خدمات', roles: ['admin', 'accountant'] },
+        { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
+        { id: 'persons', label: 'اشخاص و شرکت‌ها', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'settings',
+      label: 'تنظیمات و نگهداری',
+      icon: <Settings className="w-5 h-5" />,
+      items: [
+        { id: 'users_manager', label: 'کاربران سیستم', roles: ['admin'] },
+        { id: 'settings', label: 'تنظیمات پایه‌ای', roles: ['admin'] },
+        { id: 'database', label: 'پایگاه داده', roles: ['admin'] },
+        { id: 'update', label: 'به‌روزرسانی نرم‌افزار', roles: ['admin'] },
+        { id: 'checklist', label: 'چک‌لیست راه‌اندازی', roles: ['admin'] },
+      ]
+    }
+  ];
 
   useEffect(() => {
     if (activeTab === 'create_sale') {
@@ -898,35 +969,34 @@ export default function App() {
     }
   }, [storeSettings?.storeName]);
 
-  useEffect(() => {
-      const fetchChecks = async () => {
+  const fetchChecks = async () => {
     try {
       const cb = await getCheckbooks(); setCheckbooks(cb as any);
       const ic = await getIssuedChecks(); setIssuedChecks(ic as any);
       const rc = await getReceivedChecks(); setReceivedChecks(rc as any);
     } catch(err) { console.error('fetchChecks error', err); }
   };
+
   const fetchData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchPersons(),
+        fetchProducts(),
+        fetchAccounts(),
+        fetchCashboxes(),
+        fetchSettings(),
+        fetchTransactions()
+      ]);
+      await fetchInvoices();
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setLoading(true);
-      try {
-        await Promise.all([
-          fetchPersons(),
-          fetchProducts(),
-          fetchAccounts(),
-          fetchCashboxes(),
-          fetchSettings(),
-          fetchTransactions()
-        ]);
-        
-        await fetchInvoices();
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     // Initialize with one empty row
     if (items.length === 0) {
       handleAddItem();
@@ -1105,6 +1175,21 @@ export default function App() {
     return new Intl.NumberFormat('fa-IR').format(num);
   };
 
+  const openPayslip = (tx: any) => {
+    let parsed = null;
+    try {
+      parsed = tx.description ? JSON.parse(tx.description) : null;
+    } catch (e) {
+      console.error(e);
+    }
+    const employeeName = persons.find(p => p.id.toString() === tx.personId?.toString())?.name || 'کارمند';
+    setViewingPayslip({
+      ...tx,
+      parsed,
+      computedPersonName: employeeName
+    });
+  };
+
   const handleSystemUpdate = async () => {
     setUpdatingStr(true);
     setUpdateProgress(0);
@@ -1240,7 +1325,7 @@ export default function App() {
           <h1 className="text-2xl font-black text-gray-900 mb-2">به سیستم حسابداری خوش آمدید</h1>
           <p className="text-gray-500 font-medium mb-8">برای دسترسی به اطلاعات فروشگاه، لطفاً وارد شوید.</p>
                       
-          <button onClick={signIn} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+          <button onClick={() => signIn({ id: 1, username: 'admin', name: 'مدیر کل', role: 'admin', isActive: true })} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
             <LogIn className="w-5 h-5" />
             ورود به سیستم
           </button>
@@ -1254,23 +1339,709 @@ export default function App() {
         case 'create_sale':
         case 'create_purchase':
            return (
-             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                <h2 className="text-xl font-extrabold mb-6 flex items-center gap-2">
-                   {activeTab === 'create_sale' ? <Plus className="w-5 h-5 text-indigo-600"/> : <ShoppingCart className="w-5 h-5 text-indigo-600" />}
-                   {activeTab === 'create_sale' ? 'ثبت فاکتور فروش' : 'ثبت فاکتور خرید'}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+              {successMsg && (
+                <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100 font-bold shadow-sm">
+                  <CheckCircle className="w-5 h-5" />
+                  {successMsg}
+                </div>
+              )}
+
+              {/* Header Info */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
+                  {activeTab === 'create_sale' ? <ShoppingCart className="w-6 h-6 text-indigo-600" /> : <Plus className="w-6 h-6 text-indigo-600" />}
+                  {invoiceTitle}
                 </h2>
-                <div className="text-gray-500 mb-4">فرم فاکتور در فایل اصلی موجود بود. (Reconstructed)</div>
-             </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">شماره فاکتور</label>
+                    <div className="flex gap-2">
+                        <select value={invoiceMode} onChange={(e) => setInvoiceMode(e.target.value as 'auto' | 'manual')} className="p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-sm">
+                          <option value="auto">خودکار</option>
+                          <option value="manual">دستی</option>
+                        </select>
+                        {invoiceMode === 'manual' && (
+                          <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" dir="ltr" placeholder="شماره..." />
+                        )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><Calendar className="w-4 h-4"/> تاریخ</label>
+                    <DatePicker
+                        value={date}
+                        onChange={setDate}
+                        calendar={persian}
+                        locale={persian_fa}
+                        calendarPosition="bottom-right"
+                        inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono"
+                        containerClassName="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><User className="w-4 h-4"/> طرف حساب</label>
+                    <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500">
+                        <option value="">-- انتخاب کنید --</option>
+                        {persons.map(p => <option key={p.id} value={p.id}>{p.name} {p.role === 'customer' ? '(مشتری)' : ''}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4"/> ارز و نرخ</label>
+                    <div className="flex gap-2">
+                      <select value={invoiceCurrency} onChange={(e) => handleCurrencyChange(e.target.value)} className="w-1/2 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm">
+                          <option value="تومان">تومان</option>
+                          <option value="دلار">دلار</option>
+                          <option value="یورو">یورو</option>
+                          <option value="درهم">درهم</option>
+                      </select>
+                      <input type="number" disabled={invoiceCurrency === storeSettings.currency} value={exchangeRateInput} onChange={(e) => handleExchangeRateChange(Number(e.target.value))} className="w-1/2 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left disabled:bg-gray-100" dir="ltr" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-indigo-600"/> اقلام فاکتور</h3>
+                    <button onClick={handleAddItem} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 flex items-center gap-2 transition-colors">
+                      <Plus className="w-4 h-4" /> افزودن سطر
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                      <thead>
+                        <tr className="bg-gray-50/50 text-sm text-gray-500 border-b border-gray-100">
+                          <th className="p-4 font-bold w-12 text-center">ردیف</th>
+                          <th className="p-4 font-bold min-w-[200px]">شرح کالا / خدمات</th>
+                          <th className="p-4 font-bold w-24">تعداد</th>
+                          <th className="p-4 font-bold w-32">فی ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold w-24">تخفیف %</th>
+                          <th className="p-4 font-bold w-32">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold w-16 text-center">حذف</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {items.map((item, index) => (
+                            <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
+                              <td className="p-4">
+                                  <select
+                                    value={item.productId}
+                                    onChange={(e) => handleItemChange(item.id, 'productId', e.target.value)}
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 mb-2 font-bold"
+                                  >
+                                    <option value="">انتخاب از لیست...</option>
+                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                  </select>
+                                  <input
+                                    type="text"
+                                    placeholder="یا نام کالا را تایپ کنید..."
+                                    value={item.productName}
+                                    onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
+                                  />
+                              </td>
+                              <td className="p-4">
+                                  <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center" dir="ltr" />
+                              </td>
+                              <td className="p-4">
+                                  <input type="number" min="0" step="any" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" dir="ltr" />
+                              </td>
+                              <td className="p-4">
+                                  <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600" dir="ltr" />
+                              </td>
+                              <td className="p-4 font-bold text-left font-mono" dir="ltr">
+                                  {formatCurrency(item.totalPrice)}
+                              </td>
+                              <td className="p-4 text-center">
+                                  <button onClick={() => handleRemoveItem(item.id)} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors">
+                                    <Trash2 className="w-5 h-5"/>
+                                  </button>
+                              </td>
+                            </tr>
+                        ))}
+                        {items.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="p-8 text-center text-gray-400 font-medium">هیچ قلمی به فاکتور اضافه نشده است.</td>
+                            </tr>
+                        )}
+                      </tbody>
+                    </table>
+                </div>
+              </div>
+
+              {/* Totals & Submit */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6">
+                  <div className="flex flex-col lg:flex-row justify-between gap-8">
+                      <div className="flex-1 space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">تخفیف کلی فاکتور (درصد)</label>
+                            <input type="number" min="0" max="100" value={overallDiscountPercent} onChange={(e) => setOverallDiscountPercent(Number(e.target.value))} className="w-48 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" dir="ltr" />
+                        </div>
+                      </div>
+                      <div className="w-full lg:w-96 space-y-3 bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                        <div className="flex justify-between items-center text-gray-600">
+                          <span>جمع مبالغ:</span>
+                          <span className="font-mono font-bold" dir="ltr">{formatCurrency(calculateSubtotal())} {invoiceCurrency}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-rose-600">
+                          <span>تخفیف کل:</span>
+                          <span className="font-mono font-bold" dir="ltr">% {overallDiscountPercent}</span>
+                        </div>
+                        <div className="h-px bg-gray-200 w-full my-4"></div>
+                        <div className="flex justify-between items-center text-lg font-black text-indigo-700">
+                          <span>مبلغ نهایی:</span>
+                          <span className="font-mono" dir="ltr">{formatCurrency(calculateFinalTotal())} {invoiceCurrency}</span>
+                        </div>
+                      </div>
+                  </div>
+                </div>
+                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
+                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                      ثبت و بررسی فاکتور
+                    </button>
+                </div>
+              </div>
+            </motion.div>
            );
         case 'list_sale':
         case 'list_purchase':
-           return <div className="text-center p-8 bg-white rounded-xl">لیست فاکتورها</div>;
+           return (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                    <List className="w-6 h-6 text-indigo-600" />
+                    {activeTab === 'list_sale' ? 'لیست فاکتورهای فروش' : 'لیست فاکتورهای خرید'}
+                  </h2>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-right">
+                       <thead>
+                         <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
+                           <th className="p-4 font-bold">شماره</th>
+                           <th className="p-4 font-bold">مشتری</th>
+                           <th className="p-4 font-bold">تاریخ</th>
+                           <th className="p-4 font-bold">مبلغ نهایی</th>
+                           <th className="p-4 font-bold text-center">عملیات</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-gray-50">
+                         {invoices.filter(i => activeTab === 'list_sale' ? i.type === 'sale' : i.type === 'purchase').map(inv => (
+                           <tr key={inv.id} className="hover:bg-gray-50">
+                             <td className="p-4 font-mono font-bold text-gray-700">{inv.invoiceNumber}</td>
+                             <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
+                             <td className="p-4 font-mono text-gray-500" dir="ltr">{inv.jalaliDate}</td>
+                             <td className="p-4 font-mono font-bold text-indigo-600" dir="ltr">{formatCurrency(inv.totalAmount || 0)} {inv.currency || storeSettings.currency}</td>
+                             <td className="p-4 text-center flex items-center justify-center gap-2">
+                                <button onClick={() => { setPreviewInvoiceData(inv); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none">
+                                  <Eye className="w-4 h-4"/>
+                                </button>
+                                <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteInvoice(inv.id).then(fetchInvoices))} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg">
+                                  <Trash2 className="w-4 h-4"/>
+                                </button>
+                             </td>
+                           </tr>
+                         ))}
+                         {invoices.filter(i => activeTab === 'list_sale' ? i.type === 'sale' : i.type === 'purchase').length === 0 && (
+                           <tr>
+                             <td colSpan={5} className="p-8 text-center text-gray-400">هیچ فاکتوری یافت نشد.</td>
+                           </tr>
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                </div>
+             </motion.div>
+           );
+        case 'create_receive_receipt':
+        case 'create_pay_receipt': {
+           const isReceive = activeTab === 'create_receive_receipt';
+           return (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+               {receiptSuccessMsg && (
+                 <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100 font-bold shadow-sm">
+                   <CheckCircle className="w-5 h-5" />
+                   {receiptSuccessMsg}
+                 </div>
+               )}
+
+               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                 <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
+                   <Wallet className="w-6 h-6 text-indigo-600" />
+                   {isReceive ? 'ثبت سند رسید دریافت رسمی' : 'ثبت سند رسید پرداخت رسمی'}
+                 </h2>
+
+                 <form onSubmit={(e) => handleSubmitReceipt(isReceive ? 'receive' : 'pay', e)} className="space-y-6">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+                         <User className="w-4 h-4"/> طرف حساب (شخص/شرکت)
+                       </label>
+                       <select 
+                         value={receiptPersonId} 
+                         onChange={(e) => setReceiptPersonId(e.target.value)} 
+                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                         required
+                       >
+                         <option value="">-- انتخاب کنید --</option>
+                         {persons.map(p => (
+                           <option key={p.id} value={p.id}>{p.name}</option>
+                         ))}
+                       </select>
+                     </div>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+                         <Calendar className="w-4 h-4"/> تاریخ سند
+                       </label>
+                       <DatePicker
+                         value={receiptDate}
+                         onChange={setReceiptDate}
+                         calendar={persian}
+                         locale={persian_fa}
+                         calendarPosition="bottom-right"
+                         inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center"
+                         containerClassName="w-full"
+                       />
+                     </div>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+                         <DollarSign className="w-4 h-4"/> مبلغ سند ({storeSettings.currency || 'تومان'})
+                       </label>
+                       <input 
+                         type="number" 
+                         value={receiptAmount} 
+                         onChange={(e) => setReceiptAmount(e.target.value)} 
+                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" 
+                         dir="ltr" 
+                         placeholder="مبلغ به عدد..."
+                         required 
+                       />
+                     </div>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1">نوع منبع مالی</label>
+                       <select 
+                         value={receiptResourceType} 
+                         onChange={(e) => {
+                           setReceiptResourceType(e.target.value as 'bank' | 'cashbox');
+                           setReceiptResourceId('');
+                         }} 
+                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                       >
+                         <option value="bank">حساب بانکی</option>
+                         <option value="cashbox">صندوق فروشگاهی</option>
+                       </select>
+                     </div>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1">
+                         {receiptResourceType === 'bank' ? 'بانک مقصد' : 'صندوق مقصد'}
+                       </label>
+                       {receiptResourceType === 'bank' ? (
+                         <select 
+                           value={receiptResourceId} 
+                           onChange={(e) => setReceiptResourceId(e.target.value)} 
+                           className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                           required
+                         >
+                           <option value="">-- انتخاب بانک --</option>
+                           {accounts.map(acc => (
+                             <option key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountNumber}</option>
+                           ))}
+                         </select>
+                       ) : (
+                         <select 
+                           value={receiptResourceId} 
+                           onChange={(e) => setReceiptResourceId(e.target.value)} 
+                           className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                           required
+                         >
+                           <option value="">-- انتخاب صندوق --</option>
+                           {cashboxes.map(cb => (
+                             <option key={cb.id} value={cb.id}>{cb.name}</option>
+                           ))}
+                         </select>
+                       )}
+                     </div>
+
+                     <div className="md:col-span-2 lg:col-span-3">
+                       <label className="block text-sm font-bold text-gray-700 mb-1">توضیحات و بابت</label>
+                       <textarea 
+                         value={receiptDescription} 
+                         onChange={(e) => setReceiptDescription(e.target.value)} 
+                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm" 
+                         rows={2}
+                         placeholder="شرح تراکنش و بابت تراکنش..."
+                       />
+                     </div>
+                   </div>
+
+                   <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                     <button 
+                       type="submit" 
+                       disabled={submittingReceipt} 
+                       className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center gap-2 transition-colors border-none cursor-pointer shadow-sm"
+                     >
+                       {submittingReceipt ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                       ثبت و صدور رسید تراکنش
+                     </button>
+                   </div>
+                 </form>
+               </div>
+             </motion.div>
+           );
+        }
+
+        case 'list_receive_receipt':
+        case 'list_pay_receipt': {
+           const isReceive = activeTab === 'list_receive_receipt';
+           const filteredTxs = transactions.filter(t => t.type === (isReceive ? 'receive' : 'pay'));
+           return (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                 <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                   <List className="w-6 h-6 text-indigo-600" />
+                   {isReceive ? 'لیست رسیدهای دریافت وجه رسمی' : 'لیست رسیدهای پرداخت وجه رسمی'}
+                 </h2>
+               </div>
+
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                 <div className="overflow-x-auto">
+                   <table className="w-full text-right divide-y divide-gray-150">
+                     <thead>
+                       <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100 text-right">
+                         <th className="p-4 font-bold text-right">شناسه سند</th>
+                         <th className="p-4 font-bold text-right">طرف حساب</th>
+                         <th className="p-4 font-bold text-right">تاریخ سند</th>
+                         <th className="p-4 font-bold text-right">منبع مالی</th>
+                         <th className="p-4 font-bold text-right">مبلغ تراکنش</th>
+                         <th className="p-4 font-bold text-center">عملیات</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-50">
+                       {filteredTxs.map(tx => {
+                         const person = persons.find(p => p.id.toString() === tx.personId?.toString());
+                         const resourceLabel = tx.resourceType === 'bank' 
+                           ? `حساب بانکی: ${accounts.find(a => a.id.toString() === tx.resourceId?.toString())?.bankName || 'نامشخص'}`
+                           : `صندوق: ${cashboxes.find(cb => cb.id.toString() === tx.resourceId?.toString())?.name || 'نامشخص'}`;
+                         return (
+                           <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
+                             <td className="p-4 font-mono font-bold text-indigo-600">#{tx.id}</td>
+                             <td className="p-4 font-bold text-gray-800">{person?.name || 'نامشخص'}</td>
+                             <td className="p-4 font-mono text-gray-500" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
+                             <td className="p-4 text-xs font-semibold text-gray-600 text-right">{resourceLabel}</td>
+                             <td className="p-4 font-mono font-bold text-gray-900 text-right" dir="ltr">{formatCurrency(tx.amount)} {storeSettings.currency}</td>
+                             <td className="p-4 text-center flex items-center justify-center gap-2">
+                               <button onClick={() => { setPrintingTransaction(tx); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer border-none bg-transparent">
+                                 <Eye className="w-4 h-4"/>
+                               </button>
+                               <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))} className="p-2 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent">
+                                 <Trash2 className="w-4 h-4"/>
+                               </button>
+                             </td>
+                           </tr>
+                         );
+                       })}
+                       {filteredTxs.length === 0 && (
+                         <tr>
+                           <td colSpan={6} className="p-8 text-center text-gray-400 font-medium">هیچ سند یا رسیدی در این بخش صادر نشده است.</td>
+                         </tr>
+                       )}
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+             </motion.div>
+           );
+         }
+
+         case 'create_salary_payroll': {
+           return (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                 <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
+                   <FileSpreadsheet className="w-6 h-6 text-indigo-600" />
+                   محاسبه و ثبت فیش حقوق و دستمزد کارمند
+                 </h2>
+
+                 <form onSubmit={handleSubmitSalary} className="space-y-6">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1">انتخاب کارمند</label>
+                       <select 
+                         value={salaryPersonId} 
+                         onChange={(e) => setSalaryPersonId(e.target.value)} 
+                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                         required
+                       >
+                         <option value="">-- انتخاب پرسنل --</option>
+                         {persons.map(p => (
+                           <option key={p.id} value={p.id}>{p.name} {p.role === 'employee' ? '(پرسنل)' : ''}</option>
+                         ))}
+                       </select>
+                     </div>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1">تاریخ پرداخت/اصدار</label>
+                       <DatePicker
+                         value={salaryDate}
+                         onChange={setSalaryDate}
+                         calendar={persian}
+                         locale={persian_fa}
+                         calendarPosition="bottom-right"
+                         inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center"
+                         containerClassName="w-full"
+                       />
+                     </div>
+
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-2">حقوق پایه ({storeSettings.currency})</label>
+                       <input 
+                         type="number" 
+                         value={salaryBaseAmount} 
+                         onChange={(e) => setSalaryBaseAmount(e.target.value)} 
+                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" 
+                         dir="ltr" 
+                         required 
+                       />
+                     </div>
+                   </div>
+
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                     {/* Earnings */}
+                     <div className="bg-emerald-50/55 p-6 rounded-2xl border border-emerald-100/50 space-y-4">
+                       <h3 className="font-extrabold text-emerald-800 text-sm border-b border-emerald-100 pb-2 mb-3">آیتم‌های مشمول دریافت (اضافات)</h3>
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div>
+                           <label className="block text-xs font-bold text-gray-600 mb-1">حق مسکن</label>
+                           <input type="number" value={salaryHousingAllowance} onChange={(e) => setSalaryHousingAllowance(e.target.value)} className="w-full p-2 border border-gray-200 bg-white rounded-lg font-mono text-left" dir="ltr" />
+                         </div>
+                         <div>
+                           <label className="block text-xs font-bold text-gray-600 mb-1">بن و خواروبار</label>
+                           <input type="number" value={salaryGroceryAllowance} onChange={(e) => setSalaryGroceryAllowance(e.target.value)} className="w-full p-2 border border-gray-200 bg-white rounded-lg font-mono text-left" dir="ltr" />
+                         </div>
+                         <div>
+                           <label className="block text-xs font-bold text-gray-600 mb-1">سایر مزایا</label>
+                           <input type="number" value={salaryOtherAllowances} onChange={(e) => setSalaryOtherAllowances(e.target.value)} className="w-full p-2 border border-gray-200 bg-white rounded-lg font-mono text-left" dir="ltr" />
+                         </div>
+                       </div>
+                     </div>
+
+                     {/* Deductions */}
+                     <div className="bg-rose-50/50 p-6 rounded-2xl border border-rose-100/50 space-y-4">
+                       <h3 className="font-extrabold text-rose-800 text-sm border-b border-rose-100 pb-2 mb-3">آیتم‌های کسورات قانونی و انضباطی</h3>
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div>
+                           <label className="block text-xs font-bold text-gray-600 mb-1">حق بیمه سهم کارمند</label>
+                           <input type="number" value={salaryInsuranceDeduction} onChange={(e) => setSalaryInsuranceDeduction(e.target.value)} className="w-full p-2 border border-gray-200 bg-white rounded-lg font-mono text-left" dir="ltr" />
+                         </div>
+                         <div>
+                           <label className="block text-xs font-bold text-gray-600 mb-1">مالیات حقوق</label>
+                           <input type="number" value={salaryTaxDeduction} onChange={(e) => setSalaryTaxDeduction(e.target.value)} className="w-full p-2 border border-gray-200 bg-white rounded-lg font-mono text-left" dir="ltr" />
+                         </div>
+                         <div>
+                           <label className="block text-xs font-bold text-gray-600 mb-1">سایر کسورات/جریمه</label>
+                           <input type="number" value={salaryOtherDeductions} onChange={(e) => setSalaryOtherDeductions(e.target.value)} className="w-full p-2 border border-gray-200 bg-white rounded-lg font-mono text-left" dir="ltr" />
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+
+                   <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-4">
+                     <div className="flex items-center gap-3">
+                       <input 
+                         type="checkbox" 
+                         id="salDirectPay" 
+                         checked={salaryDirectPayment} 
+                         onChange={(e) => setSalaryDirectPayment(e.target.checked)} 
+                         className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500" 
+                       />
+                       <label htmlFor="salDirectPay" className="text-sm font-bold text-gray-800 select-none cursor-pointer">پرداخت و تسویه مستقیم از حساب‌های جاری سیستم (صندوق یا بانک)</label>
+                     </div>
+
+                     {salaryDirectPayment && (
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 animate-fade-in">
+                         <div>
+                           <label className="block text-sm font-bold text-gray-700 mb-1">محل تسویه مالی</label>
+                           <select value={salaryResourceType} onChange={(e) => setSalaryResourceType(e.target.value as 'bank' | 'cashbox')} className="w-full p-2.5 border border-gray-200 bg-white rounded-xl focus:ring-2 focus:ring-indigo-500">
+                             <option value="bank">حساب بانکی</option>
+                             <option value="cashbox">صندوق فروشگاهی</option>
+                           </select>
+                         </div>
+                         <div>
+                           <label className="block text-sm font-bold text-gray-700 mb-1">نام منبع تسویه</label>
+                           {salaryResourceType === 'bank' ? (
+                             <select value={salaryResourceId} onChange={(e) => setSalaryResourceId(e.target.value)} className="w-full p-2.5 border border-gray-200 bg-white rounded-xl focus:ring-2 focus:ring-indigo-500" required>
+                               <option value="">-- انتخاب بانک --</option>
+                               {accounts.map(acc => (
+                                 <option key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountNumber}</option>
+                               ))}
+                             </select>
+                           ) : (
+                             <select value={salaryResourceId} onChange={(e) => setSalaryResourceId(e.target.value)} className="w-full p-2.5 border border-gray-200 bg-white rounded-xl focus:ring-2 focus:ring-indigo-500" required>
+                               <option value="">-- انتخاب صندوق --</option>
+                               {cashboxes.map(cb => (
+                                 <option key={cb.id} value={cb.id}>{cb.name}</option>
+                               ))}
+                             </select>
+                           )}
+                         </div>
+                       </div>
+                     )}
+                   </div>
+
+                   <div>
+                     <label className="block text-sm font-bold text-gray-700 mb-1">بابت/شرح فیش حقوقی</label>
+                     <input type="text" value={salaryDescription} onChange={(e) => setSalaryDescription(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="بابت فیش رسمی حقوق ماه جاری کارمند..." />
+                   </div>
+
+                   <div className="flex justify-between items-center bg-indigo-50 p-5 rounded-2xl border border-indigo-100">
+                     <div className="text-right">
+                       <span className="text-xs text-indigo-600 font-bold block mb-1">مبلغ پرداختی خالص کارمند</span>
+                       <span className="text-2xl font-black text-indigo-950 font-mono" dir="ltr">
+                         {formatCurrency((Number(salaryBaseAmount) || 0) + (Number(salaryHousingAllowance) || 0) + (Number(salaryGroceryAllowance) || 0) + (Number(salaryOtherAllowances) || 0) - (Number(salaryInsuranceDeduction) || 0) - (Number(salaryTaxDeduction) || 0) - (Number(salaryOtherDeductions) || 0))} {storeSettings.currency}
+                       </span>
+                     </div>
+                     <button 
+                       type="submit" 
+                       disabled={submittingSalary} 
+                       className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer border-none"
+                     >
+                       {submittingSalary ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                       تایید نهایی و صدور فیش حقوقی
+                     </button>
+                   </div>
+                 </form>
+               </div>
+             </motion.div>
+           );
+         }
+
+         case 'list_salary_payroll': {
+           const salaryTxs = transactions.filter(t => t.type === 'salary');
+           return (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                 <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                   <List className="w-6 h-6 text-indigo-600" />
+                   فیش‌های حقوق و دستمزد پرسنل صادر شده
+                 </h2>
+               </div>
+
+               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                 <div className="overflow-x-auto">
+                   <table className="w-full text-right divide-y divide-gray-150">
+                     <thead>
+                       <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
+                         <th className="p-4 font-bold text-right">شناسه سند</th>
+                         <th className="p-4 font-bold text-right">نام کارمند</th>
+                         <th className="p-4 font-bold text-right">تاریخ سند</th>
+                         <th className="p-4 font-bold text-right">تسویه مستقیم</th>
+                         <th className="p-4 font-bold text-right">حقوق خالص</th>
+                         <th className="p-4 font-bold text-center">عملیات</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-50">
+                       {salaryTxs.map(tx => {
+                         const person = persons.find(p => p.id.toString() === tx.personId?.toString());
+                         const isDirectPay = tx.resourceType !== 'none';
+                         return (
+                           <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
+                             <td className="p-4 font-mono font-bold text-indigo-600">#{tx.id}</td>
+                             <td className="p-4 font-bold text-gray-800">{person?.name || 'نامشخص'}</td>
+                             <td className="p-4 font-mono text-gray-500" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
+                             <td className="p-4 text-xs font-semibold text-gray-600 text-right">
+                               {isDirectPay ? (
+                                 <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg">بله، تسویه شده</span>
+                               ) : (
+                                 <span className="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg">خیر، ثبت بدهی</span>
+                               )}
+                             </td>
+                             <td className="p-4 font-mono font-bold text-gray-900 text-right" dir="ltr">{formatCurrency(tx.amount)} {storeSettings.currency}</td>
+                             <td className="p-4 text-center flex items-center justify-center gap-2">
+                               <button onClick={() => openPayslip(tx)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-1 text-xs font-bold transition-all cursor-pointer border border-transparent bg-transparent">
+                                 <Eye className="w-4 h-4"/> مشاهده فیش حقوقی
+                               </button>
+                               <button onClick={() => confirmAction('حذف این فیش حقوقی غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))} className="p-2 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent">
+                                 <Trash2 className="w-4 h-4"/>
+                               </button>
+                             </td>
+                           </tr>
+                         );
+                       })}
+                       {salaryTxs.length === 0 && (
+                         <tr>
+                           <td colSpan={6} className="p-8 text-center text-gray-400 font-medium">هیچ فیش حقوقی یافت نشد.</td>
+                         </tr>
+                       )}
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+             </motion.div>
+           );
+         }
+
         case 'product_categories':
            return <div className="text-center p-8 bg-white rounded-xl">دسته‌بندی کالاها</div>;
         default:
            return <div className="text-center p-8 bg-white rounded-xl">این بخش در حال بازسازی است</div>;
     }
   };
+
+  const renderSidebarGroups = () => (
+    <div className="space-y-1 py-4 font-sans text-right">
+      {sidebarGroups.map((group) => {
+        const hasVisibleItems = group.items.some(item => !user || item.roles.includes(user.role));
+        if (!hasVisibleItems) return null;
+        
+        return (
+          <div key={group.id} className="mb-1 px-3">
+            <button 
+              onClick={() => toggleGroup(group.id)} 
+              className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            >
+               <span className="flex items-center gap-2">
+                  {group.icon} {group.label}
+               </span>
+               <ChevronDown className={`w-4 h-4 transition-transform ${expandedGroups[group.id] ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+               {expandedGroups[group.id] && (
+                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                    <div className="space-y-1 mt-1 border-r border-slate-700/50 mr-6 pr-3">
+                       {group.items.filter(item => !user || item.roles.includes(user.role)).map(item => (
+                         <button
+                           key={item.id}
+                           onClick={() => {
+                             setActiveTab(item.id as any);
+                             setIsSidebarOpen(false);
+                           }}
+                           className={`w-full text-right block py-2 px-3 rounded-lg text-sm transition-colors ${
+                              activeTab === item.id 
+                                ? 'bg-indigo-600/20 text-indigo-300 font-bold' 
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                           }`}
+                         >
+                           {item.label}
+                         </button>
+                       ))}
+                    </div>
+                 </motion.div>
+               )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <>      {/* Confirm Action Modal */}      {confirmState.isOpen && (        <div className="fixed inset-0 bg-slate-900/40 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">          <motion.div             initial={{ opacity: 0, scale: 0.95 }}            animate={{ opacity: 1, scale: 1 }}            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col items-center border border-gray-100"             dir="rtl"          >            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">               <AlertTriangle className="w-6 h-6" />            </div>            <h3 className="font-extrabold text-lg mb-2">تایید عملیات</h3>            <p className="text-gray-500 text-sm text-center mb-6">{confirmState.message}</p>            <div className="flex gap-3 w-full">               <button onClick={() => { confirmState.onConfirm(); setConfirmState({...confirmState, isOpen: false}) }} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">بله، تایید</button>               <button onClick={() => setConfirmState({...confirmState, isOpen: false})} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">انصراف</button>            </div>          </motion.div>        </div>      )}<div className="flex h-screen overflow-hidden bg-gray-50/50 text-gray-800 font-sans" dir="rtl">
@@ -1282,54 +2053,55 @@ export default function App() {
         />
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col w-full min-w-0 transition-all duration-300">
-        
-        {/* Desktop Header & Horizontal Menu */}
-        <div className="hidden md:flex flex-col bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm" dir="rtl">
-          <div className="flex items-center justify-between p-4">
-            <div className="text-gray-900 font-extrabold text-lg flex items-center gap-2">
-              {storeSettings.logoUrl ? <img src={storeSettings.logoUrl} className="w-8 h-8 rounded" alt="logo"/> : <Receipt className="w-6 h-6 text-indigo-600" />}
-              {storeSettings.storeName || 'سیستم مدیریت جامع شرکت'}
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={signOut} className="flex items-center gap-2 px-4 py-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl font-bold transition-colors">
-                <LogOut className="w-4 h-4" />
-                خروج
-              </button>
-            </div>
-          </div>
-          
-          {/* Horizontal Navigation Menu */}
-          <div className="flex items-center gap-1 px-4 pb-2 overflow-x-auto no-scrollbar justify-start border-t border-gray-50 pt-2">
-            {[
-              { id: 'create_sale', label: 'فروش', icon: <Plus className="w-4 h-4" /> },
-              { id: 'create_purchase', label: 'خرید', icon: <ShoppingCart className="w-4 h-4" /> },
-              { id: 'products', label: 'کالاها', icon: <Package className="w-4 h-4" /> },
-              { id: 'product_categories', label: 'گروه بندی', icon: <List className="w-4 h-4" /> },
-              { id: 'persons', label: 'اشخاص', icon: <Users className="w-4 h-4" /> },
-              { id: 'accounts', label: 'حساب‌های بانکی', icon: <CreditCard className="w-4 h-4" /> },
-             { id: 'checks', label: 'چک‌ها', icon: <CreditCard className="w-4 h-4" /> },
-             { id: 'transfer', label: 'انتقال وجه', icon: <ArrowRightLeft className="w-4 h-4" /> },
-              { id: 'cashboxes', label: 'صندوق‌ها', icon: <Wallet className="w-4 h-4" /> },
-              { id: 'settings', label: 'تنظیمات', icon: <Settings className="w-4 h-4" /> },
-              { id: 'database', label: 'پایگاه داده', icon: <Database className="w-4 h-4" /> },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap rounded-lg text-xs font-semibold transition-colors ${
-                  activeTab === tab.id 
-                    ? 'bg-indigo-600 text-white shadow-sm' 
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-indigo-600'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900 shadow-2xl z-40 text-slate-300 flex-shrink-0 transition-all duration-300 overflow-y-auto" dir="rtl">
+        <div className="p-5 border-b border-slate-800 flex flex-col justify-center">
+          <div className="flex items-center gap-3">
+             {storeSettings.logoUrl ? <img src={storeSettings.logoUrl} className="w-8 h-8 rounded" alt="logo"/> : <Receipt className="w-8 h-8 text-indigo-500" />}
+             <div>
+               <h1 className="font-extrabold text-white text-lg">{storeSettings.storeName || 'سیستم مدیریت'}</h1>
+               <div className="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">V1.0.0 PRO</div>
+             </div>
           </div>
         </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+           {renderSidebarGroups()}
+        </div>
+        <div className="p-4 border-t border-slate-800">
+           <button onClick={signOut} className="w-full flex items-center justify-center gap-2 py-2.5 text-rose-400 hover:text-white hover:bg-rose-500/20 rounded-xl font-bold transition-colors">
+              <LogOut className="w-5 h-5" />
+              خروج از حساب
+           </button>
+        </div>
+      </aside>
+
+      {/* Mobile Drawer Menu */}
+      <div className={`fixed inset-y-0 right-0 w-72 bg-slate-900 text-slate-300 shadow-2xl z-40 transform transition-transform duration-300 md:hidden flex flex-col ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-bold text-white">
+            <Shield className="w-5 h-5 text-indigo-500"/>
+            <span>منوی سیستم</span>
+          </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-slate-800 text-slate-400 rounded-lg">
+            <X className="w-5 h-5"/>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto py-2">
+           {renderSidebarGroups()}
+        </div>
+        <div className="p-4 border-t border-slate-800">
+           <button onClick={signOut} className="w-full flex items-center justify-center gap-2 py-3 text-rose-400 hover:text-white bg-slate-800/50 hover:bg-rose-500/20 rounded-xl font-bold transition-colors">
+              <LogOut className="w-5 h-5" />
+              خروج از حساب
+           </button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col w-full min-w-0 transition-all duration-300">
+
+        
+
 
         {/* Mobile Header */}
         <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm" dir="rtl">
@@ -2545,6 +3317,8 @@ export default function App() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
+      ) : activeTab === 'users_manager' ? (
+        <UserManager />
       ) : activeTab === 'settings' ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
