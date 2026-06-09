@@ -317,6 +317,7 @@ export default function App() {
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
   const [newCatParentId, setNewCatParentId] = useState<string | number | ''>('');
+  const [categorySearch, setCategorySearch] = useState('');
 
   const [submittingProduct, setSubmittingProduct] = useState(false);
 
@@ -339,6 +340,35 @@ export default function App() {
   const [personCard, setPersonCard] = useState('');
   const [personSheba, setPersonSheba] = useState('');
   const [personNotes, setPersonNotes] = useState('');
+
+  // Persons Import/Export Modal states
+  const [isPersonIOModalOpen, setIsPersonIOModalOpen] = useState(false);
+  const [personIOAction, setPersonIOAction] = useState<'import' | 'export'>('export');
+  const [personsIOFileType, setPersonsIOFileType] = useState<'excel_pasted' | 'json' | 'csv'>('excel_pasted');
+  const [pastedPersonsText, setPastedPersonsText] = useState('');
+  const [importSelectedFile, setImportSelectedFile] = useState<File | null>(null);
+  
+  // Custom CSV / Pasted Excel Parsing state
+  const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
+  const [parsedRows, setParsedRows] = useState<string[][]>([]);
+  const [detectedDelimiter, setDetectedDelimiter] = useState('\t');
+  const [isFirstRowHeader, setIsFirstRowHeader] = useState(true);
+  const [personIOMappings, setPersonIOMappings] = useState<Record<string, number>>({
+    name: -1,
+    personType: -1,
+    nationalId: -1,
+    role: -1,
+    phone: -1,
+    fatherName: -1,
+    companyName: -1,
+    address: -1,
+    bankName: -1,
+    bankAccountNumber: -1,
+    cardNumber: -1,
+    shebaNumber: -1,
+    additionalNotes: -1,
+    personCode: -1
+  });
 
 
   // Bank Account modal & form state
@@ -1368,16 +1398,21 @@ export default function App() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><Calendar className="w-4 h-4"/> تاریخ</label>
-                    <DatePicker
-                        value={date}
-                        onChange={setDate}
-                        calendar={persian}
-                        locale={persian_fa}
-                        calendarPosition="bottom-right"
-                        inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono"
-                        containerClassName="w-full"
-                    />
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> تاریخ صدور فاکتور</label>
+                    <div className="relative">
+                      <DatePicker
+                          value={date}
+                          onChange={setDate}
+                          calendar={persian}
+                          locale={persian_fa}
+                          calendarPosition="bottom-right"
+                          inputClass="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-base md:text-lg"
+                          containerClassName="w-full"
+                      />
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><User className="w-4 h-4"/> طرف حساب</label>
@@ -1447,7 +1482,25 @@ export default function App() {
                                   <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center" dir="ltr" />
                               </td>
                               <td className="p-4">
-                                  <input type="number" min="0" step="any" value={item.unitPrice} onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" dir="ltr" />
+                                  <input 
+                                    type="number" 
+                                    min="0" 
+                                    step="any" 
+                                    value={item.unitPrice} 
+                                    onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
+                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950 text-sm md:text-base" 
+                                    dir="ltr" 
+                                  />
+                                  {item.unitPrice && !isNaN(Number(item.unitPrice)) && Number(item.unitPrice) > 0 && (
+                                    <div className="mt-1 space-y-0.5 text-right font-sans">
+                                      <div className="text-[10px] text-indigo-700 font-black tracking-wide font-mono" dir="ltr">
+                                        {formatCurrency(Number(item.unitPrice))} {invoiceCurrency}
+                                      </div>
+                                      <div className="text-[9px] text-amber-800 font-bold max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap block" title={numToPersianWords(Number(item.unitPrice))}>
+                                        {numToPersianWords(Number(item.unitPrice))}
+                                      </div>
+                                    </div>
+                                  )}
                               </td>
                               <td className="p-4">
                                   <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600" dir="ltr" />
@@ -1494,8 +1547,13 @@ export default function App() {
                         <div className="h-px bg-gray-200 w-full my-4"></div>
                         <div className="flex justify-between items-center text-lg font-black text-indigo-700">
                           <span>مبلغ نهایی:</span>
-                          <span className="font-mono" dir="ltr">{formatCurrency(calculateFinalTotal())} {invoiceCurrency}</span>
+                          <span className="font-mono text-xl text-indigo-950 font-black" dir="ltr">{formatCurrency(calculateFinalTotal())} {invoiceCurrency}</span>
                         </div>
+                        {calculateFinalTotal() > 0 && (
+                          <div className="mt-2.5 pt-2.5 border-t border-dashed border-indigo-200 text-right leading-relaxed text-xs font-bold text-gray-600">
+                            به حروف: <span className="text-amber-800 font-black">{numToPersianWords(calculateFinalTotal())} {invoiceCurrency}</span> تمام.
+                          </div>
+                        )}
                       </div>
                   </div>
                 </div>
@@ -1535,8 +1593,17 @@ export default function App() {
                            <tr key={inv.id} className="hover:bg-gray-50">
                              <td className="p-4 font-mono font-bold text-gray-700">{inv.invoiceNumber}</td>
                              <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
-                             <td className="p-4 font-mono text-gray-500" dir="ltr">{inv.jalaliDate}</td>
-                             <td className="p-4 font-mono font-bold text-indigo-600" dir="ltr">{formatCurrency(inv.totalAmount || 0)} {inv.currency || storeSettings.currency}</td>
+                             <td className="p-4">
+                                <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
+                                  <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span className="font-mono tracking-tight">{inv.jalaliDate}</span>
+                                </div>
+                              </td>
+                             <td className="p-4">
+                                <span className="font-mono font-black text-xs text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
+                                  {formatCurrency(inv.totalAmount || 0)} <span className="text-[10px] text-indigo-600 font-extrabold mr-1">{inv.currency || storeSettings.currency}</span>
+                                </span>
+                              </td>
                              <td className="p-4 text-center flex items-center justify-center gap-2">
                                 <button onClick={() => { setPreviewInvoiceData(inv); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none">
                                   <Eye className="w-4 h-4"/>
@@ -2033,8 +2100,372 @@ export default function App() {
            );
          }
 
-        case 'product_categories':
-           return <div className="text-center p-8 bg-white rounded-xl">دسته‌بندی کالاها</div>;
+                 case 'product_categories': {
+            // Filter search results
+            const filteredCats = productCategories.filter(c => 
+              (c.name || '').toLowerCase().includes(categorySearch.toLowerCase()) || 
+              (c.description || '').toLowerCase().includes(categorySearch.toLowerCase())
+            );
+
+            // Resets the category form
+            const resetCategoryForm = () => {
+              setNewCatName('');
+              setNewCatDesc('');
+              setNewCatParentId('');
+              setEditingCategoryId(null);
+            };
+
+            return (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6 text-right"
+              >
+                {/* Header Banner */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                      <List className="w-6 h-6 text-indigo-600" />
+                      مدیریت گروه‌بندی کالاها
+                    </h1>
+                    <p className="text-sm text-gray-500 font-medium mt-1">
+                      دسته‌بندی درختی محصولات و خدمات جهت سازماندهی دقیق کالاها، گزارشات سوددهی و انبارگردانی آسان
+                    </p>
+                  </div>
+                </div>
+
+                {/* Info Stats Widgets */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-gray-400 block mb-1">تعداد کل دسته‌ها</span>
+                      <span className="text-2xl font-black text-indigo-950 font-mono" dir="ltr">{productCategories.length}</span>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <List className="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-gray-400 block mb-1">گروه‌های اصلی</span>
+                      <span className="text-2xl font-black text-amber-950 font-mono" dir="ltr">{productCategories.filter(c => !c.parentId).length}</span>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                      <Tag className="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-gray-400 block mb-1">زیرمجموعه‌ها</span>
+                      <span className="text-2xl font-black text-teal-950 font-mono" dir="ltr">{productCategories.filter(c => c.parentId).length}</span>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-gray-400 block mb-1">کالاهای دسته‌بندی شده</span>
+                      <span className="text-2xl font-black text-rose-950 font-mono" dir="ltr">
+                        {products.filter(p => p.categoryId || p.category).length}
+                      </span>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                      <Package className="w-6 h-6" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main Content Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Right: Registration / Edit Form (cols-4) */}
+                  <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-150 p-6 flex flex-col gap-5 shadow-sm">
+                    <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
+                      <h3 className="text-base font-black text-gray-800 flex items-center gap-2">
+                        {editingCategoryId ? (
+                          <>
+                            <Edit2 className="w-4 h-4 text-emerald-500" />
+                            ویرایش گروه‌بندی
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 text-indigo-500" />
+                            ثبت گروه‌بندی جدید
+                          </>
+                        )}
+                      </h3>
+                      {editingCategoryId && (
+                        <button 
+                          onClick={resetCategoryForm}
+                          className="text-xs text-rose-500 hover:text-rose-600 font-extrabold bg-rose-50 hover:bg-rose-100/60 px-2 py-1 rounded-lg border-none cursor-pointer transition-all"
+                        >
+                          لغو ویرایش
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Name input */}
+                      <div>
+                        <label className="block text-xs font-black text-gray-650 mb-1.5">
+                          نام گروه کالایی <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={newCatName}
+                            onChange={(e) => setNewCatName(e.target.value)}
+                            placeholder="مثال: مواد پروتئینی، لبنیات"
+                            className="w-full pl-4 pr-10 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-bold transition-all shadow-xs text-sm"
+                            required
+                          />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <Tag className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Parent selection (Dynamic React Select or Custom Dropdown) */}
+                      <div>
+                        <label className="block text-xs font-black text-gray-650 mb-1.5 flex justify-between items-center">
+                          <span>گروه والد (زیرمجموعه از)</span>
+                          <span className="text-[10px] text-gray-400 font-bold">(اختیاری)</span>
+                        </label>
+                        <Select
+                          isRtl
+                          value={newCatParentId ? { value: newCatParentId, label: productCategories.find(c => c.id === newCatParentId || c.id.toString() === newCatParentId?.toString())?.name || 'گروه والد' } : null}
+                          onChange={(option) => setNewCatParentId(option ? option.value : '')}
+                          options={productCategories.filter(c => c.id !== editingCategoryId).map(c => ({
+                            value: c.id.toString(),
+                            label: c.name
+                          }))}
+                          placeholder="انتخاب گروه والد..."
+                          isClearable
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              backgroundColor: '#f8fafc',
+                              borderRadius: '12px',
+                              borderColor: '#e2e8f0',
+                              fontSize: '14px',
+                              fontWeight: 'bold',
+                              padding: '1.5px',
+                              boxShadow: 'none',
+                              '&:hover': {
+                                backgroundColor: '#f1f5f9'
+                              }
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              fontSize: '13px',
+                              fontWeight: 'bold',
+                              zIndex: 10
+                            })
+                          }}
+                        />
+                      </div>
+
+                      {/* Description input */}
+                      <div>
+                        <label className="block text-xs font-black text-gray-650 mb-1.5">
+                          توضیحات تکمیلی
+                        </label>
+                        <textarea
+                          value={newCatDesc}
+                          onChange={(e) => setNewCatDesc(e.target.value)}
+                          placeholder="یک توضیح کوتاه برای این گروه بنویسید..."
+                          rows={3}
+                          className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-medium text-xs leading-relaxed transition-all shadow-xs resize-none"
+                        />
+                      </div>
+
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          disabled={!newCatName}
+                          onClick={() => confirmAction(
+                            editingCategoryId ? 'آیا از ثبت تغییرات این گروه کالایی اطمینان دارید؟' : 'آیا از ثبت این گروه کالایی جدید اطمینان دارید؟',
+                            async () => {
+                              await handleSaveCategory();
+                              resetCategoryForm();
+                            }
+                          )}
+                          className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border-none shadow-md ${
+                            newCatName 
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100 active:scale-98' 
+                              : 'bg-indigo-100 text-indigo-400 cursor-not-allowed'
+                          }`}
+                        >
+                          <Save className="w-4 h-4" />
+                          {editingCategoryId ? 'ذخیره تغییرات گروه' : 'ثبت گروه جدید'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Left: Interactive Categories Tree / Table (cols-8) */}
+                  <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-150 shadow-sm flex flex-col overflow-hidden">
+                    
+                    {/* Filter and search bar in header */}
+                    <div className="p-4 bg-slate-50/50 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="relative w-full sm:w-72">
+                        <input
+                          type="text"
+                          value={categorySearch}
+                          onChange={(e) => setCategorySearch(e.target.value)}
+                          placeholder="جستجو در نام یا توضیحات گروه..."
+                          className="w-full pl-4 pr-10 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-xs font-bold font-sans transition-all shadow-xs"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                          <Search className="w-4 h-4" />
+                        </div>
+                        {categorySearch && (
+                          <button 
+                            onClick={() => setCategorySearch('')}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 border-none bg-transparent cursor-pointer p-0.5 rounded"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="text-xs text-gray-400 font-bold">
+                        نمایش <span className="text-indigo-600 font-black">{filteredCats.length}</span> گروه از مجموع <span className="text-slate-800 font-black">{productCategories.length}</span>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse text-right">
+                        <thead>
+                          <tr className="bg-slate-50 text-gray-500 text-xs font-bold border-b border-gray-100 select-none">
+                            <th className="p-4 w-[40%]">نام گروه کالایی</th>
+                            <th className="p-4 w-[25%]">گروه والد</th>
+                            <th className="p-4 w-[15%] text-center">تعداد محصولات</th>
+                            <th className="p-4 w-[20%] text-center">عملیات</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100/70 text-gray-700">
+                          {filteredCats.map((cat) => {
+                            const isChild = !!cat.parentId;
+                            const parentCat = cat.parentId ? productCategories.find(p => p.id === cat.parentId || p.id.toString() === cat.parentId?.toString()) : null;
+                            const prodQty = products.filter(p => String(p.categoryId) === String(cat.id) || p.category === cat.name).length;
+                            const isEditingCurrent = editingCategoryId === cat.id;
+
+                            return (
+                              <tr 
+                                key={cat.id} 
+                                className={`hover:bg-indigo-50/20 transition-all ${isEditingCurrent ? 'bg-indigo-50/40' : ''}`}
+                              >
+                                {/* Category Name */}
+                                <td className="p-4">
+                                  <div className="flex flex-col gap-1">
+                                    {isChild ? (
+                                      <div className="flex items-center gap-1.5 mr-4 font-bold text-gray-800">
+                                        <span className="text-indigo-400 font-mono select-none">└─</span>
+                                        <Tag className="w-3.5 h-3.5 text-slate-400" />
+                                        <span>{cat.name}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5 font-extrabold text-indigo-950">
+                                        <Tag className="w-4 h-4 text-indigo-500" />
+                                        <span>{cat.name}</span>
+                                      </div>
+                                    )}
+                                    {cat.description && (
+                                      <span className={`text-[11px] leading-relaxed max-w-[280px] overflow-hidden text-ellipsis mr-5 block ${isChild ? 'mr-10' : 'mr-6'} text-gray-400 font-medium`}>
+                                        {cat.description}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Parent Category */}
+                                <td className="p-4">
+                                  {parentCat ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50/50 px-2 py-1 rounded-lg border border-indigo-100/30">
+                                      {parentCat.name}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center text-[10px] font-bold text-gray-500 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
+                                      گروه اصلی
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Products count badge */}
+                                <td className="p-4 text-center">
+                                  {prodQty > 0 ? (
+                                    <span className="font-sans font-black text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100/70 px-2.5 py-1 rounded-xl transition-all border border-indigo-100/30 inline-block min-w-10">
+                                      {prodQty} کالا
+                                    </span>
+                                  ) : (
+                                    <span className="font-sans font-bold text-xs text-gray-400 bg-gray-50/50 px-2.5 py-1 rounded-xl inline-block min-w-10 border border-transparent">
+                                      ۰ کالا
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Actions */}
+                                <td className="p-4">
+                                  <div className="flex items-center justify-center gap-1.5 no-print">
+                                    <button
+                                      title="ویرایش"
+                                      onClick={() => {
+                                        setEditingCategoryId(cat.id);
+                                        setNewCatName(cat.name);
+                                        setNewCatDesc(cat.description || '');
+                                        setNewCatParentId(cat.parentId || '');
+                                      }}
+                                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg cursor-pointer border border-transparent bg-transparent transition-all"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      title="حذف"
+                                      onClick={() => confirmAction(
+                                        `آیا از حذف گروه کالایی "${cat.name}" اطمینان دارید؟ با حذف گروه‌بندی، محصولات ثبت‌شده تحت این ردیف بدون دسته‌بندی می‌شوند.`,
+                                        async () => {
+                                          await deleteProductCategory(cat.id);
+                                          setSuccessMsg('گروه‌بندی حذف شد.');
+                                          const fc = await getProductCategories();
+                                          setProductCategories(fc);
+                                          if (editingCategoryId === cat.id) {
+                                            resetCategoryForm();
+                                          }
+                                        }
+                                      )}
+                                      className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border border-transparent bg-transparent transition-all"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {filteredCats.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="p-12 text-center text-gray-400 font-medium">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Tag className="w-8 h-8 text-gray-300" />
+                                  <span>هیچ گروه کالایی یافت نشد.</span>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          }
         default:
            return <div className="text-center p-8 bg-white rounded-xl">این بخش در حال بازسازی است</div>;
     }
@@ -2333,25 +2764,38 @@ export default function App() {
               </h1>
               <p className="text-sm text-gray-500 font-medium mt-1">پرونده‌ی اطلاعاتی جامع مشتریان، تامین‌کنندگان و کارمندان مجموعه</p>
             </div>
-            <button
-              onClick={() => {
-                setEditingPersonId(null);
-                setNewPersonType('real');
-                setNewPersonFirstName('');
-                setNewPersonLastName('');
-                setNewPersonCompanyName('');
-                setNewPersonFatherName('');
-                setNewPersonNationalId('');
-                setNewPersonAddress('');
-                setNewPersonPhone('');
-                setNewPersonRole('customer');
-                setIsPersonModalOpen(true);
-              }}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              ثبت جدید
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setPersonIOAction('export');
+                  setIsPersonIOModalOpen(true);
+                }}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 bg-white rounded-xl flex items-center gap-2 transition-all text-sm font-bold shadow-xs cursor-pointer"
+              >
+                <ArrowRightLeft className="w-4 h-4 text-indigo-500 animate-pulse" />
+                ورود / خروج اکسل و اطلاعات
+              </button>
+              
+              <button
+                onClick={() => {
+                  setEditingPersonId(null);
+                  setNewPersonType('real');
+                  setNewPersonFirstName('');
+                  setNewPersonLastName('');
+                  setNewPersonCompanyName('');
+                  setNewPersonFatherName('');
+                  setNewPersonNationalId('');
+                  setNewPersonAddress('');
+                  setNewPersonPhone('');
+                  setNewPersonRole('customer');
+                  setIsPersonModalOpen(true);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all hover:scale-102 active:scale-98 text-sm font-bold shadow-md shadow-indigo-150 cursor-pointer border-none"
+              >
+                <Plus className="w-4 h-4" />
+                ثبت جدید
+              </button>
+            </div>
           </div>
           
           {successMsg && (
@@ -4291,6 +4735,773 @@ export default function App() {
             </motion.div>
           </div>
         )}
+        {/* Modal for Import / Export of Persons */}
+        {isPersonIOModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl border border-gray-150 overflow-hidden w-full max-w-4xl max-h-[90vh] flex flex-col font-sans text-right"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                  <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
+                  ورود و خروج اطلاعات اشخاص (فرمت استاندارد و خاص)
+                </h3>
+                <button
+                  onClick={() => setIsPersonIOModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-2 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Tabs inside Modal */}
+              <div className="flex border-b border-slate-150 bg-slate-50">
+                <button
+                  onClick={() => setPersonIOAction('export')}
+                  className={`flex-1 py-3 text-sm font-bold transition-all border-none cursor-pointer ${
+                    personIOAction === 'export'
+                      ? 'bg-white text-indigo-600 border-b-2 border-indigo-600'
+                      : 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <ArrowDownToLine className="w-4 h-4" />
+                    صدور اطلاعات (خروجی گرفتن از سیستم)
+                  </div>
+                </button>
+                <button
+                  onClick={() => setPersonIOAction('import')}
+                  className={`flex-1 py-3 text-sm font-bold transition-all border-none cursor-pointer ${
+                    personIOAction === 'import'
+                      ? 'bg-white text-indigo-600 border-b-2 border-indigo-600'
+                      : 'text-slate-500 hover:bg-slate-100/50 hover:text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <ArrowUpFromLine className="w-4 h-4" />
+                    ورود اطلاعات (وارد کردن به سیستم)
+                  </div>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto flex-1 text-sm text-slate-750 space-y-6">
+                
+                {/* EXPORT TAB content */}
+                {personIOAction === 'export' && (
+                  <div className="space-y-4">
+                    <div className="bg-indigo-50/50 border border-indigo-100/50 p-4 rounded-xl text-indigo-950 font-medium leading-relaxed">
+                      در این بخش می‌توانید لیست جامع اطلاعات تمامی اشخاص ثبت شده در سیستم ({persons.length} شخص) را با فرمت استانداردی چون JSON یا اکسل (CSV کاملاً سازگار با حروف فارسی) دریافت و بر روی سیستم خود ذخیره نمایید.
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* CSV Export Option Card */}
+                      <div className="p-5 border border-slate-200 rounded-2xl bg-white hover:border-indigo-400 hover:bg-indigo-50/5 transition-all flex flex-col gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">CSV</div>
+                          <div>
+                            <h4 className="text-sm font-extrabold text-slate-800">خروجی اکسل استاندارد (CSV فارسی)</h4>
+                            <span className="text-xs text-slate-400 font-medium">مناسب باز کردن مستقیم در اکسل و سایر جداول</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed min-h-12 font-medium">
+                          این فرمت به همراه شناسه UTF-8 BOM ثبت می‌شود که به صورت کاملاً خودکار در نرم افزار Excel با زبان فارسی باز شده و در آن حروف فارسی به صورت بهم ریخته دیده نمی‌شوند.
+                        </p>
+                        <button
+                          onClick={() => {
+                            // Column mapping in standard csv
+                            const headers = [
+                              'کد شخص', 'نام کامل', 'نوع شخص', 'کد ملی/شناسه ملی', 'نقش', 'شماره تماس', 
+                              'نام پدر', 'نام شرکت', 'آدرس', 'نام بانک', 'شماره حساب', 'شماره کارت', 'شماره شبا', 'یادداشت تکمیلی'
+                            ];
+                            
+                            const csvContent = [
+                              headers.join(','),
+                              ...persons.map(p => {
+                                const row = [
+                                  p.personCode || '',
+                                  p.name || '',
+                                  p.personType === 'legal' ? 'حقوقی' : 'حقیقی',
+                                  p.nationalId || '',
+                                  p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند',
+                                  p.phone || '',
+                                  p.fatherName || '',
+                                  p.companyName || '',
+                                  (p.address || '').replace(/,/g, ' - '),
+                                  p.bankName || '',
+                                  p.bankAccountNumber || '',
+                                  p.cardNumber || '',
+                                  p.shebaNumber || '',
+                                  (p.additionalNotes || '').replace(/[\r\n,]/g, ' - ')
+                                ];
+                                // wrapping each cell with quotes to hand characters spacing/commas
+                                return row.map(v => `"${v.replace(/"/g, '""')}"`).join(',');
+                              })
+                            ].join('\r\n');
+
+                            // BOM prefix is crucial for persian excel compatibility
+                            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', `persons_list_export_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.csv`);
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          className="w-full mt-2 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border-none shadow-sm shadow-teal-50"
+                        >
+                          <FileSpreadsheet className="w-4 h-4" />
+                          دانلود فایل اکسل CSV
+                        </button>
+                      </div>
+
+                      {/* JSON Export Option Card */}
+                      <div className="p-5 border border-slate-200 rounded-2xl bg-white hover:border-indigo-400 hover:bg-indigo-50/5 transition-all flex flex-col gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">JSON</div>
+                          <div>
+                            <h4 className="text-sm font-extrabold text-slate-800">خروجی بک آپ سیستمی (Standard JSON)</h4>
+                            <span className="text-xs text-slate-400 font-medium">بک آپ خام دقیق جهت انتقال بین سرورها یا سیستم‌های دیگر</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed min-h-12 font-medium">
+                          این فایل شامل ساختار آرایه داده کل اشخاص به روش JSON است. این فرمت بسیار دقیق بوده و برای انتقال بی‌نقص اطلاعات به نرم افزار حسابداری در دستگاه‌های دیگر فوق‌العاده است.
+                        </p>
+                        <button
+                          onClick={() => {
+                            const blob = new Blob([JSON.stringify(persons, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', `persons_data_export_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`);
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          className="w-full mt-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border-none shadow-sm shadow-indigo-50"
+                        >
+                          <Database className="w-4 h-4" />
+                          دانلود فایل پشتیبان JSON
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* IMPORT TAB content */}
+                {personIOAction === 'import' && (
+                  <div className="space-y-6">
+                    {/* Choose Source Format Type */}
+                    <div className="flex flex-col gap-3 bg-slate-50 p-4 rounded-xl border border-slate-150">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-700">۱. نوع فایل / شیوه ورود اطلاعات خود را انتخاب کنید:</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setPersonsIOFileType('excel_pasted');
+                              setPastedPersonsText('');
+                              setParsedHeaders([]);
+                              setParsedRows([]);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
+                              personsIOFileType === 'excel_pasted'
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'bg-slate-200 text-slate-600 hover:bg-slate-350'
+                            }`}
+                          >
+                            کپی-پیست از اکسل (ساده‌ترین روش)
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPersonsIOFileType('json');
+                              setParsedHeaders([]);
+                              setParsedRows([]);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
+                              personsIOFileType === 'json'
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'bg-slate-200 text-slate-600 hover:bg-slate-350'
+                            }`}
+                          >
+                            بارگذاری فایل JSON (سیستمی)
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPersonsIOFileType('csv');
+                              setParsedHeaders([]);
+                              setParsedRows([]);
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer ${
+                              personsIOFileType === 'csv'
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'bg-slate-200 text-slate-600 hover:bg-slate-350'
+                            }`}
+                          >
+                            بارگذاری فایل CSV یا اکسل
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SUB-TABS Content */}
+                    
+                    {/* Method 1: excel_pasted */}
+                    {personsIOFileType === 'excel_pasted' && (
+                      <div className="space-y-4">
+                        <div className="text-slate-600 space-y-1">
+                          <p className="font-extrabold text-slate-800">راهنمای کپی-پیست مستقیم از اکسل / جدول:</p>
+                          <p className="text-xs font-medium">۱. در برنامه اکسل یا گوگل‌شیت، ستون‌های دلخواه از اطلاعات مشتریان خود را کپی کنید.</p>
+                          <p className="text-xs font-medium">۲. اطلاعات کپی شده را مستقیماً در کادر زیر قرار دهید (Paste کنید).</p>
+                          <p className="text-xs font-medium">۳. در مرحله بعدی، مشخص می‌کنید که هر کدام از ستون‌های ثبت شده متعلق به کدام ویژگی شخص است.</p>
+                        </div>
+
+                        <textarea
+                          value={pastedPersonsText}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPastedPersonsText(val);
+                            
+                            // Auto parse on input
+                            if (!val.trim()) {
+                              setParsedHeaders([]);
+                              setParsedRows([]);
+                              return;
+                            }
+                            
+                            const lines = val.split(/\r?\n/).filter(line => line.trim() !== '');
+                            if (lines.length > 0) {
+                              const matrix = lines.map(line => line.split('\t'));
+                              // Let's analyze if first row looks like header
+                              if (matrix.length > 0) {
+                                setParsedHeaders(matrix[0]);
+                                setParsedRows(matrix.slice(1));
+                              }
+                            }
+                          }}
+                          placeholder="اطلاعات کپی شده از اکسل را در این فضا پیست کنید..."
+                          rows={6}
+                          className="w-full p-4 border border-slate-200 bg-slate-50 hover:bg-slate-100/50 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-mono text-xs leading-relaxed transition-all shadow-xs"
+                        />
+                      </div>
+                    )}
+
+                    {/* Method 2: json file */}
+                    {personsIOFileType === 'json' && (
+                      <div className="border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl p-6 text-center space-y-4 hover:border-indigo-400 transition-all">
+                        <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center mx-auto">
+                          <Database className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">بارگذاری فایل پشتیبان JSON اشخاص</p>
+                          <p className="text-xs text-slate-400 font-medium mt-1">فایلی را که قبلاً صادر کرده‌اید انتخاب نمایید تا تمام اشخاص موجود در آن بازیابی شوند.</p>
+                        </div>
+                        <div className="inline-block relative">
+                          <input
+                            type="file"
+                            accept=".json"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setImportSelectedFile(file);
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                  try {
+                                    const parsedObj = JSON.parse(event.target?.result as string);
+                                    if (Array.isArray(parsedObj)) {
+                                      // It's already the array format!
+                                      setParsedRows(parsedObj.map(p => [
+                                        p.name || '', p.personType || 'real', p.role || 'customer', p.phone || '', p.nationalId || '',
+                                        p.fatherName || '', p.companyName || '', p.address || '', p.bankName || '',
+                                        p.bankAccountNumber || '', p.cardNumber || '', p.shebaNumber || '', p.additionalNotes || '', p.personCode || ''
+                                      ]));
+                                      // Mock standard header
+                                      setParsedHeaders([
+                                        'name', 'personType', 'role', 'phone', 'nationalId', 'fatherName', 'companyName',
+                                        'address', 'bankName', 'bankAccountNumber', 'cardNumber', 'shebaNumber', 'additionalNotes', 'personCode'
+                                      ]);
+                                      // Auto establish mapper to match index directly
+                                      setPersonIOMappings({
+                                        name: 0, personType: 1, role: 2, phone: 3, nationalId: 4, fatherName: 5, companyName: 6,
+                                        address: 7, bankName: 8, bankAccountNumber: 9, cardNumber: 10, shebaNumber: 11, additionalNotes: 12, personCode: 13
+                                      });
+                                    } else {
+                                      alert('فرمت فایل پشتیبانی نمی‌شود. فایل خروجی استاندارد نیست.');
+                                    }
+                                  } catch (err) {
+                                    alert('خطا در خواندن فایل JSON. از صحت فایل مطمئن شوید.');
+                                  }
+                                };
+                                reader.readAsText(file);
+                              }
+                            }}
+                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                          />
+                          <button className="px-5 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                            <Plus className="w-4 h-4" />
+                            انتخاب فایل از سیستم
+                          </button>
+                        </div>
+                        {importSelectedFile && (
+                          <div className="text-xs text-slate-500 font-bold bg-slate-100 inline-block px-3 py-1 rounded-lg">
+                            فایل انتخاب شده: {importSelectedFile.name}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Method 3: csv file */}
+                    {personsIOFileType === 'csv' && (
+                      <div className="space-y-4">
+                        <div className="border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl p-6 text-center space-y-4 hover:border-indigo-400 transition-all">
+                          <div className="w-12 h-12 rounded-xl bg-teal-50 text-teal-500 flex items-center justify-center mx-auto">
+                            <FileSpreadsheet className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 text-sm">بارگذاری فایل CSV یا فایل‌های اکسل صادر شده</p>
+                            <p className="text-xs text-slate-400 font-medium mt-1">یک فایل CSV و متنی با هر جداکننده‌ای متداول (کاما، سیمی‌کولن، تب) را بارگذاری نمایید.</p>
+                          </div>
+                          <div className="flex justify-center items-center gap-4">
+                            <div className="flex items-center gap-1 bg-white p-2 rounded-lg border border-slate-150 text-xs">
+                              <span className="font-bold">جداکننده ستون‌ها:</span>
+                              <select 
+                                value={detectedDelimiter} 
+                                onChange={(e) => {
+                                  const d = e.target.value;
+                                  setDetectedDelimiter(d);
+                                  // Re-parse if text or file exists
+                                  if (pastedPersonsText) {
+                                    const lines = pastedPersonsText.split(/\r?\n/).filter(line => line.trim() !== '');
+                                    const delim = d === '\	' ? '\t' : d;
+                                    const matrix = lines.map(line => line.split(delim));
+                                    if (matrix.length > 0) {
+                                      setParsedHeaders(matrix[0]);
+                                      setParsedRows(matrix.slice(1));
+                                    }
+                                  }
+                                }} 
+                                className="border-none font-bold text-indigo-700 outline-none p-1 bg-transparent"
+                              >
+                                <option value="\t">تب (Tab-spaced)</option>
+                                <option value=",">کامبل (Comma ,)</option>
+                                <option value=";">سیمی‌کولن (Semicolon ;)</option>
+                              </select>
+                            </div>
+                            <div className="relative">
+                              <input
+                                type="file"
+                                accept=".csv,.txt"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setImportSelectedFile(file);
+                                    const reader = new FileReader();
+                                    reader.onload = (event) => {
+                                      try {
+                                        const fileContent = event.target?.result as string;
+                                        setPastedPersonsText(fileContent);
+                                        const lines = fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
+                                        const actualDelim = detectedDelimiter === '\	' ? '\t' : detectedDelimiter;
+                                        
+                                        // Auto-detect comma or semicolon if not tab
+                                        let finalDelim = actualDelim;
+                                        if (lines[0]) {
+                                          if (lines[0].includes(',') && actualDelim === '\	') {
+                                            finalDelim = ',';
+                                            setDetectedDelimiter(',');
+                                          } else if (lines[0].includes(';') && actualDelim === '\	') {
+                                            finalDelim = ';';
+                                            setDetectedDelimiter(';');
+                                          }
+                                        }
+
+                                        const matrix = lines.map(line => line.split(finalDelim));
+                                        if (matrix.length > 0) {
+                                          setParsedHeaders(matrix[0]);
+                                          setParsedRows(matrix.slice(1));
+                                        }
+                                      } catch (err) {
+                                        alert('خطا در خواندن فایل. لطفاً فرمت مناسبی را انتخاب نماید.');
+                                      }
+                                    };
+                                    reader.readAsText(file);
+                                  }
+                                }}
+                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                              />
+                              <button className="px-5 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                                <Plus className="w-4 h-4" />
+                                انتخاب فایل CSV از سیستم
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TWO: COLUMN MAPPER STEP (show when we have parsed rows and headers) */}
+                    {parsedHeaders.length > 0 && personsIOFileType !== 'json' && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <div className="flex items-center gap-1.5 border-b border-slate-150 pb-2">
+                          <ClipboardList className="w-4 h-4 text-indigo-600" />
+                          <h4 className="text-sm font-extrabold text-slate-800">۲. مشخص کردن ستون‌ها (تناظر اطلاعات با ستون‌های اکسل شما)</h4>
+                        </div>
+                        <p className="text-xs text-slate-500 font-semibold">
+                          مشخص کنید هر کدام از فیلدهای خریدار/فروشنده در سیستم شما، به کدام یک از ستون‌های موجود در جدول چسبانده شده مطابقت دارد:
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {/* Name mapper (Required) */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700 flex justify-between items-center">
+                              <span>نام و نام‌خانوادگی / عنوان شخص <span className="text-rose-500">*</span></span>
+                            </label>
+                            <select
+                              value={personIOMappings.name}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, name: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>-- لطفا انتخاب کنید --</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Phone mapper */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">شماره موبایل / تماس</label>
+                            <select
+                              value={personIOMappings.phone}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, phone: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>-- انتخاب نشده (پیش فرض خالی/ندارد) --</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* National ID mapper */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">کد ملی / شناسه ملی ملکی</label>
+                            <select
+                              value={personIOMappings.nationalId}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, nationalId: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>-- انتخاب نشده --</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Person Type mapper */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">نوع شخصیت (حقیقی یا حقوقی)</label>
+                            <select
+                              value={personIOMappings.personType}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, personType: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>پذیرفته شده همه حقیقی</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Role mapper */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">نقش شخص در سیستم (مشتری، کارمند...)</label>
+                            <select
+                              value={personIOMappings.role}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, role: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>نقش پیش فرض: مشتری (Customer)</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Company Name */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">شناسه یا نام شرکت (برای حقوقی‌ها)</label>
+                            <select
+                              value={personIOMappings.companyName}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, companyName: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>ندارد</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Father Name */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">نام پدر</label>
+                            <select
+                              value={personIOMappings.fatherName}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, fatherName: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>ندارد</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Address mapper */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">آدرس محل اقامت یا سکونت</label>
+                            <select
+                              value={personIOMappings.address}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, address: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>ندارد</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Notes */}
+                          <div className="bg-white p-3 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-2xs">
+                            <label className="text-xs font-black text-slate-700">یادداشت تکمیلی / کد شخص قدیمی</label>
+                            <select
+                              value={personIOMappings.additionalNotes}
+                              onChange={(e) => setPersonIOMappings(prev => ({ ...prev, additionalNotes: Number(e.target.value) }))}
+                              className="w-full text-xs font-bold border rounded-lg p-1.5 mt-1 text-slate-800 outline-none"
+                            >
+                              <option value={-1}>ندارد</option>
+                              {parsedHeaders.map((hdr, idx) => (
+                                <option key={idx} value={idx}>ستون {idx + 1}: {hdr || '(خالی)'}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Quick preview of mapping before clicking Import */}
+                        <div className="bg-indigo-50/30 p-4 border border-indigo-150/50 rounded-xl space-y-2">
+                          <div className="flex items-center gap-1.5">
+                            <Eye className="w-4 h-4 text-indigo-500" />
+                            <span className="text-xs font-black text-indigo-900">پیش‌نمایش ستون‌های تفکیک شده (سه ردیف نخست):</span>
+                          </div>
+                          
+                          <div className="overflow-x-auto text-[11px] font-medium text-indigo-950 max-h-36">
+                            <table className="w-full bg-white border border-slate-150 rounded-lg overflow-hidden divide-y divide-slate-100">
+                              <thead>
+                                <tr className="bg-indigo-50 text-indigo-900 font-extrabold select-none">
+                                  {parsedHeaders.slice(0, 7).map((h, i) => (
+                                    <th key={i} className="py-2 px-3 text-right">ستون {i + 1}: {h || '-'}</th>
+                                  ))}
+                                  {parsedHeaders.length > 7 && <th className="py-2 px-3">... ({parsedHeaders.length - 7} ستون دیگر)</th>}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {parsedRows.slice(0, 3).map((row, rowIdx) => (
+                                  <tr key={rowIdx}>
+                                    {row.slice(0, 7).map((cell, colIdx) => (
+                                      <td key={colIdx} className="py-2 px-3 text-slate-700 truncate max-w-48">{cell || <span className="text-slate-300">-</span>}</td>
+                                    ))}
+                                    {row.length > 7 && <td className="py-2 px-3 text-slate-400">...</td>}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Preview Table for JSON (Standard Backups) */}
+                    {parsedHeaders.length > 0 && personsIOFileType === 'json' && (
+                      <div className="bg-emerald-50/50 border border-emerald-150/50 p-4 rounded-xl space-y-2 text-emerald-950">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs font-black">فایل آرشیو استاندارد با موفقیت تایید و بارگذاری شد!</span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-500">تعداد افراد برای ایمپورت: <strong className="text-emerald-700 font-sans font-black">{parsedRows.length}</strong> نفر</span>
+                        </div>
+                        <p className="text-xs leading-relaxed font-semibold">
+                          فایل بارگذاری شده حاوی تمامی فیلدهای تکمیلی، کدهای سیستمی، حساب‌های بانکی و یادداشت‌های اشخاص است. با کلیک بر روی دکمه ثبت نهایی، بدون نیاز به نقشه‌برداری ستون‌ها، تمامی پرونده‌ها مستقیماً بازیابی خواهند شد.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center rounded-b-2xl">
+                <div className="text-xs text-slate-450 font-bold">
+                  توسعه‌یافته مطابق دقیق‌ترین سناریوهای حسابداری بازرگانی
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPersonIOModalOpen(false)}
+                    className="px-5 py-2.5 text-slate-700 font-extrabold hover:bg-slate-200/70 border-none bg-slate-100 rounded-xl transition-all text-sm cursor-pointer"
+                  >
+                    انصراف و بازگشت
+                  </button>
+                  
+                  {personIOAction === 'import' && (
+                    <button
+                      type="button"
+                      disabled={parsedRows.length === 0 || (personsIOFileType !== 'json' && personIOMappings.name === -1)}
+                      onClick={() => {
+                        const confirmMsg = personsIOFileType === 'json' 
+                          ? `آیا از ورود نهایی ${parsedRows.length} نفر شخص جدید به پایگاه داده از روی فایل پشتیبان اطمینان دارید؟`
+                          : `آیا از ثبت گروهی ${parsedRows.length} شخص طبق تناظر ستونی انتخاب‌شده اطمینان دارید؟`;
+                        
+                        confirmAction(confirmMsg, async () => {
+                          let successCount = 0;
+                          
+                          for (const row of parsedRows) {
+                            let mappedName = '';
+                            
+                            if (personsIOFileType === 'json') {
+                              mappedName = row[0] || '';
+                            } else {
+                              const nameIdx = personIOMappings.name;
+                              if (nameIdx !== -1 && row[nameIdx]) {
+                                mappedName = row[nameIdx].trim();
+                              }
+                            }
+                            
+                            if (!mappedName) continue; // Skip rows with no name
+                            
+                            let mappedType: 'real' | 'legal' = 'real';
+                            let mappedRole: 'customer' | 'supplier' | 'employee' = 'customer';
+                            let phone = '';
+                            let nationalId = '';
+                            let fatherName = '';
+                            let companyName = '';
+                            let address = '';
+                            let bankName = '';
+                            let bankAccountNumber = '';
+                            let cardNumber = '';
+                            let shebaNumber = '';
+                            let additionalNotes = '';
+                            let personCode = '';
+                            
+                            if (personsIOFileType === 'json') {
+                              mappedType = (row[1] || 'real') as any;
+                              mappedRole = (row[2] || 'customer') as any;
+                              phone = row[3] || '';
+                              nationalId = row[4] || '';
+                              fatherName = row[5] || '';
+                              companyName = row[6] || '';
+                              address = row[7] || '';
+                              bankName = row[8] || '';
+                              bankAccountNumber = row[9] || '';
+                              cardNumber = row[10] || '';
+                              shebaNumber = row[11] || '';
+                              additionalNotes = row[12] || '';
+                              personCode = row[13] || '';
+                            } else {
+                              // Custom Mapper Parser
+                              const phoneIdx = personIOMappings.phone;
+                              if (phoneIdx !== -1 && row[phoneIdx]) phone = row[phoneIdx].trim();
+                              
+                              const idIdx = personIOMappings.nationalId;
+                              if (idIdx !== -1 && row[idIdx]) nationalId = row[idIdx].trim();
+                              
+                              const fatIdx = personIOMappings.fatherName;
+                              if (fatIdx !== -1 && row[fatIdx]) fatherName = row[fatIdx].trim();
+
+                              const cmpIdx = personIOMappings.companyName;
+                              if (cmpIdx !== -1 && row[cmpIdx]) companyName = row[cmpIdx].trim();
+
+                              const adrIdx = personIOMappings.address;
+                              if (adrIdx !== -1 && row[adrIdx]) address = row[adrIdx].trim();
+
+                              const noteIdx = personIOMappings.additionalNotes;
+                              if (noteIdx !== -1 && row[noteIdx]) additionalNotes = row[noteIdx].trim();
+
+                              // Auto-detect type
+                              const typeIdx = personIOMappings.personType;
+                              if (typeIdx !== -1 && row[typeIdx]) {
+                                const tVal = row[typeIdx].trim().toLowerCase();
+                                if (tVal.includes('حقوق') || tVal.includes('legal') || tVal.includes('co') || tVal.includes('شرکت')) {
+                                  mappedType = 'legal';
+                                }
+                              }
+                              
+                              // Auto-detect role
+                              const rIdx = personIOMappings.role;
+                              if (rIdx !== -1 && row[rIdx]) {
+                                const rVal = row[rIdx].trim().toLowerCase();
+                                if (rVal.includes('تامین') || rVal.includes('supplier') || rVal.includes('فروشنده')) {
+                                  mappedRole = 'supplier';
+                                } else if (rVal.includes('کارم') || rVal.includes('employ') || rVal.includes('پرسنل')) {
+                                  mappedRole = 'employee';
+                                }
+                              }
+                            }
+                            
+                            // Call API to append
+                            await addPerson({
+                              name: mappedName,
+                              personType: mappedType,
+                              role: mappedRole,
+                              phone,
+                              nationalId,
+                              fatherName,
+                              companyName: mappedType === 'legal' ? (companyName || mappedName) : companyName,
+                              address,
+                              bankName,
+                              bankAccountNumber,
+                              cardNumber,
+                              shebaNumber,
+                              additionalNotes
+                            });
+                            
+                            successCount++;
+                          }
+                          
+                          // Refresh lists
+                          await fetchPersons();
+                          setIsPersonIOModalOpen(false);
+                          setSuccessMsg(`تعداد ${successCount} پرونده شخص با موفقیت به سیستم اضافه گردید.`);
+                          
+                          // clear forms
+                          setPastedPersonsText('');
+                          setParsedHeaders([]);
+                          setParsedRows([]);
+                        });
+                      }}
+                      className={`px-6 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border-none shadow-md ${
+                        (parsedRows.length > 0 && (personsIOFileType === 'json' || personIOMappings.name !== -1))
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100/60 active:scale-98'
+                          : 'bg-indigo-100 text-indigo-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <Plus className="w-4 h-4" />
+                      تایید و ایمپورت نهایی به سیستم
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        
         {isPersonModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
             <motion.div
@@ -4785,11 +5996,23 @@ export default function App() {
                     </div>
 
                     {/* Document Meta */}
-                    <div className="text-left space-y-1 font-sans text-xs text-gray-600 font-bold" dir="rtl">
-                      <div>شماره فاکتور: <span className="font-mono text-gray-900">{viewingInvoice.invoiceNumber}</span></div>
-                      <div>تاریخ صدور شمسی: <span className="text-gray-900">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span></div>
-                      <div>تاریخ میلادی: <span className="text-gray-900 font-mono">{viewingInvoice.date ? new Date(viewingInvoice.date).toISOString().split('T')[0] : ''}</span></div>
-                      <div>واحد ارز: <span className="text-indigo-600">{showInvoiceCurrency(viewingInvoice.currency || 'تومان')}</span></div>
+                    <div className="text-right grid grid-cols-1 gap-1.5 bg-slate-50/80 p-3 rounded-xl border border-gray-150/50 min-w-[200px]" dir="rtl">
+                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
+                        <span className="font-bold">شماره فاکتور:</span>
+                        <span className="font-mono font-black text-indigo-950 text-xs">#{viewingInvoice.invoiceNumber}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
+                        <span className="font-bold">تاریخ صدور شمسی:</span>
+                        <span className="text-indigo-950 font-black font-sans">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
+                        <span className="font-bold">تاریخ میلادی:</span>
+                        <span className="text-gray-500 font-mono font-bold text-[10px]">{viewingInvoice.date ? new Date(viewingInvoice.date).toISOString().split('T')[0] : ''}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span className="font-bold">واحد ارز:</span>
+                        <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded text-[10px]">{showInvoiceCurrency(viewingInvoice.currency || 'تومان')}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -4959,10 +6182,19 @@ export default function App() {
                       </span>
                     </div>
 
-                    <div className="text-left space-y-1 font-sans text-xs text-gray-600 font-medium" dir="rtl">
-                      <div>شماره موقت: <span className="font-mono text-amber-600 font-bold">{previewInvoiceData.invoiceNumber}</span></div>
-                      <div>تاریخ شمسی: <span className="text-gray-800 font-bold">{previewInvoiceData.jalaliDate}</span></div>
-                      <div>ارز معاملاتی: <span className="text-indigo-600 font-bold">{showInvoiceCurrency(previewInvoiceData.currency)}</span></div>
+<div className="text-right grid grid-cols-1 gap-1.5 bg-amber-50/40 p-3 rounded-xl border border-amber-100 min-w-[200px]" dir="rtl">
+                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-amber-100/50 pb-1">
+                        <span className="font-bold">شماره موقت فاکتور:</span>
+                        <span className="font-mono font-black text-amber-950 text-xs">#{previewInvoiceData.invoiceNumber}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-amber-100/50 pb-1">
+                        <span className="font-bold">تاریخ شمسی فاکتور:</span>
+                        <span className="text-amber-950 font-black font-sans">{previewInvoiceData.jalaliDate}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span className="font-bold">ارز معاملاتی:</span>
+                        <span className="text-amber-800 font-black bg-amber-100/70 px-2 py-0.5 rounded text-[10px]">{showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                      </div>
                     </div>
                   </div>
 
