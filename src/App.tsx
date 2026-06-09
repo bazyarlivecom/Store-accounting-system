@@ -1615,14 +1615,28 @@ export default function App() {
                          <DollarSign className="w-4 h-4"/> مبلغ سند ({storeSettings.currency || 'تومان'})
                        </label>
                        <input 
-                         type="number" 
-                         value={receiptAmount} 
-                         onChange={(e) => setReceiptAmount(e.target.value)} 
-                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" 
-                         dir="ltr" 
-                         placeholder="مبلغ به عدد..."
-                         required 
-                       />
+                          type="number" 
+                          value={receiptAmount} 
+                          onChange={(e) => setReceiptAmount(e.target.value)} 
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950 text-base" 
+                          dir="ltr" 
+                          placeholder="مبلغ به عدد..."
+                          required 
+                        />
+                        {receiptAmount && !isNaN(Number(receiptAmount)) && Number(receiptAmount) > 0 && (
+                          <div className="mt-2.5 p-3 bg-amber-50/25 border border-amber-200/50 rounded-xl text-xs leading-relaxed text-right space-y-1">
+                            <div className="text-gray-500 font-bold flex items-center gap-1.5 justify-start">
+                              <span>فرمت جداکننده:</span>
+                              <strong className="text-indigo-950 font-mono text-sm inline-block">{formatNumber(Number(receiptAmount))}</strong>
+                              <span className="text-gray-400 font-medium">{storeSettings.currency || 'تومان'}</span>
+                            </div>
+                            <div className="text-gray-500 font-bold flex items-baseline gap-1.5 justify-start flex-wrap">
+                              <span>به حروف:</span>
+                              <strong className="text-amber-800 font-black text-xs inline-block">{numToPersianWords(Number(receiptAmount))}</strong>
+                              <span className="text-gray-400 font-medium"> {storeSettings.currency || 'تومان'} تمام.</span>
+                            </div>
+                          </div>
+                        )}
                      </div>
 
                      <div>
@@ -1737,7 +1751,14 @@ export default function App() {
                              <td className="p-4 font-bold text-gray-800">{person?.name || 'نامشخص'}</td>
                              <td className="p-4 font-mono text-gray-500" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
                              <td className="p-4 text-xs font-semibold text-gray-600 text-right">{resourceLabel}</td>
-                             <td className="p-4 font-mono font-bold text-gray-900 text-right" dir="ltr">{formatCurrency(tx.amount)} {storeSettings.currency}</td>
+                             <td className="p-4 text-right">
+                                <div className="font-mono font-black text-indigo-950 text-sm" dir="ltr">
+                                  {formatCurrency(tx.amount)} {storeSettings.currency}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-bold mt-0.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                                  {numToPersianWords(tx.amount)} {storeSettings.currency}
+                                </div>
+                              </td>
                              <td className="p-4 text-center flex items-center justify-center gap-2">
                                <button onClick={() => { setPrintingTransaction(tx); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer border-none bg-transparent">
                                  <Eye className="w-4 h-4"/>
@@ -1804,13 +1825,18 @@ export default function App() {
                      <div>
                        <label className="block text-sm font-bold text-gray-700 mb-2">حقوق پایه ({storeSettings.currency})</label>
                        <input 
-                         type="number" 
-                         value={salaryBaseAmount} 
-                         onChange={(e) => setSalaryBaseAmount(e.target.value)} 
-                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" 
-                         dir="ltr" 
-                         required 
-                       />
+                          type="number" 
+                          value={salaryBaseAmount} 
+                          onChange={(e) => setSalaryBaseAmount(e.target.value)} 
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950" 
+                          dir="ltr" 
+                          required 
+                        />
+                        {salaryBaseAmount && !isNaN(Number(salaryBaseAmount)) && Number(salaryBaseAmount) > 0 && (
+                          <div className="mt-1.5 p-2 bg-indigo-50/40 border border-indigo-100 rounded-lg text-xs leading-relaxed text-right">
+                            <span className="block text-gray-500 font-semibold">به حروف: <strong className="text-indigo-900">{numToPersianWords(Number(salaryBaseAmount))}</strong> {storeSettings.currency}</span>
+                          </div>
+                        )}
                      </div>
                    </div>
 
@@ -1964,7 +1990,14 @@ export default function App() {
                                  <span className="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg">خیر، ثبت بدهی</span>
                                )}
                              </td>
-                             <td className="p-4 font-mono font-bold text-gray-900 text-right" dir="ltr">{formatCurrency(tx.amount)} {storeSettings.currency}</td>
+                             <td className="p-4 text-right">
+                                <div className="font-mono font-black text-indigo-950 text-sm" dir="ltr">
+                                  {formatCurrency(tx.amount)} {storeSettings.currency}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-bold mt-0.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                                  {numToPersianWords(tx.amount)} {storeSettings.currency}
+                                </div>
+                              </td>
                              <td className="p-4 text-center flex items-center justify-center gap-2">
                                <button onClick={() => openPayslip(tx)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-1 text-xs font-bold transition-all cursor-pointer border border-transparent bg-transparent">
                                  <Eye className="w-4 h-4"/> مشاهده فیش حقوقی
@@ -3712,16 +3745,21 @@ export default function App() {
                 </div>
 
                 {/* Grand Total Net Salary */}
-                <div className="bg-indigo-950 text-white rounded-2xl p-5 border border-indigo-950 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-right shadow">
-                  <div>
-                    <h4 className="text-sm font-bold text-indigo-200">مبلغ خالص دریافتی پرداختنی کارمند</h4>
-                    <p className="text-xs text-indigo-300 mt-1">حقوق پرداختی حاصل از کسر حقوق و مزایا از کسورات معین</p>
+                <div className="bg-indigo-950 text-white rounded-2xl p-5 border border-indigo-950 flex flex-col gap-3 shadow">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-right w-full">
+                    <div>
+                      <h4 className="text-sm font-bold text-indigo-200">مبلغ خالص دریافتی پرداختنی کارمند</h4>
+                      <p className="text-xs text-indigo-300 mt-1">حقوق پرداختی حاصل از کسر حقوق و مزایا از کسورات معین</p>
+                    </div>
+                    <div>
+                      <span className="text-2xl font-black text-amber-300 tracking-tight block">
+                        {formatNumber(viewingPayslip.parsed?.netSalary || viewingPayslip.amount)}{' '}
+                        <span className="text-xs text-indigo-200">{storeSettings.currency}</span>
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-2xl font-black text-amber-300 tracking-tight block">
-                      {formatNumber(viewingPayslip.parsed?.netSalary || viewingPayslip.amount)}{' '}
-                      <span className="text-sm text-indigo-200">{storeSettings.currency}</span>
-                    </span>
+                  <div className="text-xs font-bold text-indigo-100/90 text-right border-t border-indigo-900 pt-2.5 w-full leading-relaxed">
+                    مبلغ به حروف: <span className="text-amber-300">{numToPersianWords(viewingPayslip.parsed?.netSalary || viewingPayslip.amount)} {storeSettings.currency}</span> تمام.
                   </div>
                 </div>
 
@@ -5134,11 +5172,14 @@ export default function App() {
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 rounded-xl p-5 flex flex-col items-center justify-center border border-gray-100 shadow-inner">
-                  <span className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-widest bg-gray-200/50 px-3 py-1 rounded-full text-[10px]">مبلغ تراکنش</span>
-                  <div className="flex items-end gap-2 text-indigo-900">
-                    <span className="text-3xl font-black">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
+                <div className="bg-amber-50/20 rounded-xl p-5 flex flex-col items-center justify-center border border-amber-200/50 shadow-sm">
+                  <span className="text-xs text-amber-800 mb-2 font-bold uppercase tracking-widest bg-amber-100/50 px-3 py-1 rounded-full text-[10px]">مبلغ رسمی سند</span>
+                  <div className="flex items-end gap-2 text-indigo-950 mb-2">
+                    <span className="text-3xl font-black font-sans font-mono">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
                     <span className="text-sm font-bold opacity-75 mb-1.5">{storeSettings?.currency || 'تومان'}</span>
+                  </div>
+                  <div className="text-xs font-bold text-gray-600 text-center border-t border-gray-100 pt-2 w-full leading-relaxed">
+                    مبلغ به حروف: <span className="text-indigo-900 font-extrabold">{numToPersianWords(printingTransaction.amount)} {storeSettings?.currency || 'تومان'}</span> تمام.
                   </div>
                 </div>
                 
