@@ -16,6 +16,7 @@ export type Person = {
   cardNumber?: string;
   shebaNumber?: string;
   additionalNotes?: string;
+  group?: string;
 };
 
 export type Checkbook = {

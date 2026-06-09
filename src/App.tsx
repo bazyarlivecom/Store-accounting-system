@@ -195,12 +195,31 @@ export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
     const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [personSearchTerm, setPersonSearchTerm] = useState('');
+  const [selectedPersonGroup, setSelectedPersonGroup] = useState<string>('all');
+  const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
+  const [personPageSize, setPersonPageSize] = useState<number>(10);
+
   const filteredPersons = persons.filter(p => {
+    // 1. Group Filter
+    if (selectedPersonGroup !== 'all') {
+      if (selectedPersonGroup === 'none') {
+        if (p.group && p.group.trim() !== '') return false;
+      } else {
+        if (!p.group || p.group.trim() !== selectedPersonGroup) return false;
+      }
+    }
+
+    // 2. Search Filter
     if (!personSearchTerm) return true;
     const terms = personSearchTerm.toLowerCase().split(' ').filter(Boolean);
-    const searchable = `${p.name || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.phone || ''} ${p.nationalId || ''} ${p.personCode || ''}`.toLowerCase();
+    const searchable = `${p.name || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.phone || ''} ${p.nationalId || ''} ${p.personCode || ''} ${p.group || ''}`.toLowerCase();
     return terms.every(term => searchable.includes(term));
   });
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPersonCurrentPage(1);
+  }, [personSearchTerm, selectedPersonGroup, personPageSize]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [checkbooks, setCheckbooks] = useState<any[]>([]);
   const [issuedChecks, setIssuedChecks] = useState<any[]>([]);
@@ -332,6 +351,7 @@ export default function App() {
   const [newPersonAddress, setNewPersonAddress] = useState('');
   const [newPersonRole, setNewPersonRole] = useState<'customer' | 'employee' | 'supplier'>('customer');
   const [newPersonPhone, setNewPersonPhone] = useState('');
+  const [newPersonGroup, setNewPersonGroup] = useState('');
   const [submittingPerson, setSubmittingPerson] = useState(false);
   const [isPersonExtraModalOpen, setIsPersonExtraModalOpen] = useState(false);
   const [personExtraId, setPersonExtraId] = useState<string|number|null>(null);
@@ -564,7 +584,8 @@ export default function App() {
         address: newPersonAddress,
         role: newPersonRole,
         phone: newPersonPhone,
-        initialBalance: 0
+        initialBalance: 0,
+        group: newPersonGroup
       };
 
       if (isEdit) {
@@ -581,6 +602,7 @@ export default function App() {
       setNewPersonNationalId('');
       setNewPersonAddress('');
       setNewPersonPhone('');
+      setNewPersonGroup('');
       setNewPersonRole('customer');
       setEditingPersonId(null);
       setIsPersonModalOpen(false);
@@ -892,6 +914,7 @@ export default function App() {
     setNewPersonNationalId(p.nationalId || '');
     setNewPersonAddress(p.address || '');
     setNewPersonPhone(p.phone || '');
+    setNewPersonGroup(p.group || '');
     setNewPersonRole(p.role);
     setIsPersonModalOpen(true);
   };
@@ -2750,176 +2773,324 @@ export default function App() {
           </div>
         </motion.div>
       ) : activeTab === 'persons' ? (
-        /* Persons List & Manage */
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-        >
-          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-                <User className="w-6 h-6 text-indigo-600" />
-                مدیریت اشخاص
-              </h1>
-              <p className="text-sm text-gray-500 font-medium mt-1">پرونده‌ی اطلاعاتی جامع مشتریان، تامین‌کنندگان و کارمندان مجموعه</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setPersonIOAction('export');
-                  setIsPersonIOModalOpen(true);
-                }}
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 bg-white rounded-xl flex items-center gap-2 transition-all text-sm font-bold shadow-xs cursor-pointer"
-              >
-                <ArrowRightLeft className="w-4 h-4 text-indigo-500 animate-pulse" />
-                ورود / خروج اکسل و اطلاعات
-              </button>
+        (() => {
+          const totalPages = Math.ceil(filteredPersons.length / personPageSize);
+          const safeCurrentPage = Math.max(1, Math.min(personCurrentPage, totalPages));
+          const paginatedPersons = filteredPersons.slice((safeCurrentPage - 1) * personPageSize, safeCurrentPage * personPageSize);
+
+          return (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                    <User className="w-6 h-6 text-indigo-600" />
+                    مدیریت اشخاص
+                  </h1>
+                  <p className="text-sm text-gray-500 font-medium mt-1">پرونده‌ی اطلاعاتی جامع مشتریان، تامین‌کنندگان و کارمندان مجموعه</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setPersonIOAction('export');
+                      setIsPersonIOModalOpen(true);
+                    }}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 bg-white rounded-xl flex items-center gap-2 transition-all text-sm font-bold shadow-xs cursor-pointer"
+                  >
+                    <ArrowRightLeft className="w-4 h-4 text-indigo-500 animate-pulse" />
+                    ورود / خروج اکسل و اطلاعات
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setEditingPersonId(null);
+                      setNewPersonType('real');
+                      setNewPersonFirstName('');
+                      setNewPersonLastName('');
+                      setNewPersonCompanyName('');
+                      setNewPersonFatherName('');
+                      setNewPersonNationalId('');
+                      setNewPersonAddress('');
+                      setNewPersonPhone('');
+                      setNewPersonRole('customer');
+                      setIsPersonModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all hover:scale-102 active:scale-98 text-sm font-bold shadow-md shadow-indigo-150 cursor-pointer border-none"
+                  >
+                    <Plus className="w-4 h-4" />
+                    ثبت جدید
+                  </button>
+                </div>
+              </div>
               
-              <button
-                onClick={() => {
-                  setEditingPersonId(null);
-                  setNewPersonType('real');
-                  setNewPersonFirstName('');
-                  setNewPersonLastName('');
-                  setNewPersonCompanyName('');
-                  setNewPersonFatherName('');
-                  setNewPersonNationalId('');
-                  setNewPersonAddress('');
-                  setNewPersonPhone('');
-                  setNewPersonRole('customer');
-                  setIsPersonModalOpen(true);
-                }}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all hover:scale-102 active:scale-98 text-sm font-bold shadow-md shadow-indigo-150 cursor-pointer border-none"
-              >
-                <Plus className="w-4 h-4" />
-                ثبت جدید
-              </button>
-            </div>
-          </div>
-          
-          {successMsg && (
-            <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100">
-              <CheckCircle className="w-5 h-5" />
-              {successMsg}
-            </div>
-          )}
-          
-                    <div className="mx-6 mt-6">
-            <div className="relative">
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <Search className="w-5 h-5 text-gray-400" />
+              {successMsg && (
+                <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100">
+                  <CheckCircle className="w-5 h-5" />
+                  {successMsg}
+                </div>
+              )}
+              
+              <div className="mx-6 mt-6 flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between animate-fade-in">
+                {/* Search Bar */}
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <Search className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm text-gray-950 font-bold"
+                    placeholder="جستجوی سریع شخص (نام، شماره تماس، کد ملی، شماره شخص، گروه)..."
+                    value={personSearchTerm}
+                    onChange={(e) => setPersonSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                {/* Group Filter Pills */}
+                <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 p-2 rounded-2xl border border-slate-100">
+                  <span className="text-xs font-black text-slate-500 flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-indigo-500" />
+                    فیلتر گروه:
+                  </span>
+                  
+                  <div className="flex flex-wrap gap-1 bg-white p-1 rounded-xl shadow-xs border border-slate-200/65">
+                    <button
+                      onClick={() => setSelectedPersonGroup('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer ${
+                        selectedPersonGroup === 'all'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      همه ({persons.length.toLocaleString('fa-IR')})
+                    </button>
+                    
+                    <button
+                      onClick={() => setSelectedPersonGroup('none')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer ${
+                        selectedPersonGroup === 'none'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                      }`}
+                    >
+                      بدون گروه ({persons.filter(p => !p.group || p.group.trim() === '').length.toLocaleString('fa-IR')})
+                    </button>
+
+                    {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).slice(0, 4).map((g: any, i) => {
+                      const count = persons.filter(p => p.group === g).length;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedPersonGroup(g)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer ${
+                            selectedPersonGroup === g
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                          }`}
+                        >
+                          {g} ({count.toLocaleString('fa-IR')})
+                        </button>
+                      );
+                    })}
+
+                    {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).length > 4 && (
+                      <select
+                        value={selectedPersonGroup !== 'all' && selectedPersonGroup !== 'none' && Array.from(new Set(persons.map(p => p.group).filter(Boolean))).includes(selectedPersonGroup) ? selectedPersonGroup : ''}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setSelectedPersonGroup(e.target.value);
+                          }
+                        }}
+                        className="bg-slate-50 border border-slate-200 font-extrabold text-xs text-slate-800 rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                      >
+                        <option value="" disabled>گروه‌های بیشتر...</option>
+                        {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).slice(4).map((g: any, i) => {
+                          const count = persons.filter(p => p.group === g).length;
+                          return (
+                            <option key={i} value={g}>{g} ({count.toLocaleString('fa-IR')} نفر)</option>
+                          );
+                        })}
+                      </select>
+                    )}
+                  </div>
+                </div>
               </div>
-              <input
-                type="text"
-                className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm"
-                placeholder="جستجوی سریع شخص (نام، شماره تماس، کد ملی، شماره شخص)..."
-                value={personSearchTerm}
-                onChange={(e) => setPersonSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <div className="p-0 overflow-x-auto">
-            {filteredPersons.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
-                <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p>هیچ شخصی یافت نشد.</p>
+              
+              <div className="p-0 overflow-x-auto mt-4">
+                {filteredPersons.length === 0 ? (
+                  <div className="p-12 text-center text-gray-500">
+                    <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p>هیچ شخصی یافت نشد.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-right whitespace-nowrap min-w-[800px]">
+                    <thead>
+                      <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
+                        <th className="py-4 px-6 text-right">ردیف</th>
+                        <th className="py-4 px-6 text-center">کد شخص</th>
+                        <th className="py-4 px-6 text-right">نام / عنوان</th>
+                        <th className="py-4 px-6 text-right">گروه شخص</th>
+                        <th className="py-4 px-6 text-right">نوع کاربر</th>
+                        <th className="py-4 px-6 text-right">کد / شناسه ملی</th>
+                        <th className="py-4 px-6 text-right">نقش</th>
+                        <th className="py-4 px-6 text-right">شماره تماس</th>
+                        <th className="py-4 px-6 w-24">عملیات</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {paginatedPersons.map((p, index) => (
+                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="py-4 px-6 text-gray-500 w-16 text-center font-mono text-xs">
+                            {((safeCurrentPage - 1) * personPageSize + index + 1).toLocaleString('fa-IR')}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            {p.personCode ? (
+                              <span className="font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded text-xs">{p.personCode}</span>
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 font-semibold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
+                            {p.name}
+                          </td>
+                          <td className="py-4 px-6 text-sm">
+                            {p.group ? (
+                              <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 border border-indigo-100 px-2.5 py-1 rounded-xl text-xs font-black shadow-3xs">
+                                <Tag className="w-3 h-3 text-indigo-500" />
+                                {p.group}
+                              </span>
+                            ) : (
+                              <span className="text-slate-350 select-none text-xs font-bold">بدون گروه</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-gray-600 text-sm">
+                            {p.personType === 'legal' ? 'حقوقی' : 'حقیقی'}
+                          </td>
+                          <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
+                            {p.nationalId || '-'}
+                          </td>
+                          <td className="py-4 px-6 text-gray-600 text-sm">
+                            <span className={`px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 font-bold text-xs ${p.role === 'customer' ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : p.role === 'supplier' ? 'bg-orange-50 text-orange-850 border border-orange-100' : 'bg-purple-50 text-purple-800 border border-purple-100'}`}>
+                              {p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
+                            {p.phone || '-'}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setLedgerPersonId(p.id);
+                                  setActiveTab('person_ledger');
+                                }}
+                                className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors inline-block"
+                                title="مشاهده کارت حساب"
+                              >
+                                <FileText className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setPersonExtraId(p.id);
+                                  setPersonBankName(p.bankName || '');
+                                  setPersonBankAcc(p.bankAccountNumber || '');
+                                  setPersonCard(p.cardNumber || '');
+                                  setPersonSheba(p.shebaNumber || '');
+                                  setPersonNotes(p.additionalNotes || '');
+                                  setIsPersonExtraModalOpen(true);
+                                }}
+                                className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors inline-block"
+                                title="اطلاعات تکمیلی"
+                              >
+                                <Info className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleEditPerson(p)}
+                                className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                                title="ویرایش شخص"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => confirmAction('آیا از حذف این شخص اطمینان دارید؟', () => handleDeletePerson(p.id))}
+                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                                title="حذف شخص"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
-            ) : (
-              <table className="w-full text-right whitespace-nowrap min-w-[800px]">
-                <thead>
-                  <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
-                    <th className="py-4 px-6 text-right">ردیف</th>
-                    <th className="py-4 px-6 text-center">کد شخص</th>
-                    <th className="py-4 px-6 text-right">نام / عنوان</th>
-                    <th className="py-4 px-6 text-right">نوع کاربر</th>
-                    <th className="py-4 px-6 text-right">کد / شناسه ملی</th>
-                    <th className="py-4 px-6 text-right">نقش</th>
-                    <th className="py-4 px-6 text-right">شماره تماس</th>
-                    <th className="py-4 px-6 w-24">عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {filteredPersons.map((p, index) => (
-                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-6 text-gray-500 w-16 text-center">
-                        {index + 1}
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        {p.personCode ? (
-                          <span className="font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded text-xs">{p.personCode}</span>
-                        ) : (
-                          <span className="text-gray-300">-</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 font-medium text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
-                        {p.name}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600 text-sm">
-                        {p.personType === 'legal' ? 'حقوقی' : 'حقیقی'}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
-                        {p.nationalId || '-'}
-                      </td>
-                      <td className="py-4 px-6 text-gray-600 text-sm">
-                        <span className={`px-2 py-1 rounded inline-flex items-center gap-1.5 ${p.role === 'customer' ? 'bg-indigo-50 text-indigo-700' : p.role === 'supplier' ? 'bg-emerald-50 text-emerald-700' : 'bg-purple-50 text-purple-700'}`}>
-                          {p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند'}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
-                        {p.phone || '-'}
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => {
-                              setLedgerPersonId(p.id);
-                              setActiveTab('person_ledger');
-                            }}
-                            className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors inline-block"
-                            title="مشاهده کارت حساب"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setPersonExtraId(p.id);
-                              setPersonBankName(p.bankName || '');
-                              setPersonBankAcc(p.bankAccountNumber || '');
-                              setPersonCard(p.cardNumber || '');
-                              setPersonSheba(p.shebaNumber || '');
-                              setPersonNotes(p.additionalNotes || '');
-                              setIsPersonExtraModalOpen(true);
-                            }}
-                            className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors inline-block"
-                            title="اطلاعات تکمیلی"
-                          >
-                            <Info className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEditPerson(p)}
-                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
-                            title="ویرایش شخص"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => confirmAction('آیا از حذف این شخص اطمینان دارید؟', () => handleDeletePerson(p.id))}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                            title="حذف شخص"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </motion.div>
+
+              {/* Beautiful Pagination Footer */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+                  <div className="text-xs text-slate-500 font-bold">
+                    نمایش ردیف‌های <span className="text-slate-850 font-sans font-black">{( (safeCurrentPage - 1) * personPageSize + 1 ).toLocaleString('fa-IR')}</span> تا <span className="text-slate-850 font-sans font-black">{Math.min(filteredPersons.length, safeCurrentPage * personPageSize).toLocaleString('fa-IR')}</span> از مجموع <span className="text-indigo-600 font-sans font-bold">{filteredPersons.length.toLocaleString('fa-IR')}</span> شخص یافت‌شده
+                  </div>
+
+                  <div className="flex items-center gap-1.5" dir="ltr">
+                    <button
+                      disabled={safeCurrentPage === 1}
+                      onClick={() => setPersonCurrentPage(prev => Math.max(1, prev - 1))}
+                      className="p-2 border border-slate-200 hover:bg-slate-100 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+                      title="صفحه قبل"
+                    >
+                      <ChevronDown className="w-4 h-4 rotate-90" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pg) => {
+                      const isCurrent = pg === safeCurrentPage;
+                      return (
+                        <button
+                          key={pg}
+                          onClick={() => setPersonCurrentPage(pg)}
+                          className={`w-8 h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center border cursor-pointer ${
+                            isCurrent
+                              ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {pg.toLocaleString('fa-IR')}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      disabled={safeCurrentPage === totalPages}
+                      onClick={() => setPersonCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      className="p-2 border border-slate-200 hover:bg-slate-150 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+                      title="صفحه بعد"
+                    >
+                      <ChevronDown className="w-4 h-4 -rotate-90" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-500">تعداد در صفحه:</span>
+                    <select
+                      value={personPageSize}
+                      onChange={(e) => setPersonPageSize(Number(e.target.value))}
+                      className="bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-xs font-extrabold text-slate-700 outline-none"
+                    >
+                      <option value={10}>۱۰ شخص</option>
+                      <option value={20}>۲۰ شخص</option>
+                      <option value={50}>۵۰ شخص</option>
+                      <option value={100}>۱۰۰ شخص</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          );
+        })()
       ) : activeTab === 'accounts' ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -5665,6 +5836,44 @@ export default function App() {
                         placeholder="تهران، خیابان..."
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
                       />
+                    </div>
+
+                    <div className="w-full text-right md:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-black text-slate-700">
+                          تنظیم گروه‌بندی شخص (مشتری، پرسنل، تامین‌کنندگان...)
+                        </label>
+                        <span className="text-[10px] text-indigo-700 bg-indigo-100/70 font-sans px-2 py-0.5 rounded-full font-bold">دسته‌بندی و فیلترینگ پیشرفته</span>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={newPersonGroup}
+                            onChange={(e) => setNewPersonGroup(e.target.value)}
+                            placeholder="مثلا: همکاران صنف، خریداران عمده، کارمندان بخش مالی..."
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-950 font-bold text-sm"
+                          />
+                        </div>
+                        {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).length > 0 && (
+                          <div className="sm:w-56">
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  setNewPersonGroup(e.target.value);
+                                }
+                              }}
+                              className="w-full px-3 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 bg-white font-bold text-xs text-slate-800 outline-none h-full"
+                              defaultValue=""
+                            >
+                              <option value="" disabled>--- کپی از گروه‌های دیگر ---</option>
+                              {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).map((g: any, i) => (
+                                <option key={i} value={g}>{g}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </form>
