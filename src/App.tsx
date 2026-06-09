@@ -761,6 +761,19 @@ export default function App() {
       return;
     }
     
+    // Generate simple receipt number for review
+    const receiptPrefix = type === 'receive' ? 'RD' : 'PD';
+    const existingRelated = transactions.filter((t: any) => t.type === type && t.receiptNumber);
+    let nextNum = 1001;
+    if (existingRelated.length > 0) {
+      const nums = existingRelated.map((t: any) => {
+        const match = String(t.receiptNumber).match(/\d+/);
+        return match ? parseInt(match[0], 10) : 0;
+      });
+      nextNum = Math.max(...nums) + 1;
+    }
+    const receiptNumber = `${receiptPrefix}-${nextNum}`;
+    
     const payload = {
         type,
         personId: receiptPersonId,
@@ -769,7 +782,8 @@ export default function App() {
         jalaliDate: typeof receiptDate.toDate === 'function' ? new Date(receiptDate.toDate().toISOString()).toLocaleDateString('fa-IR') : new Date(receiptDate).toLocaleDateString('fa-IR'),
         resourceType: receiptResourceType,
         resourceId: receiptResourceId,
-        description: receiptDescription
+        description: receiptDescription,
+        receiptNumber: receiptNumber
     };
     
     setPreviewReceiptData(payload);
@@ -1986,7 +2000,7 @@ export default function App() {
                            : `صندوق: ${cashboxes.find(cb => cb.id.toString() === tx.resourceId?.toString())?.name || 'نامشخص'}`;
                          return (
                            <tr key={tx.id} className={`${themeRowHover} transition-colors`}>
-                             <td className={`p-4 font-mono font-bold ${themeHighlightTxt}`}>#{tx.id}</td>
+                             <td className={`p-4 font-mono font-bold ${themeHighlightTxt}`}>{tx.receiptNumber || `#${tx.id}`}</td>
                              <td className="p-4 font-bold text-slate-800">{person?.name || 'نامشخص'}</td>
                              <td className="p-4 font-mono text-slate-500 font-bold" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
                              <td className="p-4 text-xs font-black text-slate-600 text-right">{resourceLabel}</td>
@@ -4136,7 +4150,7 @@ export default function App() {
 
                 return {
                   id: `tx-${t.id}`,
-                  refId: `سند #${t.id}`,
+                  refId: t.receiptNumber || `سند #${t.id}`,
                   date: t.date,
                   jalaliDate: t.jalaliDate || new Date(t.date).toLocaleDateString('fa-IR'),
                   type: typeLabel,
@@ -6985,6 +6999,10 @@ export default function App() {
                   <table className="w-full text-right text-sm">
                     <tbody className="divide-y divide-gray-100">
                       <tr>
+                        <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">شماره رسید</td>
+                        <td className="p-4 font-black text-gray-900 font-mono">{previewReceiptData.receiptNumber || '---'}</td>
+                      </tr>
+                      <tr>
                         <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">مبلغ تراکنش</td>
                         <td className="p-4 font-black flex items-center gap-2 text-lg">
                            <span className={`${themeText} font-mono`}>{formatCurrency(previewReceiptData.amount)}</span>
@@ -7284,8 +7302,8 @@ export default function App() {
                 <div className="border border-gray-200 rounded-xl p-5 mb-6">
                   <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
                     <div className="text-right">
-                      <span className="block text-[10px] text-gray-400 font-bold mb-1">شماره سند</span>
-                      <span className="font-mono text-sm font-bold shadow-sm px-2 py-1 bg-gray-50 rounded border border-gray-100">#{printingTransaction.id}</span>
+                      <span className="block text-[10px] text-gray-400 font-bold mb-1">شماره سند / رسید</span>
+                      <span className="font-mono text-sm font-bold shadow-sm px-2 py-1 bg-gray-50 rounded border border-gray-100">{printingTransaction.receiptNumber || `#${printingTransaction.id}`}</span>
                     </div>
                     <div className="text-left">
                       <span className="block text-[10px] text-gray-400 font-bold mb-1">تاریخ</span>
