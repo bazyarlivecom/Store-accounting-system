@@ -62,8 +62,15 @@ export default function ProductCardModal({ product, onClose }: { product: Produc
                  <span className="text-lg font-sans font-black text-gray-800">{Number(product.purchasePrice || 0).toLocaleString()} <span className="text-xs font-normal">تومان</span></span>
                </div>
                <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-xl">
-                 <span className="text-xs text-amber-600 font-bold block mb-1">موجودی انبار</span>
-                 <span className="text-lg font-sans font-black text-gray-800">{product.stock || 0} <span className="text-xs font-normal">{product.unit || 'عدد'}</span></span>
+                 <span className="text-xs text-amber-600 font-bold block mb-1">موجودی مستند</span>
+                 <span className="text-lg font-sans font-black text-gray-800">
+                    {product.stock || 0} <span className="text-xs font-normal">{product.unit || 'عدد'}</span>
+                 </span>
+                 {product.secondaryUnit && product.unitRatio && (product.stock || 0) >= product.unitRatio && (
+                   <div className="text-[10px] text-amber-700 mt-1 font-bold">
+                     معادل {Math.floor((product.stock || 0) / product.unitRatio)} {product.secondaryUnit} و {(product.stock || 0) % product.unitRatio} {product.unit}
+                   </div>
+                 )}
                </div>
             </div>
 

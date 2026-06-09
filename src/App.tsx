@@ -343,6 +343,9 @@ export default function App() {
   const [newProductStock, setNewProductStock] = useState('');
   const [newProductMinStock, setNewProductMinStock] = useState('');
   const [newProductUnit, setNewProductUnit] = useState('');
+  const [newProductSecondaryUnit, setNewProductSecondaryUnit] = useState('');
+  const [newProductUnitRatio, setNewProductUnitRatio] = useState('');
+  const [productFormTab, setProductFormTab] = useState<'general' | 'financial' | 'inventory'>('general');
   const [newProductDesc, setNewProductDesc] = useState('');
 
   // Categories list
@@ -488,6 +491,8 @@ export default function App() {
         stock: Number(newProductStock || 0),
         minStock: Number(newProductMinStock || 0),
         unit: newProductUnit,
+        secondaryUnit: newProductSecondaryUnit,
+        unitRatio: Number(newProductUnitRatio || 1),
         description: newProductDesc
       };
 
@@ -510,7 +515,10 @@ export default function App() {
       setNewProductStock('');
       setNewProductMinStock('');
       setNewProductUnit('');
+      setNewProductSecondaryUnit('');
+      setNewProductUnitRatio('');
       setNewProductDesc('');
+      setProductFormTab('general');
       setEditingProductId(null);
       setIsProductModalOpen(false);
     } catch (error) {
@@ -966,12 +974,22 @@ export default function App() {
     }
   };
 
-  const handleEditProduct = (p: Product) => {
+  const handleEditProduct = (p: Product | any) => {
     setEditingProductId(p.id);
     setNewProductName(p.name);
     setNewProductPrice(p.price.toString());
+    setNewProductPurchasePrice(p.purchasePrice?.toString() || '');
     setNewProductType(p.type);
-    setNewProductCategoryId(p.category);
+    setNewProductCategoryId(p.categoryId || '');
+    setNewProductCode(p.code || '');
+    setNewProductBarcode(p.barcode || '');
+    setNewProductStock(p.stock?.toString() || '');
+    setNewProductMinStock(p.minStock?.toString() || '');
+    setNewProductUnit(p.unit || '');
+    setNewProductSecondaryUnit(p.secondaryUnit || '');
+    setNewProductUnitRatio(p.unitRatio?.toString() || '');
+    setNewProductDesc(p.description || '');
+    setProductFormTab('general');
     setIsProductModalOpen(true);
   };
 
@@ -2884,7 +2902,10 @@ export default function App() {
                         setNewProductStock('');
                         setNewProductMinStock('');
                         setNewProductUnit('');
+                        setNewProductSecondaryUnit('');
+                        setNewProductUnitRatio('');
                         setNewProductDesc('');
+                        setProductFormTab('general');
                         setIsProductModalOpen(true);
                      }}
                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
@@ -5092,166 +5113,261 @@ export default function App() {
                 </button>
               </div>
               
-              <div className="p-6 overflow-y-auto">
-                <form id="productForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ثبت اطلاعات کالا/خدمات اطمینان دارید؟', () => handleSubmitProduct(e as any)) }} className="flex flex-col gap-6">
-                  {/* General Info */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">اطلاعات عمومی</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div className="w-full">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          عنوان کالا / خدمات <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={newProductName}
-                          onChange={(e) => setNewProductName(e.target.value)}
-                          placeholder="مثال: گوشی موبایل"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                          required
-                        />
-                      </div>
-                      <div className="w-full">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          نوع
-                        </label>
-                        <select
-                          value={newProductType}
-                          onChange={(e) => setNewProductType(e.target.value as 'product' | 'service')}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
-                        >
-                          <option value="product">کالا (فیزیکی)</option>
-                          <option value="service">خدمات (غیرفیزیکی)</option>
-                        </select>
-                      </div>
-                      <div className="w-full text-right">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          گروه‌بندی
-                        </label>
-                        <select
-                          value={newProductCategoryId}
-                          onChange={(e) => setNewProductCategoryId(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
-                        >
-                          <option value="">بدون گروه (عمومی)</option>
-                          {productCategories.map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="w-full">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          واحد سنجش
-                        </label>
-                        <input
-                          type="text"
-                          value={newProductUnit}
-                          onChange={(e) => setNewProductUnit(e.target.value)}
-                          placeholder="مثال: عدد، کیلوگرم، متر"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Financial Info */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">اطلاعات مالی</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div className="w-full">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          قیمت خرید (تومان)
-                        </label>
-                        <CurrencyInput
-                          value={newProductPurchasePrice}
-                          onChange={(e: any) => setNewProductPurchasePrice(e.target.value)}
-                          placeholder="مثال: 1000000"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                        />
-                      </div>
-                      <div className="w-full">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          قیمت فروش (تومان) <span className="text-red-500">*</span>
-                        </label>
-                        <CurrencyInput
-                          value={newProductPrice}
-                          onChange={(e: any) => setNewProductPrice(e.target.value)}
-                          placeholder="مثال: 1500000"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Stock and Barcode */}
-                  {newProductType === 'product' && (
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">انبار و شناسایی</h4>
+              <div className="p-0 overflow-y-auto flex-1">
+                <div className="flex border-b border-gray-200 px-6 pt-4 gap-6 sticky top-0 bg-white z-10">
+                  <button
+                    type="button"
+                    onClick={() => setProductFormTab('general')}
+                    className={`pb-3 font-bold text-sm border-b-2 transition-colors ${productFormTab === 'general' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  >
+                    اطلاعات عمومی
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductFormTab('financial')}
+                    className={`pb-3 font-bold text-sm border-b-2 transition-colors ${productFormTab === 'financial' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  >
+                    اطلاعات مالی
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductFormTab('inventory')}
+                    className={`pb-3 font-bold text-sm border-b-2 transition-colors ${productFormTab === 'inventory' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  >
+                    انبار و تکمیلی
+                  </button>
+                </div>
+                
+                <form id="productForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ثبت اطلاعات کالا/خدمات اطمینان دارید؟', () => handleSubmitProduct(e as any)) }} className="p-6">
+                  
+                  {/* General Info Tab */}
+                  {productFormTab === 'general' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="w-full">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            موجودی اولیه
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={newProductStock}
-                            onChange={(e) => setNewProductStock(e.target.value)}
-                            placeholder="تعداد در انبار"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                          />
-                        </div>
-                        <div className="w-full">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            حداقل موجودی (هشدار شارژ)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={newProductMinStock}
-                            onChange={(e) => setNewProductMinStock(e.target.value)}
-                            placeholder="مثال: 5"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
-                          />
-                        </div>
-                        <div className="w-full">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            کد کالا
+                        <div className="w-full md:col-span-2">
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            عنوان کالا / خدمات <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
-                            value={newProductCode}
-                            onChange={(e) => setNewProductCode(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900"
+                            value={newProductName}
+                            onChange={(e) => setNewProductName(e.target.value)}
+                            placeholder="مثال: گوشی موبایل سامسونگ S23"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-gray-50 focus:bg-white"
+                            required
                           />
                         </div>
                         <div className="w-full">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            بارکد
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            نوع <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="text"
-                            value={newProductBarcode}
-                            onChange={(e) => setNewProductBarcode(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 font-mono text-left"
-                            dir="ltr"
-                          />
+                          <select
+                            value={newProductType}
+                            onChange={(e) => setNewProductType(e.target.value as 'product' | 'service')}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
+                          >
+                            <option value="product">کالا (فیزیکی)</option>
+                            <option value="service">خدمات (غیرفیزیکی)</option>
+                          </select>
+                        </div>
+                        <div className="w-full">
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            گروه‌بندی
+                          </label>
+                          <select
+                            value={newProductCategoryId}
+                            onChange={(e) => setNewProductCategoryId(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
+                          >
+                            <option value="">بدون گروه (عمومی)</option>
+                            {productCategories.map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-100 p-5 rounded-xl">
+                        <h4 className="text-sm font-black text-blue-800 mb-4 flex items-center gap-2">
+                          <Package className="w-4 h-4" />
+                          تعریف واحد شمارش
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="w-full">
+                            <label className="block text-xs font-bold text-blue-800 mb-2">
+                              واحد اصلی (کوچکترین جزء)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProductUnit}
+                              onChange={(e) => setNewProductUnit(e.target.value)}
+                              placeholder="مثال: عدد، کیلوگرم"
+                              className="w-full px-3 py-2.5 rounded-lg border border-blue-200 focus:ring-max focus:ring-blue-500 shadow-sm text-sm"
+                            />
+                          </div>
+                          <div className="w-full">
+                            <label className="block text-xs font-bold text-blue-800 mb-2">
+                              واحد فرعی (بسته‌بندی بزرگتر)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProductSecondaryUnit}
+                              onChange={(e) => setNewProductSecondaryUnit(e.target.value)}
+                              placeholder="مثال: کارتن، بسته"
+                              className="w-full px-3 py-2.5 rounded-lg border border-blue-200 focus:ring-max focus:ring-blue-500 shadow-sm text-sm"
+                            />
+                            <p className="text-[10px] text-blue-600 mt-1 opacity-80">(اختیاری)</p>
+                          </div>
+                          <div className="w-full">
+                            <label className="block text-xs font-bold text-blue-800 mb-2">
+                              ضریب تبدیل (هر واحد فرعی چند واحد اصلی است؟)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={newProductUnitRatio}
+                              onChange={(e) => setNewProductUnitRatio(e.target.value)}
+                              placeholder="مثال: 24"
+                              className="w-full px-3 py-2.5 rounded-lg border border-blue-200 focus:ring-max focus:ring-blue-500 shadow-sm text-sm"
+                              disabled={!newProductSecondaryUnit}
+                            />
+                            {newProductSecondaryUnit && newProductUnitRatio && newProductUnit && (
+                               <p className="text-xs font-bold text-emerald-600 mt-2">
+                                 1 {newProductSecondaryUnit} = {newProductUnitRatio} {newProductUnit}
+                               </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <div className="w-full">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      توضیحات تکمیلی
-                    </label>
-                    <textarea
-                      value={newProductDesc}
-                      onChange={(e) => setNewProductDesc(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 min-h-[80px]"
-                      rows={3}
-                    />
+                  {/* Financial Info Tab */}
+                  {productFormTab === 'financial' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="w-full">
+                          <label className="block text-sm font-bold text-emerald-900 mb-2">
+                            قیمت خرید (تومان)
+                          </label>
+                          <CurrencyInput
+                            value={newProductPurchasePrice}
+                            onChange={(e: any) => setNewProductPurchasePrice(e.target.value)}
+                            placeholder="مثال: 1000000"
+                            className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-colors text-emerald-900 font-mono text-left font-bold"
+                          />
+                        </div>
+                        <div className="w-full">
+                          <label className="block text-sm font-bold text-emerald-900 mb-2">
+                            قیمت فروش (تومان) <span className="text-red-500">*</span>
+                          </label>
+                          <CurrencyInput
+                            value={newProductPrice}
+                            onChange={(e: any) => setNewProductPrice(e.target.value)}
+                            placeholder="مثال: 1500000"
+                            className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-colors text-emerald-900 font-mono text-left font-bold"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center bg-gray-50 border border-gray-100 p-4 rounded-xl">
+                         <div>
+                            <p className="text-sm font-bold text-gray-700">حاشیه سود حدودی:</p>
+                            <p className="text-xs text-gray-500 mt-1">تفاوت قیمت فروش و خرید</p>
+                         </div>
+                         <div className="font-mono text-lg font-black text-indigo-600" dir="ltr">
+                            {newProductPrice && newProductPurchasePrice ? (
+                                (() => {
+                                    const diff = Number(newProductPrice) - Number(newProductPurchasePrice);
+                                    const percent = Number(newProductPurchasePrice) > 0 ? ((diff / Number(newProductPurchasePrice)) * 100).toFixed(1) : 100;
+                                    return <span className={diff > 0 ? 'text-emerald-600' : 'text-rose-600'}>{formatNumber(diff)} {storeSettings.currency} <span className="text-sm">({percent}%)</span></span>;
+                                })()
+                            ) : (
+                                <span className="text-gray-400">---</span>
+                            )}
+                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Inventory & Advanced Tab */}
+                  {productFormTab === 'inventory' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {newProductType === 'product' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-gray-50 p-5 rounded-xl border border-gray-100">
+                          <div className="w-full">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              موجودی اولیه در انبار
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={newProductStock}
+                              onChange={(e) => setNewProductStock(e.target.value)}
+                              placeholder="تعداد در انبار"
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 font-mono text-left"
+                            />
+                          </div>
+                          <div className="w-full">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              حداقل موجودی (هشدار شارژ)
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={newProductMinStock}
+                              onChange={(e) => setNewProductMinStock(e.target.value)}
+                              placeholder="مثال: 5"
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 font-mono text-left"
+                            />
+                          </div>
+                          <div className="w-full">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              کد کالا (سیستمی)
+                            </label>
+                            <input
+                              type="text"
+                              value={newProductCode}
+                              onChange={(e) => setNewProductCode(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 font-mono text-left"
+                              dir="ltr"
+                            />
+                          </div>
+                          <div className="w-full">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              بارکد
+                            </label>
+                            <input
+                              type="text"
+                              value={newProductBarcode}
+                              onChange={(e) => setNewProductBarcode(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 font-mono text-left tracking-widest"
+                              dir="ltr"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="w-full">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                          توضیحات تکمیلی
+                        </label>
+                        <textarea
+                          value={newProductDesc}
+                          onChange={(e) => setNewProductDesc(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 min-h-[100px] resize-y"
+                          rows={3}
+                          placeholder="توضیحات کالا که ممکن است در فاکتور چاپ شود..."
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hidden required fields for HTML5 validation validation to still work across tabs */}
+                  <div className="hidden">
+                      <input type="text" required value={newProductName} onChange={() => {}} />
+                      <input type="text" required value={newProductPrice} onChange={() => {}} />
                   </div>
                 </form>
               </div>
