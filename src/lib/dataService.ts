@@ -70,6 +70,37 @@ export const deleteUser = async (id: string) => {
   await saveLocalData('users', users.filter((p: any) => p.id !== id));
 };
 
+// Person Groups
+export const getPersonGroups = async () => {
+  const groups = await getLocalData<any[]>('person_groups', []);
+  return groups.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addPersonGroup = async (group: any) => {
+  const groups = await getLocalData<any[]>('person_groups', []);
+  const now = Date.now();
+  const newGroup = { ...group, id: generateId(), createdAt: now, updatedAt: now };
+  groups.push(newGroup);
+  await saveLocalData('person_groups', groups);
+  return newGroup;
+};
+
+export const updatePersonGroup = async (id: string, group: any) => {
+  const groups = await getLocalData<any[]>('person_groups', []);
+  const index = groups.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    groups[index] = { ...groups[index], ...group, updatedAt: Date.now() };
+    await saveLocalData('person_groups', groups);
+    return groups[index];
+  }
+  return null;
+};
+
+export const deletePersonGroup = async (id: string) => {
+  const groups = await getLocalData<any[]>('person_groups', []);
+  await saveLocalData('person_groups', groups.filter((p: any) => p.id !== id));
+};
+
 // Persons
 export const getPersons = async () => {
   const persons = await getLocalData<any[]>('persons', []);

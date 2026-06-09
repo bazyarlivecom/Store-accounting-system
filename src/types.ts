@@ -1,3 +1,10 @@
+export type PersonGroup = {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string; // e.g., 'indigo', 'emerald', 'amber', 'rose'
+};
+
 export type Person = { 
   id: string | number; 
   personCode?: string;

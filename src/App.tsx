@@ -7,14 +7,14 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './lib/AuthContext';
-import { getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
+import { getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
 import DatabaseDashboard from './components/DatabaseDashboard';
 import SystemChecklist from './components/SystemChecklist';
 import ProductCardModal from './components/ProductCardModal';
 import CheckManagement from './components/CheckManagement';
 import FinancialTransfer from './components/FinancialTransfer';
 import UserManager from './components/UserManager';
-import { Person, Product, Account, Cashbox, InvoiceItem } from './types';
+import { Person, PersonGroup, Product, Account, Cashbox, InvoiceItem } from './types';
 
 const getBaseValueInToman = (cur: string) => {
   if (!cur) return 1;
@@ -190,6 +190,7 @@ export default function App() {
   }, [activeTab]);
   
   const [persons, setPersons] = useState<Person[]>([]);
+  const [personGroups, setPersonGroups] = useState<PersonGroup[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -198,6 +199,10 @@ export default function App() {
   const [selectedPersonGroup, setSelectedPersonGroup] = useState<string>('all');
   const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
   const [personPageSize, setPersonPageSize] = useState<number>(10);
+  const [isPersonGroupModalOpen, setIsPersonGroupModalOpen] = useState(false);
+  const [newPersonGroupName, setNewPersonGroupName] = useState('');
+  const [newPersonGroupColor, setNewPersonGroupColor] = useState('indigo');
+  const [editingPersonGroupId, setEditingPersonGroupId] = useState<string | null>(null);
 
   const filteredPersons = persons.filter(p => {
     // 1. Group Filter
@@ -205,14 +210,15 @@ export default function App() {
       if (selectedPersonGroup === 'none') {
         if (p.group && p.group.trim() !== '') return false;
       } else {
-        if (!p.group || p.group.trim() !== selectedPersonGroup) return false;
+        if (p.group !== selectedPersonGroup) return false;
       }
     }
 
     // 2. Search Filter
     if (!personSearchTerm) return true;
     const terms = personSearchTerm.toLowerCase().split(' ').filter(Boolean);
-    const searchable = `${p.name || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.phone || ''} ${p.nationalId || ''} ${p.personCode || ''} ${p.group || ''}`.toLowerCase();
+    const grp = personGroups.find(g => g.id === p.group);
+    const searchable = `${p.name || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.phone || ''} ${p.nationalId || ''} ${p.personCode || ''} ${grp?.name || ''}`.toLowerCase();
     return terms.every(term => searchable.includes(term));
   });
 
@@ -544,6 +550,15 @@ export default function App() {
       await fetchProducts();
     } catch (error) {
       console.error('Error deleting product', error);
+    }
+  };
+
+  const fetchPersonGroups = async () => {
+    try {
+      const data = await getPersonGroups();
+      setPersonGroups(data as any);
+    } catch (error) {
+      console.error('Error fetching person groups', error);
     }
   };
 
@@ -904,6 +919,45 @@ export default function App() {
     setIsProductModalOpen(true);
   };
 
+  const handleSavePersonGroup = async () => {
+    if (!newPersonGroupName.trim()) {
+      alert('نام گروه الزامی است');
+      return;
+    }
+    try {
+      if (editingPersonGroupId) {
+        await updatePersonGroup(editingPersonGroupId, { name: newPersonGroupName, color: newPersonGroupColor });
+      } else {
+        await addPersonGroup({ name: newPersonGroupName, color: newPersonGroupColor });
+      }
+      await fetchPersonGroups();
+      setNewPersonGroupName('');
+      setNewPersonGroupColor('indigo');
+      setEditingPersonGroupId(null);
+    } catch (e) {
+      console.error('Error saving group', e);
+    }
+  };
+
+  const handleDeletePersonGroup = async (id: string) => {
+    confirmAction('آیا از حذف این گروه اطمینان دارید؟ تمامی اشخاص این گروه فاقد گروه خواهند شد.', async () => {
+      try {
+        await deletePersonGroup(id);
+        
+        // Remove group from all persons in this group
+        const affectedPersons = persons.filter(p => p.group === id);
+        for (const p of affectedPersons) {
+            await updatePerson(p.id as string, { ...p, group: '' });
+        }
+        
+        await fetchPersonGroups();
+        await fetchPersons();
+      } catch (e) {
+        console.error('Error deleting group', e);
+      }
+    });
+  };
+
   const handleEditPerson = (p: Person) => {
     setEditingPersonId(p.id);
     setNewPersonType(p.personType);
@@ -1034,6 +1088,7 @@ export default function App() {
     setLoading(true);
     try {
       await Promise.all([
+        fetchPersonGroups(),
         fetchPersons(),
         fetchProducts(),
         fetchAccounts(),
@@ -2878,26 +2933,26 @@ export default function App() {
                       بدون گروه ({persons.filter(p => !p.group || p.group.trim() === '').length.toLocaleString('fa-IR')})
                     </button>
 
-                    {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).slice(0, 4).map((g: any, i) => {
-                      const count = persons.filter(p => p.group === g).length;
+                    {personGroups.slice(0, 4).map((g) => {
+                      const count = persons.filter(p => p.group === g.id).length;
                       return (
                         <button
-                          key={i}
-                          onClick={() => setSelectedPersonGroup(g)}
+                          key={g.id}
+                          onClick={() => setSelectedPersonGroup(g.id)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer ${
-                            selectedPersonGroup === g
+                            selectedPersonGroup === g.id
                               ? 'bg-indigo-600 text-white shadow-xs'
                               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
                           }`}
                         >
-                          {g} ({count.toLocaleString('fa-IR')})
+                          {g.name} ({count.toLocaleString('fa-IR')})
                         </button>
                       );
                     })}
 
-                    {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).length > 4 && (
+                    {personGroups.length > 4 && (
                       <select
-                        value={selectedPersonGroup !== 'all' && selectedPersonGroup !== 'none' && Array.from(new Set(persons.map(p => p.group).filter(Boolean))).includes(selectedPersonGroup) ? selectedPersonGroup : ''}
+                        value={selectedPersonGroup !== 'all' && selectedPersonGroup !== 'none' && personGroups.find(g => g.id === selectedPersonGroup) ? selectedPersonGroup : ''}
                         onChange={(e) => {
                           if (e.target.value) {
                             setSelectedPersonGroup(e.target.value);
@@ -2906,10 +2961,10 @@ export default function App() {
                         className="bg-slate-50 border border-slate-200 font-extrabold text-xs text-slate-800 rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
                       >
                         <option value="" disabled>گروه‌های بیشتر...</option>
-                        {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).slice(4).map((g: any, i) => {
-                          const count = persons.filter(p => p.group === g).length;
+                        {personGroups.slice(4).map((g) => {
+                          const count = persons.filter(p => p.group === g.id).length;
                           return (
-                            <option key={i} value={g}>{g} ({count.toLocaleString('fa-IR')} نفر)</option>
+                            <option key={g.id} value={g.id}>{g.name} ({count.toLocaleString('fa-IR')} نفر)</option>
                           );
                         })}
                       </select>
@@ -2957,10 +3012,27 @@ export default function App() {
                           </td>
                           <td className="py-4 px-6 text-sm">
                             {p.group ? (
-                              <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-800 border border-indigo-100 px-2.5 py-1 rounded-xl text-xs font-black shadow-3xs">
-                                <Tag className="w-3 h-3 text-indigo-500" />
-                                {p.group}
-                              </span>
+                              (() => {
+                                const g = personGroups.find(grp => grp.id === p.group);
+                                if (!g) return <span className="text-slate-350 select-none text-xs font-bold">بدون گروه</span>;
+                                
+                                let bg = 'bg-slate-100';
+                                let text = 'text-slate-600';
+                                let border = 'border-slate-200';
+                                if (g.color === 'indigo') { bg = 'bg-indigo-50'; text = 'text-indigo-800'; border = 'border-indigo-100'; }
+                                else if (g.color === 'emerald') { bg = 'bg-emerald-50'; text = 'text-emerald-800'; border = 'border-emerald-100'; }
+                                else if (g.color === 'amber') { bg = 'bg-amber-50'; text = 'text-amber-800'; border = 'border-amber-100'; }
+                                else if (g.color === 'rose') { bg = 'bg-rose-50'; text = 'text-rose-800'; border = 'border-rose-100'; }
+                                else if (g.color === 'purple') { bg = 'bg-purple-50'; text = 'text-purple-800'; border = 'border-purple-100'; }
+                                else if (g.color === 'cyan') { bg = 'bg-cyan-50'; text = 'text-cyan-800'; border = 'border-cyan-100'; }
+
+                                return (
+                                  <span className={`inline-flex items-center gap-1 ${bg} ${text} border ${border} px-2.5 py-1 rounded-xl text-xs font-black shadow-3xs`}>
+                                    <Tag className={`w-3 h-3 ${g.color ? `text-${g.color}-500` : 'text-slate-500'}`} />
+                                    {g.name}
+                                  </span>
+                                );
+                              })()
                             ) : (
                               <span className="text-slate-350 select-none text-xs font-bold">بدون گروه</span>
                             )}
@@ -5673,6 +5745,148 @@ export default function App() {
           </div>
         )}
         
+        {isPersonGroupModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fade-in" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner">
+                    <Tag className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">مدیریت گروه‌های اشخاص</h2>
+                    <p className="text-xs font-bold text-slate-500 mt-0.5">دسته‌بندی سفارشی برای مشتریان، کارمندان و...</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsPersonGroupModalOpen(false);
+                    setEditingPersonGroupId(null);
+                    setNewPersonGroupName('');
+                  }}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6 mt-1">
+                  <h3 className="text-sm font-black text-slate-800 mb-4">{editingPersonGroupId ? 'ویرایش گروه' : 'ثبت گروه جدید'}</h3>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={newPersonGroupName}
+                        onChange={(e) => setNewPersonGroupName(e.target.value)}
+                        placeholder="نام گروه (مثلا خریداران عمده)"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-slate-900 font-bold text-sm"
+                      />
+                    </div>
+                    <div>
+                      <select
+                        value={newPersonGroupColor}
+                        onChange={(e) => setNewPersonGroupColor(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 bg-white font-bold text-sm text-slate-800 h-full"
+                      >
+                        <option value="indigo">نیلی (Indigo)</option>
+                        <option value="emerald">سبز (Emerald)</option>
+                        <option value="amber">زرد (Amber)</option>
+                        <option value="rose">قرمز (Rose)</option>
+                        <option value="purple">بنفش (Purple)</option>
+                        <option value="cyan">فیروزه‌ای (Cyan)</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleSavePersonGroup}
+                      className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 justify-center"
+                    >
+                      {editingPersonGroupId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                      {editingPersonGroupId ? 'ذخیره تغییرات' : 'افزودن گروه'}
+                    </button>
+                    {editingPersonGroupId && (
+                      <button
+                        onClick={() => {
+                          setEditingPersonGroupId(null);
+                          setNewPersonGroupName('');
+                        }}
+                        className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all cursor-pointer"
+                      >
+                        انصراف
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                  {personGroups.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 font-bold text-sm">پیچ گروهی ثبت نشده است.</div>
+                  ) : (
+                    <table className="w-full text-right whitespace-nowrap">
+                      <thead>
+                        <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-black">
+                          <th className="py-3 px-4">رنگبندی</th>
+                          <th className="py-3 px-4 w-full">نام گروه</th>
+                          <th className="py-3 px-4 text-center">تعداد اشخاص</th>
+                          <th className="py-3 px-4 text-center">عملیات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {personGroups.map(g => {
+                          const count = persons.filter(p => p.group === g.id).length;
+                          let bg = 'bg-slate-100';
+                          let text = 'text-slate-600';
+                          if (g.color === 'indigo') { bg = 'bg-indigo-100'; text = 'text-indigo-600'; }
+                          else if (g.color === 'emerald') { bg = 'bg-emerald-100'; text = 'text-emerald-600'; }
+                          else if (g.color === 'amber') { bg = 'bg-amber-100'; text = 'text-amber-600'; }
+                          else if (g.color === 'rose') { bg = 'bg-rose-100'; text = 'text-rose-600'; }
+                          else if (g.color === 'purple') { bg = 'bg-purple-100'; text = 'text-purple-600'; }
+                          else if (g.color === 'cyan') { bg = 'bg-cyan-100'; text = 'text-cyan-600'; }
+
+                          return (
+                            <tr key={g.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-4">
+                                <div className={`w-6 h-6 rounded-lg ${bg} shadow-inner`}></div>
+                              </td>
+                              <td className="py-3 px-4 font-bold text-sm text-slate-900">{g.name}</td>
+                              <td className="py-3 px-4 text-center font-black text-xs text-slate-500">{count} نفر</td>
+                              <td className="py-3 px-4 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setEditingPersonGroupId(g.id);
+                                      setNewPersonGroupName(g.name);
+                                      setNewPersonGroupColor(g.color || 'indigo');
+                                    }}
+                                    className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePersonGroup(g.id)}
+                                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isPersonModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
             <motion.div
@@ -5841,38 +6055,27 @@ export default function App() {
                     <div className="w-full text-right md:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                       <div className="flex justify-between items-center mb-2">
                         <label className="block text-xs font-black text-slate-700">
-                          تنظیم گروه‌بندی شخص (مشتری، پرسنل، تامین‌کنندگان...)
+                          گروه‌بندی شخص
                         </label>
-                        <span className="text-[10px] text-indigo-700 bg-indigo-100/70 font-sans px-2 py-0.5 rounded-full font-bold">دسته‌بندی و فیلترینگ پیشرفته</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsPersonGroupModalOpen(true)}
+                          className="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg text-xs font-bold transition-colors border border-indigo-200"
+                        >
+                          مدیریت گروه‌ها
+                        </button>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={newPersonGroup}
-                            onChange={(e) => setNewPersonGroup(e.target.value)}
-                            placeholder="مثلا: همکاران صنف، خریداران عمده، کارمندان بخش مالی..."
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-950 font-bold text-sm"
-                          />
-                        </div>
-                        {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).length > 0 && (
-                          <div className="sm:w-56">
-                            <select
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  setNewPersonGroup(e.target.value);
-                                }
-                              }}
-                              className="w-full px-3 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 bg-white font-bold text-xs text-slate-800 outline-none h-full"
-                              defaultValue=""
-                            >
-                              <option value="" disabled>--- کپی از گروه‌های دیگر ---</option>
-                              {Array.from(new Set(persons.map(p => p.group).filter(Boolean))).map((g: any, i) => (
-                                <option key={i} value={g}>{g}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
+                        <select
+                          value={newPersonGroup}
+                          onChange={(e) => setNewPersonGroup(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-950 font-bold text-sm bg-white"
+                        >
+                          <option value="">بدون گروه</option>
+                          {personGroups.map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
