@@ -8,9 +8,11 @@ export type PersonGroup = {
 export type Person = { 
   id: string | number; 
   personCode?: string;
+  title?: string;
   name: string; 
   firstName?: string;
   lastName?: string;
+  alias?: string;
   companyName?: string;
   fatherName?: string;
   nationalId?: string;
@@ -24,6 +26,10 @@ export type Person = {
   shebaNumber?: string;
   additionalNotes?: string;
   group?: string;
+  province?: string;
+  city?: string;
+  isActive?: boolean;
+  registrationDate?: string;
 };
 
 export type Checkbook = {

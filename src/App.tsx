@@ -50,8 +50,8 @@ const customPersonFilter = (option: any, inputValue: string) => {
 
 const mapPersonToOption = (p: any) => ({
   value: p.id.toString(),
-  label: (p.personCode ? '[' + p.personCode + '] ' : '') + p.name + ' (' + (p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند') + ')',
-  searchStr: `${p.name} ${p.firstName||''} ${p.lastName||''} ${p.phone||''} ${p.nationalId||''} ${p.personCode||''} ${p.companyName||''}`
+  label: (p.personCode ? '[' + p.personCode + '] ' : '') + (p.alias || p.name) + ' (' + (p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند') + ')',
+  searchStr: `${p.alias||''} ${p.name||''} ${p.title||''} ${p.firstName||''} ${p.lastName||''} ${p.phone||''} ${p.nationalId||''} ${p.personCode||''} ${p.companyName||''}`
 });
 
 const CurrencyInput = ({ value, onChange, placeholder, className, ...props }: any) => {
@@ -163,6 +163,7 @@ export default function App() {
         { id: 'products', label: 'کالاها و خدمات', roles: ['admin', 'accountant'] },
         { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
         { id: 'persons', label: 'اشخاص و شرکت‌ها', roles: ['admin', 'accountant'] },
+        { id: 'person_groups', label: 'گروه‌بندی اشخاص', roles: ['admin', 'accountant'] },
       ]
     },
     {
@@ -197,14 +198,19 @@ export default function App() {
     const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [personSearchTerm, setPersonSearchTerm] = useState('');
   const [selectedPersonGroup, setSelectedPersonGroup] = useState<string>('all');
+  const [selectedPersonRole, setSelectedPersonRole] = useState<string>('all');
   const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
   const [personPageSize, setPersonPageSize] = useState<number>(10);
-  const [isPersonGroupModalOpen, setIsPersonGroupModalOpen] = useState(false);
   const [newPersonGroupName, setNewPersonGroupName] = useState('');
   const [newPersonGroupColor, setNewPersonGroupColor] = useState('indigo');
   const [editingPersonGroupId, setEditingPersonGroupId] = useState<string | null>(null);
 
   const filteredPersons = persons.filter(p => {
+    // 0. Role Filter
+    if (selectedPersonRole !== 'all' && p.role !== selectedPersonRole) {
+      return false;
+    }
+
     // 1. Group Filter
     if (selectedPersonGroup !== 'all') {
       if (selectedPersonGroup === 'none') {
@@ -349,6 +355,8 @@ export default function App() {
   // Person state
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [newPersonType, setNewPersonType] = useState<'real' | 'legal'>('real');
+  const [newPersonTitle, setNewPersonTitle] = useState('');
+  const [newPersonAlias, setNewPersonAlias] = useState('');
   const [newPersonFirstName, setNewPersonFirstName] = useState('');
   const [newPersonLastName, setNewPersonLastName] = useState('');
   const [newPersonCompanyName, setNewPersonCompanyName] = useState('');
@@ -358,7 +366,13 @@ export default function App() {
   const [newPersonRole, setNewPersonRole] = useState<'customer' | 'employee' | 'supplier'>('customer');
   const [newPersonPhone, setNewPersonPhone] = useState('');
   const [newPersonGroup, setNewPersonGroup] = useState('');
+  const [newPersonProvince, setNewPersonProvince] = useState('');
+  const [newPersonCity, setNewPersonCity] = useState('');
+  const [newPersonIsActive, setNewPersonIsActive] = useState(true);
+  const [newPersonRegistrationDate, setNewPersonRegistrationDate] = useState<Date | any>(new Date());
+  
   const [submittingPerson, setSubmittingPerson] = useState(false);
+  const [personModalActiveTab, setPersonModalActiveTab] = useState<'basic' | 'contact' | 'bank' | 'settings'>('basic');
   const [isPersonExtraModalOpen, setIsPersonExtraModalOpen] = useState(false);
   const [personExtraId, setPersonExtraId] = useState<string|number|null>(null);
   const [personBankName, setPersonBankName] = useState('');
@@ -580,16 +594,21 @@ export default function App() {
     try {
       const isEdit = editingPersonId !== null;
       let name = '';
+      let generatedAlias = '';
       if (newPersonType === 'legal') {
         name = newPersonCompanyName || '';
+        generatedAlias = newPersonAlias || newPersonCompanyName || '';
       } else {
         name = `${newPersonFirstName || ''} ${newPersonLastName || ''}`.trim();
+        generatedAlias = newPersonAlias || `${newPersonTitle ? newPersonTitle + ' ' : ''}${name}`.trim();
       }
 
       const payload = {
         type: newPersonRole,           // Firebase db maps roles to type
         name: name,
         fullName: name,
+        title: newPersonTitle,
+        alias: generatedAlias,
         personType: newPersonType,
         firstName: newPersonFirstName,
         lastName: newPersonLastName,
@@ -600,16 +619,22 @@ export default function App() {
         role: newPersonRole,
         phone: newPersonPhone,
         initialBalance: 0,
-        group: newPersonGroup
+        group: newPersonGroup,
+        province: newPersonProvince,
+        city: newPersonCity,
+        isActive: newPersonIsActive,
+        registrationDate: typeof newPersonRegistrationDate.toDate === 'function' ? newPersonRegistrationDate.toDate().toISOString() : new Date(newPersonRegistrationDate).toISOString()
       };
 
       if (isEdit) {
-        await updatePerson(editingPersonId.toString(), payload);
+        await updatePerson(editingPersonId.toString(), payload as any);
       } else {
-        await addPerson(payload);
+        await addPerson(payload as any);
       }
       
       await fetchPersons();
+      setNewPersonTitle('');
+      setNewPersonAlias('');
       setNewPersonFirstName('');
       setNewPersonLastName('');
       setNewPersonCompanyName('');
@@ -618,7 +643,12 @@ export default function App() {
       setNewPersonAddress('');
       setNewPersonPhone('');
       setNewPersonGroup('');
+      setNewPersonProvince('');
+      setNewPersonCity('');
+      setNewPersonIsActive(true);
+      setNewPersonRegistrationDate(new Date());
       setNewPersonRole('customer');
+      setPersonModalActiveTab('basic');
       setEditingPersonId(null);
       setIsPersonModalOpen(false);
       setSuccessMsg(isEdit ? 'شخص با موفقیت ویرایش شد' : 'شخص با موفقیت اضافه شد');
@@ -961,6 +991,8 @@ export default function App() {
   const handleEditPerson = (p: Person) => {
     setEditingPersonId(p.id);
     setNewPersonType(p.personType);
+    setNewPersonTitle(p.title || '');
+    setNewPersonAlias(p.alias || '');
     setNewPersonFirstName(p.firstName || '');
     setNewPersonLastName(p.lastName || '');
     setNewPersonCompanyName(p.companyName || '');
@@ -970,6 +1002,11 @@ export default function App() {
     setNewPersonPhone(p.phone || '');
     setNewPersonGroup(p.group || '');
     setNewPersonRole(p.role);
+    setNewPersonProvince(p.province || '');
+    setNewPersonCity(p.city || '');
+    setNewPersonIsActive(p.isActive !== undefined ? p.isActive : true);
+    setNewPersonRegistrationDate(p.registrationDate ? new Date(p.registrationDate) : new Date());
+    setPersonModalActiveTab('basic');
     setIsPersonModalOpen(true);
   };
 
@@ -1496,7 +1533,7 @@ export default function App() {
                     <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><User className="w-4 h-4"/> طرف حساب</label>
                     <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500">
                         <option value="">-- انتخاب کنید --</option>
-                        {persons.map(p => <option key={p.id} value={p.id}>{p.name} {p.role === 'customer' ? '(مشتری)' : ''}</option>)}
+                        {persons.map(p => <option key={p.id} value={p.id}>{p.alias || p.name} {p.role === 'customer' ? '(مشتری)' : ''}</option>)}
                     </select>
                   </div>
                   <div>
@@ -1706,6 +1743,16 @@ export default function App() {
         case 'create_receive_receipt':
         case 'create_pay_receipt': {
            const isReceive = activeTab === 'create_receive_receipt';
+           
+           const themeRing = isReceive ? 'focus:ring-emerald-500' : 'focus:ring-rose-500';
+           const themeText = isReceive ? 'text-emerald-600' : 'text-rose-600';
+           const themeBg = isReceive ? 'bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300' : 'bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300';
+           const themeLightBg = isReceive ? 'bg-emerald-50/50' : 'bg-rose-50/50';
+           const themeBorder = isReceive ? 'border-emerald-200' : 'border-rose-200';
+           const themeIcon = isReceive ? 'text-emerald-500' : 'text-rose-500';
+           const gradientBox = isReceive ? 'from-emerald-50/40 to-teal-50/40 border-emerald-200/70' : 'from-rose-50/40 to-orange-50/40 border-rose-200/70';
+           const themeBadge = isReceive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800';
+
            return (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
                {receiptSuccessMsg && (
@@ -1715,34 +1762,34 @@ export default function App() {
                  </div>
                )}
 
-               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                 <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
-                   <Wallet className="w-6 h-6 text-indigo-600" />
+               <div className={`bg-white rounded-2xl p-6 shadow-sm border ${themeBorder} ${themeLightBg}`}>
+                 <h2 className="text-xl font-extrabold text-slate-900 mb-6 flex items-center gap-2 border-b border-slate-200 pb-4">
+                   <Wallet className={`w-6 h-6 ${themeText}`} />
                    {isReceive ? 'ثبت سند رسید دریافت رسمی' : 'ثبت سند رسید پرداخت رسمی'}
                  </h2>
 
                  <form onSubmit={(e) => handleSubmitReceipt(isReceive ? 'receive' : 'pay', e)} className="space-y-6">
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                      <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+                       <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-1">
                          <User className="w-4 h-4"/> طرف حساب (شخص/شرکت)
                        </label>
                        <select 
                          value={receiptPersonId} 
                          onChange={(e) => setReceiptPersonId(e.target.value)} 
-                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                         className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
                          required
                        >
                          <option value="">-- انتخاب کنید --</option>
                          {persons.map(p => (
-                           <option key={p.id} value={p.id}>{p.name}</option>
+                           <option key={p.id} value={p.id}>{p.alias || p.name}</option>
                          ))}
                        </select>
                      </div>
 
                      <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> تاریخ سند (جلالی)
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                          <Calendar className={`w-4 h-4 ${themeIcon} animate-pulse`}/> تاریخ سند (جلالی)
                         </label>
                         <div className="relative">
                           <DatePicker
@@ -1751,59 +1798,59 @@ export default function App() {
                             calendar={persian}
                             locale={persian_fa}
                             calendarPosition="bottom-right"
-                            inputClass="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-base md:text-lg"
+                            inputClass={`w-full pl-11 pr-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 ${themeRing} outline-none font-sans font-black text-slate-900 text-center transition-all cursor-pointer shadow-sm text-base`}
                             containerClassName="w-full"
                           />
-                          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
+                          <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none ${themeIcon}`}>
                             <Calendar className="w-5 h-5" />
                           </div>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4 text-emerald-500"/> مبلغ سند ({storeSettings.currency || 'تومان'})
+                        <label className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                          <DollarSign className={`w-4 h-4 ${themeIcon}`}/> مبلغ سند ({storeSettings.currency || 'تومان'})
                         </label>
                         <div className="relative">
                           <input 
                              type="number" 
                              value={receiptAmount} 
                              onChange={(e) => setReceiptAmount(e.target.value)} 
-                             className="w-full pl-16 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white font-sans font-mono font-black text-indigo-950 text-right text-lg md:text-xl transition-all shadow-sm" 
+                             className={`w-full pl-16 pr-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 ${themeRing} outline-none font-sans font-mono font-black text-slate-900 text-right text-lg md:text-xl transition-all shadow-sm`}
                              dir="ltr" 
                              placeholder="۰"
                              required 
                            />
-                           <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 font-bold text-xs select-none">
+                           <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 font-bold text-xs select-none">
                              {storeSettings?.currency || 'تومان'}
                            </div>
                         </div>
                         {receiptAmount && !isNaN(Number(receiptAmount)) && Number(receiptAmount) > 0 && (
-                          <div className="mt-2.5 p-4 bg-gradient-to-br from-indigo-50/20 to-amber-50/30 border border-indigo-100/70 rounded-2xl text-xs leading-relaxed text-right space-y-2 shadow-sm">
-                            <div className="text-gray-500 font-bold flex items-center gap-2 justify-start">
-                              <span className="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-0.5 rounded-md font-extrabold font-sans font-mono">جمع عددی:</span>
-                              <strong className="text-indigo-950 font-sans font-black text-base md:text-lg tracking-wide inline-block">{formatNumber(Number(receiptAmount))}</strong>
-                              <span className="text-gray-400 font-semibold">{storeSettings?.currency || 'تومان'}</span>
+                          <div className={`mt-2.5 p-4 bg-gradient-to-br ${gradientBox} border rounded-2xl text-xs leading-relaxed text-right space-y-2 shadow-sm`}>
+                            <div className="text-slate-500 font-bold flex items-center gap-2 justify-start">
+                              <span className={`${themeBadge} text-[10px] px-2 py-0.5 rounded-md font-extrabold font-sans font-mono`}>جمع عددی:</span>
+                              <strong className="text-slate-900 font-sans font-black text-base md:text-lg tracking-wide inline-block">{formatNumber(Number(receiptAmount))}</strong>
+                              <span className="text-slate-400 font-semibold">{storeSettings?.currency || 'تومان'}</span>
                             </div>
-                            <div className="h-px bg-gray-100/70 w-full" />
-                            <div className="text-gray-500 font-bold flex items-baseline gap-2 justify-start flex-wrap">
+                            <div className="h-px bg-slate-200/70 w-full" />
+                            <div className="text-slate-500 font-bold flex items-baseline gap-2 justify-start flex-wrap">
                               <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-md font-extrabold font-sans font-mono">به حروف:</span>
-                              <strong className="text-indigo-950 font-sans font-black text-xs md:text-sm inline-block leading-relaxed">{numToPersianWords(Number(receiptAmount))}</strong>
-                              <span className="text-gray-600 font-semibold"> {storeSettings?.currency || 'تومان'} تمام.</span>
+                              <strong className="text-slate-900 font-sans font-black text-xs md:text-sm inline-block leading-relaxed">{numToPersianWords(Number(receiptAmount))}</strong>
+                              <span className="text-slate-600 font-semibold"> {storeSettings?.currency || 'تومان'} تمام.</span>
                             </div>
                           </div>
                         )}
                       </div>
 
                       <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">نوع منبع مالی</label>
+                       <label className="block text-sm font-bold text-slate-700 mb-1">نوع منبع مالی</label>
                        <select 
                          value={receiptResourceType} 
                          onChange={(e) => {
                            setReceiptResourceType(e.target.value as 'bank' | 'cashbox');
                            setReceiptResourceId('');
                          }} 
-                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                         className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
                        >
                          <option value="bank">حساب بانکی</option>
                          <option value="cashbox">صندوق فروشگاهی</option>
@@ -1811,14 +1858,14 @@ export default function App() {
                      </div>
 
                      <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">
+                       <label className="block text-sm font-bold text-slate-700 mb-1">
                          {receiptResourceType === 'bank' ? 'بانک مقصد' : 'صندوق مقصد'}
                        </label>
                        {receiptResourceType === 'bank' ? (
                          <select 
                            value={receiptResourceId} 
                            onChange={(e) => setReceiptResourceId(e.target.value)} 
-                           className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                           className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
                            required
                          >
                            <option value="">-- انتخاب بانک --</option>
@@ -1830,7 +1877,7 @@ export default function App() {
                          <select 
                            value={receiptResourceId} 
                            onChange={(e) => setReceiptResourceId(e.target.value)} 
-                           className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                           className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
                            required
                          >
                            <option value="">-- انتخاب صندوق --</option>
@@ -1842,22 +1889,22 @@ export default function App() {
                      </div>
 
                      <div className="md:col-span-2 lg:col-span-3">
-                       <label className="block text-sm font-bold text-gray-700 mb-1">توضیحات و بابت</label>
+                       <label className="block text-sm font-bold text-slate-700 mb-1">توضیحات و بابت</label>
                        <textarea 
                          value={receiptDescription} 
                          onChange={(e) => setReceiptDescription(e.target.value)} 
-                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm" 
+                         className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} text-sm font-bold text-slate-800 outline-none transition-shadow`}
                          rows={2}
                          placeholder="شرح تراکنش و بابت تراکنش..."
                        />
                      </div>
                    </div>
 
-                   <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
                      <button 
                        type="submit" 
                        disabled={submittingReceipt} 
-                       className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center gap-2 transition-colors border-none cursor-pointer shadow-sm"
+                       className={`px-8 py-3 ${themeBg} text-white rounded-xl font-bold flex items-center gap-2 transition-colors border-none cursor-pointer shadow-sm`}
                      >
                        {submittingReceipt ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                        ثبت و صدور رسید تراکنش
@@ -1873,53 +1920,62 @@ export default function App() {
         case 'list_pay_receipt': {
            const isReceive = activeTab === 'list_receive_receipt';
            const filteredTxs = transactions.filter(t => t.type === (isReceive ? 'receive' : 'pay'));
+
+           const themeText = isReceive ? 'text-emerald-700' : 'text-rose-700';
+           const themeBg = isReceive ? 'bg-emerald-50' : 'bg-rose-50';
+           const themeBorder = isReceive ? 'border-emerald-200' : 'border-rose-200';
+           const themeIcon = isReceive ? 'text-emerald-600' : 'text-rose-600';
+           const themeNum = isReceive ? 'text-emerald-900' : 'text-rose-900';
+           const themeHighlightTxt = isReceive ? 'text-emerald-600' : 'text-rose-600';
+           const themeRowHover = isReceive ? 'hover:bg-emerald-50/50' : 'hover:bg-rose-50/50';
+
            return (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
-               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                 <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-                   <List className="w-6 h-6 text-indigo-600" />
+               <div className={`bg-white rounded-2xl p-6 shadow-sm border ${themeBorder} ${themeBg} bg-opacity-40 flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+                 <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                   <List className={`w-6 h-6 ${themeIcon}`} />
                    {isReceive ? 'لیست رسیدهای دریافت وجه رسمی' : 'لیست رسیدهای پرداخت وجه رسمی'}
                  </h2>
                </div>
 
-               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                  <div className="overflow-x-auto">
-                   <table className="w-full text-right divide-y divide-gray-150">
+                   <table className="w-full text-right divide-y divide-slate-100">
                      <thead>
-                       <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100 text-right">
-                         <th className="p-4 font-bold text-right">شناسه سند</th>
-                         <th className="p-4 font-bold text-right">طرف حساب</th>
-                         <th className="p-4 font-bold text-right">تاریخ سند</th>
-                         <th className="p-4 font-bold text-right">منبع مالی</th>
-                         <th className="p-4 font-bold text-right">مبلغ تراکنش</th>
-                         <th className="p-4 font-bold text-center">عملیات</th>
+                       <tr className="bg-slate-50 text-sm text-slate-500 border-b border-slate-200 text-right">
+                         <th className="p-4 font-black">شناسه سند</th>
+                         <th className="p-4 font-black">طرف حساب</th>
+                         <th className="p-4 font-black">تاریخ سند</th>
+                         <th className="p-4 font-black">منبع مالی</th>
+                         <th className="p-4 font-black">مبلغ تراکنش</th>
+                         <th className="p-4 font-black text-center">عملیات</th>
                        </tr>
                      </thead>
-                     <tbody className="divide-y divide-gray-50">
+                     <tbody className="divide-y divide-slate-50">
                        {filteredTxs.map(tx => {
                          const person = persons.find(p => p.id.toString() === tx.personId?.toString());
                          const resourceLabel = tx.resourceType === 'bank' 
                            ? `حساب بانکی: ${accounts.find(a => a.id.toString() === tx.resourceId?.toString())?.bankName || 'نامشخص'}`
                            : `صندوق: ${cashboxes.find(cb => cb.id.toString() === tx.resourceId?.toString())?.name || 'نامشخص'}`;
                          return (
-                           <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
-                             <td className="p-4 font-mono font-bold text-indigo-600">#{tx.id}</td>
-                             <td className="p-4 font-bold text-gray-800">{person?.name || 'نامشخص'}</td>
-                             <td className="p-4 font-mono text-gray-500" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
-                             <td className="p-4 text-xs font-semibold text-gray-600 text-right">{resourceLabel}</td>
+                           <tr key={tx.id} className={`${themeRowHover} transition-colors`}>
+                             <td className={`p-4 font-mono font-bold ${themeHighlightTxt}`}>#{tx.id}</td>
+                             <td className="p-4 font-bold text-slate-800">{person?.name || 'نامشخص'}</td>
+                             <td className="p-4 font-mono text-slate-500 font-bold" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
+                             <td className="p-4 text-xs font-black text-slate-600 text-right">{resourceLabel}</td>
                              <td className="p-4 text-right">
-                                <div className="font-mono font-black text-indigo-950 text-sm" dir="ltr">
-                                  {formatCurrency(tx.amount)} {storeSettings.currency}
+                                <div className={`font-mono font-black ${themeNum} text-sm`} dir="ltr">
+                                  {formatNumber(tx.amount)} {storeSettings.currency}
                                 </div>
-                                <div className="text-[10px] text-gray-400 font-bold mt-0.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                                <div className="text-[10px] text-slate-400 font-bold mt-0.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
                                   {numToPersianWords(tx.amount)} {storeSettings.currency}
                                 </div>
                               </td>
                              <td className="p-4 text-center flex items-center justify-center gap-2">
-                               <button onClick={() => { setPrintingTransaction(tx); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer border-none bg-transparent">
+                               <button onClick={() => { setPrintingTransaction(tx); }} className={`p-2 text-slate-400 hover:bg-slate-100 hover:${themeText} rounded-lg cursor-pointer border-none bg-transparent transition-colors`}>
                                  <Eye className="w-4 h-4"/>
                                </button>
-                               <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))} className="p-2 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent">
+                               <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent transition-colors">
                                  <Trash2 className="w-4 h-4"/>
                                </button>
                              </td>
@@ -1928,7 +1984,7 @@ export default function App() {
                        })}
                        {filteredTxs.length === 0 && (
                          <tr>
-                           <td colSpan={6} className="p-8 text-center text-gray-400 font-medium">هیچ سند یا رسیدی در این بخش صادر نشده است.</td>
+                           <td colSpan={6} className="p-8 text-center text-slate-400 font-bold">هیچ سند یا رسیدی در این بخش صادر نشده است.</td>
                          </tr>
                        )}
                      </tbody>
@@ -1960,7 +2016,7 @@ export default function App() {
                        >
                          <option value="">-- انتخاب پرسنل --</option>
                          {persons.map(p => (
-                           <option key={p.id} value={p.id}>{p.name} {p.role === 'employee' ? '(پرسنل)' : ''}</option>
+                           <option key={p.id} value={p.id}>{p.alias || p.name} {p.role === 'employee' ? '(پرسنل)' : ''}</option>
                          ))}
                        </select>
                      </div>
@@ -2656,19 +2712,30 @@ export default function App() {
         
 
 
-        {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm" dir="rtl">
+        {/* Top Header */}
+        <div className="flex flex-row items-center justify-between p-4 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20 shadow-xs" dir="rtl">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              className="md:hidden p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-xl transition-colors cursor-pointer shadow-3xs border border-slate-100 bg-white"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5" />
             </button>
-            <div className="font-extrabold text-gray-900 flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-indigo-600" />
-              {storeSettings.storeName || 'سیستم مدیریت'}
+            <div className="font-extrabold text-slate-900 flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-indigo-600 md:hidden" />
+              <span className="md:hidden">{storeSettings.storeName || 'سیستم مدیریت'}</span>
             </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsFullWidth(!isFullWidth)}
+              className={`px-3 py-2 border rounded-xl transition-all cursor-pointer font-black gap-2 flex items-center text-xs shadow-3xs active:scale-95 ${isFullWidth ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-slate-600 hover:text-indigo-700 hover:bg-slate-50 bg-white border-slate-200'}`}
+              title={isFullWidth ? "بازگشت به نمایش کلاسیک" : "حالت تمام صفحه گسترده"}
+            >
+              {isFullWidth ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              <span className="hidden sm:inline-block">{isFullWidth ? 'نمایش کلاسیک' : 'تمام صفحه'}</span>
+            </button>
           </div>
         </div>
 
@@ -2833,6 +2900,25 @@ export default function App() {
           const safeCurrentPage = Math.max(1, Math.min(personCurrentPage, totalPages));
           const paginatedPersons = filteredPersons.slice((safeCurrentPage - 1) * personPageSize, safeCurrentPage * personPageSize);
 
+          const paginatedPersonBalances: Record<string, number> = {};
+          paginatedPersons.forEach(p => {
+             const pid = p.id.toString();
+             let b = p.initialBalance || 0;
+             invoices.filter(i => i.customerId?.toString() === pid).forEach(inv => {
+               const isSale = inv.type !== 'purchase';
+               const amt = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+               b += isSale ? amt : -amt;
+             });
+             transactions.filter(t => t.personId?.toString() === pid).forEach(t => {
+               const amt = t.amount || 0;
+               // If we paid them (payment) -> they owe us (+amount)
+               // If they paid us (receive) -> they owe us less (-amount)
+               // If we pay them salary -> they owe us less (-amount)
+               b += (t.type === 'receive' || t.type === 'salary') ? -amt : (t.type === 'payment' ? amt : 0);
+             });
+             paginatedPersonBalances[pid] = b;
+          });
+
           const getPaginationItems = () => {
             const items: (number | string)[] = [];
             if (totalPages <= 7) {
@@ -2879,6 +2965,8 @@ export default function App() {
                     onClick={() => {
                       setEditingPersonId(null);
                       setNewPersonType('real');
+                      setNewPersonTitle('');
+                      setNewPersonAlias('');
                       setNewPersonFirstName('');
                       setNewPersonLastName('');
                       setNewPersonCompanyName('');
@@ -2904,6 +2992,33 @@ export default function App() {
                 </div>
               )}
               
+              <div className="flex border-b border-gray-100 mx-6 mt-6 overflow-x-auto">
+                <button
+                  onClick={() => { setSelectedPersonRole('all'); setPersonCurrentPage(1); }}
+                  className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === 'all' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  همه اشخاص
+                </button>
+                <button
+                  onClick={() => { setSelectedPersonRole('customer'); setPersonCurrentPage(1); }}
+                  className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === 'customer' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  مشتریان
+                </button>
+                <button
+                  onClick={() => { setSelectedPersonRole('supplier'); setPersonCurrentPage(1); }}
+                  className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === 'supplier' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  تامین‌کنندگان
+                </button>
+                <button
+                  onClick={() => { setSelectedPersonRole('employee'); setPersonCurrentPage(1); }}
+                  className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === 'employee' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  کارمندان / پرسنل
+                </button>
+              </div>
+
               <div className="mx-6 mt-6 flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between animate-fade-in">
                 {/* Search Bar */}
                 <div className="relative flex-1">
@@ -3007,6 +3122,7 @@ export default function App() {
                         <th className="py-4 px-6 text-right">کد / شناسه ملی</th>
                         <th className="py-4 px-6 text-right">نقش</th>
                         <th className="py-4 px-6 text-right">شماره تماس</th>
+                        <th className="py-4 px-6 text-right">در حساب / مانده</th>
                         <th className="py-4 px-6 w-24">عملیات</th>
                       </tr>
                     </thead>
@@ -3024,7 +3140,12 @@ export default function App() {
                             )}
                           </td>
                           <td className="py-4 px-6 font-semibold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
-                            {p.name}
+                            <div className="flex flex-col">
+                              <span>{p.alias || p.name}</span>
+                              {p.alias && p.alias !== p.name && (
+                                <span className="text-[10px] text-gray-400 font-normal">{p.name}</span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-4 px-6 text-sm">
                             {p.group ? (
@@ -3066,6 +3187,18 @@ export default function App() {
                           </td>
                           <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
                             {p.phone || '-'}
+                          </td>
+                          <td className="py-4 px-6 text-sm" dir="rtl">
+                            {(() => {
+                              const bal = paginatedPersonBalances[p.id.toString()] || 0;
+                              if (bal === 0) {
+                                return <span className="text-gray-400 font-bold">تسویه (۰)</span>;
+                              } else if (bal > 0) {
+                                return <span className="text-rose-600 font-bold tracking-tight inline-flex items-center gap-1"><span className="font-mono text-xs">{formatNumber(bal)}</span> <span className="text-[9px]">بدهکار</span></span>;
+                              } else {
+                                return <span className="text-emerald-600 font-bold tracking-tight inline-flex items-center gap-1"><span className="font-mono text-xs">{formatNumber(Math.abs(bal))}</span> <span className="text-[9px]">بستانکار</span></span>;
+                              }
+                            })()}
                           </td>
                           <td className="py-4 px-6 text-center">
                             <div className="flex items-center justify-center gap-2">
@@ -3186,6 +3319,129 @@ export default function App() {
             </motion.div>
           );
         })()
+      ) : activeTab === 'person_groups' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-gradient-to-l from-indigo-50/50 to-white px-8 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                  <Tag className="w-6 h-6 text-indigo-500" />
+                  مدیریت گروه‌های اشخاص
+                </h1>
+                <p className="text-xs text-slate-500 font-bold mt-1">دسته‌بندی سفارشی برای مشتریان، تامین‌کنندگان، همکاران و کارمندان</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-800 mb-4">{editingPersonGroupId ? 'ویرایش گروه' : 'ثبت گروه جدید'}</h3>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={newPersonGroupName}
+                  onChange={(e) => setNewPersonGroupName(e.target.value)}
+                  placeholder="نام گروه (مثلا خریداران عمده)"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-slate-900 font-bold text-sm"
+                />
+              </div>
+              <div>
+                <select
+                  value={newPersonGroupColor}
+                  onChange={(e) => setNewPersonGroupColor(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 bg-white font-bold text-sm text-slate-800 h-full"
+                >
+                  <option value="indigo">نیلی (Indigo)</option>
+                  <option value="emerald">سبز (Emerald)</option>
+                  <option value="amber">زرد (Amber)</option>
+                  <option value="rose">قرمز (Rose)</option>
+                  <option value="purple">بنفش (Purple)</option>
+                  <option value="cyan">فیروزه‌ای (Cyan)</option>
+                </select>
+              </div>
+              <button
+                onClick={handleSavePersonGroup}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 justify-center"
+              >
+                {editingPersonGroupId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {editingPersonGroupId ? 'ذخیره تغییرات' : 'افزودن گروه'}
+              </button>
+              {editingPersonGroupId && (
+                <button
+                  onClick={() => {
+                    setEditingPersonGroupId(null);
+                    setNewPersonGroupName('');
+                  }}
+                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all cursor-pointer"
+                >
+                  انصراف
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+            {personGroups.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 font-bold text-sm">هیچ گروهی ثبت نشده است.</div>
+            ) : (
+              <table className="w-full text-right whitespace-nowrap">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-black">
+                    <th className="py-4 px-6 w-16">رنگبندی</th>
+                    <th className="py-4 px-6 w-full">نام گروه</th>
+                    <th className="py-4 px-6 text-center">تعداد اشخاص</th>
+                    <th className="py-4 px-6 text-center">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {personGroups.map(g => {
+                    const count = persons.filter(p => p.group === g.id).length;
+                    let bg = 'bg-slate-100';
+                    let text = 'text-slate-600';
+                    if (g.color === 'indigo') { bg = 'bg-indigo-100'; text = 'text-indigo-600'; }
+                    else if (g.color === 'emerald') { bg = 'bg-emerald-100'; text = 'text-emerald-600'; }
+                    else if (g.color === 'amber') { bg = 'bg-amber-100'; text = 'text-amber-600'; }
+                    else if (g.color === 'rose') { bg = 'bg-rose-100'; text = 'text-rose-600'; }
+                    else if (g.color === 'purple') { bg = 'bg-purple-100'; text = 'text-purple-600'; }
+                    else if (g.color === 'cyan') { bg = 'bg-cyan-100'; text = 'text-cyan-600'; }
+
+                    return (
+                      <tr key={g.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className={`w-6 h-6 rounded-lg ${bg} shadow-inner`}></div>
+                        </td>
+                        <td className="py-4 px-6 font-bold text-sm text-slate-900">{g.name}</td>
+                        <td className="py-4 px-6 text-center font-black text-xs text-slate-500">{count} نفر</td>
+                        <td className="py-4 px-6 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => {
+                                setEditingPersonGroupId(g.id);
+                                setNewPersonGroupName(g.name);
+                                setNewPersonGroupColor(g.color || 'indigo');
+                              }}
+                              className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                              title="ویرایش گروه"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePersonGroup(g.id)}
+                              className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="حذف گروه"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </motion.div>
       ) : activeTab === 'accounts' ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -5768,147 +6024,7 @@ export default function App() {
           </div>
         )}
         
-        {isPersonGroupModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-fade-in" dir="rtl">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100"
-            >
-              <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner">
-                    <Tag className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-900">مدیریت گروه‌های اشخاص</h2>
-                    <p className="text-xs font-bold text-slate-500 mt-0.5">دسته‌بندی سفارشی برای مشتریان، کارمندان و...</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setIsPersonGroupModalOpen(false);
-                    setEditingPersonGroupId(null);
-                    setNewPersonGroupName('');
-                  }}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
 
-              <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
-                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm mb-6 mt-1">
-                  <h3 className="text-sm font-black text-slate-800 mb-4">{editingPersonGroupId ? 'ویرایش گروه' : 'ثبت گروه جدید'}</h3>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={newPersonGroupName}
-                        onChange={(e) => setNewPersonGroupName(e.target.value)}
-                        placeholder="نام گروه (مثلا خریداران عمده)"
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-slate-900 font-bold text-sm"
-                      />
-                    </div>
-                    <div>
-                      <select
-                        value={newPersonGroupColor}
-                        onChange={(e) => setNewPersonGroupColor(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 bg-white font-bold text-sm text-slate-800 h-full"
-                      >
-                        <option value="indigo">نیلی (Indigo)</option>
-                        <option value="emerald">سبز (Emerald)</option>
-                        <option value="amber">زرد (Amber)</option>
-                        <option value="rose">قرمز (Rose)</option>
-                        <option value="purple">بنفش (Purple)</option>
-                        <option value="cyan">فیروزه‌ای (Cyan)</option>
-                      </select>
-                    </div>
-                    <button
-                      onClick={handleSavePersonGroup}
-                      className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 justify-center"
-                    >
-                      {editingPersonGroupId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                      {editingPersonGroupId ? 'ذخیره تغییرات' : 'افزودن گروه'}
-                    </button>
-                    {editingPersonGroupId && (
-                      <button
-                        onClick={() => {
-                          setEditingPersonGroupId(null);
-                          setNewPersonGroupName('');
-                        }}
-                        className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all cursor-pointer"
-                      >
-                        انصراف
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-                  {personGroups.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400 font-bold text-sm">پیچ گروهی ثبت نشده است.</div>
-                  ) : (
-                    <table className="w-full text-right whitespace-nowrap">
-                      <thead>
-                        <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-black">
-                          <th className="py-3 px-4">رنگبندی</th>
-                          <th className="py-3 px-4 w-full">نام گروه</th>
-                          <th className="py-3 px-4 text-center">تعداد اشخاص</th>
-                          <th className="py-3 px-4 text-center">عملیات</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {personGroups.map(g => {
-                          const count = persons.filter(p => p.group === g.id).length;
-                          let bg = 'bg-slate-100';
-                          let text = 'text-slate-600';
-                          if (g.color === 'indigo') { bg = 'bg-indigo-100'; text = 'text-indigo-600'; }
-                          else if (g.color === 'emerald') { bg = 'bg-emerald-100'; text = 'text-emerald-600'; }
-                          else if (g.color === 'amber') { bg = 'bg-amber-100'; text = 'text-amber-600'; }
-                          else if (g.color === 'rose') { bg = 'bg-rose-100'; text = 'text-rose-600'; }
-                          else if (g.color === 'purple') { bg = 'bg-purple-100'; text = 'text-purple-600'; }
-                          else if (g.color === 'cyan') { bg = 'bg-cyan-100'; text = 'text-cyan-600'; }
-
-                          return (
-                            <tr key={g.id} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="py-3 px-4">
-                                <div className={`w-6 h-6 rounded-lg ${bg} shadow-inner`}></div>
-                              </td>
-                              <td className="py-3 px-4 font-bold text-sm text-slate-900">{g.name}</td>
-                              <td className="py-3 px-4 text-center font-black text-xs text-slate-500">{count} نفر</td>
-                              <td className="py-3 px-4 text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => {
-                                      setEditingPersonGroupId(g.id);
-                                      setNewPersonGroupName(g.name);
-                                      setNewPersonGroupColor(g.color || 'indigo');
-                                    }}
-                                    className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                                  >
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePersonGroup(g.id)}
-                                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
 
         {isPersonModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
@@ -5931,176 +6047,324 @@ export default function App() {
                 </button>
               </div>
               
+              <div className="flex border-b border-gray-100 mt-2 px-6">
+                <button
+                  type="button"
+                  onClick={() => setPersonModalActiveTab('basic')}
+                  className={`px-4 py-2 border-b-2 font-bold text-sm transition-colors cursor-pointer ${personModalActiveTab === 'basic' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  اطلاعات پایه
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPersonModalActiveTab('contact')}
+                  className={`px-4 py-2 border-b-2 font-bold text-sm transition-colors cursor-pointer ${personModalActiveTab === 'contact' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  اطلاعات تماس
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPersonModalActiveTab('settings')}
+                  className={`px-4 py-2 border-b-2 font-bold text-sm transition-colors cursor-pointer ${personModalActiveTab === 'settings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  تنظیمات و وضعیت
+                </button>
+              </div>
+              
               <div className="p-6 overflow-y-auto">
                 <form id="personForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ثبت اطلاعات شخص اطمینان دارید؟', () => handleSubmitPerson(e as any)) }} className="flex flex-col gap-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        نوع شخص
-                      </label>
-                      <select
-                        value={newPersonType}
-                        onChange={(e) => setNewPersonType(e.target.value as 'real' | 'legal')}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
-                      >
-                        <option value="real">حقیقی (فرد)</option>
-                        <option value="legal">حقوقی (شرکت)</option>
-                      </select>
-                    </div>
                     
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        نقش
-                      </label>
-                      <select
-                        value={newPersonRole}
-                        onChange={(e) => setNewPersonRole(e.target.value as 'customer' | 'employee' | 'supplier')}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
-                      >
-                        <option value="customer">مشتری</option>
-                        <option value="supplier">تامین کننده</option>
-                        <option value="employee">کارمند</option>
-                      </select>
-                    </div>
-                    
-                    {newPersonType === 'real' ? (
+                    {personModalActiveTab === 'basic' && (
                       <>
-                        <div className="w-full text-right">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            نام <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={newPersonFirstName}
-                            onChange={(e) => setNewPersonFirstName(e.target.value)}
-                            placeholder="نام"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
-                            required
-                          />
+                        <div className="w-full text-right md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                          <div className="w-full text-right">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">نوع موجودیت</label>
+                            <select
+                              value={newPersonType}
+                              onChange={(e) => setNewPersonType(e.target.value as 'real' | 'legal')}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-slate-900 bg-white font-bold"
+                            >
+                              <option value="real">حقیقی (فرد)</option>
+                              <option value="legal">حقوقی (شرکت / سازمان)</option>
+                            </select>
+                          </div>
+                          
+                          <div className="w-full text-right">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">نقش ارتباطی</label>
+                            <select
+                              value={newPersonRole}
+                              onChange={(e) => setNewPersonRole(e.target.value as 'customer' | 'employee' | 'supplier')}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-slate-900 bg-white font-bold"
+                            >
+                              <option value="customer">مشتری</option>
+                              <option value="supplier">تامین کننده</option>
+                              <option value="employee">کارمند</option>
+                            </select>
+                          </div>
                         </div>
-                        <div className="w-full text-right">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            نام خانوادگی <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={newPersonLastName}
-                            onChange={(e) => setNewPersonLastName(e.target.value)}
-                            placeholder="نام خانوادگی"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
-                            required
-                          />
-                        </div>
-                        <div className="w-full text-right">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            نام پدر
-                          </label>
-                          <input
-                            type="text"
-                            value={newPersonFatherName}
-                            onChange={(e) => setNewPersonFatherName(e.target.value)}
-                            placeholder="اختیاری"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
-                          />
-                        </div>
-                        <div className="w-full text-right">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            کد ملی
-                          </label>
-                          <input
-                            type="text"
-                            value={newPersonNationalId}
-                            onChange={(e) => setNewPersonNationalId(e.target.value)}
-                            placeholder="کد ملی 10 رقمی"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
-                            dir="ltr"
-                          />
-                        </div>
+
+                        {newPersonType === 'real' ? (
+                          <>
+                            <div className="w-full text-right md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="w-full text-right">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  عنوان
+                                </label>
+                                <select
+                                  value={newPersonTitle}
+                                  onChange={(e) => setNewPersonTitle(e.target.value)}
+                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 bg-white"
+                                >
+                                  <option value="">-- انتخاب کنید --</option>
+                                  <option value="آقای">آقای</option>
+                                  <option value="خانم">خانم</option>
+                                  <option value="دکتر">دکتر</option>
+                                  <option value="مهندس">مهندس</option>
+                                  <option value="سید">سید</option>
+                                  <option value="سیده">سیده</option>
+                                  <option value="استاد">استاد</option>
+                                </select>
+                              </div>
+                              
+                              <div className="w-full text-right">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  نام مستعار / نمایشی
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newPersonAlias}
+                                  onChange={(e) => setNewPersonAlias(e.target.value)}
+                                  placeholder={`مثال: ${newPersonTitle ? newPersonTitle + ' ' : ''}${newPersonFirstName ? newPersonFirstName + ' ' : ''}${newPersonLastName || ''}`.trim() || 'خودکار ایجاد می‌شود'}
+                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="w-full text-right">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                نام <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newPersonFirstName}
+                                onChange={(e) => setNewPersonFirstName(e.target.value)}
+                                placeholder="نام"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                                required
+                              />
+                            </div>
+                            <div className="w-full text-right">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                نام خانوادگی <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newPersonLastName}
+                                onChange={(e) => setNewPersonLastName(e.target.value)}
+                                placeholder="نام خانوادگی"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                                required
+                              />
+                            </div>
+                            <div className="w-full text-right">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                نام پدر
+                              </label>
+                              <input
+                                type="text"
+                                value={newPersonFatherName}
+                                onChange={(e) => setNewPersonFatherName(e.target.value)}
+                                placeholder="اختیاری"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                              />
+                            </div>
+                            <div className="w-full text-right">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                کد ملی
+                              </label>
+                              <input
+                                type="text"
+                                value={newPersonNationalId}
+                                onChange={(e) => setNewPersonNationalId(e.target.value)}
+                                placeholder="کد ملی 10 رقمی"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 text-left"
+                                dir="ltr"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-full text-right md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="w-full text-right">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  نام شرکت / سازمان <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newPersonCompanyName}
+                                  onChange={(e) => setNewPersonCompanyName(e.target.value)}
+                                  placeholder="مثال: شرکت توسعه تجارت البرز"
+                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                                  required
+                                />
+                              </div>
+                              
+                              <div className="w-full text-right">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  نام مستعار / تجاری
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newPersonAlias}
+                                  onChange={(e) => setNewPersonAlias(e.target.value)}
+                                  placeholder={`مثال: ${newPersonCompanyName || 'شرکت البرز'}`}
+                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                                />
+                              </div>
+                            </div>
+                            <div className="w-full text-right md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                شناسه ملی شرکت
+                              </label>
+                              <input
+                                type="text"
+                                value={newPersonNationalId}
+                                onChange={(e) => setNewPersonNationalId(e.target.value)}
+                                placeholder="شناسه ملی"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 text-left"
+                                dir="ltr"
+                              />
+                            </div>
+                          </>
+                        )}
                       </>
-                    ) : (
+                    )}
+
+                    {personModalActiveTab === 'contact' && (
                       <>
-                        <div className="w-full text-right md:col-span-2">
+                        <div className="w-full text-right">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            نام شرکت / سازمان <span className="text-red-500">*</span>
+                            استان
                           </label>
                           <input
                             type="text"
-                            value={newPersonCompanyName}
-                            onChange={(e) => setNewPersonCompanyName(e.target.value)}
-                            placeholder="مثال: شرکت توسعه تجارت البرز"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
-                            required
+                            value={newPersonProvince}
+                            onChange={(e) => setNewPersonProvince(e.target.value)}
+                            placeholder="نام استان"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                          />
+                        </div>
+                        <div className="w-full text-right">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            شهر
+                          </label>
+                          <input
+                            type="text"
+                            value={newPersonCity}
+                            onChange={(e) => setNewPersonCity(e.target.value)}
+                            placeholder="نام شهر"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
                           />
                         </div>
                         <div className="w-full text-right md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            شناسه ملی شرکت
+                            آدرس پستی
+                          </label>
+                          <textarea
+                            value={newPersonAddress}
+                            onChange={(e) => setNewPersonAddress(e.target.value)}
+                            placeholder="آدرس دقیق و کامل"
+                            rows={3}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                          />
+                        </div>
+                        <div className="w-full text-right md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            شماره تماس (تلفن / موبایل)
                           </label>
                           <input
                             type="text"
-                            value={newPersonNationalId}
-                            onChange={(e) => setNewPersonNationalId(e.target.value)}
-                            placeholder="شناسه ملی"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
+                            value={newPersonPhone}
+                            onChange={(e) => setNewPersonPhone(e.target.value)}
+                            placeholder="مثال: 09120000000"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 text-left font-mono"
                             dir="ltr"
                           />
                         </div>
                       </>
                     )}
-                    
-                    <div className="w-full text-right md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        شماره تماس
-                      </label>
-                      <input
-                        type="text"
-                        value={newPersonPhone}
-                        onChange={(e) => setNewPersonPhone(e.target.value)}
-                        placeholder="مثال: 09120000000"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900 text-left"
-                        dir="ltr"
-                      />
-                    </div>
-                    
-                    <div className="w-full text-right md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        آدرس
-                      </label>
-                      <input
-                        type="text"
-                        value={newPersonAddress}
-                        onChange={(e) => setNewPersonAddress(e.target.value)}
-                        placeholder="تهران، خیابان..."
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
-                      />
-                    </div>
 
-                    <div className="w-full text-right md:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="block text-xs font-black text-slate-700">
-                          گروه‌بندی شخص
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setIsPersonGroupModalOpen(true)}
-                          className="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg text-xs font-bold transition-colors border border-indigo-200"
-                        >
-                          مدیریت گروه‌ها
-                        </button>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                        <select
-                          value={newPersonGroup}
-                          onChange={(e) => setNewPersonGroup(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-950 font-bold text-sm bg-white"
-                        >
-                          <option value="">بدون گروه</option>
-                          {personGroups.map(g => (
-                            <option key={g.id} value={g.id}>{g.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+                    {personModalActiveTab === 'settings' && (
+                      <>
+                        <div className="w-full text-right md:col-span-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-2">
+                          <div className="flex justify-between items-center mb-4">
+                            <label className="block text-xs font-black text-slate-700">
+                              وضعیت فعالیت
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer" 
+                                checked={newPersonIsActive} 
+                                onChange={(e) => setNewPersonIsActive(e.target.checked)}
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                            <span className="text-sm font-bold text-gray-800">
+                              {newPersonIsActive ? 'حساب فعال است' : 'حساب غیرفعال'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="w-full text-right z-50 relative">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            تاریخ عضویت / ثبت
+                          </label>
+                          <DatePicker
+                            value={newPersonRegistrationDate}
+                            onChange={(date: any) => setNewPersonRegistrationDate(date?.toDate?.() || new Date())}
+                            calendar={persian}
+                            locale={persian_fa}
+                            calendarPosition="bottom-right"
+                            inputClass="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 font-mono text-center outline-none"
+                            containerClassName="w-full"
+                          />
+                        </div>
+
+                        <div className="w-full text-right bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex justify-between items-center mb-2">
+                            <label className="block text-xs font-black text-slate-700">
+                              گروه‌بندی شخص
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsPersonModalOpen(false);
+                                setActiveTab('person_groups' as any);
+                              }}
+                              className="px-3 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg text-xs font-bold transition-colors border border-indigo-200 cursor-pointer"
+                            >
+                              مدیریت گروه‌ها
+                            </button>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                            <select
+                              value={newPersonGroup}
+                              onChange={(e) => setNewPersonGroup(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-950 font-bold text-sm bg-white"
+                            >
+                              <option value="">بدون گروه</option>
+                              {personGroups.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </form>
               </div>
