@@ -98,15 +98,41 @@ export default function App() {
   const { user, loading: authLoading, signIn, signOut } = useAuth();
   const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_receipt' | 'list_warehouse_receipt' | 'create_warehouse_remittance' | 'list_warehouse_remittance' | 'products' | 'product_categories' | 'persons' | 'person_groups' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isFullWidth, setIsFullWidth] = useState(false);
-  const [menuLayout, setMenuLayout] = useState<'vertical' | 'horizontal'>('vertical');
-  const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
-    sales_purchases: true,
-    treasury_finance: false,
-    base_info: false,
-    reports: true,
-    settings: false
+  const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
+    try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
   });
+  const [menuLayout, setMenuLayout] = useState<'vertical' | 'horizontal'>(() => {
+    try { const saved = localStorage.getItem('app_menuLayout'); return saved ? JSON.parse(saved) : 'vertical'; } catch { return 'vertical'; }
+  });
+  const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>(() => {
+    try { const saved = localStorage.getItem('app_expandedGroups'); return saved ? JSON.parse(saved) : {
+      sales_purchases: true,
+      treasury_finance: false,
+      base_info: false,
+      reports: true,
+      settings: false
+    }; } catch {
+      return {
+        sales_purchases: true,
+        treasury_finance: false,
+        base_info: false,
+        reports: true,
+        settings: false
+      };
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_isFullWidth', JSON.stringify(isFullWidth));
+  }, [isFullWidth]);
+
+  useEffect(() => {
+    localStorage.setItem('app_menuLayout', JSON.stringify(menuLayout));
+  }, [menuLayout]);
+
+  useEffect(() => {
+    localStorage.setItem('app_expandedGroups', JSON.stringify(expandedGroups));
+  }, [expandedGroups]);
 
   const toggleGroup = (group: string) => {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
@@ -1348,7 +1374,10 @@ export default function App() {
              quantity: 1,
              unitPrice: unitPriceRounded,
              discountPercent: 0,
-             totalPrice: unitPriceRounded
+             totalPrice: unitPriceRounded,
+             selectedUnit: product.unit || '',
+             unitRatio: product.unitRatio || 1,
+             isSecondaryUnit: false
            }
          ];
       }
@@ -1366,6 +1395,9 @@ export default function App() {
             const product = products.find(p => p.id === Number(value));
             if (product) {
               updatedItem.productName = product.name;
+              updatedItem.selectedUnit = product.unit || '';
+              updatedItem.unitRatio = product.unitRatio || 1;
+              updatedItem.isSecondaryUnit = false;
               
               const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
               const pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
@@ -1378,7 +1410,23 @@ export default function App() {
           }
 
           // Special handling for pricing calculation
-          if (field === 'quantity' || field === 'unitPrice' || field === 'discountPercent') {
+          if (field === 'quantity' || field === 'unitPrice' || field === 'discountPercent' || field === 'isSecondaryUnit') {
+            const isSec = field === 'isSecondaryUnit' ? Boolean(value) : Boolean(updatedItem.isSecondaryUnit);
+            
+            // If we toggled the unit type, adjust the unit price relative to base price
+            if (field === 'isSecondaryUnit' && updatedItem.productId) {
+              const product = products.find(p => p.id === Number(updatedItem.productId));
+              if (product) {
+                const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
+                const basePrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
+                const convertedPrice = exchangeRate > 0 ? (basePrice / exchangeRate) : basePrice;
+                
+                const ratio = product.unitRatio || 1;
+                updatedItem.unitPrice = isSec ? Number((convertedPrice * ratio).toFixed(4)) : Number(convertedPrice.toFixed(4));
+                updatedItem.selectedUnit = isSec ? (product.secondaryUnit || '') : (product.unit || '');
+              }
+            }
+
             const qty = field === 'quantity' ? Number(value) : Number(updatedItem.quantity);
             const price = field === 'unitPrice' ? Number(value) : Number(updatedItem.unitPrice);
             const discPercent = field === 'discountPercent' ? Number(value) : Number(updatedItem.discountPercent);
@@ -1809,7 +1857,23 @@ export default function App() {
                                   )}
                               </td>
                               <td className="p-4">
-                                  <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" dir="ltr" />
+                                  {(() => {
+                                    const product = item.productId ? products.find((p) => p.id === Number(item.productId)) : null;
+                                    const hasSecondary = product?.secondaryUnit;
+                                    return (
+                                      <div className="flex flex-col gap-1.5">
+                                        <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" dir="ltr" />
+                                        {hasSecondary ? (
+                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-1 text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg outline-none cursor-pointer">
+                                            <option value="false">{product.unit} (اصلی)</option>
+                                            <option value="true">{product.secondaryUnit} (فرعی)</option>
+                                          </select>
+                                        ) : product?.unit ? (
+                                          <span className="text-[10px] text-center text-slate-400 font-bold">{product.unit}</span>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })()}
                               </td>
                               <td className="p-4">
                                   <input 
@@ -2026,7 +2090,23 @@ export default function App() {
                                   )}
                               </td>
                               <td className="p-5">
-                                  <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center font-black text-slate-800 outline-none" dir="ltr" />
+                                  {(() => {
+                                    const product = item.productId ? products.find((p) => p.id === Number(item.productId)) : null;
+                                    const hasSecondary = product?.secondaryUnit;
+                                    return (
+                                      <div className="flex flex-col gap-1.5">
+                                        <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center font-black text-slate-800 outline-none" dir="ltr" />
+                                        {hasSecondary ? (
+                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-1 text-[11px] font-bold text-emerald-800 bg-white border border-emerald-100 rounded-lg outline-none cursor-pointer">
+                                            <option value="false">{product.unit} (اصلی)</option>
+                                            <option value="true">{product.secondaryUnit} (فرعی)</option>
+                                          </select>
+                                        ) : product?.unit ? (
+                                          <span className="text-[10px] text-center text-emerald-600/50 font-bold">{product.unit}</span>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })()}
                               </td>
                               <td className="p-5">
                                   <input 
@@ -7717,7 +7797,10 @@ export default function App() {
                           <tr key={idx} className="hover:bg-slate-50/20">
                             <td className="p-3 text-center text-gray-400 font-mono">{idx + 1}</td>
                             <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
-                            <td className="p-3 text-center text-gray-800 font-mono">{formatNumber(item.quantity)}</td>
+                            <td className="p-3 text-center text-gray-800 font-mono">
+                               {formatNumber(item.quantity)}
+                               {item.selectedUnit && <span className="mr-1 text-[10px] text-gray-500 font-sans">{item.selectedUnit}</span>}
+                            </td>
                             <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice)}</td>
                             <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
                             <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice)}</td>
@@ -8008,7 +8091,10 @@ export default function App() {
                           <tr key={idx} className="hover:bg-slate-50/25">
                             <td className="p-3 text-center text-gray-400 font-mono">{idx + 1}</td>
                             <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName}</td>
-                            <td className="p-3 text-center text-gray-800 font-mono">{formatNumber(item.quantity || 1)}</td>
+                            <td className="p-3 text-center text-gray-800 font-mono">
+                               {formatNumber(item.quantity || 1)}
+                               {item.selectedUnit && <span className="mr-1 text-[10px] text-gray-500 font-sans">{item.selectedUnit}</span>}
+                            </td>
                             <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice || 0)}</td>
                             <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
                             <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice || 0)}</td>

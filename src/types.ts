@@ -126,9 +126,12 @@ export type InvoiceItem = {
   productId: number | '';
   productName: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice: number; // this will be price per selected unit
   discountPercent: number;
   totalPrice: number;
+  selectedUnit?: string;
+  unitRatio?: number;
+  isSecondaryUnit?: boolean;
 };
 
 export type UserRole = 'admin' | 'accountant' | 'cashier' | 'viewer';
