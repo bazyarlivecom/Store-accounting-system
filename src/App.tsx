@@ -333,6 +333,30 @@ export default function App() {
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateStepName, setUpdateStepName] = useState('');
   const [updateStepsStatus, setUpdateStepsStatus] = useState<{[key: string]: 'idle' | 'running' | 'success' | 'error'}>({});
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [checkingUpdateVersion, setCheckingUpdateVersion] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'update' && !latestVersion && !checkingUpdateVersion) {
+      const fetchLatestVersion = async () => {
+        setCheckingUpdateVersion(true);
+        try {
+          const response = await fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/releases/latest');
+          if (response.ok) {
+            const data = await response.json();
+            setLatestVersion(data.tag_name || data.name || 'Build 2.9.0');
+          } else {
+            setLatestVersion('Build 2.9.0');
+          }
+        } catch (error) {
+          setLatestVersion('Build 2.9.0');
+        } finally {
+          setCheckingUpdateVersion(false);
+        }
+      };
+      fetchLatestVersion();
+    }
+  }, [activeTab, latestVersion, checkingUpdateVersion]);
 
   // Form State
   const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance'>('sale');
@@ -5293,7 +5317,15 @@ export default function App() {
                         <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full m-2 animate-ping"></div>
                         <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full m-2"></div>
                         <p className="text-[10px] text-emerald-600 font-bold mb-1">نسخه جدید (آماده نصب)</p>
-                        <p className="text-base font-black text-emerald-700 font-mono" dir="ltr">Build 2.9.0</p>
+                        <p className="text-base font-black text-emerald-700 font-mono" dir="ltr">
+                          {checkingUpdateVersion ? (
+                            <RefreshCw className="w-4 h-4 mx-auto animate-spin" />
+                          ) : latestVersion ? (
+                            latestVersion
+                          ) : (
+                            'Build 2.9.0'
+                          )}
+                        </p>
                      </div>
                    </div>
                  </div>
