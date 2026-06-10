@@ -309,7 +309,7 @@ export default function App() {
   const [updateStepsStatus, setUpdateStepsStatus] = useState<{[key: string]: 'idle' | 'running' | 'success' | 'error'}>({});
 
   // Form State
-  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase'>('sale');
+  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance'>('sale');
   const [listFilter, setListFilter] = useState<'all' | 'sale' | 'purchase'>('all');
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
@@ -1695,7 +1695,7 @@ export default function App() {
                       options={persons.map(p => ({
                         value: p.id,
                         label: p.alias || p.name,
-                        subLabel: p.mobile || undefined,
+                        subLabel: p.phone || undefined,
                         badge: p.role === 'customer' ? 'مشتری' : p.role === 'employee' ? 'کارمند' : 'تامین کننده'
                       }))}
                       value={customerId}
