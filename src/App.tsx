@@ -377,9 +377,11 @@ export default function App() {
   const [newPersonCity, setNewPersonCity] = useState('');
   const [newPersonIsActive, setNewPersonIsActive] = useState(true);
   const [newPersonRegistrationDate, setNewPersonRegistrationDate] = useState<Date | any>(new Date());
+  const [newPersonInitialBalance, setNewPersonInitialBalance] = useState('');
+  const [newPersonInitialBalanceType, setNewPersonInitialBalanceType] = useState<'debtor' | 'creditor' | 'settled'>('settled');
   
   const [submittingPerson, setSubmittingPerson] = useState(false);
-  const [personModalActiveTab, setPersonModalActiveTab] = useState<'basic' | 'contact' | 'bank' | 'settings'>('basic');
+  const [personModalActiveTab, setPersonModalActiveTab] = useState<'basic' | 'contact' | 'financial' | 'settings'>('basic');
   const [isPersonExtraModalOpen, setIsPersonExtraModalOpen] = useState(false);
   const [personExtraId, setPersonExtraId] = useState<string|number|null>(null);
   const [personBankName, setPersonBankName] = useState('');
@@ -630,7 +632,8 @@ export default function App() {
         address: newPersonAddress,
         role: newPersonRole,
         phone: newPersonPhone,
-        initialBalance: 0,
+        initialBalance: Number(newPersonInitialBalance || 0),
+        initialBalanceType: newPersonInitialBalanceType,
         group: newPersonGroup,
         province: newPersonProvince,
         city: newPersonCity,
@@ -660,6 +663,8 @@ export default function App() {
       setNewPersonIsActive(true);
       setNewPersonRegistrationDate(new Date());
       setNewPersonRole('customer');
+      setNewPersonInitialBalance('');
+      setNewPersonInitialBalanceType('settled');
       setPersonModalActiveTab('basic');
       setEditingPersonId(null);
       setIsPersonModalOpen(false);
@@ -1050,6 +1055,8 @@ export default function App() {
     setNewPersonCity(p.city || '');
     setNewPersonIsActive(p.isActive !== undefined ? p.isActive : true);
     setNewPersonRegistrationDate(p.registrationDate ? new Date(p.registrationDate) : new Date());
+    setNewPersonInitialBalance(p.initialBalance?.toString() || '');
+    setNewPersonInitialBalanceType(p.initialBalanceType || 'settled');
     setPersonModalActiveTab('basic');
     setIsPersonModalOpen(true);
   };
@@ -3032,6 +3039,11 @@ export default function App() {
           paginatedPersons.forEach(p => {
              const pid = p.id.toString();
              let b = p.initialBalance || 0;
+             if (p.initialBalanceType === 'creditor') {
+               b = -Math.abs(b);
+             } else if (p.initialBalanceType === 'debtor') {
+               b = Math.abs(b);
+             }
              invoices.filter(i => i.customerId?.toString() === pid).forEach(inv => {
                const isSale = inv.type !== 'purchase';
                const amt = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
@@ -3103,6 +3115,8 @@ export default function App() {
                       setNewPersonAddress('');
                       setNewPersonPhone('');
                       setNewPersonRole('customer');
+                      setNewPersonInitialBalance('');
+                      setNewPersonInitialBalanceType('settled');
                       setIsPersonModalOpen(true);
                     }}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] text-xs font-black shadow-md shadow-indigo-200 cursor-pointer border-none"
@@ -4184,13 +4198,32 @@ export default function App() {
               });
 
             // Combine and sort chronologically
-            const allEntries = [...invoiceEntries, ...transactionEntries].sort((a, b) => {
+            let allEntries = [...invoiceEntries, ...transactionEntries].sort((a, b) => {
               const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
               if (dateDiff === 0) {
                 return (a.rawItem?.createdAt || 0) - (b.rawItem?.createdAt || 0);
               }
               return dateDiff;
             });
+            
+            // Inject initial balance as the very first theoretical entry
+            if (selectedPerson.initialBalance && selectedPerson.initialBalanceType !== 'settled') {
+               const ibAmount = selectedPerson.initialBalance;
+               const isDebtor = selectedPerson.initialBalanceType === 'debtor';
+               const ibEntry = {
+                 id: 'opening-balance',
+                 refId: 'افتتاحیه',
+                 date: selectedPerson.registrationDate || new Date().toISOString(),
+                 jalaliDate: selectedPerson.registrationDate ? new Date(selectedPerson.registrationDate).toLocaleDateString('fa-IR') : '-',
+                 type: 'مانده از قبل',
+                 desc: `ثبت سند افتتاحیه ${isDebtor ? '(بدهکار)' : '(بستانکار)'}`,
+                 debit: isDebtor ? ibAmount : 0,
+                 credit: isDebtor ? 0 : ibAmount,
+                 rawItem: null,
+                 entryType: 'opening'
+               };
+               allEntries = [ibEntry, ...allEntries];
+            }
 
             // Running progressive balance
             let runningSum = 0;
@@ -5248,7 +5281,7 @@ export default function App() {
                       <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="w-full">
                           <label className="block text-sm font-bold text-emerald-900 mb-2">
-                            قیمت خرید (تومان)
+                            قیمت خرید ({storeSettings?.currency || 'تومان'})
                           </label>
                           <CurrencyInput
                             value={newProductPurchasePrice}
@@ -5259,7 +5292,7 @@ export default function App() {
                         </div>
                         <div className="w-full">
                           <label className="block text-sm font-bold text-emerald-900 mb-2">
-                            قیمت فروش (تومان) <span className="text-red-500">*</span>
+                            قیمت فروش ({storeSettings?.currency || 'تومان'}) <span className="text-red-500">*</span>
                           </label>
                           <CurrencyInput
                             value={newProductPrice}
@@ -6287,6 +6320,13 @@ export default function App() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setPersonModalActiveTab('financial')}
+                  className={`px-4 py-2 border-b-2 font-bold text-sm transition-colors cursor-pointer ${personModalActiveTab === 'financial' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  وضعیت مالی اولیه (افتتاحیه)
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPersonModalActiveTab('settings')}
                   className={`px-4 py-2 border-b-2 font-bold text-sm transition-colors cursor-pointer ${personModalActiveTab === 'settings' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                 >
@@ -6516,6 +6556,74 @@ export default function App() {
                           />
                         </div>
                       </>
+                    )}
+
+                    {personModalActiveTab === 'financial' && (
+                      <div className="w-full text-right md:col-span-2 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="bg-amber-50 border border-amber-100 p-5 rounded-2xl grid grid-cols-1 md:grid-cols-2 gap-6 relative overflow-hidden">
+                           <div className="absolute left-0 top-0 w-32 h-32 bg-amber-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+                           
+                           <div className="w-full relative z-10 md:col-span-2">
+                             <h4 className="text-sm font-black text-amber-900 mb-2">ثبت مانده حساب از قبل (افتتاحیه)</h4>
+                             <p className="text-xs text-amber-700/80 leading-relaxed max-w-2xl">
+                               در صورتی که این شخص قبل از شروع کار با این سیستم، در حساب و کتاب‌های قبلی شما دارای مانده طلب یا بدهی است، مبلغ آن را در اینجا وارد کنید تا در اولین رکورد پرونده مالی (دفتر معین) ثبت شود. 
+                             </p>
+                           </div>
+                           
+                           <div className="w-full relative z-10">
+                              <label className="block text-sm font-bold text-amber-900 mb-2">نوع مانده اولیه</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setNewPersonInitialBalanceType('debtor')}
+                                  className={`py-2 px-1 text-center rounded-xl text-xs font-bold border transition-all ${
+                                    newPersonInitialBalanceType === 'debtor' 
+                                      ? 'bg-rose-500 text-white border-rose-600 shadow-md shadow-rose-200' 
+                                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  بدهکار
+                                  <span className="block text-[9px] font-normal opacity-80 mt-1">(او به ما بدهکار است)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewPersonInitialBalanceType('creditor')}
+                                  className={`py-2 px-1 text-center rounded-xl text-xs font-bold border transition-all ${
+                                    newPersonInitialBalanceType === 'creditor' 
+                                      ? 'bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-200' 
+                                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  بستانکار
+                                  <span className="block text-[9px] font-normal opacity-80 mt-1">(ما به او بدهکاریم)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setNewPersonInitialBalanceType('settled')}
+                                  className={`py-2 px-1 text-center rounded-xl text-xs font-bold border transition-all ${
+                                    newPersonInitialBalanceType === 'settled' 
+                                      ? 'bg-slate-700 text-white border-slate-800 shadow-md shadow-slate-200' 
+                                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  بی‌حساب
+                                  <span className="block text-[9px] font-normal opacity-80 mt-1">(حساب صفر است)</span>
+                                </button>
+                              </div>
+                           </div>
+
+                           <div className={`w-full relative z-10 transition-opacity duration-300 ${newPersonInitialBalanceType === 'settled' ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                              <label className="block text-sm font-bold text-amber-900 mb-2">مبلغ مانده ({storeSettings?.currency || 'تومان'})</label>
+                              <CurrencyInput
+                                value={newPersonInitialBalance}
+                                onChange={(e: any) => setNewPersonInitialBalance(e.target.value)}
+                                placeholder="مثلا: 1500000"
+                                className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:ring-2 focus:ring-amber-500 shadow-sm transition-colors text-amber-950 font-mono text-left font-bold bg-white"
+                                disabled={newPersonInitialBalanceType === 'settled'}
+                              />
+                           </div>
+                        </div>
+                      </div>
                     )}
 
                     {personModalActiveTab === 'settings' && (

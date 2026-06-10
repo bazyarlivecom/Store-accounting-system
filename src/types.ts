@@ -30,6 +30,8 @@ export type Person = {
   city?: string;
   isActive?: boolean;
   registrationDate?: string;
+  initialBalance?: number; // مانده اولیه (افتتاحیه)
+  initialBalanceType?: 'debtor' | 'creditor' | 'settled';
 };
 
 export type Checkbook = {

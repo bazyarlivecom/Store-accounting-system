@@ -4,7 +4,7 @@ import { X, Package, TrendingUp, TrendingDown, History } from 'lucide-react';
 import { Product, InvoiceItem } from '../types';
 import { getInvoices } from '../lib/dataService';
 
-export default function ProductCardModal({ product, onClose }: { product: Product, onClose: () => void }) {
+export default function ProductCardModal({ product, currency = 'تومان', onClose }: { product: Product, currency?: string, onClose: () => void }) {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,11 +55,11 @@ export default function ProductCardModal({ product, onClose }: { product: Produc
                </div>
                <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl">
                  <span className="text-xs text-emerald-600 font-bold block mb-1">قیمت فروش فعلی</span>
-                 <span className="text-lg font-sans font-black text-gray-800">{Number(product.price).toLocaleString()} <span className="text-xs font-normal">تومان</span></span>
+                 <span className="text-lg font-sans font-black text-gray-800">{Number(product.price).toLocaleString()} <span className="text-xs font-normal">{currency}</span></span>
                </div>
                <div className="bg-rose-50/50 border border-rose-100 p-4 rounded-xl">
                  <span className="text-xs text-rose-600 font-bold block mb-1">قیمت خرید فعلی</span>
-                 <span className="text-lg font-sans font-black text-gray-800">{Number(product.purchasePrice || 0).toLocaleString()} <span className="text-xs font-normal">تومان</span></span>
+                 <span className="text-lg font-sans font-black text-gray-800">{Number(product.purchasePrice || 0).toLocaleString()} <span className="text-xs font-normal">{currency}</span></span>
                </div>
                <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-xl">
                  <span className="text-xs text-amber-600 font-bold block mb-1">موجودی مستند</span>
@@ -91,7 +91,7 @@ export default function ProductCardModal({ product, onClose }: { product: Produc
                        <th className="px-4 py-3 font-semibold text-xs">تاریخ</th>
                        <th className="px-4 py-3 font-semibold text-xs">شخص / مشتری</th>
                        <th className="px-4 py-3 font-semibold text-xs">تعداد / مقدار</th>
-                       <th className="px-4 py-3 font-semibold text-xs">فی (تومان)</th>
+                       <th className="px-4 py-3 font-semibold text-xs">فی ({currency})</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-gray-50">
