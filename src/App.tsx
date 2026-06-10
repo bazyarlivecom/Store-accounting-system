@@ -1461,7 +1461,7 @@ export default function App() {
            ...currentItems,
            {
              id: Math.random().toString(36).substring(2, 9),
-             productId: Number(productIdStr),
+             productId: productIdStr,
              productName: product.name,
              quantity: 1,
              unitPrice: unitPriceRounded,
@@ -1484,7 +1484,7 @@ export default function App() {
           
           // Special handling for product selection to auto-fill details
           if (field === 'productId' && value !== '') {
-            const product = products.find(p => p.id === Number(value));
+            const product = products.find(p => p.id.toString() === String(value));
             if (product) {
               updatedItem.productName = product.name;
               updatedItem.selectedUnit = product.unit || '';
@@ -1507,7 +1507,7 @@ export default function App() {
             
             // If we toggled the unit type, adjust the unit price relative to base price
             if (field === 'isSecondaryUnit' && updatedItem.productId) {
-              const product = products.find(p => p.id === Number(updatedItem.productId));
+              const product = products.find(p => p.id.toString() === String(updatedItem.productId));
               if (product) {
                 const ratio = product.unitRatio || 1;
                 const prevSec = Boolean(item.isSecondaryUnit);
@@ -1624,7 +1624,7 @@ export default function App() {
       customerPhone: selectedCustomer ? selectedCustomer.phone : '',
       customerAddress: selectedCustomer ? selectedCustomer.address : '',
       items: items.map(item => {
-        const prod = products.find(p => p.id === item.productId);
+        const prod = products.find(p => p.id.toString() === String(item.productId));
         return {
           ...item,
           productName: prod ? prod.name : item.productName || 'کالای سفارشی'
@@ -1957,7 +1957,7 @@ export default function App() {
                               </td>
                               <td className="p-4 text-center">
                                   {(() => {
-                                    const product = item.productId ? products.find((p) => p.id === Number(item.productId)) : null;
+                                    const product = item.productId ? products.find((p) => p.id.toString() === String(item.productId)) : null;
                                     const hasSecondary = product?.secondaryUnit;
                                     return (
                                       <div className="flex flex-col gap-1.5">
@@ -2205,7 +2205,7 @@ export default function App() {
                               </td>
                               <td className="p-5">
                                   {(() => {
-                                    const product = item.productId ? products.find((p) => p.id === Number(item.productId)) : null;
+                                    const product = item.productId ? products.find((p) => p.id.toString() === String(item.productId)) : null;
                                     const hasSecondary = product?.secondaryUnit;
                                     return (
                                       <div className="flex flex-col gap-1.5">

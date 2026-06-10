@@ -123,7 +123,7 @@ export type Warehouse = {
 
 export type InvoiceItem = {
   id: string;
-  productId: number | '';
+  productId: string | number | '';
   productName: string;
   quantity: number;
   unitPrice: number; // this will be price per selected unit
