@@ -146,17 +146,31 @@ export default function App() {
       items: [
         { id: 'financial_report', label: 'داشبورد مالی', roles: ['admin', 'accountant'] },
         { id: 'person_ledger', label: 'دفتر کل اشخاص', roles: ['admin', 'accountant', 'viewer'] },
+      ]
+    },
+    {
+      id: 'sales_purchases',
+      label: 'فاکتورها و فروش',
+      icon: <ShoppingCart className="w-5 h-5" />,
+      items: [
+        { id: 'create_sale', label: 'ثبت فاکتور فروش', roles: ['admin', 'cashier', 'accountant'] },
+        { id: 'create_purchase', label: 'ثبت فاکتور خرید', roles: ['admin', 'accountant'] },
         { id: 'list_sale', label: 'لیست فاکتورهای فروش', roles: ['admin', 'cashier', 'accountant'] },
         { id: 'list_purchase', label: 'لیست فاکتورهای خرید', roles: ['admin', 'accountant'] },
       ]
     },
     {
-      id: 'sales_purchases',
-      label: 'خرید و فروش',
-      icon: <ShoppingCart className="w-5 h-5" />,
+      id: 'warehousing',
+      label: 'کالا و انبار',
+      icon: <Box className="w-5 h-5" />,
       items: [
-        { id: 'create_sale', label: 'ثبت فاکتور فروش', roles: ['admin', 'cashier', 'accountant'] },
-        { id: 'create_purchase', label: 'ثبت فاکتور خرید', roles: ['admin', 'accountant'] },
+        { id: 'products', label: 'کالاها و خدمات', roles: ['admin', 'accountant'] },
+        { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
+        { id: 'warehouses', label: 'انبارها', roles: ['admin', 'accountant'] },
+        { id: 'create_warehouse_receipt', label: 'ثبت رسید انبار', roles: ['admin', 'accountant'] },
+        { id: 'list_warehouse_receipt', label: 'لیست رسید انبار', roles: ['admin', 'accountant'] },
+        { id: 'create_warehouse_remittance', label: 'ثبت حواله انبار', roles: ['admin', 'accountant'] },
+        { id: 'list_warehouse_remittance', label: 'لیست حواله انبار', roles: ['admin', 'accountant'] },
       ]
     },
     {
@@ -184,24 +198,10 @@ export default function App() {
       ]
     },
     {
-      id: 'warehouse_management',
-      label: 'عملیات انبار',
-      icon: <Box className="w-5 h-5" />,
+      id: 'persons',
+      label: 'اشخاص',
+      icon: <Users className="w-5 h-5" />,
       items: [
-        { id: 'create_warehouse_receipt', label: 'ثبت رسید انبار', roles: ['admin', 'accountant'] },
-        { id: 'list_warehouse_receipt', label: 'رسیدهای انبار', roles: ['admin', 'accountant'] },
-        { id: 'create_warehouse_remittance', label: 'ثبت حواله انبار', roles: ['admin', 'accountant'] },
-        { id: 'list_warehouse_remittance', label: 'حواله‌های انبار', roles: ['admin', 'accountant'] },
-      ]
-    },
-    {
-      id: 'base_info',
-      label: 'اطلاعات سیستم',
-      icon: <Package className="w-5 h-5" />,
-      items: [
-        { id: 'warehouses', label: 'انبارها', roles: ['admin', 'accountant'] },
-        { id: 'products', label: 'کالاها و خدمات', roles: ['admin', 'accountant'] },
-        { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
         { id: 'persons', label: 'اشخاص و شرکت‌ها', roles: ['admin', 'accountant'] },
         { id: 'person_groups', label: 'گروه‌بندی اشخاص', roles: ['admin', 'accountant'] },
       ]
@@ -2375,10 +2375,37 @@ export default function App() {
                                 </span>
                               </td>
                              <td className="p-4 text-center flex items-center justify-center gap-2">
-                                <button onClick={() => { setPreviewInvoiceData(inv); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none">
+                                <button onClick={() => { setViewingInvoice(inv); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none" title="مشاهده نهایی">
                                   <Eye className="w-4 h-4"/>
                                 </button>
-                                <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteInvoice(inv.id).then(fetchInvoices))} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg">
+                                <button onClick={() => confirmAction('آیا می‌خواهید این فاکتور را ویرایش مجدد کنید؟ نسخه فعلی حذف خواهد شد.', () => {
+                                  deleteInvoice(inv.id).then(fetchInvoices);
+                                  setInvoiceMode('manual');
+                                  setInvoiceNumber(inv.invoiceNumber);
+                                  setInvoiceTitle(inv.title || '');
+                                  setInvoiceType(inv.type);
+                                  setInvoiceCurrency(inv.currency || storeSettings.currency);
+                                  setCustomerId(inv.customerId);
+                                  setItems(inv.items.map((i: any) => ({ ...i })));
+                                  setOverallDiscountPercent(inv.overallDiscountPercent || 0);
+                                  
+                                  if (inv.date) {
+                                    try {
+                                      setDate(new Date(inv.date));
+                                    } catch(e) {}
+                                  }
+                                  
+                                  // Switch to corresponding tab
+                                  setActiveTab(
+                                    inv.type === 'sale' ? 'new_sale' : 
+                                    inv.type === 'purchase' ? 'new_purchase' : 
+                                    inv.type === 'warehouse_receipt' ? 'new_warehouse_receipt' : 
+                                    'new_warehouse_remittance'
+                                  );
+                                })} className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none" title="ویرایش (بازگشت به پیش‌نویس)">
+                                  <Edit2 className="w-4 h-4"/>
+                                </button>
+                                <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteInvoice(inv.id).then(fetchInvoices))} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer bg-transparent border-none justify-center" title="حذف">
                                   <Trash2 className="w-4 h-4"/>
                                 </button>
                              </td>
