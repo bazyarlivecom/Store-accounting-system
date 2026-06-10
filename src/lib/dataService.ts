@@ -203,6 +203,37 @@ export const deleteCashbox = async (id: string) => {
   await saveLocalData('cashboxes', cashboxes.filter((p: any) => p.id !== id));
 };
 
+// Warehouses
+export const getWarehouses = async () => {
+  const warehouses = await getLocalData<any[]>('warehouses', []);
+  return warehouses.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+};
+
+export const addWarehouse = async (warehouse: any) => {
+  const warehouses = await getLocalData<any[]>('warehouses', []);
+  const now = Date.now();
+  const newWarehouse = { ...warehouse, id: generateId(), createdAt: now, updatedAt: now };
+  warehouses.push(newWarehouse);
+  await saveLocalData('warehouses', warehouses);
+  return newWarehouse;
+};
+
+export const updateWarehouse = async (id: string, warehouse: any) => {
+  const warehouses = await getLocalData<any[]>('warehouses', []);
+  const index = warehouses.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    warehouses[index] = { ...warehouses[index], ...warehouse, updatedAt: Date.now() };
+    await saveLocalData('warehouses', warehouses);
+    return warehouses[index];
+  }
+  return null;
+};
+
+export const deleteWarehouse = async (id: string) => {
+  const warehouses = await getLocalData<any[]>('warehouses', []);
+  await saveLocalData('warehouses', warehouses.filter((p: any) => p.id !== id));
+};
+
 // Product Categories
 export const getProductCategories = async () => {
   const categories = await getLocalData<any[]>('product_categories', []);
@@ -352,12 +383,63 @@ export const addInvoice = async (invoice: any) => {
   const newInvoice = { ...invoice, id: generateId(), createdAt: now, updatedAt: now };
   invoices.push(newInvoice);
   await saveLocalData('invoices', invoices);
+
+  // Update product stock based on invoice type
+  if (invoice.items && Array.isArray(invoice.items)) {
+    const products = await getLocalData<any[]>('products', []);
+    let productsUpdated = false;
+
+    for (const item of invoice.items) {
+      const prodIndex = products.findIndex((p: any) => p.id === item.productId || p.id === Number(item.productId) || p.id === String(item.productId));
+      if (prodIndex !== -1) {
+        const qty = Number(item.quantity) || 0;
+        if (invoice.type === 'sale' || invoice.type === 'warehouse_remittance') {
+          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) - qty;
+          productsUpdated = true;
+        } else if (invoice.type === 'purchase' || invoice.type === 'warehouse_receipt') {
+          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) + qty;
+          productsUpdated = true;
+        }
+      }
+    }
+
+    if (productsUpdated) {
+      await saveLocalData('products', products);
+    }
+  }
+
   return newInvoice;
 };
 
 export const deleteInvoice = async (id: string) => {
   const invoices = await getLocalData<any[]>('invoices', []);
-  await saveLocalData('invoices', invoices.filter((p: any) => p.id !== id));
+  const invoiceToDelete = invoices.find((p: any) => p.id === id || p.id === Number(id) || p.id === String(id));
+  
+  if (invoiceToDelete && invoiceToDelete.items && Array.isArray(invoiceToDelete.items)) {
+    const products = await getLocalData<any[]>('products', []);
+    let productsUpdated = false;
+
+    for (const item of invoiceToDelete.items) {
+      const prodIndex = products.findIndex((p: any) => p.id === item.productId || p.id === Number(item.productId) || p.id === String(item.productId));
+      if (prodIndex !== -1) {
+        const qty = Number(item.quantity) || 0;
+        // Revert the stock
+        if (invoiceToDelete.type === 'sale' || invoiceToDelete.type === 'warehouse_remittance') {
+          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) + qty;
+          productsUpdated = true;
+        } else if (invoiceToDelete.type === 'purchase' || invoiceToDelete.type === 'warehouse_receipt') {
+          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) - qty;
+          productsUpdated = true;
+        }
+      }
+    }
+
+    if (productsUpdated) {
+      await saveLocalData('products', products);
+    }
+  }
+
+  await saveLocalData('invoices', invoices.filter((p: any) => p.id !== id && p.id !== Number(id) && p.id !== String(id)));
 };
 
 // Checkbooks

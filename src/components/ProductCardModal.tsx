@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X, Package, TrendingUp, TrendingDown, History } from 'lucide-react';
-import { Product, InvoiceItem } from '../types';
+import { Product, InvoiceItem, Warehouse } from '../types';
 import { getInvoices } from '../lib/dataService';
 
-export default function ProductCardModal({ product, currency = 'تومان', onClose }: { product: Product, currency?: string, onClose: () => void }) {
+export default function ProductCardModal({ product, warehouses = [], currency = 'تومان', onClose }: { product: Product, warehouses?: Warehouse[], currency?: string, onClose: () => void }) {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -73,6 +73,15 @@ export default function ProductCardModal({ product, currency = 'تومان', onC
                  )}
                </div>
             </div>
+
+            {product.warehouseId && (
+               <div className="mb-8 bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center justify-between">
+                 <span className="text-sm font-bold text-slate-700 flex items-center gap-2"><Package className="w-4 h-4 text-slate-400" /> انبار اختصاصی کالا:</span>
+                 <span className="text-sm font-black text-indigo-800 bg-indigo-100 px-3 py-1 rounded-lg">
+                   {warehouses?.find(w => String(w.id) === String(product.warehouseId))?.name || 'انبار نامشخص'}
+                 </span>
+               </div>
+            )}
 
             <h4 className="text-md font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
                <History className="w-5 h-5 text-gray-400" /> سوابق قیمتی و گردش کالا (فروش / خرید)

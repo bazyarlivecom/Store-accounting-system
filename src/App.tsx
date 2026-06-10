@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal } from 'lucide-react';
+import { Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addCommas, removeCommas, numberToWords } from './utils/format';
 import DatePicker from "react-multi-date-picker";
@@ -7,14 +7,15 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './lib/AuthContext';
-import { getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
+import { getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
 import DatabaseDashboard from './components/DatabaseDashboard';
 import SystemChecklist from './components/SystemChecklist';
 import ProductCardModal from './components/ProductCardModal';
 import CheckManagement from './components/CheckManagement';
+import SearchableSelect from './components/SearchableSelect';
 import FinancialTransfer from './components/FinancialTransfer';
 import UserManager from './components/UserManager';
-import { Person, PersonGroup, Product, Account, Cashbox, InvoiceItem } from './types';
+import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem } from './types';
 
 const getBaseValueInToman = (cur: string) => {
   if (!cur) return 1;
@@ -95,7 +96,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'products' | 'product_categories' | 'persons' | 'accounts' | 'cashboxes' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('create_sale');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_receipt' | 'list_warehouse_receipt' | 'create_warehouse_remittance' | 'list_warehouse_remittance' | 'products' | 'product_categories' | 'persons' | 'person_groups' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('create_sale');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState(false);
   const [menuLayout, setMenuLayout] = useState<'vertical' | 'horizontal'>('vertical');
@@ -157,10 +158,22 @@ export default function App() {
       ]
     },
     {
+      id: 'warehouse_management',
+      label: 'عملیات انبار',
+      icon: <Box className="w-5 h-5" />,
+      items: [
+        { id: 'create_warehouse_receipt', label: 'ثبت رسید انبار', roles: ['admin', 'accountant'] },
+        { id: 'list_warehouse_receipt', label: 'رسیدهای انبار', roles: ['admin', 'accountant'] },
+        { id: 'create_warehouse_remittance', label: 'ثبت حواله انبار', roles: ['admin', 'accountant'] },
+        { id: 'list_warehouse_remittance', label: 'حواله‌های انبار', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
       id: 'base_info',
       label: 'اطلاعات سیستم',
       icon: <Package className="w-5 h-5" />,
       items: [
+        { id: 'warehouses', label: 'انبارها', roles: ['admin', 'accountant'] },
         { id: 'products', label: 'کالاها و خدمات', roles: ['admin', 'accountant'] },
         { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
         { id: 'persons', label: 'اشخاص و شرکت‌ها', roles: ['admin', 'accountant'] },
@@ -188,6 +201,12 @@ export default function App() {
     } else if (activeTab === 'create_purchase') {
       setInvoiceType('purchase');
       setInvoiceTitle('فاکتور خرید کالا');
+    } else if (activeTab === 'create_warehouse_receipt') {
+      setInvoiceType('warehouse_receipt');
+      setInvoiceTitle('رسید انبار (ورود کالا)');
+    } else if (activeTab === 'create_warehouse_remittance') {
+      setInvoiceType('warehouse_remittance');
+      setInvoiceTitle('حواله انبار (خروج کالا)');
     }
   }, [activeTab]);
   
@@ -197,6 +216,7 @@ export default function App() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
     const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [personSearchTerm, setPersonSearchTerm] = useState('');
   const [selectedPersonGroup, setSelectedPersonGroup] = useState<string>('all');
   const [selectedPersonRole, setSelectedPersonRole] = useState<string>('all');
@@ -340,6 +360,7 @@ export default function App() {
   const [newProductCode, setNewProductCode] = useState('');
   const [newProductBarcode, setNewProductBarcode] = useState('');
   const [newProductPurchasePrice, setNewProductPurchasePrice] = useState('');
+  const [newProductWarehouseId, setNewProductWarehouseId] = useState('');
   const [newProductStock, setNewProductStock] = useState('');
   const [newProductMinStock, setNewProductMinStock] = useState('');
   const [newProductUnit, setNewProductUnit] = useState('');
@@ -438,11 +459,20 @@ export default function App() {
   const [newCashboxBalance, setNewCashboxBalance] = useState('');
   const [submittingCashbox, setSubmittingCashbox] = useState(false);
 
+  // Warehouse modal & form state
+  const [isWarehouseModalOpen, setIsWarehouseModalOpen] = useState(false);
+  const [newWarehouseName, setNewWarehouseName] = useState('');
+  const [newWarehouseManager, setNewWarehouseManager] = useState('');
+  const [newWarehouseLocation, setNewWarehouseLocation] = useState('');
+  const [newWarehouseIsActive, setNewWarehouseIsActive] = useState(true);
+  const [submittingWarehouse, setSubmittingWarehouse] = useState(false);
+
   const [viewingProduct, setViewingProduct] = useState<any>(null);
   const [editingProductId, setEditingProductId] = useState<string | number | null>(null);
   const [editingPersonId, setEditingPersonId] = useState<string | number | null>(null);
   const [editingAccountId, setEditingAccountId] = useState<string | number | null>(null);
   const [editingCashboxId, setEditingCashboxId] = useState<string | number | null>(null);
+  const [editingWarehouseId, setEditingWarehouseId] = useState<string | number | null>(null);
 
   // Settings form state
   const [settingsForm, setSettingsForm] = useState({ storeName: '', address: '', phone: '', logoUrl: '', currency: 'تومان' });
@@ -491,6 +521,7 @@ export default function App() {
         barcode: newProductBarcode,
         purchasePrice: Number(newProductPurchasePrice || 0),
         stock: Number(newProductStock || 0),
+        warehouseId: newProductWarehouseId,
         minStock: Number(newProductMinStock || 0),
         unit: newProductUnit,
         secondaryUnit: newProductSecondaryUnit,
@@ -514,6 +545,7 @@ export default function App() {
       setNewProductCode('');
       setNewProductBarcode('');
       setNewProductPurchasePrice('');
+      setNewProductWarehouseId('');
       setNewProductStock('');
       setNewProductMinStock('');
       setNewProductUnit('');
@@ -758,6 +790,15 @@ export default function App() {
     }
   };
 
+  const fetchWarehouses = async () => {
+    try {
+      const data = await getWarehouses();
+      setWarehouses(data as any);
+    } catch (error) {
+      console.error('Error fetching warehouses', error);
+    }
+  };
+
   const fetchTransactions = async () => {
     try {
       const data = await getTransactions();
@@ -979,6 +1020,61 @@ export default function App() {
     }
   };
 
+  const handleSubmitWarehouse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWarehouseName) return;
+    setSubmittingWarehouse(true);
+    try {
+      const isEdit = editingWarehouseId !== null;
+      const payload = {
+        name: newWarehouseName,
+        manager: newWarehouseManager,
+        location: newWarehouseLocation,
+        isActive: newWarehouseIsActive,
+      };
+
+      if (isEdit) {
+        await updateWarehouse(editingWarehouseId.toString(), payload as any);
+      } else {
+        await addWarehouse(payload as any);
+      }
+      
+      await fetchWarehouses();
+      setNewWarehouseName('');
+      setNewWarehouseManager('');
+      setNewWarehouseLocation('');
+      setNewWarehouseIsActive(true);
+      setEditingWarehouseId(null);
+      setIsWarehouseModalOpen(false);
+      setSuccessMsg(isEdit ? 'انبار با موفقیت ویرایش شد' : 'انبار با موفقیت ثبت شد');
+      
+    } catch (error) {
+      console.error('Error saving warehouse', error);
+      setSuccessMsg('خطا در ثبت انبار');
+    } finally {
+      setSubmittingWarehouse(false);
+    }
+  };
+
+  const handleDeleteWarehouse = async (id: number | string) => {
+    if (!confirm('آیا از حذف این انبار اطمینان دارید؟')) return;
+    try {
+      await deleteWarehouse(id.toString());
+      await fetchWarehouses();
+    } catch (error) {
+      console.error('Error deleting warehouse', error);
+    }
+  };
+
+  const handleEditWarehouse = (w: Warehouse) => {
+    setEditingWarehouseId(w.id);
+    setNewWarehouseName(w.name);
+    setNewWarehouseManager(w.manager || '');
+    setNewWarehouseLocation(w.location || '');
+    setNewWarehouseIsActive(w.isActive !== undefined ? w.isActive : true);
+    setIsWarehouseModalOpen(true);
+  };
+
   const handleEditProduct = (p: Product | any) => {
     setEditingProductId(p.id);
     setNewProductName(p.name);
@@ -988,6 +1084,7 @@ export default function App() {
     setNewProductCategoryId(p.categoryId || '');
     setNewProductCode(p.code || '');
     setNewProductBarcode(p.barcode || '');
+    setNewProductWarehouseId(p.warehouseId?.toString() || '');
     setNewProductStock(p.stock?.toString() || '');
     setNewProductMinStock(p.minStock?.toString() || '');
     setNewProductUnit(p.unit || '');
@@ -1181,6 +1278,7 @@ export default function App() {
         fetchProducts(),
         fetchAccounts(),
         fetchCashboxes(),
+        fetchWarehouses(),
         fetchSettings(),
         fetchTransactions()
       ]);
@@ -1233,7 +1331,11 @@ export default function App() {
             const product = products.find(p => p.id === Number(value));
             if (product) {
               updatedItem.productName = product.name;
-              const convertedPrice = exchangeRate > 0 ? (product.price / exchangeRate) : product.price;
+              
+              const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
+              const pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
+              const convertedPrice = exchangeRate > 0 ? (pPrice / exchangeRate) : pPrice;
+              
               updatedItem.unitPrice = Number(convertedPrice.toFixed(4));
               const subtotal = convertedPrice * updatedItem.quantity;
               updatedItem.totalPrice = Math.max(0, subtotal * (1 - (updatedItem.discountPercent / 100)));
@@ -1283,7 +1385,12 @@ export default function App() {
     try {
       await addInvoice(payload as any);
       
-      setSuccessMsg('فاکتور با موفقیت ثبت شد!');
+      const successTypeName = 
+         payload.type === 'warehouse_receipt' ? 'رسید انبار' : 
+         payload.type === 'warehouse_remittance' ? 'حواله انبار' : 
+         'فاکتور';
+
+      setSuccessMsg(`${successTypeName} با موفقیت ثبت شد!`);
       await fetchInvoices();
       
       // Reset form after short delay
@@ -1365,7 +1472,7 @@ export default function App() {
     return new Intl.NumberFormat('fa-IR').format(amount);
   };
 
-  const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase') ? invoiceCurrency : storeSettings.currency;
+  const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') ? invoiceCurrency : storeSettings.currency;
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fa-IR').format(num);
@@ -1534,6 +1641,8 @@ export default function App() {
     switch(activeTab) {
         case 'create_sale':
         case 'create_purchase':
+        case 'create_warehouse_receipt':
+        case 'create_warehouse_remittance':
            return (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
               {successMsg && (
@@ -1546,7 +1655,7 @@ export default function App() {
               {/* Header Info */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
-                  {activeTab === 'create_sale' ? <ShoppingCart className="w-6 h-6 text-indigo-600" /> : <Plus className="w-6 h-6 text-indigo-600" />}
+                  {activeTab === 'create_sale' || activeTab === 'create_warehouse_remittance' ? <ShoppingCart className="w-6 h-6 text-indigo-600" /> : <Plus className="w-6 h-6 text-indigo-600" />}
                   {invoiceTitle}
                 </h2>
                 
@@ -1582,10 +1691,18 @@ export default function App() {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><User className="w-4 h-4"/> طرف حساب</label>
-                    <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500">
-                        <option value="">-- انتخاب کنید --</option>
-                        {persons.map(p => <option key={p.id} value={p.id}>{p.alias || p.name} {p.role === 'customer' ? '(مشتری)' : ''}</option>)}
-                    </select>
+                    <SearchableSelect 
+                      options={persons.map(p => ({
+                        value: p.id,
+                        label: p.alias || p.name,
+                        subLabel: p.mobile || undefined,
+                        badge: p.role === 'customer' ? 'مشتری' : p.role === 'employee' ? 'کارمند' : 'تامین کننده'
+                      }))}
+                      value={customerId}
+                      onChange={val => setCustomerId(val)}
+                      placeholder="-- انتخاب کنید --"
+                      searchPlaceholder="جستجوی شخص..."
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4"/> ارز و نرخ</label>
@@ -1605,7 +1722,7 @@ export default function App() {
               {/* Items List */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-indigo-600"/> اقلام فاکتور</h3>
+                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-indigo-600"/> {activeTab.includes('warehouse') ? 'اقلام سند (کالاها)' : 'اقلام فاکتور'}</h3>
                     <button onClick={handleAddItem} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 flex items-center gap-2 transition-colors">
                       <Plus className="w-4 h-4" /> افزودن سطر
                     </button>
@@ -1628,14 +1745,20 @@ export default function App() {
                             <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                               <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
                               <td className="p-4">
-                                  <select
-                                    value={item.productId}
-                                    onChange={(e) => handleItemChange(item.id, 'productId', e.target.value)}
-                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 mb-2 font-bold"
-                                  >
-                                    <option value="">انتخاب از لیست...</option>
-                                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                  </select>
+                                  <div className="mb-2">
+                                    <SearchableSelect 
+                                      options={products.map(p => ({
+                                        value: p.id,
+                                        label: p.name,
+                                        subLabel: `موجودی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                                        badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                                      }))}
+                                      value={item.productId}
+                                      onChange={(val) => handleItemChange(item.id, 'productId', String(val))}
+                                      placeholder="انتخاب از لیست..."
+                                      searchPlaceholder="جستجوی کالا (نام، بارکد)..."
+                                    />
+                                  </div>
                                   <input
                                     type="text"
                                     placeholder="یا نام کالا را تایپ کنید..."
@@ -1734,12 +1857,17 @@ export default function App() {
            );
         case 'list_sale':
         case 'list_purchase':
+        case 'list_warehouse_receipt':
+        case 'list_warehouse_remittance':
            return (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
                     <List className="w-6 h-6 text-indigo-600" />
-                    {activeTab === 'list_sale' ? 'لیست فاکتورهای فروش' : 'لیست فاکتورهای خرید'}
+                    {activeTab === 'list_sale' ? 'لیست فاکتورهای فروش' : 
+                     activeTab === 'list_purchase' ? 'لیست فاکتورهای خرید' :
+                     activeTab === 'list_warehouse_receipt' ? 'رسیدهای انبار (ورود کالا)' :
+                     'حواله‌های انبار (خروج کالا)'}
                   </h2>
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -1748,14 +1876,21 @@ export default function App() {
                        <thead>
                          <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                            <th className="p-4 font-bold">شماره</th>
-                           <th className="p-4 font-bold">مشتری</th>
+                           <th className="p-4 font-bold">
+                             {activeTab.includes('warehouse') ? 'تحویل دهنده / گیرنده' : 'مشتری'}
+                           </th>
                            <th className="p-4 font-bold">تاریخ</th>
                            <th className="p-4 font-bold">مبلغ نهایی</th>
                            <th className="p-4 font-bold text-center">عملیات</th>
                          </tr>
                        </thead>
                        <tbody className="divide-y divide-gray-50">
-                         {invoices.filter(i => activeTab === 'list_sale' ? i.type === 'sale' : i.type === 'purchase').map(inv => (
+                         {invoices.filter(i => 
+                           activeTab === 'list_sale' ? i.type === 'sale' : 
+                           activeTab === 'list_purchase' ? i.type === 'purchase' :
+                           activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
+                           i.type === 'warehouse_remittance'
+                         ).map(inv => (
                            <tr key={inv.id} className="hover:bg-gray-50">
                              <td className="p-4 font-mono font-bold text-gray-700">{inv.invoiceNumber}</td>
                              <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
@@ -3000,6 +3135,13 @@ export default function App() {
                       <td className="py-4 px-6 text-center">
                         <div className="flex items-center justify-center gap-1 opacity-100">
                           <button
+                            onClick={() => setViewingProduct(p)}
+                            className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                            title="مشاهده کارت کالا"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleEditProduct(p)}
                             className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
                             title="ویرایش کالا"
@@ -3766,6 +3908,97 @@ export default function App() {
                             onClick={() => confirmAction('آیا از حذف این صندوق اطمینان دارید؟', () => handleDeleteCashbox(box.id))}
                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
                             title="حذف صندوق"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </motion.div>
+      ) : activeTab === 'warehouses' ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+        >
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <Box className="w-6 h-6 text-indigo-600" />
+                مدیریت انبارها
+              </h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">مدیریت انبارهای فیزیکی و مسیرهای نگهداری کالا</p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingWarehouseId(null);
+                setNewWarehouseName('');
+                setNewWarehouseManager('');
+                setNewWarehouseLocation('');
+                setNewWarehouseIsActive(true);
+                setIsWarehouseModalOpen(true);
+              }}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 text-sm font-semibold"
+            >
+              <Plus className="w-4 h-4" />
+              انبار جدید
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            {warehouses.length === 0 ? (
+              <div className="py-12 text-center text-gray-500 font-medium">
+                هیچ انباری ثبت نشده است. برای شروع یک انبار جدید ثبت کنید.
+              </div>
+            ) : (
+              <table className="w-full text-right border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+                    <th className="py-4 px-6 font-semibold">ردیف</th>
+                    <th className="py-4 px-6 font-semibold">نام انبار</th>
+                    <th className="py-4 px-6 font-semibold">مسئول انبار</th>
+                    <th className="py-4 px-6 font-semibold">موقعیت / مکان</th>
+                    <th className="py-4 px-6 font-semibold">وضعیت فعالیت</th>
+                    <th className="py-4 px-6 font-semibold text-center w-24">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {warehouses.map((wh, index) => (
+                    <tr key={wh.id} className="hover:bg-gray-50/50 transition-colors text-gray-700">
+                      <td className="py-4 px-6 font-medium text-gray-400">{index + 1}</td>
+                      <td className="py-4 px-6 font-semibold text-gray-950">
+                        <span className="flex items-center gap-2">
+                          <Box className="w-4 h-4 text-indigo-500" />
+                          {wh.name}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-sm">{wh.manager || '-'}</td>
+                      <td className="py-4 px-6 text-sm">{wh.location || '-'}</td>
+                      <td className="py-4 px-6 text-sm">
+                        {wh.isActive ? (
+                          <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">فعال</span>
+                        ) : (
+                          <span className="bg-rose-100 text-rose-800 px-2 py-1 rounded text-xs font-bold">غیرفعال</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleEditWarehouse(wh)}
+                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                            title="ویرایش انبار"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => confirmAction('آیا از حذف این انبار اطمینان دارید؟', () => handleDeleteWarehouse(wh.id))}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                            title="حذف انبار"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -5329,6 +5562,21 @@ export default function App() {
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                       {newProductType === 'product' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-gray-50 p-5 rounded-xl border border-gray-100">
+                          <div className="w-full">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                              انبار مرجع
+                            </label>
+                            <select
+                              value={newProductWarehouseId}
+                              onChange={(e) => setNewProductWarehouseId(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-colors text-gray-900 bg-white"
+                            >
+                              <option value="">بدون انبار (موجودی کلی)</option>
+                              {warehouses.filter(w => w.isActive).map(wh => (
+                                <option key={wh.id} value={wh.id}>{wh.name}</option>
+                              ))}
+                            </select>
+                          </div>
                           <div className="w-full">
                             <label className="block text-sm font-bold text-gray-700 mb-2">
                               موجودی اولیه در انبار
@@ -6968,7 +7216,119 @@ export default function App() {
           </div>
         )}
 
+        {isWarehouseModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-md max-h-[90vh] flex flex-col"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <Box className="w-5 h-5 text-indigo-500" />
+                  ثبت انبار جدید
+                </h3>
+                <button
+                  onClick={() => setIsWarehouseModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto">
+                <form id="warehouseForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ثبت انبار اطمینان دارید؟', () => handleSubmitWarehouse(e as any)) }} className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4">
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        نام انبار <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newWarehouseName}
+                        onChange={(e) => setNewWarehouseName(e.target.value)}
+                        placeholder="مثال: انبار مرکزی"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        مسئول انبار (انباردار)
+                      </label>
+                      <input
+                        type="text"
+                        value={newWarehouseManager}
+                        onChange={(e) => setNewWarehouseManager(e.target.value)}
+                        placeholder="مثال: علی احمدی"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        موقعیت مکانی یا آدرس
+                      </label>
+                      <input
+                        type="text"
+                        value={newWarehouseLocation}
+                        onChange={(e) => setNewWarehouseLocation(e.target.value)}
+                        placeholder="مثال: سوله‌ی شماره ۲"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm text-gray-900"
+                      />
+                    </div>
+
+                    <div className="w-full text-right flex items-center justify-between border border-gray-100 p-4 rounded-xl mt-2 bg-slate-50">
+                       <label className="text-sm font-bold text-gray-700 cursor-pointer select-none" onClick={() => setNewWarehouseIsActive(!newWarehouseIsActive)}>وضعیت انبار (فعال / غیرفعال)</label>
+                       <div 
+                         className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${newWarehouseIsActive ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                         onClick={() => setNewWarehouseIsActive(!newWarehouseIsActive)}
+                       >
+                         <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${newWarehouseIsActive ? '-translate-x-[24px]' : 'translate-x-0'}`} />
+                       </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsWarehouseModalOpen(false)}
+                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="submit"
+                  form="warehouseForm"
+                  disabled={submittingWarehouse}
+                  className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submittingWarehouse ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                  ) : (
+                    <Plus className="w-5 h-5" />
+                  )}
+                  {editingWarehouseId ? 'ذخیره انبار' : 'ثبت انبار'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {/* Invoice Saved Viewer / Print Sheet Modals */}
+        {viewingProduct && (
+          <ProductCardModal 
+            product={viewingProduct} 
+            warehouses={warehouses}
+            currency={storeSettings?.currency || 'تومان'} 
+            onClose={() => setViewingProduct(null)} 
+          />
+        )}
+
         {viewingInvoice && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/55 backdrop-blur-sm" dir="rtl">
             <motion.div
@@ -7021,7 +7381,10 @@ export default function App() {
                     {/* Invoice Badge Category */}
                     <div className="text-center">
                       <span className="text-lg font-black tracking-tight border-2 border-gray-800 px-6 py-2 rounded-xl text-gray-900 bg-gray-50 inline-block">
-                        {viewingInvoice.type === 'purchase' ? 'فاکتور رسمی خرید کالا و خدمات' : 'فاکتور رسمی فروش کالا و خدمات'}
+                        {viewingInvoice.type === 'purchase' ? 'فاکتور رسمی خرید کالا و خدمات' : 
+                         viewingInvoice.type === 'warehouse_receipt' ? 'رسید انبار (ورود کالا)' :
+                         viewingInvoice.type === 'warehouse_remittance' ? 'حواله انبار (خروج کالا)' :
+                         'فاکتور رسمی فروش کالا و خدمات'}
                       </span>
                     </div>
 
@@ -7326,7 +7689,10 @@ export default function App() {
 
                     <div className="text-center">
                       <span className="text-base font-black tracking-tight border-2 border-amber-500 px-6 py-2 rounded-xl text-amber-900 bg-amber-50/50 inline-block">
-                        {previewInvoiceData.type === 'purchase' ? 'پیش‌نمایش فاکتور خرید' : 'پیش‌نمایش فاکتور فروش'}
+                        {previewInvoiceData.type === 'purchase' ? 'پیش‌نمایش فاکتور خرید' : 
+                         previewInvoiceData.type === 'warehouse_receipt' ? 'پیش‌نمایش رسید انبار (ورود)' :
+                         previewInvoiceData.type === 'warehouse_remittance' ? 'پیش‌نمایش حواله انبار (خروج)' :
+                         'پیش‌نمایش فاکتور فروش'}
                       </span>
                     </div>
 

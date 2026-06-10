@@ -86,9 +86,12 @@ export type Product = {
   stock?: number;
   minStock?: number;
   unit?: string;
+  secondaryUnit?: string;
+  unitRatio?: number;
   type: 'product' | 'service';
   category: string;
   categoryId?: string | number;
+  warehouseId?: string | number;
   description?: string;
 };
 
@@ -108,6 +111,14 @@ export type Cashbox = {
   name: string;
   manager?: string;
   balance: number;
+};
+
+export type Warehouse = {
+  id: string | number;
+  name: string;
+  manager?: string;
+  location?: string;
+  isActive: boolean;
 };
 
 export type InvoiceItem = {
