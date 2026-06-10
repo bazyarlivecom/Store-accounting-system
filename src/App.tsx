@@ -2172,9 +2172,9 @@ export default function App() {
                           <th className="p-5 min-w-[200px]">شرح کالا / خدمات</th>
                           <th className="p-5 w-28 text-center border-r border-emerald-50/50">تعداد</th>
                           <th className="p-5 w-24 text-center border-r border-emerald-50/50">واحد</th>
-                          <th className="p-5 w-36 border-r border-emerald-50/50">فی خرید ({storeSettings.currency})</th>
+                          <th className="p-5 w-36 border-r border-emerald-50/50">فی خرید ({invoiceCurrency})</th>
                           <th className="p-5 w-24 text-center border-r border-emerald-50/50">تخفیف %</th>
-                          <th className="p-5 w-36 border-r border-emerald-50/50">مبلغ کل ({storeSettings.currency})</th>
+                          <th className="p-5 w-36 border-r border-emerald-50/50">مبلغ کل ({invoiceCurrency})</th>
                           <th className="p-5 w-16 text-center border-r border-emerald-50/50">عملیات</th>
                         </tr>
                       </thead>
@@ -2295,7 +2295,7 @@ export default function App() {
                         <div className="bg-emerald-50/40 p-6 rounded-2xl border border-emerald-100/50 space-y-4">
                           <div className="flex justify-between items-center text-slate-500 font-bold">
                             <span>جمع مبالغ:</span>
-                            <span className="font-mono font-black text-slate-700" dir="ltr">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{storeSettings.currency}</span></span>
+                            <span className="font-mono font-black text-slate-700" dir="ltr">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
                           </div>
                           <div className="flex justify-between items-center text-rose-500 font-bold">
                             <span>تخفیف کلی:</span>
@@ -2304,11 +2304,11 @@ export default function App() {
                           <div className="h-px bg-emerald-100/60 w-full my-5"></div>
                           <div className="flex justify-between items-center text-xl font-black text-emerald-800">
                             <span>مبلغ نهایی خرید:</span>
-                            <span className="font-mono text-2xl text-emerald-950" dir="ltr">{formatCurrency(calculateFinalTotal())} <span className="text-xs">{storeSettings.currency}</span></span>
+                            <span className="font-mono text-2xl text-emerald-950" dir="ltr">{formatCurrency(calculateFinalTotal())} <span className="text-xs">{invoiceCurrency}</span></span>
                           </div>
                           {calculateFinalTotal() > 0 && (
                             <div className="mt-4 pt-4 border-t border-dashed border-emerald-200 text-right leading-relaxed text-xs font-bold text-emerald-700">
-                              <span className="text-emerald-900 font-black">{numToPersianWords(calculateFinalTotal())} {storeSettings.currency}</span>
+                              <span className="text-emerald-900 font-black">{numToPersianWords(calculateFinalTotal())} {invoiceCurrency}</span>
                             </div>
                           )}
                         </div>
@@ -7889,147 +7889,225 @@ export default function App() {
                 <div className="border-2 border-gray-300 p-6 rounded-2xl bg-white shadow-xs space-y-6 print-fill">
                   
                   {/* Visual Header */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6 border-b border-gray-100 items-center">
-                    {/* Store Title */}
-                    <div className="text-right space-y-1">
-                      <h2 className="text-xl font-black text-gray-900">{storeSettings.storeName || 'مجموعه تجاری فاکتور پیشرفته'}</h2>
-                      <p className="text-xs text-gray-500 font-bold">تلفن پیگیری: {storeSettings.phone || 'ثبت نشده'}</p>
-                      <p className="text-[11px] text-gray-400 font-medium">آدرس: {storeSettings.address || 'ثبت نشده'}</p>
-                    </div>
-
-                    {/* Invoice Badge Category */}
-                    <div className="text-center">
-                      <span className="text-lg font-black tracking-tight border-2 border-gray-800 px-6 py-2 rounded-xl text-gray-900 bg-gray-50 inline-block">
-                        {viewingInvoice.type === 'purchase' ? 'فاکتور رسمی خرید کالا و خدمات' : 
-                         viewingInvoice.type === 'warehouse_receipt' ? 'رسید انبار (ورود کالا)' :
-                         viewingInvoice.type === 'warehouse_remittance' ? 'حواله انبار (خروج کالا)' :
-                         'فاکتور رسمی فروش کالا و خدمات'}
-                      </span>
-                    </div>
-
-                    {/* Document Meta */}
-                    <div className="text-right grid grid-cols-1 gap-1.5 bg-slate-50/80 p-3 rounded-xl border border-gray-150/50 min-w-[200px]" dir="rtl">
-                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
-                        <span className="font-bold">شماره فاکتور:</span>
-                        <span className="font-sans font-black text-indigo-950 text-xs">#{viewingInvoice.invoiceNumber}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
-                        <span className="font-bold">تاریخ صدور شمسی:</span>
-                        <span className="text-indigo-950 font-black font-sans">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
-                        <span className="font-bold">تاریخ میلادی:</span>
-                        <span className="text-gray-500 font-mono font-bold text-[10px]">{viewingInvoice.date ? new Date(viewingInvoice.date).toISOString().split('T')[0] : ''}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span className="font-bold">واحد ارز:</span>
-                        <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded text-[10px]">{showInvoiceCurrency(viewingInvoice.currency || 'تومان')}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Customer / Party details */}
-                  <div className="bg-slate-50/50 p-4 rounded-xl border border-gray-155 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1 text-right">
-                      <span className="text-xs text-gray-400 font-bold block">مشخصات طرف حساب (خریدار / فروشنده)</span>
-                      <h3 className="text-sm font-extrabold text-gray-900">{viewingInvoice.customerName}</h3>
-                      {viewingInvoice.customerPhone && <p className="text-xs text-gray-600 font-bold">تلفن تماس: {viewingInvoice.customerPhone}</p>}
-                    </div>
-                    <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
-                      {/* Customer extra fields from persons state if needed */}
-                      {(() => {
-                        const originalPerson = persons.find(p => p.name === viewingInvoice.customerName || p.id === viewingInvoice.customerId);
-                        if (originalPerson) {
-                          return (
-                            <div className="text-right space-y-0.5">
-                              {originalPerson.nationalId && <p className="font-bold">شناسه مکتوب/ملی: <span className="font-mono text-gray-850">{originalPerson.nationalId}</span></p>}
-                              {originalPerson.address && <p className="font-bold">آدرس محل سکونت/دفتر: <span className="text-gray-850">{originalPerson.address}</span></p>}
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Table of Items */}
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
-                    <table className="w-full text-right border-collapse whitespace-nowrap min-w-[650px] text-xs font-sans font-bold">
-                      <thead>
-                        <tr className="bg-slate-100 border-b border-gray-200 text-slate-700">
-                          <th className="p-3 text-center w-12">ردیف</th>
-                          <th className="p-3 text-right">شرح کالا یا خدمات</th>
-                          <th className="p-3 text-center w-20">تعداد</th>
-                          <th className="p-3 text-center w-20">واحد</th>
-                          <th className="p-3 text-left w-32">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                          <th className="p-3 text-center w-20">تخفیف (٪)</th>
-                          <th className="p-3 text-left w-36">جمع کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {viewingInvoice.items?.map((item: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-slate-50/20">
-                            <td className="p-3 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
-                            <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
-                            <td className="p-3 text-center text-gray-800 font-sans font-bold">
-                               {formatNumber(item.quantity)}
-                            </td>
-                            <td className="p-3 text-center text-gray-600 font-sans">{item.selectedUnit || '-'}</td>
-                            <td className="p-3 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice)}</td>
-                            <td className="p-3 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
-                            <td className="p-3 text-left text-indigo-600 font-extrabold font-sans">{formatCurrency(item.totalPrice)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Pricing summaries + Letters */}
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4 pt-4 border-t border-gray-150">
-                    {/* Words total */}
-                    <div className="w-full md:w-1/2 space-y-2">
-                      <div className="p-3 bg-indigo-50/30 border border-indigo-100/50 rounded-xl">
-                        <span className="text-indigo-900 font-extrabold text-[11px] block">مبلغ قابل پرداخت فاکتور به حروف:</span>
-                        <p className="text-gray-800 text-xs font-semibold mt-1 leading-relaxed">
-                          {numToPersianWords(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)} تمام.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Numerical summary */}
-                    <div className="w-full md:w-1/2 space-y-2 text-xs font-bold text-gray-500">
-                      <div className="flex justify-between items-center px-4 py-2 bg-slate-50 rounded-lg">
-                        <span>جمع کل خالص فاکتور:</span>
-                        <span className="text-gray-900 font-sans font-bold">{formatCurrency(
-                          viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
-                        )} {showInvoiceCurrency(viewingInvoice.currency)}</span>
-                      </div>
-                      {viewingInvoice.overallDiscountPercent > 0 && (
-                        <div className="flex justify-between items-center px-4 py-2 bg-red-50 text-red-700 rounded-lg">
-                          <span>تخفیف روی جمع کل ({viewingInvoice.overallDiscountPercent}٪):</span>
-                          <span className="font-sans font-bold">{formatCurrency(
-                            (viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100)
-                          )} {showInvoiceCurrency(viewingInvoice.currency)}</span>
+                  {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
+                  {viewingInvoice.type === 'purchase' ? (
+                     <div className="border-4 border-emerald-900 p-8 bg-emerald-50 shadow-sm print-fill rounded-none">
+                        <div className="flex justify-between items-start border-b-2 border-emerald-900 pb-6 mb-6">
+                           <div className="space-y-4">
+                               <div className="flex items-center gap-4">
+                                  <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">سند رسمی خرید کالا</h1>
+                                  <span className="bg-emerald-900 text-white font-mono px-3 py-1 text-sm rounded">#{viewingInvoice.invoiceNumber}</span>
+                               </div>
+                               <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-emerald-900 font-bold">
+                                  <div>تاریخ خرید: <span className="font-sans text-emerald-700">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span></div>
+                                  <div>ارز پایه: <span className="font-sans text-emerald-700 bg-emerald-200 px-1 py-0.5 inline-block">{showInvoiceCurrency(viewingInvoice.currency || 'تومان')}</span></div>
+                               </div>
+                           </div>
+                           <div className="bg-white p-4 border border-emerald-200 rounded flex flex-col items-end min-w-[250px]">
+                               <span className="text-xs text-emerald-600 font-bold mb-1">صادر کننده مبدا (فروشنده کالا):</span>
+                               <h3 className="text-xl font-black text-emerald-900">{viewingInvoice.customerName}</h3>
+                               {viewingInvoice.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="ltr">{viewingInvoice.customerPhone}</span></p>}
+                           </div>
                         </div>
-                      )}
-                      <div className="flex justify-between items-center px-4 py-3 bg-indigo-50 text-indigo-950 rounded-xl text-sm font-black border border-indigo-100">
-                        <span>مبلغ نهایی قابل پرداخت:</span>
-                        <span className="text-indigo-700 font-sans font-black text-base">{formatCurrency(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}</span>
-                      </div>
-                    </div>
-                  </div>
+                        {/* Table */}
+                        <div className="bg-white border-2 border-emerald-900">
+                           <table className="w-full text-right text-sm">
+                             <thead className="bg-emerald-900 text-emerald-50">
+                               <tr>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-12">#</th>
+                                 <th className="p-3 border-l border-emerald-800">شرح کالا</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center">مقدار</th>
+                                 <th className="p-3 border-l border-emerald-800 text-left">فی ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center">تخفیف</th>
+                                 <th className="p-3 text-left">مبلغ ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                               </tr>
+                             </thead>
+                             <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold">
+                               {viewingInvoice.items?.map((item: any, idx: number) => (
+                                 <tr key={idx}>
+                                   <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
+                                   <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center font-sans">
+                                      {formatNumber(item.quantity)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
+                                   </td>
+                                   <td className="p-3 border-l border-emerald-200 text-left font-sans">{formatCurrency(item.unitPrice)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 text-left font-black font-sans">{formatCurrency(item.totalPrice)}</td>
+                                 </tr>
+                               ))}
+                             </tbody>
+                           </table>
+                        </div>
+                        {/* Breakdown */}
+                        <div className="mt-6 flex justify-between items-end">
+                           <div className="w-1/2 p-4 border border-emerald-200 bg-emerald-100/50 space-y-2">
+                             <p className="text-emerald-800 font-bold text-xs leading-relaxed max-w-sm">
+                                این سند مربوط به خرید ثبت شده در <strong>{storeSettings.storeName || 'مجموعه تجاری پیش‌فرض'}</strong> می‌باشد و معادل ارزی آن در سیستم لحاظ شده است.
+                             </p>
+                             <div className="text-emerald-900 font-bold text-sm bg-emerald-200/50 p-2 border border-emerald-300">
+                                معادل حروفی: {numToPersianWords(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}
+                             </div>
+                           </div>
+                           <div className="w-[45%] bg-white border-2 border-emerald-900 flex flex-col font-bold text-emerald-950">
+                             <div className="flex justify-between p-3 border-b border-emerald-200">
+                               <span>ارزش خالص اقلام:</span>
+                               <span className="font-sans">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                             </div>
+                             {viewingInvoice.overallDiscountPercent > 0 && (
+                               <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
+                                 <span>تخفیف کلی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
+                                 <span className="font-sans">{formatCurrency((viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100))}</span>
+                               </div>
+                             )}
+                             <div className="flex justify-between p-4 bg-emerald-900 text-emerald-50 text-xl font-black">
+                               <span>مبلغ قابل پرداخت:</span>
+                               <span className="font-sans">{formatCurrency(viewingInvoice.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(viewingInvoice.currency)}</span></span>
+                             </div>
+                           </div>
+                        </div>
+                        {/* Signatures */}
+                        <div className="mt-12 flex justify-around text-emerald-900 font-bold text-sm">
+                            <div className="text-center w-1/3">صادر کننده: {viewingInvoice.customerName}</div>
+                            <div className="text-center w-1/3">تایید کننده و انبار: {storeSettings.storeName || 'مجموعه ما'}</div>
+                        </div>
+                     </div>
+                  ) : (
+                    <div className="border border-gray-300 p-8 rounded-3xl bg-white shadow-xl space-y-8 print-fill relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[100px] absolute print-fill" style={{ zIndex: 0 }}></div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 items-center border-b pt-4 mb-2 mt-2 mx-2 relative" style={{ zIndex: 10 }}>
+                            <div className="col-span-1 flex flex-col h-full text-right z-10">
+                                <div className="space-y-1 font-bold font-sans text-xs">
+                                    <div className="flex items-center justify-between pb-1 text-gray-500">
+                                      <span>شماره فاکتور:</span>
+                                      <span className="text-indigo-900 font-black text-sm">#{viewingInvoice.invoiceNumber}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between pb-1 text-gray-500">
+                                      <span>تاریخ:</span>
+                                      <span className="text-gray-900">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-gray-500">
+                                      <span>ارز:</span>
+                                      <span className="text-gray-900">{showInvoiceCurrency(viewingInvoice.currency || 'تومان')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center h-full">
+                               <div className="text-center font-black text-3xl tracking-tighter text-indigo-900 z-10">
+                                 {viewingInvoice.type === 'warehouse_receipt' ? 'رسید ورود کالا' :
+                                  viewingInvoice.type === 'warehouse_remittance' ? 'حواله خروج کالا' :
+                                  'فاکتور فروش'}
+                               </div>
+                            </div>
+                            <div className="col-span-1 text-left flex flex-col justify-center h-full text-gray-600 gap-1 z-10">
+                              <h2 className="text-xl font-black text-indigo-950 truncate w-full text-left" title={storeSettings.storeName}>{storeSettings.storeName || 'نام مجموعه'}</h2>
+                              <p className="text-xs font-bold leading-relaxed w-full truncate text-left">تماس: {storeSettings.phone || 'ثبت نشده'}</p>
+                            </div>
+                        </div>
 
-                  {/* Standard Signature Block */}
-                  <div className="grid grid-cols-2 gap-4 pt-12 text-center text-xs font-bold text-gray-400">
-                    <div className="border border-dashed border-gray-200 p-8 rounded-xl h-32 flex flex-col justify-between">
-                      <span>مهر و امضای خریدار (تحویل گیرنده)</span>
-                      <span className="text-[10px] text-gray-300">تاریخ و محل امضاء</span>
+                        {/* Customer / Party details */}
+                        <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4 relative" style={{ zIndex: 10 }}>
+                          <div className="space-y-1 text-right">
+                            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block">مخاطب (خریدار)</span>
+                            <h3 className="text-lg font-black text-gray-900">{viewingInvoice.customerName}</h3>
+                            {viewingInvoice.customerPhone && <p className="text-sm text-gray-600 font-bold">تلفن: <span dir="ltr">{viewingInvoice.customerPhone}</span></p>}
+                          </div>
+                          <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
+                            {(() => {
+                              const originalPerson = persons.find(p => p.name === viewingInvoice.customerName || p.id === viewingInvoice.customerId);
+                              if (originalPerson) {
+                                return (
+                                  <div className="text-right space-y-1 bg-white p-3 border border-gray-100 rounded-xl inline-block w-full max-w-[280px]">
+                                    {originalPerson.nationalId && <p className="flex justify-between font-bold"><span>شناسه ملی:</span> <span className="text-gray-900">{originalPerson.nationalId}</span></p>}
+                                    {originalPerson.address && <p className="flex justify-between font-bold"><span>نشانی:</span> <span className="text-gray-900 truncate pr-4" title={originalPerson.address}>{originalPerson.address}</span></p>}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Table of Items */}
+                        <div className="overflow-hidden border border-gray-200 rounded-2xl relative" style={{ zIndex: 10 }}>
+                          <table className="w-full text-right border-collapse whitespace-nowrap min-w-[650px] text-xs font-sans font-bold">
+                            <thead>
+                              <tr className="bg-gray-100 border-b border-gray-200 text-gray-600">
+                                <th className="p-4 text-center w-12 font-black">ردیف</th>
+                                <th className="p-4 text-right font-black">شرح کالا یا خدمات</th>
+                                <th className="p-4 text-center w-24 font-black">مقدار</th>
+                                <th className="p-4 text-left w-36 font-black">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                <th className="p-4 text-center w-20 font-black">تخفیف (٪)</th>
+                                <th className="p-4 text-left w-40 font-black">کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 bg-white">
+                              {viewingInvoice.items?.map((item: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                  <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
+                                  <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
+                                  <td className="p-4 text-center text-gray-800 font-sans font-black bg-gray-50/50">
+                                     {formatNumber(item.quantity)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
+                                  </td>
+                                  <td className="p-4 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice)}</td>
+                                  <td className="p-4 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
+                                  <td className="p-4 text-left text-indigo-700 font-black font-sans bg-indigo-50/30">{formatCurrency(item.totalPrice)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Pricing summaries + Letters */}
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-2 relative" style={{ zIndex: 10 }}>
+                          <div className="w-full md:w-1/2 mt-4 md:mt-0">
+                            <div className="p-4 border border-indigo-100 bg-indigo-50/50 rounded-2xl">
+                              <span className="text-indigo-400 font-bold text-[10px] tracking-widest block uppercase mb-1">Total in Words</span>
+                              <p className="text-indigo-950 font-black text-sm leading-relaxed">
+                                {numToPersianWords(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Numerical summary */}
+                          <div className="w-full md:w-5/12 bg-gray-50 border border-gray-200 rounded-3xl p-5 text-sm font-bold text-gray-600 space-y-3">
+                            <div className="flex justify-between items-center text-gray-500">
+                              <span>جمع اقلام:</span>
+                              <span className="text-gray-900 font-sans font-bold">{formatCurrency(
+                                viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
+                              )}</span>
+                            </div>
+                            {viewingInvoice.overallDiscountPercent > 0 && (
+                              <div className="flex justify-between items-center text-red-600">
+                                <span>تخفیف روی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
+                                <span className="font-sans font-bold">{formatCurrency(
+                                  (viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100)
+                                )}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                              <span className="text-gray-900 text-base">مبلغ نهایی معامله:</span>
+                              <div className="text-left">
+                                <span className="text-indigo-700 font-sans font-black text-2xl px-2">{formatCurrency(viewingInvoice.totalAmount)}</span>
+                                <span className="text-xs text-indigo-500 font-normal">{showInvoiceCurrency(viewingInvoice.currency)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Standard Signature Block */}
+                        <div className="grid grid-cols-2 gap-6 pt-8 text-center text-xs font-bold text-gray-400 relative" style={{ zIndex: 10 }}>
+                          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
+                            <span className="text-gray-500">مهر و امضای خریدار</span>
+                            <span className="text-[10px] text-gray-400">تاریخ و رویت</span>
+                          </div>
+                          <div className="border border-indigo-200 bg-indigo-50/20 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
+                            <span className="text-indigo-900">مهر و امضای فروشنده ({storeSettings.storeName})</span>
+                            <span className="text-[10px] text-indigo-400">تضمین اعتبار</span>
+                          </div>
+                        </div>
                     </div>
-                    <div className="border border-dashed border-gray-200 p-8 rounded-xl h-32 flex flex-col justify-between">
-                      <span>مهر و امضای صادرکننده (فروشنده)</span>
-                      <span className="text-[10px] text-gray-300">فروشگاه مکتوب الکترونیک</span>
-                    </div>
-                  </div>
+                  )}
+                  {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING END --- */}
 
                 </div>
               </div>
@@ -8203,115 +8281,217 @@ export default function App() {
                   <span className="absolute left-6 top-6 no-print text-[10px] bg-amber-100 text-amber-850 font-black px-2.5 py-1 rounded-sm tracking-widest leading-none border border-amber-200">پیش‌نویس غیررسمی</span>
 
                   {/* Header info */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6 border-b border-gray-100 items-center">
-                    <div className="text-right space-y-1">
-                      <h2 className="text-lg font-black text-gray-900">{storeSettings.storeName || 'مجموعه تجاری پیش‌فرض'}</h2>
-                      <p className="text-xs text-gray-500 font-bold">تلفن: {storeSettings.phone || 'ثبت نشده'}</p>
-                      <p className="text-[10px] text-gray-400 leading-none">آدرس: {storeSettings.address || 'ثبت نشده'}</p>
-                    </div>
-
-                    <div className="text-center">
-                      <span className="text-base font-black tracking-tight border-2 border-amber-500 px-6 py-2 rounded-xl text-amber-900 bg-amber-50/50 inline-block">
-                        {previewInvoiceData.type === 'purchase' ? 'پیش‌نمایش فاکتور خرید' : 
-                         previewInvoiceData.type === 'warehouse_receipt' ? 'پیش‌نمایش رسید انبار (ورود)' :
-                         previewInvoiceData.type === 'warehouse_remittance' ? 'پیش‌نمایش حواله انبار (خروج)' :
-                         'پیش‌نمایش فاکتور فروش'}
-                      </span>
-                    </div>
-
-<div className="text-right grid grid-cols-1 gap-1.5 bg-amber-50/40 p-3 rounded-xl border border-amber-100 min-w-[200px]" dir="rtl">
-                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-amber-100/50 pb-1">
-                        <span className="font-bold">شماره موقت فاکتور:</span>
-                        <span className="font-sans font-black text-amber-950 text-xs">#{previewInvoiceData.invoiceNumber}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-500 border-b border-amber-100/50 pb-1">
-                        <span className="font-bold">تاریخ شمسی فاکتور:</span>
-                        <span className="text-amber-950 font-black font-sans">{previewInvoiceData.jalaliDate}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-500">
-                        <span className="font-bold">ارز معاملاتی:</span>
-                        <span className="text-amber-800 font-black bg-amber-100/70 px-2 py-0.5 rounded text-[10px]">{showInvoiceCurrency(previewInvoiceData.currency)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contact client details */}
-                  <div className="bg-amber-50/15 p-4 rounded-xl border border-amber-100 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1 text-right">
-                      <span className="text-xs text-amber-700 font-bold block">مخاطب فاکتور</span>
-                      <h3 className="text-sm font-extrabold text-gray-950">{previewInvoiceData.customerName}</h3>
-                      {previewInvoiceData.customerPhone && <p className="text-xs text-gray-500 font-bold">تلفن: {previewInvoiceData.customerPhone}</p>}
-                    </div>
-                    <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
-                      {previewInvoiceData.customerAddress && <p className="font-bold text-right text-gray-600 font-sans">نشانی طرف حساب: <span className="text-gray-950">{previewInvoiceData.customerAddress}</span></p>}
-                    </div>
-                  </div>
-
-                  {/* Items list */}
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
-                    <table className="w-full text-right border-collapse whitespace-nowrap text-xs font-sans font-bold">
-                      <thead>
-                        <tr className="bg-amber-50/40 border-b border-gray-200 text-amber-950 font-sans">
-                          <th className="p-3 text-center w-12">ردیف</th>
-                          <th className="p-3 text-right">عنوان کالا یا خدمات</th>
-                          <th className="p-3 text-center w-20">تعداد</th>
-                          <th className="p-3 text-center w-20">واحد</th>
-                          <th className="p-3 text-left w-32">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
-                          <th className="p-3 text-center w-20">تخفیف روی سطر</th>
-                          <th className="p-3 text-left w-36">جمع کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {previewInvoiceData.items?.map((item: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-slate-50/25">
-                            <td className="p-3 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
-                            <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName}</td>
-                            <td className="p-3 text-center text-gray-800 font-sans font-bold">
-                               {formatNumber(item.quantity || 1)}
-                            </td>
-                            <td className="p-3 text-center text-gray-600 font-sans">{item.selectedUnit || '-'}</td>
-                            <td className="p-3 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice || 0)}</td>
-                            <td className="p-3 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
-                            <td className="p-3 text-left text-indigo-600 font-extrabold font-sans">{formatCurrency(item.totalPrice || 0)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Subtotals & Arabic word count */}
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4 pt-4 border-t border-gray-150">
-                    <div className="w-full md:w-1/2">
-                      <div className="p-3.5 bg-amber-50/20 border border-amber-200/50 rounded-xl">
-                        <span className="text-amber-855 font-extrabold text-[11px] block">مبلغ به حروف:</span>
-                        <p className="text-gray-800 text-xs font-semibold mt-1 leading-relaxed">
-                          {numToPersianWords(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)} تمام.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Numeric summaries */}
-                    <div className="w-full md:w-1/2 space-y-1.5 text-xs font-bold text-gray-500">
-                      <div className="flex justify-between items-center px-4 py-1.5 bg-slate-50 rounded-lg">
-                        <span>جمع خطوط فاکتور:</span>
-                        <span className="text-gray-900 font-sans font-bold">{formatCurrency(
-                          previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
-                        )} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
-                      </div>
-                      {previewInvoiceData.overallDiscountPercent > 0 && (
-                        <div className="flex justify-between items-center px-4 py-1.5 bg-slate-50 text-red-600 rounded-lg">
-                          <span>تخفیف روی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
-                          <span className="font-sans font-bold">{formatCurrency(
-                            (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100)
-                          )} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                  {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
+                  {previewInvoiceData.type === 'purchase' ? (
+                     <div className="border-4 border-emerald-900 p-8 bg-emerald-50 shadow-sm print-fill rounded-none">
+                        <div className="flex justify-between items-start border-b-2 border-emerald-900 pb-6 mb-6">
+                           <div className="space-y-4">
+                               <div className="flex items-center gap-4">
+                                  <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">سند رسمی خرید کالا <span className="text-sm font-normal text-amber-600 bg-amber-100 px-2 py-0.5 ml-2">(پیش‌نویس)</span></h1>
+                                  <span className="bg-emerald-900 text-white font-mono px-3 py-1 text-sm rounded">#{previewInvoiceData.invoiceNumber}</span>
+                               </div>
+                               <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-emerald-900 font-bold">
+                                  <div>تاریخ خرید: <span className="font-sans text-emerald-700">{previewInvoiceData.jalaliDate}</span></div>
+                                  <div>ارز پایه: <span className="font-sans text-emerald-700 bg-emerald-200 px-1 py-0.5 inline-block">{showInvoiceCurrency(previewInvoiceData.currency)}</span></div>
+                               </div>
+                           </div>
+                           <div className="bg-white p-4 border border-emerald-200 rounded flex flex-col items-end min-w-[250px]">
+                               <span className="text-xs text-emerald-600 font-bold mb-1">صادر کننده مبدا (فروشنده کالا):</span>
+                               <h3 className="text-xl font-black text-emerald-900">{previewInvoiceData.customerName}</h3>
+                               {previewInvoiceData.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="ltr">{previewInvoiceData.customerPhone}</span></p>}
+                           </div>
                         </div>
-                      )}
-                      <div className="flex justify-between items-center px-4 py-3 bg-amber-50 text-slate-900 rounded-xl text-sm font-black border border-amber-100">
-                        <span>مبلغ موقت قابل تایید:</span>
-                        <span className="text-amber-800 font-sans font-black text-base">{formatCurrency(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
-                      </div>
+                        {/* Table */}
+                        <div className="bg-white border-2 border-emerald-900">
+                           <table className="w-full text-right text-sm">
+                             <thead className="bg-emerald-900 text-emerald-50">
+                               <tr>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-12">#</th>
+                                 <th className="p-3 border-l border-emerald-800">شرح کالا</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center">مقدار</th>
+                                 <th className="p-3 border-l border-emerald-800 text-left">فی ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center">تخفیف</th>
+                                 <th className="p-3 text-left">مبلغ ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                               </tr>
+                             </thead>
+                             <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold bg-white">
+                               {previewInvoiceData.items?.map((item: any, idx: number) => (
+                                 <tr key={idx} className="hover:bg-emerald-50">
+                                   <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
+                                   <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center font-sans">
+                                      {formatNumber(item.quantity || 1)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
+                                   </td>
+                                   <td className="p-3 border-l border-emerald-200 text-left font-sans">{formatCurrency(item.unitPrice || 0)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 text-left font-black font-sans">{formatCurrency(item.totalPrice || 0)}</td>
+                                 </tr>
+                               ))}
+                             </tbody>
+                           </table>
+                        </div>
+                        {/* Breakdown */}
+                        <div className="mt-6 flex justify-between items-end">
+                           <div className="w-1/2 p-4 border border-emerald-200 bg-emerald-100/50 space-y-2">
+                             <p className="text-emerald-800 font-bold text-xs leading-relaxed max-w-sm">
+                                این سند مربوط به خرید ثبت شده در <strong>{storeSettings.storeName || 'مجموعه تجاری پیش‌فرض'}</strong> می‌باشد و معادل ارزی آن در سیستم لحاظ شده است.
+                             </p>
+                             <div className="text-emerald-900 font-bold text-sm bg-emerald-200/50 p-2 border border-emerald-300">
+                                معادل حروفی: {numToPersianWords(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)}
+                             </div>
+                           </div>
+                           <div className="w-[45%] bg-white border-2 border-emerald-900 flex flex-col font-bold text-emerald-950">
+                             <div className="flex justify-between p-3 border-b border-emerald-200">
+                               <span>ارزش خالص اقلام:</span>
+                               <span className="font-sans">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                             </div>
+                             {previewInvoiceData.overallDiscountPercent > 0 && (
+                               <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
+                                 <span>تخفیف کلی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
+                                 <span className="font-sans">{formatCurrency((previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100))}</span>
+                               </div>
+                             )}
+                             <div className="flex justify-between p-4 bg-emerald-900 text-emerald-50 text-xl font-black">
+                               <span>مبلغ قابل پرداخت:</span>
+                               <span className="font-sans">{formatCurrency(previewInvoiceData.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(previewInvoiceData.currency)}</span></span>
+                             </div>
+                           </div>
+                        </div>
+                        {/* Signatures */}
+                        <div className="mt-12 flex justify-around text-emerald-900 font-bold text-sm">
+                            <div className="text-center w-1/3">صادر کننده: {previewInvoiceData.customerName}</div>
+                            <div className="text-center w-1/3">تایید کننده و انبار: {storeSettings.storeName || 'مجموعه ما'}</div>
+                        </div>
+                     </div>
+                  ) : (
+                    <div className="border border-gray-300 p-8 rounded-3xl bg-white shadow-xl space-y-8 print-fill relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-bl-[100px] absolute print-fill" style={{ zIndex: 0 }}></div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 items-center border-b pt-4 mb-2 mt-2 mx-2 relative" style={{ zIndex: 10 }}>
+                            <div className="col-span-1 flex flex-col h-full text-right z-10">
+                                <div className="space-y-1 font-bold font-sans text-xs">
+                                    <div className="flex items-center justify-between pb-1 text-gray-500">
+                                      <span>شماره فاکتور:</span>
+                                      <span className="text-amber-900 font-black text-sm">#{previewInvoiceData.invoiceNumber}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between pb-1 text-gray-500">
+                                      <span>تاریخ:</span>
+                                      <span className="text-gray-900">{previewInvoiceData.jalaliDate}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-gray-500">
+                                      <span>ارز:</span>
+                                      <span className="text-gray-900">{showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="col-span-1 flex items-center justify-center h-full">
+                               <div className="flex flex-col items-center">
+                                 <div className="text-center font-black text-3xl tracking-tighter text-amber-900 z-10">
+                                   {previewInvoiceData.type === 'warehouse_receipt' ? 'رسید ورود کالا' :
+                                    previewInvoiceData.type === 'warehouse_remittance' ? 'حواله خروج کالا' :
+                                    'فاکتور فروش'}
+                                 </div>
+                                 <span className="text-xs font-bold text-amber-600 mt-1 bg-amber-100 rounded px-2">پیش‌نمایش موقت</span>
+                               </div>
+                            </div>
+                            <div className="col-span-1 text-left flex flex-col justify-center h-full text-gray-600 gap-1 z-10">
+                              <h2 className="text-xl font-black text-amber-950 truncate w-full text-left" title={storeSettings.storeName}>{storeSettings.storeName || 'نام مجموعه'}</h2>
+                              <p className="text-xs font-bold leading-relaxed w-full truncate text-left">تماس: {storeSettings.phone || 'ثبت نشده'}</p>
+                            </div>
+                        </div>
+
+                        {/* Customer / Party details */}
+                        <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4 relative" style={{ zIndex: 10 }}>
+                          <div className="space-y-1 text-right">
+                            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block">مخاطب (خریدار)</span>
+                            <h3 className="text-lg font-black text-gray-900">{previewInvoiceData.customerName}</h3>
+                            {previewInvoiceData.customerPhone && <p className="text-sm text-gray-600 font-bold">تلفن: <span dir="ltr">{previewInvoiceData.customerPhone}</span></p>}
+                          </div>
+                          <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
+                            {previewInvoiceData.customerAddress && <p className="font-bold text-right text-gray-600 font-sans">نشانی نمادین: <span className="text-gray-950">{previewInvoiceData.customerAddress}</span></p>}
+                          </div>
+                        </div>
+
+                        {/* Table of Items */}
+                        <div className="overflow-hidden border border-gray-200 rounded-2xl relative" style={{ zIndex: 10 }}>
+                          <table className="w-full text-right border-collapse whitespace-nowrap min-w-[650px] text-xs font-sans font-bold">
+                            <thead>
+                              <tr className="bg-gray-100 border-b border-gray-200 text-gray-600">
+                                <th className="p-4 text-center w-12 font-black">ردیف</th>
+                                <th className="p-4 text-right font-black">شرح کالا یا خدمات</th>
+                                <th className="p-4 text-center w-24 font-black">مقدار</th>
+                                <th className="p-4 text-left w-36 font-black">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                <th className="p-4 text-center w-20 font-black">تخفیف (٪)</th>
+                                <th className="p-4 text-left w-40 font-black">کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 bg-white">
+                              {previewInvoiceData.items?.map((item: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                  <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
+                                  <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
+                                  <td className="p-4 text-center text-gray-800 font-sans font-black bg-gray-50/50">
+                                     {formatNumber(item.quantity || 1)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
+                                  </td>
+                                  <td className="p-4 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice || 0)}</td>
+                                  <td className="p-4 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
+                                  <td className="p-4 text-left text-amber-900 font-black font-sans bg-amber-50/30">{formatCurrency(item.totalPrice || 0)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Pricing summaries + Letters */}
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-2 relative" style={{ zIndex: 10 }}>
+                          <div className="w-full md:w-1/2 mt-4 md:mt-0">
+                            <div className="p-4 border border-amber-200 bg-amber-50/50 rounded-2xl">
+                              <span className="text-amber-600 font-bold text-[10px] tracking-widest block uppercase mb-1">Total in Words</span>
+                              <p className="text-amber-950 font-black text-sm leading-relaxed">
+                                {numToPersianWords(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Numerical summary */}
+                          <div className="w-full md:w-5/12 bg-gray-50 border border-gray-200 rounded-3xl p-5 text-sm font-bold text-gray-600 space-y-3">
+                            <div className="flex justify-between items-center text-gray-500">
+                              <span>جمع اقلام:</span>
+                              <span className="text-gray-900 font-sans font-bold">{formatCurrency(
+                                previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
+                              )}</span>
+                            </div>
+                            {previewInvoiceData.overallDiscountPercent > 0 && (
+                              <div className="flex justify-between items-center text-red-600">
+                                <span>تخفیف روی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
+                                <span className="font-sans font-bold">{formatCurrency(
+                                  (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100)
+                                )}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                              <span className="text-gray-900 text-base">مبلغ نهایی معامله:</span>
+                              <div className="text-left">
+                                <span className="text-amber-700 font-sans font-black text-2xl px-2">{formatCurrency(previewInvoiceData.totalAmount)}</span>
+                                <span className="text-xs text-amber-500 font-normal">{showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Standard Signature Block */}
+                        <div className="grid grid-cols-2 gap-6 pt-8 text-center text-xs font-bold text-gray-400 relative" style={{ zIndex: 10 }}>
+                          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
+                            <span className="text-gray-500">مهر و امضای خریدار</span>
+                            <span className="text-[10px] text-gray-400">تاریخ و رویت</span>
+                          </div>
+                          <div className="border border-amber-200 bg-amber-50/20 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
+                            <span className="text-amber-900">مهر و امضای فروشنده ({storeSettings.storeName})</span>
+                            <span className="text-[10px] text-amber-600">تضمین اعتبار</span>
+                          </div>
+                        </div>
                     </div>
-                  </div>
+                  )}
+                  {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING END --- */}
 
                 </div>
               </div>
