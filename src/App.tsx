@@ -1675,7 +1675,6 @@ export default function App() {
   const renderTabContent = () => {
     switch(activeTab) {
         case 'create_sale':
-        case 'create_purchase':
         case 'create_warehouse_receipt':
         case 'create_warehouse_remittance':
            return (
@@ -1895,6 +1894,228 @@ export default function App() {
                     <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
                       {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                       ثبت و بررسی فاکتور
+                    </button>
+                </div>
+              </div>
+            </motion.div>
+           );
+        case 'create_purchase':
+           return (
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
+              {successMsg && (
+                <div className="bg-emerald-50 text-emerald-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-emerald-100 font-bold shadow-sm">
+                  <CheckCircle className="w-5 h-5" />
+                  {successMsg}
+                </div>
+              )}
+
+              {/* Header Info */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-emerald-50">
+                <h2 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                  <span className="bg-emerald-100/50 p-2.5 rounded-xl text-emerald-600">
+                     <Plus className="w-6 h-6" />
+                  </span>
+                  {invoiceTitle}
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2">شماره فاکتور خرید</label>
+                    <div className="flex gap-2">
+                        <select value={invoiceMode} onChange={(e) => setInvoiceMode(e.target.value as 'auto' | 'manual')} className="p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30 text-sm font-bold text-emerald-900 outline-none">
+                          <option value="auto">تولید خودکار</option>
+                          <option value="manual">ورود دستی</option>
+                        </select>
+                        {invoiceMode === 'manual' && (
+                          <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-slate-800 outline-none bg-emerald-50/20" dir="ltr" placeholder="شماره فاکتور سیستم تامین..." />
+                        )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-emerald-500"/> تاریخ صدور فاکتور</label>
+                    <div className="relative">
+                      <DatePicker
+                          value={date}
+                          onChange={setDate}
+                          calendar={persian}
+                          locale={persian_fa}
+                          calendarPosition="bottom-right"
+                          inputClass="w-full pl-11 pr-4 p-3 bg-emerald-50/30 hover:bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white text-emerald-950 font-sans font-black text-center transition-all cursor-pointer outline-none text-sm"
+                          containerClassName="w-full"
+                      />
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-500">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><User className="w-4 h-4 text-emerald-500"/> تامین کننده (طرف حساب)</label>
+                    <div className="border border-emerald-100 rounded-xl bg-emerald-50/30 focus-within:ring-2 focus-within:ring-emerald-500 transition-colors">
+                      <SearchableSelect 
+                        options={persons.map(p => ({
+                          value: p.id,
+                          label: p.alias || p.name,
+                          subLabel: p.phone || undefined,
+                          badge: p.role === 'customer' ? 'مشتری' : p.role === 'employee' ? 'کارمند' : 'تامین کننده'
+                        }))}
+                        value={customerId}
+                        onChange={val => setCustomerId(val)}
+                        placeholder="-- جستجوی تامین کننده --"
+                        searchPlaceholder="جستجوی شخص یا شرکت..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+                <div className="p-5 bg-emerald-50/30 border-b border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام خریداری شده</h3>
+                    <div className="flex-1 w-full relative z-10 max-w-2xl">
+                      <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
+                        <SearchableSelect 
+                          options={products.map(p => ({
+                            value: p.id,
+                            label: p.name,
+                            subLabel: `موجودی فعلی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                            badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                          }))}
+                          value=""
+                          onChange={(val) => handleFastAddProduct(String(val))}
+                          placeholder="جستجو و افزودن سریع کالا به لیست خرید (نام، کد، بارکد)..."
+                          searchPlaceholder="جستجوی کالای خریداری شده..."
+                        />
+                      </div>
+                    </div>
+                    <button onClick={handleAddItem} className="px-5 py-3 bg-white border border-emerald-200 text-emerald-700 shadow-sm rounded-xl font-bold hover:bg-emerald-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-emerald-500">
+                      <Plus className="w-4 h-4" /> کالا / خدمات جدید
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                      <thead>
+                        <tr className="bg-white text-xs font-black text-slate-400 border-b border-emerald-50">
+                          <th className="p-5 w-12 text-center">ردیف</th>
+                          <th className="p-5 min-w-[200px]">شرح کالا / خدمات</th>
+                          <th className="p-5 w-28 text-center">مقدار / تعداد</th>
+                          <th className="p-5 w-36">فی خرید ({storeSettings.currency})</th>
+                          <th className="p-5 w-24 text-center">تخفیف %</th>
+                          <th className="p-5 w-36">مبلغ کل ({storeSettings.currency})</th>
+                          <th className="p-5 w-16 text-center">عملیات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-emerald-50/50">
+                        {items.map((item, index) => (
+                            <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors">
+                              <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
+                              <td className="p-5">
+                                  {item.productId ? (
+                                    <div className="font-black text-slate-800 flex flex-col gap-1">
+                                      <span>{item.productName}</span>
+                                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 self-start px-2 py-0.5 rounded-md">کالای سیستمی</span>
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      placeholder="شرح دلخواه وارد کنید..."
+                                      value={item.productName}
+                                      onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-slate-800 outline-none"
+                                    />
+                                  )}
+                              </td>
+                              <td className="p-5">
+                                  <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center font-black text-slate-800 outline-none" dir="ltr" />
+                              </td>
+                              <td className="p-5">
+                                  <input 
+                                    type="number" 
+                                    min="0" 
+                                    step="any" 
+                                    value={item.unitPrice} 
+                                    onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
+                                    className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-black text-emerald-900 text-sm outline-none" 
+                                    dir="ltr" 
+                                  />
+                                  {item.unitPrice && !isNaN(Number(item.unitPrice)) && Number(item.unitPrice) > 0 && (
+                                    <div className="mt-1.5 text-right">
+                                      <div className="text-[10px] text-emerald-600 font-black tracking-wide font-mono" dir="ltr">
+                                        {formatCurrency(Number(item.unitPrice))}
+                                      </div>
+                                    </div>
+                                  )}
+                              </td>
+                              <td className="p-5">
+                                  <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2.5 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center text-rose-600 font-black outline-none" dir="ltr" />
+                              </td>
+                              <td className="p-5 font-black text-left font-mono text-emerald-950" dir="ltr">
+                                  {formatCurrency(item.totalPrice)}
+                              </td>
+                              <td className="p-5 text-center">
+                                  <button onClick={() => handleRemoveItem(item.id)} className="p-2.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-colors outline-none focus:ring-2 focus:ring-rose-500">
+                                    <Trash2 className="w-5 h-5"/>
+                                  </button>
+                              </td>
+                            </tr>
+                        ))}
+                        {items.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="p-16 text-center">
+                                <div className="flex flex-col items-center justify-center gap-4 text-emerald-600/50">
+                                  <div className="bg-emerald-50 p-6 rounded-full border-2 border-emerald-100/50">
+                                    <Package className="w-12 h-12" />
+                                  </div>
+                                  <p className="font-extrabold text-lg text-slate-700">سبد خرید خالی است</p>
+                                  <p className="text-sm font-bold text-slate-400">یک کالا از نوار جستجو انتخاب کنید یا سطر جدید بسازید.</p>
+                                </div>
+                              </td>
+                            </tr>
+                        )}
+                      </tbody>
+                    </table>
+                </div>
+              </div>
+
+              {/* Totals & Submit */}
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+                <div className="p-8">
+                  <div className="flex flex-col lg:flex-row justify-between gap-10">
+                      <div className="flex-1 space-y-4">
+                        <div>
+                            <label className="block text-sm font-black text-slate-700 mb-3 ml-1">تخفیف روی کل فاکتور (%)</label>
+                            <input type="number" min="0" max="100" value={overallDiscountPercent} onChange={(e) => setOverallDiscountPercent(Number(e.target.value))} className="w-48 p-3.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-rose-600 outline-none" dir="ltr" />
+                            <p className="mt-2 text-xs font-bold text-slate-400 font-sans">این تخفیف روی مبلغ نهایی پس از کسر تخفیف‌های سطری اعمال می‌شود.</p>
+                        </div>
+                      </div>
+                      <div className="w-full lg:w-[420px] space-y-1">
+                        <div className="bg-emerald-50/40 p-6 rounded-2xl border border-emerald-100/50 space-y-4">
+                          <div className="flex justify-between items-center text-slate-500 font-bold">
+                            <span>جمع مبالغ:</span>
+                            <span className="font-mono font-black text-slate-700" dir="ltr">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{storeSettings.currency}</span></span>
+                          </div>
+                          <div className="flex justify-between items-center text-rose-500 font-bold">
+                            <span>تخفیف کلی:</span>
+                            <span className="font-mono font-black" dir="ltr">% {overallDiscountPercent}</span>
+                          </div>
+                          <div className="h-px bg-emerald-100/60 w-full my-5"></div>
+                          <div className="flex justify-between items-center text-xl font-black text-emerald-800">
+                            <span>مبلغ نهایی خرید:</span>
+                            <span className="font-mono text-2xl text-emerald-950" dir="ltr">{formatCurrency(calculateFinalTotal())} <span className="text-xs">{storeSettings.currency}</span></span>
+                          </div>
+                          {calculateFinalTotal() > 0 && (
+                            <div className="mt-4 pt-4 border-t border-dashed border-emerald-200 text-right leading-relaxed text-xs font-bold text-emerald-700">
+                              <span className="text-emerald-900 font-black">{numToPersianWords(calculateFinalTotal())} {storeSettings.currency}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                  </div>
+                </div>
+                <div className="p-6 bg-emerald-50/20 border-t border-emerald-100 flex justify-end gap-3">
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20">
+                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
+                      ثبت نهایی خرید
                     </button>
                 </div>
               </div>
