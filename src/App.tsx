@@ -96,7 +96,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_receipt' | 'list_warehouse_receipt' | 'create_warehouse_remittance' | 'list_warehouse_remittance' | 'products' | 'product_categories' | 'persons' | 'person_groups' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('create_sale');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_receipt' | 'list_warehouse_receipt' | 'create_warehouse_remittance' | 'list_warehouse_remittance' | 'products' | 'product_categories' | 'persons' | 'person_groups' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -1441,12 +1441,13 @@ export default function App() {
             if (field === 'isSecondaryUnit' && updatedItem.productId) {
               const product = products.find(p => p.id === Number(updatedItem.productId));
               if (product) {
-                const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
-                const basePrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
-                const convertedPrice = exchangeRate > 0 ? (basePrice / exchangeRate) : basePrice;
-                
                 const ratio = product.unitRatio || 1;
-                updatedItem.unitPrice = isSec ? Number((convertedPrice * ratio).toFixed(4)) : Number(convertedPrice.toFixed(4));
+                const prevSec = Boolean(item.isSecondaryUnit);
+                if (prevSec === false && isSec === true) {
+                  updatedItem.unitPrice = Number((Number(item.unitPrice) * ratio).toFixed(4));
+                } else if (prevSec === true && isSec === false) {
+                  updatedItem.unitPrice = Number((Number(item.unitPrice) / ratio).toFixed(4));
+                }
                 updatedItem.selectedUnit = isSec ? (product.secondaryUnit || '') : (product.unit || '');
               }
             }
