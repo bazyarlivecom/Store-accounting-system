@@ -1855,10 +1855,11 @@ export default function App() {
                           <th className="p-4 font-bold w-12 text-center">ردیف</th>
                           <th className="p-4 font-bold min-w-[200px]">شرح کالا / خدمات</th>
                           <th className="p-4 font-bold w-24">تعداد</th>
-                          <th className="p-4 font-bold w-32">فی ({invoiceCurrency})</th>
-                          <th className="p-4 font-bold w-24">تخفیف %</th>
-                          <th className="p-4 font-bold w-32">مبلغ کل ({invoiceCurrency})</th>
-                          <th className="p-4 font-bold w-16 text-center">حذف</th>
+                          <th className="p-4 font-bold w-32 text-center border-r border-gray-100">واحد</th>
+                          <th className="p-4 font-bold w-32 border-r border-gray-100">فی ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold w-24 border-r border-gray-100">تخفیف %</th>
+                          <th className="p-4 font-bold w-32 border-r border-gray-100">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold w-16 text-center border-r border-gray-100">حذف</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
@@ -1882,20 +1883,30 @@ export default function App() {
                                   )}
                               </td>
                               <td className="p-4">
+                                  <div className="flex flex-col gap-1.5">
+                                    <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" dir="ltr" />
+                                  </div>
+                              </td>
+                              <td className="p-4 text-center">
                                   {(() => {
                                     const product = item.productId ? products.find((p) => p.id === Number(item.productId)) : null;
                                     const hasSecondary = product?.secondaryUnit;
                                     return (
                                       <div className="flex flex-col gap-1.5">
-                                        <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" dir="ltr" />
                                         {hasSecondary ? (
-                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-1 text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg outline-none cursor-pointer">
+                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-2 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-slate-400">
                                             <option value="false">{product.unit} (اصلی)</option>
                                             <option value="true">{product.secondaryUnit} (فرعی)</option>
                                           </select>
                                         ) : product?.unit ? (
-                                          <span className="text-[10px] text-center text-slate-400 font-bold">{product.unit}</span>
-                                        ) : null}
+                                          <div className="w-full p-2 text-center text-slate-600 font-bold bg-slate-50 border border-slate-100 rounded-xl text-sm shadow-sm">
+                                            {product.unit}
+                                          </div>
+                                        ) : (
+                                          <div className="w-full p-2 text-center text-slate-400 font-bold bg-slate-50 border border-slate-100 rounded-xl text-sm">
+                                            -
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })()}
@@ -2087,11 +2098,12 @@ export default function App() {
                         <tr className="bg-white text-xs font-black text-slate-400 border-b border-emerald-50">
                           <th className="p-5 w-12 text-center">ردیف</th>
                           <th className="p-5 min-w-[200px]">شرح کالا / خدمات</th>
-                          <th className="p-5 w-28 text-center">مقدار / تعداد</th>
-                          <th className="p-5 w-36">فی خرید ({storeSettings.currency})</th>
-                          <th className="p-5 w-24 text-center">تخفیف %</th>
-                          <th className="p-5 w-36">مبلغ کل ({storeSettings.currency})</th>
-                          <th className="p-5 w-16 text-center">عملیات</th>
+                          <th className="p-5 w-28 text-center border-r border-emerald-50/50">تعداد</th>
+                          <th className="p-5 w-24 text-center border-r border-emerald-50/50">واحد</th>
+                          <th className="p-5 w-36 border-r border-emerald-50/50">فی خرید ({storeSettings.currency})</th>
+                          <th className="p-5 w-24 text-center border-r border-emerald-50/50">تخفیف %</th>
+                          <th className="p-5 w-36 border-r border-emerald-50/50">مبلغ کل ({storeSettings.currency})</th>
+                          <th className="p-5 w-16 text-center border-r border-emerald-50/50">عملیات</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-emerald-50/50">
@@ -2115,20 +2127,30 @@ export default function App() {
                                   )}
                               </td>
                               <td className="p-5">
+                                  <div className="flex flex-col gap-1.5">
+                                    <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center font-black text-slate-800 outline-none" dir="ltr" />
+                                  </div>
+                              </td>
+                              <td className="p-5">
                                   {(() => {
                                     const product = item.productId ? products.find((p) => p.id === Number(item.productId)) : null;
                                     const hasSecondary = product?.secondaryUnit;
                                     return (
                                       <div className="flex flex-col gap-1.5">
-                                        <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center font-black text-slate-800 outline-none" dir="ltr" />
                                         {hasSecondary ? (
-                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-1 text-[11px] font-bold text-emerald-800 bg-white border border-emerald-100 rounded-lg outline-none cursor-pointer">
+                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-2 text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-emerald-400">
                                             <option value="false">{product.unit} (اصلی)</option>
                                             <option value="true">{product.secondaryUnit} (فرعی)</option>
                                           </select>
                                         ) : product?.unit ? (
-                                          <span className="text-[10px] text-center text-emerald-600/50 font-bold">{product.unit}</span>
-                                        ) : null}
+                                          <div className="w-full p-2 text-center text-emerald-700 font-bold bg-emerald-50/50 border border-emerald-100 rounded-xl text-sm shadow-sm">
+                                            {product.unit}
+                                          </div>
+                                        ) : (
+                                          <div className="w-full p-2 text-center text-emerald-600/50 font-bold bg-emerald-50/30 border border-emerald-100/50 rounded-xl text-sm">
+                                            -
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })()}
