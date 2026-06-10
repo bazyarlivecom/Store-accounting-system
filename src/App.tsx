@@ -5502,7 +5502,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-3xl max-h-[95vh] flex flex-col"
+              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-3xl max-h-[95vh] flex flex-col print-section print:max-h-none print:h-auto print:overflow-visible print:border-none print:shadow-none print:rounded-none"
               id="printable-payslip-area"
             >
               {/* Header */}
@@ -5521,7 +5521,7 @@ export default function App() {
               </div>
 
               {/* Printable Body */}
-              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm">
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm print:overflow-visible print:p-0">
                 
                 {/* Official Slip Header */}
                 <div className="border-4 border-double border-gray-300 p-5 rounded-2xl bg-gray-50/20 shadow-inner flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -7854,7 +7854,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-4xl max-h-[95vh] flex flex-col print-fill"
+              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-4xl max-h-[95vh] flex flex-col print-section print:max-h-none print:h-auto print:overflow-visible print:border-none print:shadow-none print:rounded-none"
             >
               {/* Header (No print) */}
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 no-print">
@@ -7884,14 +7884,14 @@ export default function App() {
               </div>
 
               {/* Printable Area */}
-              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm print-fill">
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm print:overflow-visible print:p-0">
                 {/* Print Layout */}
-                <div className="border-2 border-gray-300 p-6 rounded-2xl bg-white shadow-xs space-y-6 print-fill">
+                <div className="border-2 border-gray-300 p-6 rounded-2xl bg-white shadow-xs space-y-6 print:border-none print:shadow-none print:p-0">
                   
                   {/* Visual Header */}
                   {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
                   {viewingInvoice.type === 'purchase' ? (
-                     <div className="border-4 border-emerald-900 p-8 bg-emerald-50 shadow-sm print-fill rounded-none">
+                     <div className="border-4 border-emerald-900 p-8 bg-emerald-50 shadow-sm rounded-none print:border-4 print:border-emerald-900 print:shadow-none">
                         <div className="flex justify-between items-start border-b-2 border-emerald-900 pb-6 mb-6">
                            <div className="space-y-4">
                                <div className="flex items-center gap-4">
@@ -7972,8 +7972,8 @@ export default function App() {
                         </div>
                      </div>
                   ) : (
-                    <div className="border border-gray-300 p-8 rounded-3xl bg-white shadow-xl space-y-8 print-fill relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[100px] absolute print-fill" style={{ zIndex: 0 }}></div>
+                    <div className="border border-gray-300 p-8 rounded-3xl bg-white shadow-xl space-y-8 relative overflow-hidden print:border-2 print:border-gray-800 print:shadow-none">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[100px] absolute" style={{ zIndex: 0 }}></div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 items-center border-b pt-4 mb-2 mt-2 mx-2 relative" style={{ zIndex: 10 }}>
                             <div className="col-span-1 flex flex-col h-full text-right z-10">
                                 <div className="space-y-1 font-bold font-sans text-xs">
@@ -8251,7 +8251,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-4xl max-h-[95vh] flex flex-col"
+              className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden w-full max-w-4xl max-h-[95vh] flex flex-col print-section print:max-h-none print:h-auto print:overflow-visible print:border-none print:shadow-none print:rounded-none"
             >
               {/* Header (No print) */}
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 no-print">
@@ -8272,10 +8272,10 @@ export default function App() {
               </div>
 
               {/* Printable Body */}
-              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm">
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm print:overflow-visible print:p-0">
                 
                 {/* Visual A4 structure inside dialog */}
-                <div className="border-2 border-indigo-400/50 p-6 rounded-2xl bg-white shadow-xs space-y-6 relative border-dashed">
+                <div className="border-2 border-indigo-400/50 p-6 rounded-2xl bg-white shadow-xs space-y-6 relative border-dashed print:border-none print:shadow-none print:p-0">
                   
                   {/* Top draft watermark */}
                   <span className="absolute left-6 top-6 no-print text-[10px] bg-amber-100 text-amber-850 font-black px-2.5 py-1 rounded-sm tracking-widest leading-none border border-amber-200">پیش‌نویس غیررسمی</span>
@@ -8283,7 +8283,7 @@ export default function App() {
                   {/* Header info */}
                   {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
                   {previewInvoiceData.type === 'purchase' ? (
-                     <div className="border-4 border-emerald-900 p-8 bg-emerald-50 shadow-sm print-fill rounded-none">
+                     <div className="border-4 border-emerald-900 p-8 bg-emerald-50 shadow-sm rounded-none print:border-4 print:border-emerald-900 print:shadow-none">
                         <div className="flex justify-between items-start border-b-2 border-emerald-900 pb-6 mb-6">
                            <div className="space-y-4">
                                <div className="flex items-center gap-4">
@@ -8364,8 +8364,8 @@ export default function App() {
                         </div>
                      </div>
                   ) : (
-                    <div className="border border-gray-300 p-8 rounded-3xl bg-white shadow-xl space-y-8 print-fill relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-bl-[100px] absolute print-fill" style={{ zIndex: 0 }}></div>
+                    <div className="border border-gray-300 p-8 rounded-3xl bg-white shadow-xl space-y-8 relative overflow-hidden print:border-2 print:border-gray-800 print:shadow-none">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-bl-[100px] absolute" style={{ zIndex: 0 }}></div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 items-center border-b pt-4 mb-2 mt-2 mx-2 relative" style={{ zIndex: 10 }}>
                             <div className="col-span-1 flex flex-col h-full text-right z-10">
                                 <div className="space-y-1 font-bold font-sans text-xs">
@@ -8568,7 +8568,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-lg flex flex-col print:shadow-none print:border-none print:w-full print:max-w-none"
+              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-lg flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none"
             >
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 print:hidden">
                 <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
