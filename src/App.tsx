@@ -1596,7 +1596,7 @@ export default function App() {
 
   const submitInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerId || items.length === 0 || items.some(i => i.productId === '')) {
+    if (!customerId || items.length === 0 || items.some(i => !i.productId && !i.productName)) {
       customAlert('لطفاً همه فیلدهای ضروری را پر کنید.');
       return;
     }
@@ -1604,7 +1604,7 @@ export default function App() {
   };
 
   const handleInvoicePreviewTrigger = () => {
-    if (!customerId || items.length === 0 || items.some(i => i.productId === '')) {
+    if (!customerId || items.length === 0 || items.some(i => !i.productId && !i.productName)) {
       customAlert('لطفاً همه فیلدهای ضروری را پر کنید.');
       return;
     }
@@ -1966,14 +1966,18 @@ export default function App() {
                                             <option value="false">{product.unit} (اصلی)</option>
                                             <option value="true">{product.secondaryUnit} (فرعی)</option>
                                           </select>
-                                        ) : product?.unit ? (
+                                        ) : product ? (
                                           <div className="w-full p-2 text-center text-slate-600 font-bold bg-slate-50 border border-slate-100 rounded-xl text-sm shadow-sm">
-                                            {product.unit}
+                                            {product.unit || '-'}
                                           </div>
                                         ) : (
-                                          <div className="w-full p-2 text-center text-slate-400 font-bold bg-slate-50 border border-slate-100 rounded-xl text-sm">
-                                            -
-                                          </div>
+                                          <input
+                                            type="text"
+                                            value={item.selectedUnit || ''}
+                                            onChange={(e) => handleItemChange(item.id, 'selectedUnit', e.target.value)}
+                                            placeholder="واحد..."
+                                            className="w-full p-2 text-center text-slate-700 font-bold bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                          />
                                         )}
                                       </div>
                                     );
@@ -2210,14 +2214,18 @@ export default function App() {
                                             <option value="false">{product.unit} (اصلی)</option>
                                             <option value="true">{product.secondaryUnit} (فرعی)</option>
                                           </select>
-                                        ) : product?.unit ? (
+                                        ) : product ? (
                                           <div className="w-full p-2 text-center text-emerald-700 font-bold bg-emerald-50/50 border border-emerald-100 rounded-xl text-sm shadow-sm">
-                                            {product.unit}
+                                            {product.unit || '-'}
                                           </div>
                                         ) : (
-                                          <div className="w-full p-2 text-center text-emerald-600/50 font-bold bg-emerald-50/30 border border-emerald-100/50 rounded-xl text-sm">
-                                            -
-                                          </div>
+                                          <input
+                                            type="text"
+                                            value={item.selectedUnit || ''}
+                                            onChange={(e) => handleItemChange(item.id, 'selectedUnit', e.target.value)}
+                                            placeholder="واحد..."
+                                            className="w-full p-2 text-center text-emerald-800 font-bold bg-white border border-emerald-200/50 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                          />
                                         )}
                                       </div>
                                     );
@@ -7952,6 +7960,7 @@ export default function App() {
                           <th className="p-3 text-center w-12">ردیف</th>
                           <th className="p-3 text-right">شرح کالا یا خدمات</th>
                           <th className="p-3 text-center w-20">تعداد</th>
+                          <th className="p-3 text-center w-20">واحد</th>
                           <th className="p-3 text-left w-32">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
                           <th className="p-3 text-center w-20">تخفیف (٪)</th>
                           <th className="p-3 text-left w-36">جمع کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
@@ -7964,8 +7973,8 @@ export default function App() {
                             <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
                             <td className="p-3 text-center text-gray-800 font-mono">
                                {formatNumber(item.quantity)}
-                               {item.selectedUnit && <span className="mr-1 text-[10px] text-gray-500 font-sans">{item.selectedUnit}</span>}
                             </td>
+                            <td className="p-3 text-center text-gray-600 font-sans">{item.selectedUnit || '-'}</td>
                             <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice)}</td>
                             <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
                             <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice)}</td>
@@ -8246,6 +8255,7 @@ export default function App() {
                           <th className="p-3 text-center w-12">ردیف</th>
                           <th className="p-3 text-right">عنوان کالا یا خدمات</th>
                           <th className="p-3 text-center w-20">تعداد</th>
+                          <th className="p-3 text-center w-20">واحد</th>
                           <th className="p-3 text-left w-32">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
                           <th className="p-3 text-center w-20">تخفیف روی سطر</th>
                           <th className="p-3 text-left w-36">جمع کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
@@ -8258,8 +8268,8 @@ export default function App() {
                             <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName}</td>
                             <td className="p-3 text-center text-gray-800 font-mono">
                                {formatNumber(item.quantity || 1)}
-                               {item.selectedUnit && <span className="mr-1 text-[10px] text-gray-500 font-sans">{item.selectedUnit}</span>}
                             </td>
+                            <td className="p-3 text-center text-gray-600 font-sans">{item.selectedUnit || '-'}</td>
                             <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice || 0)}</td>
                             <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
                             <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice || 0)}</td>
