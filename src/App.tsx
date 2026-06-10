@@ -1320,6 +1320,41 @@ export default function App() {
     setItems(items.filter((item) => item.id !== id));
   };
 
+  const handleFastAddProduct = (productIdStr: string) => {
+    if (!productIdStr) return;
+    const product = products.find(p => p.id.toString() === productIdStr);
+    if (!product) return;
+
+    const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
+    const pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
+    const convertedPrice = exchangeRate > 0 ? (pPrice / exchangeRate) : pPrice;
+    const unitPriceRounded = Number(convertedPrice.toFixed(4));
+
+    setItems(currentItems => {
+      // Check if it exists
+      const existingItemIndex = currentItems.findIndex(i => i.productId?.toString() === productIdStr);
+      if (existingItemIndex > -1) {
+         const newItems = [...currentItems];
+         newItems[existingItemIndex].quantity = Number(newItems[existingItemIndex].quantity || 0) + 1;
+         newItems[existingItemIndex].totalPrice = Math.max(0, (newItems[existingItemIndex].quantity * newItems[existingItemIndex].unitPrice) * (1 - (newItems[existingItemIndex].discountPercent / 100)));
+         return newItems;
+      } else {
+         return [
+           ...currentItems,
+           {
+             id: generateId(),
+             productId: productIdStr,
+             productName: product.name,
+             quantity: 1,
+             unitPrice: unitPriceRounded,
+             discountPercent: 0,
+             totalPrice: unitPriceRounded
+           }
+         ];
+      }
+    });
+  };
+
   const handleItemChange = (id: string, field: keyof InvoiceItem, value: any) => {
     setItems(
       items.map((item) => {
@@ -1681,7 +1716,7 @@ export default function App() {
                           calendar={persian}
                           locale={persian_fa}
                           calendarPosition="bottom-right"
-                          inputClass="w-full pl-11 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-base md:text-lg"
+                          inputClass="w-full pl-11 pr-4 p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-sm"
                           containerClassName="w-full"
                       />
                       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
@@ -1721,16 +1756,30 @@ export default function App() {
 
               {/* Items List */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-indigo-600"/> {activeTab.includes('warehouse') ? 'اقلام سند (کالاها)' : 'اقلام فاکتور'}</h3>
-                    <button onClick={handleAddItem} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 flex items-center gap-2 transition-colors">
-                      <Plus className="w-4 h-4" /> افزودن سطر
+                <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> {activeTab.includes('warehouse') ? 'اقلام سند (کالاها)' : 'اقلام فاکتور'}</h3>
+                    <div className="flex-1 w-full relative z-10 max-w-2xl">
+                      <SearchableSelect 
+                        options={products.map(p => ({
+                          value: p.id,
+                          label: p.name,
+                          subLabel: `موجودی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                          badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                        }))}
+                        value=""
+                        onChange={(val) => handleFastAddProduct(String(val))}
+                        placeholder="🔎 جستجو و افزودن سریع کالا به لیست (نام، کد، بارکد)..."
+                        searchPlaceholder="جستجوی کالا..."
+                      />
+                    </div>
+                    <button onClick={handleAddItem} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-xl font-bold hover:bg-gray-100 flex items-center gap-2 transition-colors whitespace-nowrap">
+                      <Plus className="w-4 h-4" /> سطر دلخواه
                     </button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-right">
                       <thead>
-                        <tr className="bg-gray-50/50 text-sm text-gray-500 border-b border-gray-100">
+                        <tr className="bg-white text-sm text-gray-500 border-b border-gray-100">
                           <th className="p-4 font-bold w-12 text-center">ردیف</th>
                           <th className="p-4 font-bold min-w-[200px]">شرح کالا / خدمات</th>
                           <th className="p-4 font-bold w-24">تعداد</th>
@@ -1742,33 +1791,26 @@ export default function App() {
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {items.map((item, index) => (
-                            <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                            <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                               <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
                               <td className="p-4">
-                                  <div className="mb-2">
-                                    <SearchableSelect 
-                                      options={products.map(p => ({
-                                        value: p.id,
-                                        label: p.name,
-                                        subLabel: `موجودی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
-                                        badge: p.type === 'service' ? 'خدمات' : 'کالا'
-                                      }))}
-                                      value={item.productId}
-                                      onChange={(val) => handleItemChange(item.id, 'productId', String(val))}
-                                      placeholder="انتخاب از لیست..."
-                                      searchPlaceholder="جستجوی کالا (نام، بارکد)..."
+                                  {item.productId ? (
+                                    <div className="font-extrabold text-slate-800 flex flex-col gap-1">
+                                      <span>{item.productName}</span>
+                                      <span className="text-xs text-slate-400 font-normal">کالا از سیستم انتخاب شده</span>
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      placeholder="نام کالا / خدمات دلخواه..."
+                                      value={item.productName}
+                                      onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
                                     />
-                                  </div>
-                                  <input
-                                    type="text"
-                                    placeholder="یا نام کالا را تایپ کنید..."
-                                    value={item.productName}
-                                    onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
-                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
-                                  />
+                                  )}
                               </td>
                               <td className="p-4">
-                                  <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center" dir="ltr" />
+                                  <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" dir="ltr" />
                               </td>
                               <td className="p-4">
                                   <input 
@@ -1777,7 +1819,7 @@ export default function App() {
                                     step="any" 
                                     value={item.unitPrice} 
                                     onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
-                                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950 text-sm md:text-base" 
+                                    className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950 text-sm" 
                                     dir="ltr" 
                                   />
                                   {item.unitPrice && !isNaN(Number(item.unitPrice)) && Number(item.unitPrice) > 0 && (
@@ -1785,14 +1827,11 @@ export default function App() {
                                       <div className="text-[10px] text-indigo-700 font-black tracking-wide font-mono" dir="ltr">
                                         {formatCurrency(Number(item.unitPrice))} {invoiceCurrency}
                                       </div>
-                                      <div className="text-[9px] text-amber-800 font-bold max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap block" title={numToPersianWords(Number(item.unitPrice))}>
-                                        {numToPersianWords(Number(item.unitPrice))}
-                                      </div>
                                     </div>
                                   )}
                               </td>
                               <td className="p-4">
-                                  <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600" dir="ltr" />
+                                  <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600 font-bold" dir="ltr" />
                               </td>
                               <td className="p-4 font-bold text-left font-mono" dir="ltr">
                                   {formatCurrency(item.totalPrice)}
@@ -1806,7 +1845,13 @@ export default function App() {
                         ))}
                         {items.length === 0 && (
                             <tr>
-                              <td colSpan={7} className="p-8 text-center text-gray-400 font-medium">هیچ قلمی به فاکتور اضافه نشده است.</td>
+                              <td colSpan={7} className="p-12 text-center">
+                                <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
+                                  <Package className="w-12 h-12 opacity-50" />
+                                  <p className="font-bold">کالایی به فاکتور اضافه نشده است.</p>
+                                  <p className="text-sm">از نوار جستجوی بالا برای افزودن سریع محصولات استفاده کنید.</p>
+                                </div>
+                              </td>
                             </tr>
                         )}
                       </tbody>
