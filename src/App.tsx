@@ -1342,8 +1342,8 @@ export default function App() {
          return [
            ...currentItems,
            {
-             id: generateId(),
-             productId: productIdStr,
+             id: Math.random().toString(36).substring(2, 9),
+             productId: Number(productIdStr),
              productName: product.name,
              quantity: 1,
              unitPrice: unitPriceRounded,
