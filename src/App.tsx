@@ -2361,16 +2361,16 @@ export default function App() {
                            i.type === 'warehouse_remittance'
                          ).map(inv => (
                            <tr key={inv.id} className="hover:bg-gray-50">
-                             <td className="p-4 font-mono font-bold text-gray-700">{inv.invoiceNumber}</td>
+                             <td className="p-4 font-sans font-bold text-gray-700">#{inv.invoiceNumber}</td>
                              <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
                              <td className="p-4">
                                 <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
                                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                                  <span className="font-mono tracking-tight">{inv.jalaliDate}</span>
+                                  <span className="font-sans font-bold tracking-tight">{inv.jalaliDate}</span>
                                 </div>
                               </td>
                              <td className="p-4">
-                                <span className="font-mono font-black text-xs text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
+                                <span className="font-sans font-black text-sm text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
                                   {formatCurrency(inv.totalAmount || 0)} <span className="text-[10px] text-indigo-600 font-extrabold mr-1">{inv.currency || storeSettings.currency}</span>
                                 </span>
                               </td>
@@ -7911,7 +7911,7 @@ export default function App() {
                     <div className="text-right grid grid-cols-1 gap-1.5 bg-slate-50/80 p-3 rounded-xl border border-gray-150/50 min-w-[200px]" dir="rtl">
                       <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
                         <span className="font-bold">شماره فاکتور:</span>
-                        <span className="font-mono font-black text-indigo-950 text-xs">#{viewingInvoice.invoiceNumber}</span>
+                        <span className="font-sans font-black text-indigo-950 text-xs">#{viewingInvoice.invoiceNumber}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs text-gray-500 border-b border-gray-100 pb-1">
                         <span className="font-bold">تاریخ صدور شمسی:</span>
@@ -7969,15 +7969,15 @@ export default function App() {
                       <tbody className="divide-y divide-gray-100">
                         {viewingInvoice.items?.map((item: any, idx: number) => (
                           <tr key={idx} className="hover:bg-slate-50/20">
-                            <td className="p-3 text-center text-gray-400 font-mono">{idx + 1}</td>
+                            <td className="p-3 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                             <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
-                            <td className="p-3 text-center text-gray-800 font-mono">
+                            <td className="p-3 text-center text-gray-800 font-sans font-bold">
                                {formatNumber(item.quantity)}
                             </td>
                             <td className="p-3 text-center text-gray-600 font-sans">{item.selectedUnit || '-'}</td>
-                            <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice)}</td>
-                            <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
-                            <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice)}</td>
+                            <td className="p-3 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice)}</td>
+                            <td className="p-3 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
+                            <td className="p-3 text-left text-indigo-600 font-extrabold font-sans">{formatCurrency(item.totalPrice)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -8000,21 +8000,21 @@ export default function App() {
                     <div className="w-full md:w-1/2 space-y-2 text-xs font-bold text-gray-500">
                       <div className="flex justify-between items-center px-4 py-2 bg-slate-50 rounded-lg">
                         <span>جمع کل خالص فاکتور:</span>
-                        <span className="text-gray-900 font-mono">{formatCurrency(
+                        <span className="text-gray-900 font-sans font-bold">{formatCurrency(
                           viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
                         )} {showInvoiceCurrency(viewingInvoice.currency)}</span>
                       </div>
                       {viewingInvoice.overallDiscountPercent > 0 && (
                         <div className="flex justify-between items-center px-4 py-2 bg-red-50 text-red-700 rounded-lg">
                           <span>تخفیف روی جمع کل ({viewingInvoice.overallDiscountPercent}٪):</span>
-                          <span className="font-mono">{formatCurrency(
+                          <span className="font-sans font-bold">{formatCurrency(
                             (viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100)
                           )} {showInvoiceCurrency(viewingInvoice.currency)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center px-4 py-3 bg-indigo-50 text-indigo-950 rounded-xl text-sm font-black border border-indigo-100">
                         <span>مبلغ نهایی قابل پرداخت:</span>
-                        <span className="text-indigo-700 font-mono text-base">{formatCurrency(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}</span>
+                        <span className="text-indigo-700 font-sans font-black text-base">{formatCurrency(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}</span>
                       </div>
                     </div>
                   </div>
@@ -8222,7 +8222,7 @@ export default function App() {
 <div className="text-right grid grid-cols-1 gap-1.5 bg-amber-50/40 p-3 rounded-xl border border-amber-100 min-w-[200px]" dir="rtl">
                       <div className="flex justify-between items-center text-xs text-gray-500 border-b border-amber-100/50 pb-1">
                         <span className="font-bold">شماره موقت فاکتور:</span>
-                        <span className="font-mono font-black text-amber-950 text-xs">#{previewInvoiceData.invoiceNumber}</span>
+                        <span className="font-sans font-black text-amber-950 text-xs">#{previewInvoiceData.invoiceNumber}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs text-gray-500 border-b border-amber-100/50 pb-1">
                         <span className="font-bold">تاریخ شمسی فاکتور:</span>
@@ -8264,15 +8264,15 @@ export default function App() {
                       <tbody className="divide-y divide-gray-100">
                         {previewInvoiceData.items?.map((item: any, idx: number) => (
                           <tr key={idx} className="hover:bg-slate-50/25">
-                            <td className="p-3 text-center text-gray-400 font-mono">{idx + 1}</td>
+                            <td className="p-3 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                             <td className="p-3 text-right text-gray-900 font-extrabold">{item.productName}</td>
-                            <td className="p-3 text-center text-gray-800 font-mono">
+                            <td className="p-3 text-center text-gray-800 font-sans font-bold">
                                {formatNumber(item.quantity || 1)}
                             </td>
                             <td className="p-3 text-center text-gray-600 font-sans">{item.selectedUnit || '-'}</td>
-                            <td className="p-3 text-left text-gray-800 font-mono">{formatCurrency(item.unitPrice || 0)}</td>
-                            <td className="p-3 text-center text-red-500 font-mono">{item.discountPercent || 0}٪</td>
-                            <td className="p-3 text-left text-indigo-600 font-extrabold font-mono">{formatCurrency(item.totalPrice || 0)}</td>
+                            <td className="p-3 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice || 0)}</td>
+                            <td className="p-3 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
+                            <td className="p-3 text-left text-indigo-600 font-extrabold font-sans">{formatCurrency(item.totalPrice || 0)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -8294,21 +8294,21 @@ export default function App() {
                     <div className="w-full md:w-1/2 space-y-1.5 text-xs font-bold text-gray-500">
                       <div className="flex justify-between items-center px-4 py-1.5 bg-slate-50 rounded-lg">
                         <span>جمع خطوط فاکتور:</span>
-                        <span className="text-gray-900 font-mono">{formatCurrency(
+                        <span className="text-gray-900 font-sans font-bold">{formatCurrency(
                           previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
                         )} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
                       </div>
                       {previewInvoiceData.overallDiscountPercent > 0 && (
                         <div className="flex justify-between items-center px-4 py-1.5 bg-slate-50 text-red-600 rounded-lg">
                           <span>تخفیف روی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
-                          <span className="font-mono">{formatCurrency(
+                          <span className="font-sans font-bold">{formatCurrency(
                             (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100)
                           )} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center px-4 py-3 bg-amber-50 text-slate-900 rounded-xl text-sm font-black border border-amber-100">
                         <span>مبلغ موقت قابل تایید:</span>
-                        <span className="text-amber-800 font-mono text-base">{formatCurrency(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
+                        <span className="text-amber-800 font-sans font-black text-base">{formatCurrency(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)}</span>
                       </div>
                     </div>
                   </div>
