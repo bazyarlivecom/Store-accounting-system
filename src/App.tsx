@@ -550,6 +550,74 @@ export default function App() {
     }
   };
 
+  const handleGenerateDemoData = async () => {
+    if (!confirm('آیا از ایجاد اطلاعات نمونه (دسته‌بندی و کالا) اطمینان دارید؟ اطلاعات فعلی شما دست‌نخورده باقی می‌ماند.')) return;
+    
+    setSubmittingProduct(true);
+    try {
+      const cat1 = await addProductCategory({
+        name: 'نوشیدنی‌ها',
+        description: 'انواع نوشیدنی‌های گرم و سرد',
+      });
+      const cat2 = await addProductCategory({
+        name: 'تنقلات',
+        description: 'چیپس، پفک، بیسکویت...',
+      });
+
+      await addProduct({
+        name: 'نوشابه خانواده کوکاکولا',
+        type: 'product',
+        categoryId: cat1.id,
+        category: 'نوشیدنی‌ها',
+        price: 25000,
+        purchasePrice: 20000,
+        buyPrice: 20000,
+        sellPrice: 25000,
+        stock: 50,
+        unit: 'بطری',
+        secondaryUnit: 'باکس',
+        unitRatio: 6,
+      });
+
+      await addProduct({
+        name: 'آب معدنی کوچک دماوند',
+        type: 'product',
+        categoryId: cat1.id,
+        category: 'نوشیدنی‌ها',
+        price: 5000,
+        purchasePrice: 3500,
+        buyPrice: 3500,
+        sellPrice: 5000,
+        stock: 120,
+        unit: 'بطری',
+        secondaryUnit: 'باکس',
+        unitRatio: 12,
+      });
+
+      await addProduct({
+        name: 'چیپس نمکی مزمز',
+        type: 'product',
+        categoryId: cat2.id,
+        category: 'تنقلات',
+        price: 35000,
+        purchasePrice: 28000,
+        buyPrice: 28000,
+        sellPrice: 35000,
+        stock: 45,
+        unit: 'بسته',
+        secondaryUnit: 'کارتن',
+        unitRatio: 10,
+      });
+
+      await fetchProducts();
+    } catch (err) {
+      console.error('Error generating demo data', err);
+      alert('خطا در ایجاد دیتای نمونه');
+    } finally {
+      setSubmittingProduct(false);
+    }
+  };
+
   const handleSubmitProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProductName || !newProductPrice) return;
@@ -2860,6 +2928,26 @@ export default function App() {
                       دسته‌بندی درختی محصولات و خدمات جهت سازماندهی دقیق کالاها، گزارشات سوددهی و انبارگردانی آسان
                     </p>
                   </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleGenerateDemoData}
+                      disabled={submittingProduct}
+                      className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold"
+                    >
+                      <Database className="w-4 h-4" />
+                      ایجاد دیتای نمونه
+                    </button>
+                    <button
+                      onClick={() => {
+                        resetCategoryForm();
+                        setIsCategoryModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      ثبت گروه جدید
+                    </button>
+                  </div>
                 </div>
 
                 {/* Info Stats Widgets */}
@@ -3417,6 +3505,14 @@ export default function App() {
                    <p className="text-sm text-gray-500 font-medium mt-1">تعریف و بروزرسانی بارکد، قیمت و اطلاعات پایه کلیه محصولات و سرویس‌ها</p>
                  </div>
                  <div className="flex gap-2">
+                   <button
+                     onClick={handleGenerateDemoData}
+                     disabled={submittingProduct}
+                     className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold"
+                   >
+                     <Database className="w-4 h-4" />
+                     ایجاد دیتای نمونه
+                   </button>
                    <button
                      onClick={() => setIsGroupPriceModalOpen(true)}
                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
