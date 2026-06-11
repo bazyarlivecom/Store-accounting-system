@@ -1916,16 +1916,16 @@ export default function App() {
                     </button>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-right">
+                    <table className="w-full text-right min-w-[1000px]">
                       <thead>
                         <tr className="bg-white text-sm text-gray-500 border-b border-gray-100">
                           <th className="p-4 font-bold w-12 text-center">ردیف</th>
-                          <th className="p-4 font-bold w-full text-right">شرح کالا / خدمات</th>
-                          <th className="p-4 font-bold w-20 text-center">تعداد</th>
-                          <th className="p-4 font-bold w-24 text-center border-r border-gray-100">واحد</th>
-                          <th className="p-4 font-bold w-36 border-r border-gray-100 text-left text-indigo-800">فی ({invoiceCurrency})</th>
-                          <th className="p-4 font-bold w-20 text-center border-r border-gray-100">تخفیف %</th>
-                          <th className="p-4 font-bold w-40 border-r border-gray-100 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold min-w-[200px] w-[30%] text-right">شرح کالا / خدمات</th>
+                          <th className="p-4 font-bold w-32 text-center">تعداد</th>
+                          <th className="p-4 font-bold w-32 text-center border-r border-gray-100">واحد</th>
+                          <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">فی ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold w-28 text-center border-r border-gray-100">تخفیف %</th>
+                          <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
                           <th className="p-4 font-bold w-12 text-center border-r border-gray-100">حذف</th>
                         </tr>
                       </thead>
@@ -2163,16 +2163,16 @@ export default function App() {
                     </button>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-right">
+                    <table className="w-full text-right min-w-[1000px]">
                       <thead>
                         <tr className="bg-white text-xs font-black text-slate-400 border-b border-emerald-50">
                           <th className="p-5 w-12 text-center">ردیف</th>
-                          <th className="p-5 w-full text-right">شرح کالا / خدمات</th>
-                          <th className="p-5 w-20 text-center border-r border-emerald-50/50">تعداد</th>
-                          <th className="p-5 w-24 text-center border-r border-emerald-50/50">واحد</th>
-                          <th className="p-5 w-36 border-r border-emerald-50/50 text-left text-emerald-800">فی ({invoiceCurrency})</th>
-                          <th className="p-5 w-20 text-center border-r border-emerald-50/50">تخفیف %</th>
-                          <th className="p-5 w-40 border-r border-emerald-50/50 text-left text-emerald-800">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-5 min-w-[200px] w-[30%] text-right">شرح کالا / خدمات</th>
+                          <th className="p-5 w-32 text-center border-r border-emerald-50/50">تعداد</th>
+                          <th className="p-5 w-32 text-center border-r border-emerald-50/50">واحد</th>
+                          <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">فی ({invoiceCurrency})</th>
+                          <th className="p-5 w-28 text-center border-r border-emerald-50/50">تخفیف %</th>
+                          <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">مبلغ کل ({invoiceCurrency})</th>
                           <th className="p-5 w-12 text-center border-r border-emerald-50/50">عملیات</th>
                         </tr>
                       </thead>
@@ -2338,7 +2338,7 @@ export default function App() {
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="overflow-x-auto">
-                     <table className="w-full text-right">
+                     <table className="w-full text-right min-w-[1000px]">
                        <thead>
                          <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                            <th className="p-4 font-bold">شماره</th>
@@ -7937,11 +7937,11 @@ export default function App() {
                              <thead className="bg-emerald-900 text-emerald-50">
                                <tr>
                                  <th className="p-3 border-l border-emerald-800 text-center w-12">#</th>
-                                 <th className="p-3 border-l border-emerald-800 w-full">شرح کالا</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center w-20">مقدار</th>
-                                 <th className="p-3 border-l border-emerald-800 text-left w-36 text-emerald-200">فی ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center w-20">تخفیف</th>
-                                 <th className="p-3 text-left w-40 text-emerald-200">مبلغ ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 min-w-[200px] w-[40%]">شرح کالا</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-28">مقدار</th>
+                                 <th className="p-3 border-l border-emerald-800 text-left w-44 text-emerald-200">فی ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-24">تخفیف</th>
+                                 <th className="p-3 text-left w-48 text-emerald-200">مبلغ ({showInvoiceCurrency(viewingInvoice.currency)})</th>
                                </tr>
                              </thead>
                              <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold">
@@ -8055,11 +8055,11 @@ export default function App() {
                             <thead>
                               <tr className="bg-gray-100 border-b border-gray-200 text-gray-600">
                                 <th className="p-4 text-center w-12 font-black">ردیف</th>
-                                <th className="p-4 text-right font-black w-full">شرح کالا یا خدمات</th>
-                                <th className="p-4 text-center w-20 font-black">مقدار</th>
-                                <th className="p-4 text-left w-36 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                                <th className="p-4 text-center w-20 font-black">تخفیف (٪)</th>
-                                <th className="p-4 text-left w-40 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                <th className="p-4 text-right font-black w-[40%]">شرح کالا یا خدمات</th>
+                                <th className="p-4 text-center w-32 font-black">مقدار</th>
+                                <th className="p-4 text-left w-48 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                <th className="p-4 text-center w-28 font-black">تخفیف (٪)</th>
+                                <th className="p-4 text-left w-48 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
@@ -8329,11 +8329,11 @@ export default function App() {
                              <thead className="bg-emerald-900 text-emerald-50">
                                <tr>
                                  <th className="p-3 border-l border-emerald-800 text-center w-12">#</th>
-                                 <th className="p-3 border-l border-emerald-800 w-full">شرح کالا</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center w-20">مقدار</th>
-                                 <th className="p-3 border-l border-emerald-800 text-left w-36 text-emerald-200">فی ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center w-20">تخفیف</th>
-                                 <th className="p-3 text-left w-40 text-emerald-200">مبلغ ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 min-w-[200px] w-[40%]">شرح کالا</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-28">مقدار</th>
+                                 <th className="p-3 border-l border-emerald-800 text-left w-44 text-emerald-200">فی ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-24">تخفیف</th>
+                                 <th className="p-3 text-left w-48 text-emerald-200">مبلغ ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
                                </tr>
                              </thead>
                              <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold bg-white">
@@ -8439,11 +8439,11 @@ export default function App() {
                             <thead>
                               <tr className="bg-gray-100 border-b border-gray-200 text-gray-600">
                                 <th className="p-4 text-center w-12 font-black">ردیف</th>
-                                <th className="p-4 text-right font-black w-full">شرح کالا یا خدمات</th>
-                                <th className="p-4 text-center w-20 font-black">مقدار</th>
-                                <th className="p-4 text-left w-36 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
-                                <th className="p-4 text-center w-20 font-black">تخفیف (٪)</th>
-                                <th className="p-4 text-left w-40 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                <th className="p-4 text-right font-black w-[40%]">شرح کالا یا خدمات</th>
+                                <th className="p-4 text-center w-32 font-black">مقدار</th>
+                                <th className="p-4 text-left w-48 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                <th className="p-4 text-center w-28 font-black">تخفیف (٪)</th>
+                                <th className="p-4 text-left w-48 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
