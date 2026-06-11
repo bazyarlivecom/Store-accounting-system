@@ -1920,13 +1920,13 @@ export default function App() {
                       <thead>
                         <tr className="bg-white text-sm text-gray-500 border-b border-gray-100">
                           <th className="p-4 font-bold w-12 text-center">ردیف</th>
-                          <th className="p-4 font-bold min-w-[200px]">شرح کالا / خدمات</th>
-                          <th className="p-4 font-bold w-24">تعداد</th>
-                          <th className="p-4 font-bold w-32 text-center border-r border-gray-100">واحد</th>
-                          <th className="p-4 font-bold w-32 border-r border-gray-100">فی ({invoiceCurrency})</th>
-                          <th className="p-4 font-bold w-24 border-r border-gray-100">تخفیف %</th>
-                          <th className="p-4 font-bold w-32 border-r border-gray-100">مبلغ کل ({invoiceCurrency})</th>
-                          <th className="p-4 font-bold w-16 text-center border-r border-gray-100">حذف</th>
+                          <th className="p-4 font-bold w-full text-right">شرح کالا / خدمات</th>
+                          <th className="p-4 font-bold w-20 text-center">تعداد</th>
+                          <th className="p-4 font-bold w-24 text-center border-r border-gray-100">واحد</th>
+                          <th className="p-4 font-bold w-36 border-r border-gray-100 text-left text-indigo-800">فی ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold w-20 text-center border-r border-gray-100">تخفیف %</th>
+                          <th className="p-4 font-bold w-40 border-r border-gray-100 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-4 font-bold w-12 text-center border-r border-gray-100">حذف</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
@@ -2167,13 +2167,13 @@ export default function App() {
                       <thead>
                         <tr className="bg-white text-xs font-black text-slate-400 border-b border-emerald-50">
                           <th className="p-5 w-12 text-center">ردیف</th>
-                          <th className="p-5 min-w-[200px]">شرح کالا / خدمات</th>
-                          <th className="p-5 w-28 text-center border-r border-emerald-50/50">تعداد</th>
+                          <th className="p-5 w-full text-right">شرح کالا / خدمات</th>
+                          <th className="p-5 w-20 text-center border-r border-emerald-50/50">تعداد</th>
                           <th className="p-5 w-24 text-center border-r border-emerald-50/50">واحد</th>
-                          <th className="p-5 w-36 border-r border-emerald-50/50">فی خرید ({invoiceCurrency})</th>
-                          <th className="p-5 w-24 text-center border-r border-emerald-50/50">تخفیف %</th>
-                          <th className="p-5 w-36 border-r border-emerald-50/50">مبلغ کل ({invoiceCurrency})</th>
-                          <th className="p-5 w-16 text-center border-r border-emerald-50/50">عملیات</th>
+                          <th className="p-5 w-36 border-r border-emerald-50/50 text-left text-emerald-800">فی ({invoiceCurrency})</th>
+                          <th className="p-5 w-20 text-center border-r border-emerald-50/50">تخفیف %</th>
+                          <th className="p-5 w-40 border-r border-emerald-50/50 text-left text-emerald-800">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-5 w-12 text-center border-r border-emerald-50/50">عملیات</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-emerald-50/50">
@@ -2358,16 +2358,16 @@ export default function App() {
                            i.type === 'warehouse_remittance'
                          ).map(inv => (
                            <tr key={inv.id} className="hover:bg-gray-50">
-                             <td className="p-4 font-sans font-bold text-gray-700">#{inv.invoiceNumber}</td>
+                             <td className="p-4 font-mono text-left font-bold text-gray-700" dir="ltr">#{inv.invoiceNumber}</td>
                              <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
                              <td className="p-4">
                                 <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
                                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                                  <span className="font-sans font-bold tracking-tight">{inv.jalaliDate}</span>
+                                  <span className="font-mono font-bold tracking-tight">{inv.jalaliDate}</span>
                                 </div>
                               </td>
-                             <td className="p-4">
-                                <span className="font-sans font-black text-sm text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
+                             <td className="p-4 text-left">
+                                <span className="font-mono font-black text-sm text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
                                   {formatCurrency(inv.totalAmount || 0)} <span className="text-[10px] text-indigo-600 font-extrabold mr-1">{inv.currency || storeSettings.currency}</span>
                                 </span>
                               </td>
@@ -2394,10 +2394,10 @@ export default function App() {
                                   
                                   // Switch to corresponding tab
                                   setActiveTab(
-                                    inv.type === 'sale' ? 'new_sale' : 
-                                    inv.type === 'purchase' ? 'new_purchase' : 
-                                    inv.type === 'warehouse_receipt' ? 'new_warehouse_receipt' : 
-                                    'new_warehouse_remittance'
+                                    inv.type === 'sale' ? 'create_sale' : 
+                                    inv.type === 'purchase' ? 'create_purchase' : 
+                                    inv.type === 'warehouse_receipt' ? 'create_warehouse_receipt' : 
+                                    'create_warehouse_remittance'
                                   );
                                 })} className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none" title="ویرایش (بازگشت به پیش‌نویس)">
                                   <Edit2 className="w-4 h-4"/>
@@ -2523,7 +2523,7 @@ export default function App() {
                           <div className={`mt-2.5 p-4 bg-gradient-to-br ${gradientBox} border rounded-2xl text-xs leading-relaxed text-right space-y-2 shadow-sm`}>
                             <div className="text-slate-500 font-bold flex items-center gap-2 justify-start">
                               <span className={`${themeBadge} text-[10px] px-2 py-0.5 rounded-md font-extrabold font-sans font-mono`}>جمع عددی:</span>
-                              <strong className="text-slate-900 font-sans font-black text-base md:text-lg tracking-wide inline-block">{formatNumber(Number(receiptAmount))}</strong>
+                              <strong className="text-slate-900 font-mono font-black text-base md:text-lg tracking-wide inline-block" dir="ltr">{formatNumber(Number(receiptAmount))}</strong>
                               <span className="text-slate-400 font-semibold">{storeSettings?.currency || 'تومان'}</span>
                             </div>
                             <div className="h-px bg-slate-200/70 w-full" />
@@ -5175,7 +5175,7 @@ export default function App() {
                                 </td>
                                 <td className="py-5 px-4 align-top pt-5">
                                   <div className="flex flex-col gap-2.5">
-                                    <span className="text-gray-700 font-sans font-bold flex items-center gap-2">
+                                    <span className="text-gray-700 font-mono font-bold flex items-center gap-2">
                                       <Calendar className="w-4 h-4 text-indigo-500/70" />
                                       <span className="mt-0.5">{entry.jalaliDate}</span>
                                     </span>
@@ -5195,17 +5195,17 @@ export default function App() {
                                     </p>
                                   </div>
                                 </td>
-                                <td className="py-5 px-4 text-left font-sans align-top pt-6">
+                                <td className="py-5 px-4 text-left font-mono align-top pt-6" dir="ltr">
                                   <span className={`font-black text-[15px] ${entry.debit > 0 ? 'text-indigo-600' : 'text-gray-300 font-medium'}`}>
                                     {entry.debit > 0 ? formatNumber(entry.debit) : '---'}
                                   </span>
                                 </td>
-                                <td className="py-5 px-4 text-left font-sans align-top pt-6">
+                                <td className="py-5 px-4 text-left font-mono align-top pt-6" dir="ltr">
                                   <span className={`font-black text-[15px] ${entry.credit > 0 ? 'text-emerald-600' : 'text-gray-300 font-medium'}`}>
                                     {entry.credit > 0 ? formatNumber(entry.credit) : '---'}
                                   </span>
                                 </td>
-                                <td className="py-5 px-6 text-left font-sans align-top pt-5">
+                                <td className="py-5 px-6 text-left font-mono align-top pt-5" dir="ltr">
                                   <div className={`flex flex-col items-end gap-1.5 font-extrabold ${
                                     isBalZero 
                                       ? 'text-emerald-600' 
@@ -5585,25 +5585,25 @@ export default function App() {
                       <tbody>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حقوق پایه و کارکرد ماهانه</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.base || 0)}</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left" dir="ltr">{formatNumber(viewingPayslip.parsed?.base || 0)}</td>
                         </tr>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حق مسکن و معیشت رفاهی</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.housing || 0)}</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left" dir="ltr">{formatNumber(viewingPayslip.parsed?.allowances?.housing || 0)}</td>
                         </tr>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-600 font-medium text-right">حق بن و خواربار رفاهی</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.grocery || 0)}</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left" dir="ltr">{formatNumber(viewingPayslip.parsed?.allowances?.grocery || 0)}</td>
                         </tr>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-600 font-medium text-right">اضافه کار و سایر مزایا</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.allowances?.other || 0)}</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left" dir="ltr">{formatNumber(viewingPayslip.parsed?.allowances?.other || 0)}</td>
                         </tr>
                       </tbody>
                       <tfoot>
                         <tr className="bg-emerald-50/50 font-extrabold text-emerald-950 border-t border-emerald-100">
                           <td className="py-3 px-4 text-right">جمع مبالغ ناخالص:</td>
-                          <td className="py-3 px-4 font-sans text-left text-sm text-emerald-800">
+                          <td className="py-3 px-4 font-mono text-left text-sm text-emerald-800" dir="ltr">
                             {formatNumber(
                               (viewingPayslip.parsed?.base || 0) +
                               (viewingPayslip.parsed?.allowances?.housing || 0) +
@@ -5626,25 +5626,25 @@ export default function App() {
                       <tbody>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-600 font-medium text-right">بیمه تامین اجتماعی سهم کارمند</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.insurance || 0)}</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left" dir="ltr">{formatNumber(viewingPayslip.parsed?.deductions?.insurance || 0)}</td>
                         </tr>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-600 font-medium text-right">مالیات حقوق و درآمد معین</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.tax || 0)}</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left" dir="ltr">{formatNumber(viewingPayslip.parsed?.deductions?.tax || 0)}</td>
                         </tr>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-600 font-medium text-right">مساعده دریافتی و سایر کسورات</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-900 font-sans text-left">{formatNumber(viewingPayslip.parsed?.deductions?.penalty || 0)}</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left" dir="ltr">{formatNumber(viewingPayslip.parsed?.deductions?.penalty || 0)}</td>
                         </tr>
                         <tr className="hover:bg-gray-50 transition-colors">
                           <td className="py-2.5 px-4 text-gray-400/50 text-[10px] text-right">---</td>
-                          <td className="py-2.5 px-4 font-bold text-gray-400/50 font-sans text-left text-[10px]">۰</td>
+                          <td className="py-2.5 px-4 font-bold text-gray-400/50 font-mono text-left text-[10px]" dir="ltr">۰</td>
                         </tr>
                       </tbody>
                       <tfoot>
                         <tr className="bg-rose-50/50 font-extrabold text-rose-950 border-t border-rose-100">
                           <td className="py-3 px-4 text-right">جمع مبالغ کسورات:</td>
-                          <td className="py-3 px-4 font-sans text-left text-sm text-rose-800">
+                          <td className="py-3 px-4 font-mono text-left text-sm text-rose-800" dir="ltr">
                             {formatNumber(
                               (viewingPayslip.parsed?.deductions?.insurance || 0) +
                               (viewingPayslip.parsed?.deductions?.tax || 0) +
@@ -7937,11 +7937,11 @@ export default function App() {
                              <thead className="bg-emerald-900 text-emerald-50">
                                <tr>
                                  <th className="p-3 border-l border-emerald-800 text-center w-12">#</th>
-                                 <th className="p-3 border-l border-emerald-800">شرح کالا</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center">مقدار</th>
-                                 <th className="p-3 border-l border-emerald-800 text-left">فی ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center">تخفیف</th>
-                                 <th className="p-3 text-left">مبلغ ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 w-full">شرح کالا</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-20">مقدار</th>
+                                 <th className="p-3 border-l border-emerald-800 text-left w-36 text-emerald-200">فی ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-20">تخفیف</th>
+                                 <th className="p-3 text-left w-40 text-emerald-200">مبلغ ({showInvoiceCurrency(viewingInvoice.currency)})</th>
                                </tr>
                              </thead>
                              <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold">
@@ -7949,12 +7949,12 @@ export default function App() {
                                  <tr key={idx}>
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
                                    <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center font-sans">
+                                   <td className="p-3 border-l border-emerald-200 text-center font-mono" dir="ltr">
                                       {formatNumber(item.quantity)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
                                    </td>
-                                   <td className="p-3 border-l border-emerald-200 text-left font-sans">{formatCurrency(item.unitPrice)}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans">{item.discountPercent || 0}٪</td>
-                                   <td className="p-3 text-left font-black font-sans">{formatCurrency(item.totalPrice)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-left font-mono font-bold text-emerald-950" dir="ltr">{formatCurrency(item.unitPrice)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-mono" dir="ltr">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 text-left font-black font-mono text-emerald-950" dir="ltr">{formatCurrency(item.totalPrice)}</td>
                                  </tr>
                                ))}
                              </tbody>
@@ -7973,17 +7973,17 @@ export default function App() {
                            <div className="w-[45%] bg-white border-2 border-emerald-900 flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
-                               <span className="font-sans">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                               <span className="font-mono text-left" dir="ltr">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
                              </div>
                              {viewingInvoice.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
                                  <span>تخفیف کلی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
-                                 <span className="font-sans">{formatCurrency((viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100))}</span>
+                                 <span className="font-mono text-left" dir="ltr">{formatCurrency((viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100))}</span>
                                </div>
                              )}
                              <div className="flex justify-between p-4 bg-emerald-900 text-emerald-50 text-xl font-black">
                                <span>مبلغ قابل پرداخت:</span>
-                               <span className="font-sans">{formatCurrency(viewingInvoice.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(viewingInvoice.currency)}</span></span>
+                               <span className="font-mono text-left" dir="ltr">{formatCurrency(viewingInvoice.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(viewingInvoice.currency)}</span></span>
                              </div>
                            </div>
                         </div>
@@ -8055,11 +8055,11 @@ export default function App() {
                             <thead>
                               <tr className="bg-gray-100 border-b border-gray-200 text-gray-600">
                                 <th className="p-4 text-center w-12 font-black">ردیف</th>
-                                <th className="p-4 text-right font-black">شرح کالا یا خدمات</th>
-                                <th className="p-4 text-center w-24 font-black">مقدار</th>
-                                <th className="p-4 text-left w-36 font-black">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                <th className="p-4 text-right font-black w-full">شرح کالا یا خدمات</th>
+                                <th className="p-4 text-center w-20 font-black">مقدار</th>
+                                <th className="p-4 text-left w-36 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
                                 <th className="p-4 text-center w-20 font-black">تخفیف (٪)</th>
-                                <th className="p-4 text-left w-40 font-black">کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                <th className="p-4 text-left w-40 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
@@ -8067,12 +8067,12 @@ export default function App() {
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                                   <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
-                                  <td className="p-4 text-center text-gray-800 font-sans font-black bg-gray-50/50">
+                                  <td className="p-4 text-center text-gray-800 font-mono font-black border-r border-gray-100/50" dir="ltr">
                                      {formatNumber(item.quantity)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
-                                  <td className="p-4 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice)}</td>
-                                  <td className="p-4 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
-                                  <td className="p-4 text-left text-indigo-700 font-black font-sans bg-indigo-50/30">{formatCurrency(item.totalPrice)}</td>
+                                  <td className="p-4 text-left text-gray-800 font-mono font-bold" dir="ltr">{formatCurrency(item.unitPrice)}</td>
+                                  <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{item.discountPercent || 0}٪</td>
+                                  <td className="p-4 text-left text-indigo-700 font-black font-mono bg-indigo-50/30" dir="ltr">{formatCurrency(item.totalPrice)}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -8094,14 +8094,14 @@ export default function App() {
                           <div className="w-full md:w-5/12 bg-gray-50 border border-gray-200 rounded-3xl p-5 text-sm font-bold text-gray-600 space-y-3">
                             <div className="flex justify-between items-center text-gray-500">
                               <span>جمع اقلام:</span>
-                              <span className="text-gray-900 font-sans font-bold">{formatCurrency(
+                              <span className="text-gray-900 font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                 viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
                               )}</span>
                             </div>
                             {viewingInvoice.overallDiscountPercent > 0 && (
                               <div className="flex justify-between items-center text-red-600">
                                 <span>تخفیف روی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
-                                <span className="font-sans font-bold">{formatCurrency(
+                                <span className="font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                   (viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100)
                                 )}</span>
                               </div>
@@ -8109,7 +8109,7 @@ export default function App() {
                             <div className="flex justify-between items-center pt-4 border-t border-gray-200">
                               <span className="text-gray-900 text-base">مبلغ نهایی معامله:</span>
                               <div className="text-left">
-                                <span className="text-indigo-700 font-sans font-black text-2xl px-2">{formatCurrency(viewingInvoice.totalAmount)}</span>
+                                <span className="text-indigo-700 font-mono text-left font-black text-2xl px-2" dir="ltr">{formatCurrency(viewingInvoice.totalAmount)}</span>
                                 <span className="text-xs text-indigo-500 font-normal">{showInvoiceCurrency(viewingInvoice.currency)}</span>
                               </div>
                             </div>
@@ -8329,11 +8329,11 @@ export default function App() {
                              <thead className="bg-emerald-900 text-emerald-50">
                                <tr>
                                  <th className="p-3 border-l border-emerald-800 text-center w-12">#</th>
-                                 <th className="p-3 border-l border-emerald-800">شرح کالا</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center">مقدار</th>
-                                 <th className="p-3 border-l border-emerald-800 text-left">فی ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
-                                 <th className="p-3 border-l border-emerald-800 text-center">تخفیف</th>
-                                 <th className="p-3 text-left">مبلغ ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 w-full">شرح کالا</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-20">مقدار</th>
+                                 <th className="p-3 border-l border-emerald-800 text-left w-36 text-emerald-200">فی ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                 <th className="p-3 border-l border-emerald-800 text-center w-20">تخفیف</th>
+                                 <th className="p-3 text-left w-40 text-emerald-200">مبلغ ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
                                </tr>
                              </thead>
                              <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold bg-white">
@@ -8341,12 +8341,12 @@ export default function App() {
                                  <tr key={idx} className="hover:bg-emerald-50">
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
                                    <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center font-sans">
+                                   <td className="p-3 border-l border-emerald-200 text-center font-mono" dir="ltr">
                                       {formatNumber(item.quantity || 1)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
                                    </td>
-                                   <td className="p-3 border-l border-emerald-200 text-left font-sans">{formatCurrency(item.unitPrice || 0)}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans">{item.discountPercent || 0}٪</td>
-                                   <td className="p-3 text-left font-black font-sans">{formatCurrency(item.totalPrice || 0)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-left font-mono font-bold text-emerald-950" dir="ltr">{formatCurrency(item.unitPrice || 0)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-mono" dir="ltr">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 text-left font-black font-mono text-emerald-950" dir="ltr">{formatCurrency(item.totalPrice || 0)}</td>
                                  </tr>
                                ))}
                              </tbody>
@@ -8365,17 +8365,17 @@ export default function App() {
                            <div className="w-[45%] bg-white border-2 border-emerald-900 flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
-                               <span className="font-sans">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                               <span className="font-mono text-left" dir="ltr">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
                              </div>
                              {previewInvoiceData.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
                                  <span>تخفیف کلی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
-                                 <span className="font-sans">{formatCurrency((previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100))}</span>
+                                 <span className="font-mono text-left" dir="ltr">{formatCurrency((previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100))}</span>
                                </div>
                              )}
                              <div className="flex justify-between p-4 bg-emerald-900 text-emerald-50 text-xl font-black">
                                <span>مبلغ قابل پرداخت:</span>
-                               <span className="font-sans">{formatCurrency(previewInvoiceData.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(previewInvoiceData.currency)}</span></span>
+                               <span className="font-mono text-left" dir="ltr">{formatCurrency(previewInvoiceData.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(previewInvoiceData.currency)}</span></span>
                              </div>
                            </div>
                         </div>
@@ -8439,11 +8439,11 @@ export default function App() {
                             <thead>
                               <tr className="bg-gray-100 border-b border-gray-200 text-gray-600">
                                 <th className="p-4 text-center w-12 font-black">ردیف</th>
-                                <th className="p-4 text-right font-black">شرح کالا یا خدمات</th>
-                                <th className="p-4 text-center w-24 font-black">مقدار</th>
-                                <th className="p-4 text-left w-36 font-black">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                <th className="p-4 text-right font-black w-full">شرح کالا یا خدمات</th>
+                                <th className="p-4 text-center w-20 font-black">مقدار</th>
+                                <th className="p-4 text-left w-36 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
                                 <th className="p-4 text-center w-20 font-black">تخفیف (٪)</th>
-                                <th className="p-4 text-left w-40 font-black">کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                <th className="p-4 text-left w-40 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
@@ -8451,12 +8451,12 @@ export default function App() {
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                                   <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
-                                  <td className="p-4 text-center text-gray-800 font-sans font-black bg-gray-50/50">
+                                  <td className="p-4 text-center text-gray-800 font-mono font-black border-r border-gray-100/50" dir="ltr">
                                      {formatNumber(item.quantity || 1)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
-                                  <td className="p-4 text-left text-gray-800 font-sans font-bold">{formatCurrency(item.unitPrice || 0)}</td>
-                                  <td className="p-4 text-center text-red-500 font-sans font-bold">{item.discountPercent || 0}٪</td>
-                                  <td className="p-4 text-left text-amber-900 font-black font-sans bg-amber-50/30">{formatCurrency(item.totalPrice || 0)}</td>
+                                  <td className="p-4 text-left text-gray-800 font-mono font-bold" dir="ltr">{formatCurrency(item.unitPrice || 0)}</td>
+                                  <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{item.discountPercent || 0}٪</td>
+                                  <td className="p-4 text-left text-amber-900 font-black font-mono bg-amber-50/30" dir="ltr">{formatCurrency(item.totalPrice || 0)}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -8478,14 +8478,14 @@ export default function App() {
                           <div className="w-full md:w-5/12 bg-gray-50 border border-gray-200 rounded-3xl p-5 text-sm font-bold text-gray-600 space-y-3">
                             <div className="flex justify-between items-center text-gray-500">
                               <span>جمع اقلام:</span>
-                              <span className="text-gray-900 font-sans font-bold">{formatCurrency(
+                              <span className="text-gray-900 font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                 previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
                               )}</span>
                             </div>
                             {previewInvoiceData.overallDiscountPercent > 0 && (
                               <div className="flex justify-between items-center text-red-600">
                                 <span>تخفیف روی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
-                                <span className="font-sans font-bold">{formatCurrency(
+                                <span className="font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                   (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100)
                                 )}</span>
                               </div>
@@ -8493,7 +8493,7 @@ export default function App() {
                             <div className="flex justify-between items-center pt-4 border-t border-gray-200">
                               <span className="text-gray-900 text-base">مبلغ نهایی معامله:</span>
                               <div className="text-left">
-                                <span className="text-amber-700 font-sans font-black text-2xl px-2">{formatCurrency(previewInvoiceData.totalAmount)}</span>
+                                <span className="text-amber-700 font-mono text-left font-black text-2xl px-2" dir="ltr">{formatCurrency(previewInvoiceData.totalAmount)}</span>
                                 <span className="text-xs text-amber-500 font-normal">{showInvoiceCurrency(previewInvoiceData.currency)}</span>
                               </div>
                             </div>
@@ -8661,7 +8661,7 @@ export default function App() {
                 <div className="bg-amber-50/20 rounded-xl p-5 flex flex-col items-center justify-center border border-amber-200/50 shadow-sm">
                   <span className="text-xs text-amber-800 mb-2 font-bold uppercase tracking-widest bg-amber-100/50 px-3 py-1 rounded-full text-[10px]">مبلغ رسمی سند</span>
                   <div className="flex items-end gap-2 text-indigo-950 mb-2">
-                    <span className="text-3xl font-black font-sans font-mono">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
+                    <span className="text-3xl font-black font-mono text-left" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
                     <span className="text-sm font-bold opacity-75 mb-1.5">{storeSettings?.currency || 'تومان'}</span>
                   </div>
                   <div className="text-xs font-bold text-gray-600 text-center border-t border-gray-100 pt-2 w-full leading-relaxed">
