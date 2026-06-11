@@ -369,6 +369,7 @@ export default function App() {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [date, setDate] = useState<Date | any>(new Date());
   const [customerId, setCustomerId] = useState<string | number | ''>('');
+  const [sourceInvoiceId, setSourceInvoiceId] = useState<string | number | ''>('');
   
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [overallDiscountPercent, setOverallDiscountPercent] = useState<number>(0);
@@ -1353,6 +1354,28 @@ export default function App() {
     }
   };
 
+  const handleSourceInvoiceChange = (invoiceId: string | number) => {
+    setSourceInvoiceId(invoiceId);
+    if (!invoiceId) return;
+
+    const sourceInv = invoices.find(i => i.id.toString() === invoiceId.toString());
+    if (sourceInv) {
+      if (sourceInv.customerId) setCustomerId(sourceInv.customerId);
+      if (sourceInv.currency) {
+        setInvoiceCurrency(sourceInv.currency);
+        setExchangeRate(sourceInv.exchangeRate || 1);
+        setExchangeRateInput(String(sourceInv.exchangeRate || 1));
+      }
+      if (sourceInv.items && Array.isArray(sourceInv.items)) {
+        setItems(sourceInv.items.map((it: any) => ({
+          ...it,
+          id: Math.random().toString(36).substring(2, 9),
+          warehouseId: '', // User will select destination warehouse
+        })));
+      }
+    }
+  };
+
   const handleExchangeRateChange = (newRate: number) => {
     const oldRate = exchangeRate;
     setExchangeRate(newRate);
@@ -1553,6 +1576,7 @@ export default function App() {
       date: typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString(),
       jalaliDate: new Date(date).toLocaleDateString('fa-IR'),
       customerId,
+      sourceInvoiceId,
       items: cleanItems,
       overallDiscountPercent,
       totalAmount: calculateFinalTotal()
@@ -1573,6 +1597,7 @@ export default function App() {
       setTimeout(() => {
         if (invoiceMode === 'manual') setInvoiceNumber('');
         setCustomerId('');
+        setSourceInvoiceId('');
         setItems([]);
         setOverallDiscountPercent(0);
         setInvoiceCurrency(storeSettings.currency || 'تومان');
@@ -1835,7 +1860,7 @@ export default function App() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">شماره فاکتور</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">{activeTab.includes('warehouse') ? 'شماره سند/رسید' : 'شماره فاکتور'}</label>
                     <div className="flex gap-2">
                         <select value={invoiceMode} onChange={(e) => setInvoiceMode(e.target.value as 'auto' | 'manual')} className="p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-sm">
                           <option value="auto">خودکار</option>
@@ -1847,7 +1872,7 @@ export default function App() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> تاریخ صدور فاکتور</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> {activeTab.includes('warehouse') ? 'تاریخ سند/رسید' : 'تاریخ فاکتور'}</label>
                     <div className="relative">
                       <DatePicker
                           value={date}
@@ -1878,6 +1903,22 @@ export default function App() {
                       searchPlaceholder="جستجوی شخص..."
                     />
                   </div>
+                  {activeTab === 'create_warehouse_receipt' && (
+                    <div className="lg:col-span-3 border-t border-gray-100 pt-4">
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> ارتباط با فاکتور خرید مرجع (فراخوانی خودکار اقلام)</label>
+                       <SearchableSelect
+                         options={invoices.filter(i => i.type === 'purchase').map(i => ({
+                           value: i.id,
+                           label: `فاکتور خرید ${i.invoiceMode === 'manual' ? '(دستی) ' : ''}#${i.invoiceNumber}`,
+                           subLabel: `مبلغ: ${formatCurrency(i.totalAmount || 0)} ${i.currency || 'تومان'} - تامین کننده: ${persons.find(p => p.id.toString() === i.customerId.toString())?.name || 'نامشخص'}`,
+                         }))}
+                         value={String(sourceInvoiceId)}
+                         onChange={(val) => handleSourceInvoiceChange(val)}
+                         placeholder="-- در صورت تمایل فاکتور خرید مرتبط را انتخاب کنید --"
+                         searchPlaceholder="جستجو در مقادیر فاکتورهای خرید..."
+                       />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4"/> ارز و نرخ</label>
                     <div className="flex gap-2">
@@ -1923,6 +1964,9 @@ export default function App() {
                           <th className="p-4 font-bold min-w-[200px] w-[30%] text-right">شرح کالا / خدمات</th>
                           <th className="p-4 font-bold w-32 text-center">تعداد</th>
                           <th className="p-4 font-bold w-32 text-center border-r border-gray-100">واحد</th>
+                          {(activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && (
+                            <th className="p-4 font-bold w-48 text-center border-r border-gray-100 text-emerald-800">انبار مقصد/مبدا</th>
+                          )}
                           <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">فی ({invoiceCurrency})</th>
                           <th className="p-4 font-bold w-28 text-center border-r border-gray-100">تخفیف %</th>
                           <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
@@ -1992,6 +2036,20 @@ export default function App() {
                                     );
                                   })()}
                               </td>
+                              {(activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && (
+                                <td className="p-4">
+                                  <select 
+                                    value={item.warehouseId || ''} 
+                                    onChange={(e) => handleItemChange(item.id, 'warehouseId', e.target.value)}
+                                    className="w-full p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 text-xs font-bold bg-white"
+                                  >
+                                    <option value="">-- انتخاب انبار --</option>
+                                    {warehouses.filter(w => w.isActive !== false).map(w => (
+                                      <option key={w.id} value={w.id}>{w.name}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                              )}
                               <td className="p-4">
                                   <CurrencyInput 
                                     value={item.unitPrice} 

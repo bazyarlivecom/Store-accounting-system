@@ -132,6 +132,7 @@ export type InvoiceItem = {
   selectedUnit?: string;
   unitRatio?: number;
   isSecondaryUnit?: boolean;
+  warehouseId?: string | number;
 };
 
 export type UserRole = 'admin' | 'accountant' | 'cashier' | 'viewer';
