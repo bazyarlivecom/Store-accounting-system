@@ -1367,11 +1367,30 @@ export default function App() {
         setExchangeRateInput(String(sourceInv.exchangeRate || 1));
       }
       if (sourceInv.items && Array.isArray(sourceInv.items)) {
-        setItems(sourceInv.items.map((it: any) => ({
-          ...it,
-          id: Math.random().toString(36).substring(2, 9),
-          warehouseId: '', // User will select destination warehouse
-        })));
+        // Calculate previously received amounts
+        const pastReceipts = invoices.filter(i => i.type === 'warehouse_receipt' && i.sourceInvoiceId?.toString() === invoiceId.toString());
+        const receivedAmounts: Record<string, number> = {};
+        pastReceipts.forEach(receipt => {
+          if (receipt.items) {
+            receipt.items.forEach((rt: any) => {
+               if (!receivedAmounts[rt.productId]) receivedAmounts[rt.productId] = 0;
+               receivedAmounts[rt.productId] += Number(rt.quantity) || 0;
+            });
+          }
+        });
+        
+        const remainingItems = sourceInv.items.map((it: any) => {
+          const received = receivedAmounts[it.productId] || 0;
+          const remaining = (Number(it.quantity) || 0) - received;
+          return {
+            ...it,
+            id: Math.random().toString(36).substring(2, 9),
+            quantity: remaining > 0 ? remaining : 0,
+            warehouseId: '', // User will select destination warehouse
+          };
+        }).filter((it: any) => it.quantity > 0);
+
+        setItems(remainingItems);
       }
     }
   };
@@ -1561,6 +1580,12 @@ export default function App() {
 
     const finalInvoiceNumber = invoiceMode === 'auto' ? `INV-${Math.floor(Math.random() * 1000000)}` : invoiceNumber;
 
+    if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && items.some(i => !i.warehouseId)) {
+      customAlert('لطفاً برای تمامی اقلام انبار را 선택 کنید.');
+      setSubmitting(false);
+      return;
+    }
+
     const cleanItems = items.filter(
       item => item.productName || item.productId || (item.quantity > 0 && item.unitPrice > 0)
     );
@@ -1622,6 +1647,10 @@ export default function App() {
     e.preventDefault();
     if (!customerId || items.length === 0 || items.some(i => !i.productId && !i.productName)) {
       customAlert('لطفاً همه فیلدهای ضروری را پر کنید.');
+      return;
+    }
+    if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && items.some(i => !i.warehouseId)) {
+      customAlert('لطفاً برای تمامی اقلام انبار را انتخاب کنید.');
       return;
     }
     await saveInvoiceData();
@@ -1907,7 +1936,7 @@ export default function App() {
                     <div className="lg:col-span-3 border-t border-gray-100 pt-4">
                        <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> ارتباط با فاکتور خرید مرجع (فراخوانی خودکار اقلام)</label>
                        <SearchableSelect
-                         options={invoices.filter(i => i.type === 'purchase').map(i => ({
+                         options={invoices.filter(i => i.type === 'purchase' && (!customerId || i.customerId === customerId)).map(i => ({
                            value: i.id,
                            label: `فاکتور خرید ${i.invoiceMode === 'manual' ? '(دستی) ' : ''}#${i.invoiceNumber}`,
                            subLabel: `مبلغ: ${formatCurrency(i.totalAmount || 0)} ${i.currency || 'تومان'} - تامین کننده: ${persons.find(p => p.id.toString() === i.customerId.toString())?.name || 'نامشخص'}`,
@@ -1919,6 +1948,7 @@ export default function App() {
                        />
                     </div>
                   )}
+                  {(!activeTab.includes('warehouse')) && (
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4"/> ارز و نرخ</label>
                     <div className="flex gap-2">
@@ -1931,6 +1961,7 @@ export default function App() {
                       <input type="number" disabled={invoiceCurrency === storeSettings.currency} value={exchangeRateInput} onChange={(e) => handleExchangeRateChange(Number(e.target.value))} className="w-1/2 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left disabled:bg-gray-100" dir="ltr" />
                     </div>
                   </div>
+                )}
                 </div>
               </div>
 
@@ -1938,23 +1969,27 @@ export default function App() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-gray-900 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> {activeTab.includes('warehouse') ? 'اقلام سند (کالاها)' : 'اقلام فاکتور'}</h3>
-                    <div className="flex-1 w-full relative z-10 max-w-2xl">
-                      <SearchableSelect 
-                        options={products.map(p => ({
-                          value: p.id,
-                          label: p.name,
-                          subLabel: `موجودی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
-                          badge: p.type === 'service' ? 'خدمات' : 'کالا'
-                        }))}
-                        value=""
-                        onChange={(val) => handleFastAddProduct(String(val))}
-                        placeholder="🔎 جستجو و افزودن سریع کالا به لیست (نام، کد، بارکد)..."
-                        searchPlaceholder="جستجوی کالا..."
-                      />
-                    </div>
-                    <button onClick={handleAddItem} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-xl font-bold hover:bg-gray-100 flex items-center gap-2 transition-colors whitespace-nowrap">
-                      <Plus className="w-4 h-4" /> سطر دلخواه
-                    </button>
+                    {(!activeTab.includes('warehouse')) && (
+                      <div className="flex-1 w-full flex gap-2">
+                        <div className="flex-1 w-full relative z-10 max-w-2xl">
+                          <SearchableSelect 
+                            options={products.map(p => ({
+                              value: p.id,
+                              label: p.name,
+                              subLabel: `موجودی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                              badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                            }))}
+                            value=""
+                            onChange={(val) => handleFastAddProduct(String(val))}
+                            placeholder="🔎 جستجو و افزودن سریع کالا به لیست (نام، کد، بارکد)..."
+                            searchPlaceholder="جستجوی کالا..."
+                          />
+                        </div>
+                        <button onClick={handleAddItem} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-xl font-bold hover:bg-gray-100 flex items-center gap-2 transition-colors whitespace-nowrap">
+                          <Plus className="w-4 h-4" /> سطر دلخواه
+                        </button>
+                      </div>
+                    )}
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-right min-w-[1000px]">
@@ -1967,9 +2002,15 @@ export default function App() {
                           {(activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && (
                             <th className="p-4 font-bold w-48 text-center border-r border-gray-100 text-emerald-800">انبار مقصد/مبدا</th>
                           )}
-                          <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">فی ({invoiceCurrency})</th>
-                          <th className="p-4 font-bold w-28 text-center border-r border-gray-100">تخفیف %</th>
-                          <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
+                          {(!activeTab.includes('warehouse')) && (
+                            <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">فی ({invoiceCurrency})</th>
+                          )}
+                          {(!activeTab.includes('warehouse')) && (
+                            <th className="p-4 font-bold w-28 text-center border-r border-gray-100">تخفیف %</th>
+                          )}
+                          {(!activeTab.includes('warehouse')) && (
+                            <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
+                          )}
                           <th className="p-4 font-bold w-12 text-center border-r border-gray-100">حذف</th>
                         </tr>
                       </thead>
@@ -2050,6 +2091,7 @@ export default function App() {
                                   </select>
                                 </td>
                               )}
+                              {(!activeTab.includes('warehouse')) && (
                               <td className="p-4">
                                   <CurrencyInput 
                                     value={item.unitPrice} 
@@ -2057,12 +2099,17 @@ export default function App() {
                                     className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950 text-sm" 
                                   />
                               </td>
+                              )}
+                              {(!activeTab.includes('warehouse')) && (
                               <td className="p-4">
                                   <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600 font-bold" dir="ltr" />
                               </td>
+                              )}
+                              {(!activeTab.includes('warehouse')) && (
                               <td className="p-4 font-bold text-left font-mono" dir="ltr">
                                   {formatCurrency(item.totalPrice)}
                               </td>
+                              )}
                               <td className="p-4 text-center">
                                   <button onClick={() => handleRemoveItem(item.id)} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors">
                                     <Trash2 className="w-5 h-5"/>
@@ -2088,6 +2135,7 @@ export default function App() {
 
               {/* Totals & Submit */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {(!activeTab.includes('warehouse')) && (
                 <div className="p-6">
                   <div className="flex flex-col lg:flex-row justify-between gap-8">
                       <div className="flex-1 space-y-4">
@@ -2118,10 +2166,11 @@ export default function App() {
                       </div>
                   </div>
                 </div>
+                )}
                 <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
                     <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
                       {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                      ثبت و بررسی فاکتور
+                      {activeTab.includes('warehouse') ? 'ثبت و بررسی سند' : 'ثبت و بررسی فاکتور'}
                     </button>
                 </div>
               </div>
@@ -8138,6 +8187,7 @@ export default function App() {
                         </div>
 
                         {/* Pricing summaries + Letters */}
+                        {(!activeTab.includes('warehouse')) && (
                         <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-2 relative" style={{ zIndex: 10 }}>
                           <div className="w-full md:w-1/2 mt-4 md:mt-0">
                             <div className="p-4 border border-indigo-100 bg-indigo-50/50 rounded-2xl">
@@ -8174,15 +8224,16 @@ export default function App() {
                           </div>
                         </div>
 
+                        )}
                         {/* Standard Signature Block */}
                         <div className="grid grid-cols-2 gap-6 pt-8 text-center text-xs font-bold text-gray-400 relative" style={{ zIndex: 10 }}>
                           <div className="border border-dashed border-gray-200 bg-gray-50 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-gray-500">مهر و امضای خریدار</span>
+                            <span className="text-gray-500">{viewingInvoice.type.includes('warehouse') ? 'تحویل دهنده / مراجعه کننده' : 'مهر و امضای خریدار'}</span>
                             <span className="text-[10px] text-gray-400">تاریخ و رویت</span>
                           </div>
                           <div className="border border-indigo-200 bg-indigo-50/20 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-indigo-900">مهر و امضای فروشنده ({storeSettings.storeName})</span>
-                            <span className="text-[10px] text-indigo-400">تضمین اعتبار</span>
+                            <span className="text-indigo-900">{viewingInvoice.type.includes('warehouse') ? `تایید کننده (انباردار ${storeSettings.storeName})` : `مهر و امضای فروشنده (${storeSettings.storeName})`}</span>
+                            <span className="text-[10px] text-indigo-400">{viewingInvoice.type.includes('warehouse') ? 'تاییدیه ورود/خروج کالا' : 'تضمین اعتبار'}</span>
                           </div>
                         </div>
                     </div>
@@ -8338,7 +8389,7 @@ export default function App() {
                 <div className="text-right">
                   <h3 className="text-base font-black text-amber-600 flex items-center gap-2">
                     <Eye className="w-5 h-5 animate-pulse" />
-                    پیش‌نمایش فاکتور قبل از ثبت قطعی
+                    {activeTab.includes('warehouse') ? 'پیش‌نمایش قبل از ثبت قطع' : 'پیش‌نمایش فاکتور قبل از ثبت قطعی'}
                   </h3>
                   <p className="text-[10px] text-gray-400 font-extrabold mt-0.5">لطفاً اقلام و مبالغ را بررسی کنید. برای چاپ مستقیم می‌توانید گزینه پرینت را بزنید.</p>
                 </div>
@@ -8512,9 +8563,13 @@ export default function App() {
                                   <td className="p-4 text-center text-gray-800 font-mono font-black border-r border-gray-100/50" dir="ltr">
                                      {formatNumber(item.quantity || 1)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
+                                  {(!activeTab.includes('warehouse')) && (
+                                    <>
                                   <td className="p-4 text-left text-gray-800 font-mono font-bold" dir="ltr">{formatCurrency(item.unitPrice || 0)}</td>
                                   <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{item.discountPercent || 0}٪</td>
                                   <td className="p-4 text-left text-amber-900 font-black font-mono bg-amber-50/30" dir="ltr">{formatCurrency(item.totalPrice || 0)}</td>
+                                    </>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>
@@ -8561,12 +8616,12 @@ export default function App() {
                         {/* Standard Signature Block */}
                         <div className="grid grid-cols-2 gap-6 pt-8 text-center text-xs font-bold text-gray-400 relative" style={{ zIndex: 10 }}>
                           <div className="border border-dashed border-gray-200 bg-gray-50 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-gray-500">مهر و امضای خریدار</span>
+                            <span className="text-gray-500">{previewInvoiceData.type?.includes('warehouse') ? 'تحویل دهنده / مراجعه کننده' : 'مهر و امضای خریدار'}</span>
                             <span className="text-[10px] text-gray-400">تاریخ و رویت</span>
                           </div>
                           <div className="border border-amber-200 bg-amber-50/20 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-amber-900">مهر و امضای فروشنده ({storeSettings.storeName})</span>
-                            <span className="text-[10px] text-amber-600">تضمین اعتبار</span>
+                            <span className="text-amber-900">{previewInvoiceData.type?.includes('warehouse') ? `تایید کننده (انباردار ${storeSettings.storeName})` : `مهر و امضای فروشنده (${storeSettings.storeName})`}</span>
+                            <span className="text-[10px] text-amber-600">{previewInvoiceData.type?.includes('warehouse') ? 'تاییدیه ورود/خروج کالا' : 'تضمین اعتبار'}</span>
                           </div>
                         </div>
                     </div>
@@ -8583,7 +8638,7 @@ export default function App() {
                   onClick={() => setPreviewInvoiceData(null)}
                   className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs transition-colors cursor-pointer"
                 >
-                  بازگشت و ویرایش فاکتور
+                  activeTab.includes('warehouse') ? 'بازگشت و ویرایش سند' : 'بازگشت و ویرایش فاکتور'
                 </button>
                 <button
                   type="button"
