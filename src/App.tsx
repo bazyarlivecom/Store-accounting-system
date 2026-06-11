@@ -723,6 +723,11 @@ export default function App() {
   };
 
   const handleDeleteProduct = async (id: number | string) => {
+    const isUsedInInvoices = invoices.some(inv => inv.items && inv.items.some((item: any) => item.productId?.toString() === id.toString()));
+    if (isUsedInInvoices) {
+      alert('این کالا در فاکتورها استفاده شده است و قابل حذف نمی‌باشد.');
+      return;
+    }
     if (!confirm('آیا از حذف این کالا اطمینان دارید؟')) return;
     try {
       await deleteProduct(id.toString());
@@ -829,6 +834,22 @@ export default function App() {
   };
 
   const handleDeletePerson = async (id: number | string) => {
+    const isUsedInInvoices = invoices.some(inv => inv.customerId?.toString() === id.toString());
+    if (isUsedInInvoices) {
+      alert('این شخص در فاکتورها استفاده شده است و قابل حذف نمی‌باشد.');
+      return;
+    }
+    const isUsedInTransactions = transactions.some(tx => tx.personId?.toString() === id.toString());
+    if (isUsedInTransactions) {
+      alert('برای این شخص در تراکنش‌های مالی سابقه ثبت شده است و قابل حذف نمی‌باشد.');
+      return;
+    }
+    const isUsedInIssuedChecks = issuedChecks.some(chk => chk.payeeId?.toString() === id.toString());
+    const isUsedInReceivedChecks = receivedChecks.some(chk => chk.payerId?.toString() === id.toString());
+    if (isUsedInIssuedChecks || isUsedInReceivedChecks) {
+      alert('این شخص دارای چک ثبت شده است و قابل حذف نمی‌باشد.');
+      return;
+    }
     if (!confirm('آیا از حذف این شخص اطمینان دارید؟')) return;
     try {
       await deletePerson(id.toString());
@@ -1607,6 +1628,60 @@ export default function App() {
         }
         return item;
       })
+    );
+  };
+
+  const handleDeleteInvoice = async (id: string | number) => {
+    const invoice = invoices.find(inv => inv.id.toString() === id.toString());
+    if (!invoice) return;
+
+    const hasLinkedWarehouseOp = invoices.some(inv => 
+      (inv.type === 'warehouse_receipt' || inv.type === 'warehouse_remittance') 
+      && inv.sourceInvoiceId?.toString() === id.toString()
+    );
+    if (hasLinkedWarehouseOp) {
+      alert('برای این فاکتور عملیات انبار (رسید/حواله) ثبت شده است و قابل حذف نمی‌باشد.');
+      return;
+    }
+
+    if (!confirm('حذف این مورد غیرقابل بازگشت است. آیا اطمینان دارید؟')) return;
+    deleteInvoice(id.toString()).then(fetchInvoices);
+  };
+
+  const handleEditInvoiceAction = async (inv: any) => {
+    const hasLinkedWarehouseOp = invoices.some(val => 
+      (val.type === 'warehouse_receipt' || val.type === 'warehouse_remittance') 
+      && val.sourceInvoiceId?.toString() === inv.id.toString()
+    );
+    if (hasLinkedWarehouseOp) {
+      alert('برای این فاکتور عملیات انبار (رسید/حواله) مبدا ثبت شده است و قابل ویرایش نمی‌باشد.');
+      return;
+    }
+    if (!confirm('آیا می‌خواهید این فاکتور را ویرایش مجدد کنید؟ نسخه فعلی حذف خواهد شد.')) return;
+    
+    await deleteInvoice(inv.id);
+    await fetchInvoices();
+    setInvoiceMode('manual');
+    setInvoiceNumber(inv.invoiceNumber);
+    setInvoiceTitle(inv.title || '');
+    setInvoiceType(inv.type);
+    setInvoiceCurrency(inv.currency || storeSettings.currency);
+    setCustomerId(inv.customerId);
+    setSourceInvoiceId(inv.sourceInvoiceId || '');
+    setItems(inv.items.map((i: any) => ({ ...i })));
+    setOverallDiscountPercent(inv.overallDiscountPercent || 0);
+    
+    if (inv.date) {
+      try {
+        setDate(new Date(inv.date));
+      } catch(e) {}
+    }
+    
+    setActiveTab(
+      inv.type === 'sale' ? 'create_sale' : 
+      inv.type === 'purchase' ? 'create_purchase' : 
+      inv.type === 'warehouse_receipt' ? 'create_warehouse_receipt' : 
+      'create_warehouse_remittance'
     );
   };
 
@@ -2562,37 +2637,12 @@ export default function App() {
                                 <button onClick={() => { setViewingInvoice(inv); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none" title="مشاهده نهایی">
                                   <Eye className="w-4 h-4"/>
                                 </button>
-                                <button onClick={() => confirmAction('آیا می‌خواهید این فاکتور را ویرایش مجدد کنید؟ نسخه فعلی حذف خواهد شد.', () => {
-                                  deleteInvoice(inv.id).then(fetchInvoices);
-                                  setInvoiceMode('manual');
-                                  setInvoiceNumber(inv.invoiceNumber);
-                                  setInvoiceTitle(inv.title || '');
-                                  setInvoiceType(inv.type);
-                                  setInvoiceCurrency(inv.currency || storeSettings.currency);
-                                  setCustomerId(inv.customerId);
-                                  setSourceInvoiceId(inv.sourceInvoiceId || '');
-                                  setItems(inv.items.map((i: any) => ({ ...i })));
-                                  setOverallDiscountPercent(inv.overallDiscountPercent || 0);
-                                  
-                                  if (inv.date) {
-                                    try {
-                                      setDate(new Date(inv.date));
-                                    } catch(e) {}
-                                  }
-                                  
-                                  // Switch to corresponding tab
-                                  setActiveTab(
-                                    inv.type === 'sale' ? 'create_sale' : 
-                                    inv.type === 'purchase' ? 'create_purchase' : 
-                                    inv.type === 'warehouse_receipt' ? 'create_warehouse_receipt' : 
-                                    'create_warehouse_remittance'
-                                  );
-                                })} className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none" title="ویرایش (بازگشت به پیش‌نویس)">
-                                  <Edit2 className="w-4 h-4"/>
-                                </button>
-                                <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteInvoice(inv.id).then(fetchInvoices))} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer bg-transparent border-none justify-center" title="حذف">
-                                  <Trash2 className="w-4 h-4"/>
-                                </button>
+                                <button onClick={() => handleEditInvoiceAction(inv)} className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none" title="ویرایش (بازگشت به پیش‌نویس)">
+                                   <Edit2 className="w-4 h-4"/>
+                                 </button>
+                                 <button onClick={() => handleDeleteInvoice(inv.id)} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer bg-transparent border-none justify-center" title="حذف">
+                                   <Trash2 className="w-4 h-4"/>
+                                 </button>
                              </td>
                            </tr>
                          ))}
