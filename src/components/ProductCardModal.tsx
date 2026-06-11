@@ -14,8 +14,13 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
     const fetchHistory = async () => {
        const invs = await getInvoices();
        const prodHistory: any[] = [];
-       let totalStock = 0;
+       let totalStock = product.stock ? Number(product.stock) : 0;
+       const defaultWhId = product.warehouseId?.toString() || 'unknown';
        const whStock: { [key: string]: number } = {};
+       
+       if (totalStock > 0 || totalStock < 0) {
+           whStock[defaultWhId] = totalStock;
+       }
 
        invs.forEach(inv => {
           if (inv.items) {
@@ -36,10 +41,10 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
 
                 if (!whStock[whId]) whStock[whId] = 0;
 
-                if (inv.type === 'purchase' || inv.type === 'warehouse_receipt') {
+                if (inv.type === 'warehouse_receipt') {
                   totalStock += qty;
                   whStock[whId] += qty;
-                } else if (inv.type === 'sale' || inv.type === 'warehouse_remittance') {
+                } else if (inv.type === 'warehouse_remittance') {
                   totalStock -= qty;
                   whStock[whId] -= qty;
                 }
@@ -62,9 +67,13 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                <Package className="w-5 h-5 text-indigo-500" />
                کارت کالا: {product.name}
             </h3>
-            {isModal && (
+            {isModal ? (
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors">
                  <X className="w-5 h-5" />
+              </button>
+            ) : (
+              <button onClick={onClose} className="text-gray-600 font-bold hover:bg-gray-200 bg-gray-100 px-4 py-2 text-sm rounded-xl transition-colors">
+                 تغییر کالا
               </button>
             )}
          </div>

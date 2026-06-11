@@ -164,7 +164,8 @@ export default function App() {
       label: 'کالا و انبار',
       icon: <Box className="w-5 h-5" />,
       items: [
-        { id: 'products', label: 'کالاها و خدمات', roles: ['admin', 'accountant'] },
+        { id: 'products', label: 'مدیریت کالا و خدمات', roles: ['admin', 'accountant'] },
+        { id: 'product_view', label: 'کارت کالا', roles: ['admin', 'accountant'] },
         { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
         { id: 'warehouses', label: 'انبارها', roles: ['admin', 'accountant'] },
         { id: 'create_warehouse_receipt', label: 'ثبت رسید انبار', roles: ['admin', 'accountant'] },
@@ -244,6 +245,8 @@ export default function App() {
     const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [personSearchTerm, setPersonSearchTerm] = useState('');
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [selectedProductCategory, setSelectedProductCategory] = useState<string>('all');
   const [selectedPersonGroup, setSelectedPersonGroup] = useState<string>('all');
   const [selectedPersonRole, setSelectedPersonRole] = useState<string>('all');
   const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
@@ -1883,13 +1886,17 @@ export default function App() {
 
   const calculateProductCurrentStock = (productId: string | number) => {
     let total = 0;
+    const product = products.find(p => p.id.toString() === productId.toString());
+    if (product?.stock) {
+      total = Number(product.stock);
+    }
     invoices.forEach(inv => {
       if (!inv.items) return;
       inv.items.forEach((i: any) => {
         if (i.productId?.toString() === productId.toString()) {
            const q = Number(i.quantity) || 0;
-           if (inv.type === 'purchase' || inv.type === 'warehouse_receipt') total += q;
-           else if (inv.type === 'sale' || inv.type === 'warehouse_remittance') total -= q;
+           if (inv.type === 'warehouse_receipt') total += q;
+           else if (inv.type === 'warehouse_remittance') total -= q;
         }
       });
     });
@@ -2197,7 +2204,7 @@ export default function App() {
                             options={products.map(p => ({
                               value: p.id,
                               label: p.name,
-                              subLabel: `موجودی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                              subLabel: `موجودی: ${calculateProductCurrentStock(p.id) || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
                               badge: p.type === 'service' ? 'خدمات' : 'کالا'
                             }))}
                             value=""
@@ -2481,7 +2488,7 @@ export default function App() {
                           options={products.map(p => ({
                             value: p.id,
                             label: p.name,
-                            subLabel: `موجودی فعلی: ${p.stock || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                            subLabel: `موجودی فعلی: ${calculateProductCurrentStock(p.id) || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
                             badge: p.type === 'service' ? 'خدمات' : 'کالا'
                           }))}
                           value=""
@@ -4148,28 +4155,73 @@ export default function App() {
               {successMsg}
             </div>
           )}
+
+          {/* Product Search & Filter */}
+          <div className="mx-6 mt-6 space-y-4">
+             <div className="relative">
+               <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                 <Search className="w-5 h-5 text-gray-400" />
+               </div>
+               <input
+                 type="text"
+                 className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm text-gray-950 font-bold"
+                 placeholder="جستجوی پیشرفته کالا (نام، کد، بارکد)..."
+                 value={productSearchTerm}
+                 onChange={(e) => setProductSearchTerm(e.target.value)}
+               />
+             </div>
+             <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex-row-reverse justify-end">
+               <span className="text-xs font-black text-slate-500 flex items-center gap-1">
+                 <Tag className="w-3.5 h-3.5 text-indigo-500" />
+                 فیلتر گروه:
+               </span>
+               <button
+                 onClick={() => setSelectedProductCategory('all')}
+                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedProductCategory === 'all' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+               >
+                 همه گروه‌ها
+               </button>
+               {productCategories.map(cat => (
+                 <button
+                   key={cat.id}
+                   onClick={() => setSelectedProductCategory(cat.id.toString())}
+                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedProductCategory === cat.id.toString() ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+                 >
+                   {cat.name}
+                 </button>
+               ))}
+             </div>
+          </div>
           
-          <div className="p-0 overflow-x-auto">
-            {products.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
-                <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p>هیچ کالایی یافت نشد.</p>
-              </div>
-            ) : (
-              <table className="w-full text-right min-w-[1000px]">
-                <thead>
-                  <tr className="text-xs font-bold text-gray-500 border-b border-gray-100 bg-gray-50/50 uppercase tracking-wider">
-                    <th className="py-4 px-6 text-center w-16">ردیف</th>
-                    <th className="py-4 px-6 text-right">عنوان کالا / خدمات</th>
-                    <th className="py-4 px-6 text-right">کد / بارکد</th>
-                    <th className="py-4 px-6 text-center">موجودی</th>
-                    <th className="py-4 px-6 text-right">قیمت خرید</th>
-                    <th className="py-4 px-6 text-right">قیمت فروش</th>
-                    <th className="py-4 px-6 text-center w-28">عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 text-sm">
-                  {products.map((p, index) => (
+          <div className="p-0 overflow-x-auto mt-6">
+            {(() => {
+              const filteredProducts = products.filter(p => {
+                const matchString = (p.name + ' ' + (p.code || '') + ' ' + (p.barcode || '') + ' ' + (p.description || '')).toLowerCase();
+                const matchesSearch = matchString.includes(productSearchTerm.toLowerCase());
+                const matchesCat = selectedProductCategory === 'all' || p.categoryId?.toString() === selectedProductCategory.toString();
+                return matchesSearch && matchesCat;
+              });
+
+              return filteredProducts.length === 0 ? (
+                <div className="p-12 text-center text-gray-500">
+                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p>هیچ کالایی یافت نشد.</p>
+                </div>
+              ) : (
+                <table className="w-full text-right min-w-[1000px]">
+                  <thead>
+                    <tr className="text-xs font-bold text-gray-500 border-b border-gray-100 bg-gray-50/50 uppercase tracking-wider">
+                      <th className="py-4 px-6 text-center w-16">ردیف</th>
+                      <th className="py-4 px-6 text-right">عنوان کالا / خدمات</th>
+                      <th className="py-4 px-6 text-right">کد / بارکد</th>
+                      <th className="py-4 px-6 text-center">موجودی</th>
+                      <th className="py-4 px-6 text-right">قیمت خرید</th>
+                      <th className="py-4 px-6 text-right">قیمت فروش</th>
+                      <th className="py-4 px-6 text-center w-28">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-sm">
+                    {filteredProducts.map((p, index) => (
                     <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
                       <td className="py-4 px-6 text-gray-400 font-sans text-center">
                         <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm">
@@ -4201,9 +4253,9 @@ export default function App() {
                           <span className="text-gray-400">-</span>
                         ) : (
                           <div className="flex flex-col items-center gap-1">
-                            <span className="font-sans font-bold text-gray-700 text-base">{p.stock || 0}</span>
+                            <span className="font-sans font-bold text-gray-700 text-base">{calculateProductCurrentStock(p.id)}</span>
                             {p.unit && <span className="text-[10px] text-gray-500">{p.unit}</span>}
-                            {(p.stock || 0) <= (p.minStock || 0) && (p.minStock || 0) > 0 && (
+                            {calculateProductCurrentStock(p.id) <= (p.minStock || 0) && (p.minStock || 0) > 0 && (
                               <span className="text-[10px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-100 mt-1">نیاز به شارژ</span>
                             )}
                           </div>
@@ -4251,7 +4303,8 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
-            )}
+              );
+            })()}
           </div>
         </motion.div>
       ) : activeTab === 'persons' ? (
@@ -6103,17 +6156,45 @@ export default function App() {
             </button>
           </div>
         </motion.div>
-      ) : activeTab === 'product_view' && viewingProduct ? (
-        <ProductCardModal 
-          product={viewingProduct} 
-          warehouses={warehouses}
-          currency={storeSettings?.currency || 'تومان'} 
-          isModal={false}
-          onClose={() => {
-            setViewingProduct(null);
-            setActiveTab('products');
-          }} 
-        />
+      ) : activeTab === 'product_view' ? (
+        viewingProduct ? (
+          <ProductCardModal 
+            product={viewingProduct} 
+            warehouses={warehouses}
+            currency={storeSettings?.currency || 'تومان'} 
+            isModal={false}
+            onClose={() => {
+              setViewingProduct(null);
+            }} 
+          />
+        ) : (
+          <motion.div initial={{opacity: 0, y: 10}} animate={{opacity:1, y:0}} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-3xl mx-auto mt-10">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <Package className="w-8 h-8 text-indigo-600" />
+              جستجوی پیشرفته کارت کالا
+            </h2>
+            <div className="relative">
+              <SearchableSelect
+                options={products.map(p => ({
+                  value: p.id,
+                  label: p.name,
+                  subLabel: `موجودی: ${calculateProductCurrentStock(p.id) || 0} ${p.unit || ''}${p.barcode ? ` | بارکد: ${p.barcode}` : (p.code ? ` | کد: ${p.code}` : '')}`,
+                  badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                }))}
+                value=""
+                onChange={(val) => {
+                  const p = products.find(prod => prod.id.toString() === val);
+                  if (p) setViewingProduct(p);
+                }}
+                placeholder="جستجو کالا (نام، کد، بارکد)..."
+                searchPlaceholder="نام، کد یا بارکد کالا را وارد کنید..."
+              />
+            </div>
+            <div className="mt-8 text-center text-gray-500 text-sm">
+               جهت مشاهده تاریخچه و گردش کالا، جستجو و انتخاب کنید
+            </div>
+          </motion.div>
+        )
       ) : activeTab === 'checklist' ? (
         <SystemChecklist />
       ) : null}
