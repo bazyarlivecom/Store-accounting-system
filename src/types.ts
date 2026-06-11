@@ -71,6 +71,7 @@ export type ReceivedCheck = {
 
 export type ProductCategory = {
   id: string | number;
+  code?: string;
   name: string;
   description?: string;
   parentId?: string | number | null;
@@ -133,6 +134,7 @@ export type InvoiceItem = {
   unitRatio?: number;
   isSecondaryUnit?: boolean;
   warehouseId?: string | number;
+  maxQuantity?: number;
 };
 
 export type UserRole = 'admin' | 'accountant' | 'cashier' | 'viewer';

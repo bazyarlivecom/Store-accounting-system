@@ -7,7 +7,7 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './lib/AuthContext';
-import { getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
+import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
 import DatabaseDashboard from './components/DatabaseDashboard';
 import SystemChecklist from './components/SystemChecklist';
 import ProductCardModal from './components/ProductCardModal';
@@ -1387,7 +1387,7 @@ export default function App() {
           const remaining = (Number(it.quantity) || 0) - received;
           return {
             ...it,
-            id: Math.random().toString(36).substring(2, 9),
+            id: generateId(),
             maxQuantity: remaining > 0 ? remaining : 0, // Save max
             quantity: remaining > 0 ? remaining : 0,
             warehouseId: '', // User will select destination warehouse
@@ -1465,7 +1465,7 @@ export default function App() {
     setItems((prevItems) => [
       ...prevItems,
       {
-        id: Math.random().toString(36).substring(7),
+        id: generateId(),
         productId: '',
         productName: '',
         quantity: 1,
@@ -1502,7 +1502,7 @@ export default function App() {
          return [
            ...currentItems,
            {
-             id: Math.random().toString(36).substring(2, 9),
+             id: generateId(),
              productId: productIdStr,
              productName: product.name,
              quantity: 1,

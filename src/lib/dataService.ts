@@ -29,7 +29,12 @@ const saveLocalData = async <T>(key: string, data: T): Promise<void> => {
   }
 };
 
-const generateId = () => Math.random().toString(36).substring(2, 15);
+export const generateId = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 export const getStoreSettings = async (): Promise<CompanySettings | null> => {
   return await getLocalData<CompanySettings | null>('company_profile', null);
@@ -243,7 +248,21 @@ export const getProductCategories = async () => {
 export const addProductCategory = async (category: any) => {
   const categories = await getLocalData<any[]>('product_categories', []);
   const now = Date.now();
-  const newCategory = { ...category, id: generateId(), createdAt: now, updatedAt: now };
+  
+  let maxCatCode = 0;
+  for (let i = 0; i < categories.length; i++) {
+    const c = categories[i];
+    if (c.code) {
+      const num = parseInt(c.code, 10);
+      if (!isNaN(num) && num > maxCatCode) maxCatCode = num;
+    } else {
+      const idx = i + 1;
+      if (idx > maxCatCode) maxCatCode = idx;
+    }
+  }
+  const catCode = (maxCatCode + 1).toString().padStart(2, '0');
+
+  const newCategory = { ...category, code: catCode, id: generateId(), createdAt: now, updatedAt: now };
   categories.push(newCategory);
   await saveLocalData('product_categories', categories);
   return newCategory;
@@ -273,8 +292,51 @@ export const getProducts = async () => {
 
 export const addProduct = async (product: any) => {
   const products = await getLocalData<any[]>('products', []);
+  const categories = await getLocalData<any[]>('product_categories', []);
   const now = Date.now();
-  const newProduct = { ...product, id: generateId(), createdAt: now, updatedAt: now };
+
+  let newCode = product.code;
+  if (!newCode && product.categoryId) {
+    const catIndex = categories.findIndex(c => String(c.id) === String(product.categoryId));
+    const category = categories[catIndex];
+    let catCode = category?.code;
+    if (!catCode && catIndex !== -1) {
+      catCode = (catIndex + 1).toString().padStart(2, '0');
+    } else if (!catCode) {
+      catCode = '00';
+    }
+
+    const catProducts = products.filter(p => String(p.categoryId) === String(product.categoryId));
+    let maxNum = 0;
+    for(const p of catProducts) {
+      if (p.code && typeof p.code === 'string' && p.code.startsWith(`${catCode}-`)) {
+        const numStr = p.code.replace(`${catCode}-`, '');
+        const num = parseInt(numStr, 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    maxNum++;
+    newCode = `${catCode}-${maxNum.toString().padStart(3, '0')}`;
+  } else if (!newCode) {
+    // If no category is chosen, use '00' prefix
+    let maxNum = 0;
+    const catProducts = products.filter(p => !p.categoryId || p.categoryId === '');
+    for(const p of catProducts) {
+      if (p.code && typeof p.code === 'string' && p.code.startsWith(`00-`)) {
+        const numStr = p.code.replace(`00-`, '');
+        const num = parseInt(numStr, 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    maxNum++;
+    newCode = `00-${maxNum.toString().padStart(3, '0')}`;
+  }
+
+  const newProduct = { ...product, code: newCode, id: generateId(), createdAt: now, updatedAt: now };
   products.push(newProduct);
   await saveLocalData('products', products);
   return newProduct;
