@@ -1961,7 +1961,7 @@ export default function App() {
                               </td>
                               <td className="p-4">
                                   <div className="flex flex-col gap-1.5">
-                                    <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" dir="ltr" />
+                                    <CurrencyInput value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" />
                                   </div>
                               </td>
                               <td className="p-4 text-center">
@@ -1993,22 +1993,11 @@ export default function App() {
                                   })()}
                               </td>
                               <td className="p-4">
-                                  <input 
-                                    type="number" 
-                                    min="0" 
-                                    step="any" 
+                                  <CurrencyInput 
                                     value={item.unitPrice} 
-                                    onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
+                                    onChange={(e: any) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
                                     className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950 text-sm" 
-                                    dir="ltr" 
                                   />
-                                  {item.unitPrice && !isNaN(Number(item.unitPrice)) && Number(item.unitPrice) > 0 && (
-                                    <div className="mt-1 space-y-0.5 text-right font-sans">
-                                      <div className="text-[10px] text-indigo-700 font-black tracking-wide font-mono" dir="ltr">
-                                        {formatCurrency(Number(item.unitPrice))} {invoiceCurrency}
-                                      </div>
-                                    </div>
-                                  )}
                               </td>
                               <td className="p-4">
                                   <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600 font-bold" dir="ltr" />
@@ -2219,7 +2208,7 @@ export default function App() {
                               </td>
                               <td className="p-5">
                                   <div className="flex flex-col gap-1.5">
-                                    <input type="number" min="1" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center font-black text-slate-800 outline-none" dir="ltr" />
+                                    <CurrencyInput value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center font-black text-slate-800 outline-none" />
                                   </div>
                               </td>
                               <td className="p-5">
@@ -2251,22 +2240,11 @@ export default function App() {
                                   })()}
                               </td>
                               <td className="p-5">
-                                  <input 
-                                    type="number" 
-                                    min="0" 
-                                    step="any" 
+                                  <CurrencyInput 
                                     value={item.unitPrice} 
-                                    onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
+                                    onChange={(e: any) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
                                     className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-black text-emerald-900 text-sm outline-none" 
-                                    dir="ltr" 
                                   />
-                                  {item.unitPrice && !isNaN(Number(item.unitPrice)) && Number(item.unitPrice) > 0 && (
-                                    <div className="mt-1.5 text-right">
-                                      <div className="text-[10px] text-emerald-600 font-black tracking-wide font-mono" dir="ltr">
-                                        {formatCurrency(Number(item.unitPrice))}
-                                      </div>
-                                    </div>
-                                  )}
                               </td>
                               <td className="p-5">
                                   <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2.5 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center text-rose-600 font-black outline-none" dir="ltr" />
