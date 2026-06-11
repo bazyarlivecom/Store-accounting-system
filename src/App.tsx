@@ -337,6 +337,7 @@ export default function App() {
   const [updateStepName, setUpdateStepName] = useState('');
   const [updateStepsStatus, setUpdateStepsStatus] = useState<{[key: string]: 'idle' | 'running' | 'success' | 'error'}>({});
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [latestCommits, setLatestCommits] = useState<any[]>([]);
   const [checkingUpdateVersion, setCheckingUpdateVersion] = useState(false);
 
   useEffect(() => {
@@ -344,12 +345,19 @@ export default function App() {
       const fetchLatestVersion = async () => {
         setCheckingUpdateVersion(true);
         try {
-          const response = await fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/releases/latest');
-          if (response.ok) {
-            const data = await response.json();
+          const [resVer, resCom] = await Promise.all([
+            fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/releases/latest'),
+            fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/commits?per_page=5')
+          ]);
+          if (resVer.ok) {
+            const data = await resVer.json();
             setLatestVersion(data.tag_name || data.name || 'Build 2.9.0');
           } else {
             setLatestVersion('Build 2.9.0');
+          }
+          if (resCom.ok) {
+            const commits = await resCom.json();
+            setLatestCommits(commits);
           }
         } catch (error) {
           setLatestVersion('Build 2.9.0');
@@ -6125,6 +6133,43 @@ export default function App() {
                  </div>
                </div>
              )}
+
+             {!updatingStr && latestCommits && latestCommits.length > 0 && (
+                <div className="w-full mb-8" dir="rtl">
+                  <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-500" />
+                    تغییرات آخرین نسخه‌ها
+                  </h3>
+                  <div className="space-y-3">
+                    {latestCommits.map((commitData: any, idx: number) => (
+                      <div key={idx} className="bg-white border text-right border-gray-100 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-sm font-bold text-gray-800 mb-2 truncate">
+                          {commitData.commit?.message?.split('\n')[0] || 'بروزرسانی سیستم'}
+                        </p>
+                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
+                          <span className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-full bg-slate-200 overflow-hidden">
+                              {commitData.author?.avatar_url && (
+                                <img src={commitData.author.avatar_url} alt="author" className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                            {commitData.commit?.author?.name || 'توسعه‌دهنده'}
+                          </span>
+                          <span className="font-mono bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                            {new Date(commitData.commit?.author?.date).toLocaleDateString('fa-IR')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 text-xs font-bold flex items-start gap-3 w-full">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <p className="leading-relaxed text-right">
+                      تغییرات فوق در نسخه جدید اعمال شده‌اند. در صورت تایید، می‌توانید با دکمه زیر سیستم را اسکن و آپدیت کنید.
+                    </p>
+                  </div>
+                </div>
+              )}
 
              {updateLog && (
                <div className="mb-8 p-5 bg-indigo-50/45 text-indigo-900 border border-indigo-100/50 rounded-xl w-full text-xs font-black leading-relaxed whitespace-pre-wrap flex items-start gap-3 shadow-2xs">
