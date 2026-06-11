@@ -620,7 +620,7 @@ export default function App() {
 
   const handleSubmitProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProductName || !newProductPrice) return;
+    if (!newProductName) return;
     
     setSubmittingProduct(true);
     try {
@@ -629,9 +629,9 @@ export default function App() {
       
       const payload = { 
         name: newProductName, 
-        price: Number(newProductPrice),
+        price: Number(newProductPrice || 0),
         buyPrice: Number(newProductPurchasePrice || 0), // Adding for firebase blueprint validation
-        sellPrice: Number(newProductPrice), // Adding for firebase blueprint validation
+        sellPrice: Number(newProductPrice || 0), // Adding for firebase blueprint validation
         type: newProductType,
         categoryId: newProductCategoryId,
         category: catName,
@@ -6090,14 +6090,13 @@ export default function App() {
                         </div>
                         <div className="w-full">
                           <label className="block text-sm font-bold text-emerald-900 mb-2">
-                            قیمت فروش ({storeSettings?.currency || 'تومان'}) <span className="text-red-500">*</span>
+                            قیمت فروش ({storeSettings?.currency || 'تومان'})
                           </label>
                           <CurrencyInput
                             value={newProductPrice}
                             onChange={(e: any) => setNewProductPrice(e.target.value)}
                             placeholder="مثال: 1500000"
                             className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-colors text-emerald-900 font-mono text-left font-bold"
-                            required
                           />
                         </div>
                       </div>
@@ -6213,7 +6212,6 @@ export default function App() {
                   {/* Hidden required fields for HTML5 validation validation to still work across tabs */}
                   <div className="hidden">
                       <input type="text" required value={newProductName} onChange={() => {}} />
-                      <input type="text" required value={newProductPrice} onChange={() => {}} />
                   </div>
                 </form>
               </div>
