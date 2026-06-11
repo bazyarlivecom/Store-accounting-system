@@ -338,6 +338,7 @@ export default function App() {
   const [updateStepsStatus, setUpdateStepsStatus] = useState<{[key: string]: 'idle' | 'running' | 'success' | 'error'}>({});
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [latestCommits, setLatestCommits] = useState<any[]>([]);
+  const [latestGithubSha, setLatestGithubSha] = useState<string | null>(null);
   const [checkingUpdateVersion, setCheckingUpdateVersion] = useState(false);
 
   useEffect(() => {
@@ -347,7 +348,7 @@ export default function App() {
         try {
           const [resVer, resCom] = await Promise.all([
             fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/releases/latest'),
-            fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/commits?per_page=5')
+            fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/commits?per_page=10')
           ]);
           if (resVer.ok) {
             const data = await resVer.json();
@@ -357,7 +358,20 @@ export default function App() {
           }
           if (resCom.ok) {
             const commits = await resCom.json();
-            setLatestCommits(commits);
+            if (commits.length > 0) {
+               setLatestGithubSha(commits[0].sha);
+               let currentLocalSha = localStorage.getItem('localCommitSha');
+               if (!currentLocalSha && commits.length > 2) {
+                  currentLocalSha = commits[2].sha;
+                  localStorage.setItem('localCommitSha', currentLocalSha);
+               }
+               const newCommits = [];
+               for (const c of commits) {
+                  if (c.sha === currentLocalSha) break;
+                  newCommits.push(c);
+               }
+               setLatestCommits(newCommits);
+            }
           }
         } catch (error) {
           setLatestVersion('Build 2.9.0');
@@ -2016,6 +2030,12 @@ export default function App() {
           downloading: 'success',
           verifying: 'success'
         });
+
+        if (latestGithubSha) {
+          localStorage.setItem('localCommitSha', latestGithubSha);
+          setLatestCommits([]);
+        }
+
         setUpdateLog(`نسخه اصلی نرم‌افزار حسابداری و فاکتور با موفقیت به آخرین بیلد سیستم ارتقا یافت.\nتغییرات نرم‌افزاری جدید با موفقیت همگام‌سازی شدند.\n\nسیستم تا لحظاتی دیگر به صورت خودکار مجدداً راه‌اندازی و بارگذاری می‌شود...`);
         
         // Auto-reloading after 4 seconds
@@ -6182,23 +6202,30 @@ export default function App() {
                </div>
              )}
 
-            <button
-              onClick={handleSystemUpdate}
-              disabled={updatingStr}
-              className="px-10 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl font-bold transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-w-[240px] cursor-pointer"
-            >
-              {updatingStr ? (
-                <>
-                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
-                  <span>در حال بررسی پکیج‌ها...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-5 h-5" />
-                  <span>بررسی و دریافت نسخه جدید</span>
-                </>
-              )}
-            </button>
+             {latestCommits.length > 0 || checkingUpdateVersion || updatingStr ? (
+               <button
+                 onClick={handleSystemUpdate}
+                 disabled={updatingStr || checkingUpdateVersion}
+                 className="px-10 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl font-bold transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-w-[240px] cursor-pointer"
+               >
+                 {updatingStr || checkingUpdateVersion ? (
+                   <>
+                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                     <span>در حال بررسی وضعیت سیستم...</span>
+                   </>
+                 ) : (
+                   <>
+                     <RefreshCw className="w-5 h-5" />
+                     <span>دریافت و بروزرسانی به آخرین نسخه</span>
+                   </>
+                 )}
+               </button>
+             ) : (
+               <div className="mt-4 p-5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800 text-sm font-bold flex items-center gap-3 w-full justify-center text-center">
+                  <CheckCircle className="w-6 h-6 text-emerald-600" />
+                  شما در حال استفاده از آخرین و جدیدترین نسخه سیستم هستید. نیازی به بروزرسانی نیست.
+               </div>
+             )}
           </div>
         </motion.div>
       ) : activeTab === 'product_view' ? (
