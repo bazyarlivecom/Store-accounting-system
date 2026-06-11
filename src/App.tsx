@@ -1373,18 +1373,22 @@ export default function App() {
         pastReceipts.forEach(receipt => {
           if (receipt.items) {
             receipt.items.forEach((rt: any) => {
-               if (!receivedAmounts[rt.productId]) receivedAmounts[rt.productId] = 0;
-               receivedAmounts[rt.productId] += Number(rt.quantity) || 0;
+               const key = rt.productId || rt.productName;
+               if (!key) return;
+               if (!receivedAmounts[key]) receivedAmounts[key] = 0;
+               receivedAmounts[key] += Number(rt.quantity) || 0;
             });
           }
         });
         
         const remainingItems = sourceInv.items.map((it: any) => {
-          const received = receivedAmounts[it.productId] || 0;
+          const key = it.productId || it.productName;
+          const received = key ? (receivedAmounts[key] || 0) : 0;
           const remaining = (Number(it.quantity) || 0) - received;
           return {
             ...it,
             id: Math.random().toString(36).substring(2, 9),
+            maxQuantity: remaining > 0 ? remaining : 0, // Save max
             quantity: remaining > 0 ? remaining : 0,
             warehouseId: '', // User will select destination warehouse
           };
@@ -1558,7 +1562,11 @@ export default function App() {
               }
             }
 
-            const qty = field === 'quantity' ? Number(value) : Number(updatedItem.quantity);
+            let qty = field === 'quantity' ? Number(value) : Number(updatedItem.quantity);
+            if (activeTab === 'create_warehouse_receipt' && typeof updatedItem.maxQuantity !== 'undefined') {
+              if (qty > updatedItem.maxQuantity) qty = updatedItem.maxQuantity;
+            }
+            updatedItem.quantity = qty;
             const price = field === 'unitPrice' ? Number(value) : Number(updatedItem.unitPrice);
             const discPercent = field === 'discountPercent' ? Number(value) : Number(updatedItem.discountPercent);
             
@@ -1572,6 +1580,32 @@ export default function App() {
         return item;
       })
     );
+  };
+
+  const hasRemainingWarehouseItems = (invoiceId: string | number) => {
+    const sourceInv = invoices.find(i => i.id.toString() === invoiceId.toString());
+    if (!sourceInv || !sourceInv.items) return false;
+
+    const pastReceipts = invoices.filter(i => i.type === 'warehouse_receipt' && i.sourceInvoiceId?.toString() === invoiceId.toString());
+    const receivedAmounts: Record<string, number> = {};
+    pastReceipts.forEach(receipt => {
+      if (receipt.items) {
+        receipt.items.forEach((rt: any) => {
+           const key = rt.productId || rt.productName;
+           if (!key) return;
+           if (!receivedAmounts[key]) receivedAmounts[key] = 0;
+           receivedAmounts[key] += Number(rt.quantity) || 0;
+        });
+      }
+    });
+
+    const hasAny = sourceInv.items.some((it: any) => {
+      const key = it.productId || it.productName;
+      const received = key ? (receivedAmounts[key] || 0) : 0;
+      const remaining = (Number(it.quantity) || 0) - received;
+      return remaining > 0;
+    });
+    return hasAny;
   };
 
   const saveInvoiceData = async (customPayload?: any) => {
@@ -1936,7 +1970,7 @@ export default function App() {
                     <div className="lg:col-span-3 border-t border-gray-100 pt-4">
                        <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> ارتباط با فاکتور خرید مرجع (فراخوانی خودکار اقلام)</label>
                        <SearchableSelect
-                         options={invoices.filter(i => i.type === 'purchase' && (!customerId || i.customerId === customerId)).map(i => ({
+                         options={invoices.filter(i => i.type === 'purchase' && (!customerId || i.customerId === customerId) && hasRemainingWarehouseItems(i.id)).map(i => ({
                            value: i.id,
                            label: `فاکتور خرید ${i.invoiceMode === 'manual' ? '(دستی) ' : ''}#${i.invoiceNumber}`,
                            subLabel: `مبلغ: ${formatCurrency(i.totalAmount || 0)} ${i.currency || 'تومان'} - تامین کننده: ${persons.find(p => p.id.toString() === i.customerId.toString())?.name || 'نامشخص'}`,
@@ -2047,6 +2081,11 @@ export default function App() {
                               <td className="p-4">
                                   <div className="flex flex-col gap-1.5">
                                     <CurrencyInput value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center font-bold" />
+                                    {activeTab === 'create_warehouse_receipt' && typeof item.maxQuantity !== 'undefined' && (
+                                       <span className="text-[10px] text-gray-500 text-center font-bold mt-1">
+                                          قابل رسید: {item.maxQuantity}
+                                       </span>
+                                    )}
                                   </div>
                               </td>
                               <td className="p-4 text-center">
@@ -8164,9 +8203,9 @@ export default function App() {
                                 <th className="p-4 text-center w-12 font-black">ردیف</th>
                                 <th className="p-4 text-right font-black w-[40%]">شرح کالا یا خدمات</th>
                                 <th className="p-4 text-center w-32 font-black">مقدار</th>
-                                <th className="p-4 text-left w-48 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                                <th className="p-4 text-center w-28 font-black">تخفیف (٪)</th>
-                                <th className="p-4 text-left w-48 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                {!viewingInvoice.type.includes('warehouse') && <th className="p-4 text-left w-48 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(viewingInvoice.currency)})</th>}
+                                {!viewingInvoice.type.includes('warehouse') && <th className="p-4 text-center w-28 font-black">تخفیف (٪)</th>}
+                                {!viewingInvoice.type.includes('warehouse') && <th className="p-4 text-left w-48 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(viewingInvoice.currency)})</th>}
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
@@ -8177,9 +8216,13 @@ export default function App() {
                                   <td className="p-4 text-center text-gray-800 font-mono font-black border-r border-gray-100/50" dir="ltr">
                                      {formatNumber(item.quantity)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
-                                  <td className="p-4 text-left text-gray-800 font-mono font-bold" dir="ltr">{formatCurrency(item.unitPrice)}</td>
-                                  <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{item.discountPercent || 0}٪</td>
-                                  <td className="p-4 text-left text-indigo-700 font-black font-mono bg-indigo-50/30" dir="ltr">{formatCurrency(item.totalPrice)}</td>
+                                  {!viewingInvoice.type.includes('warehouse') && (
+                                    <>
+                                      <td className="p-4 text-left text-gray-800 font-mono font-bold" dir="ltr">{formatCurrency(item.unitPrice)}</td>
+                                      <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{item.discountPercent || 0}٪</td>
+                                      <td className="p-4 text-left text-indigo-700 font-black font-mono bg-indigo-50/30" dir="ltr">{formatCurrency(item.totalPrice)}</td>
+                                    </>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>
@@ -8187,7 +8230,7 @@ export default function App() {
                         </div>
 
                         {/* Pricing summaries + Letters */}
-                        {(!activeTab.includes('warehouse')) && (
+                        {(!viewingInvoice.type.includes('warehouse')) && (
                         <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-2 relative" style={{ zIndex: 10 }}>
                           <div className="w-full md:w-1/2 mt-4 md:mt-0">
                             <div className="p-4 border border-indigo-100 bg-indigo-50/50 rounded-2xl">
@@ -8638,7 +8681,7 @@ export default function App() {
                   onClick={() => setPreviewInvoiceData(null)}
                   className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs transition-colors cursor-pointer"
                 >
-                  activeTab.includes('warehouse') ? 'بازگشت و ویرایش سند' : 'بازگشت و ویرایش فاکتور'
+                  {activeTab.includes('warehouse') ? 'بازگشت و ویرایش سند' : 'بازگشت و ویرایش فاکتور'}
                 </button>
                 <button
                   type="button"
