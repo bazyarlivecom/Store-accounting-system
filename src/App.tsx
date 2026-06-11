@@ -1373,7 +1373,7 @@ export default function App() {
         pastReceipts.forEach(receipt => {
           if (receipt.items) {
             receipt.items.forEach((rt: any) => {
-               const key = rt.productId || rt.productName;
+               const key = String(rt.productId || rt.productName || '');
                if (!key) return;
                if (!receivedAmounts[key]) receivedAmounts[key] = 0;
                receivedAmounts[key] += Number(rt.quantity) || 0;
@@ -1382,7 +1382,7 @@ export default function App() {
         });
         
         const remainingItems = sourceInv.items.map((it: any) => {
-          const key = it.productId || it.productName;
+          const key = String(it.productId || it.productName || '');
           const received = key ? (receivedAmounts[key] || 0) : 0;
           const remaining = (Number(it.quantity) || 0) - received;
           return {
@@ -1563,7 +1563,35 @@ export default function App() {
             }
 
             let qty = field === 'quantity' ? Number(value) : Number(updatedItem.quantity);
-            if (activeTab === 'create_warehouse_receipt' && typeof updatedItem.maxQuantity !== 'undefined') {
+            if (activeTab === 'create_warehouse_receipt' && sourceInvoiceId) {
+               const sourceInv = invoices.find(i => i.id.toString() === sourceInvoiceId.toString());
+               if (sourceInv) {
+                 const pastReceipts = invoices.filter(i => i.type === 'warehouse_receipt' && i.sourceInvoiceId?.toString() === sourceInvoiceId.toString());
+                 const receivedAmounts: Record<string, number> = {};
+                 pastReceipts.forEach(receipt => {
+                   if (receipt.items) {
+                     receipt.items.forEach((rt: any) => {
+                        const key = String(rt.productId || rt.productName || '');
+                        if (!key) return;
+                        if (!receivedAmounts[key]) receivedAmounts[key] = 0;
+                        receivedAmounts[key] += Number(rt.quantity) || 0;
+                     });
+                   }
+                 });
+                 const key = String(updatedItem.productId || updatedItem.productName || '');
+                 const srcItem = sourceInv.items.find((si: any) => (si.productId || si.productName) === key);
+                 if (srcItem) {
+                    const received = receivedAmounts[key] || 0;
+                    let maxQty = (Number(srcItem.quantity) || 0) - received;
+                    if (typeof updatedItem.maxQuantity !== 'undefined') {
+                       if (qty > updatedItem.maxQuantity) qty = updatedItem.maxQuantity;
+                    } else {
+                       if (qty > maxQty) qty = maxQty;
+                       updatedItem.maxQuantity = maxQty;
+                    }
+                 }
+               }
+            } else if (activeTab === 'create_warehouse_receipt' && typeof updatedItem.maxQuantity !== 'undefined') {
               if (qty > updatedItem.maxQuantity) qty = updatedItem.maxQuantity;
             }
             updatedItem.quantity = qty;
@@ -1591,7 +1619,7 @@ export default function App() {
     pastReceipts.forEach(receipt => {
       if (receipt.items) {
         receipt.items.forEach((rt: any) => {
-           const key = rt.productId || rt.productName;
+           const key = String(rt.productId || rt.productName || '');
            if (!key) return;
            if (!receivedAmounts[key]) receivedAmounts[key] = 0;
            receivedAmounts[key] += Number(rt.quantity) || 0;
@@ -1600,7 +1628,7 @@ export default function App() {
     });
 
     const hasAny = sourceInv.items.some((it: any) => {
-      const key = it.productId || it.productName;
+      const key = String(it.productId || it.productName || '');
       const received = key ? (receivedAmounts[key] || 0) : 0;
       const remaining = (Number(it.quantity) || 0) - received;
       return remaining > 0;
@@ -1608,11 +1636,23 @@ export default function App() {
     return hasAny;
   };
 
+  const getInvoicePrefix = () => {
+    if (activeTab === 'create_warehouse_receipt') return 'REC-';
+    if (activeTab === 'create_warehouse_remittance') return 'REM-';
+    if (activeTab === 'create_purchase') return 'PUR-';
+    if (activeTab === 'create_sale') return 'INV-';
+    // Fallback based on type if activeTab is list
+    if (invoiceType === 'warehouse_receipt') return 'REC-';
+    if (invoiceType === 'warehouse_remittance') return 'REM-';
+    if (invoiceType === 'purchase') return 'PUR-';
+    return 'INV-';
+  };
+
   const saveInvoiceData = async (customPayload?: any) => {
     setSubmitting(true);
     setSuccessMsg('');
 
-    const finalInvoiceNumber = invoiceMode === 'auto' ? `INV-${Math.floor(Math.random() * 1000000)}` : invoiceNumber;
+    const finalInvoiceNumber = invoiceMode === 'auto' ? `${getInvoicePrefix()}${Math.floor(Math.random() * 1000000)}` : invoiceNumber;
 
     if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && items.some(i => !i.warehouseId)) {
       customAlert('لطفاً برای تمامی اقلام انبار را 선택 کنید.');
@@ -1626,7 +1666,7 @@ export default function App() {
 
     const payload = customPayload ? {
       ...customPayload,
-      invoiceNumber: customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') ? `INV-${Math.floor(Math.random() * 1000000)}` : customPayload.invoiceNumber
+      invoiceNumber: customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') ? `${getInvoicePrefix()}${Math.floor(Math.random() * 1000000)}` : customPayload.invoiceNumber
     } : {
       invoiceNumber: finalInvoiceNumber,
       title: invoiceTitle,
@@ -1710,6 +1750,7 @@ export default function App() {
       customerName: selectedCustomer ? selectedCustomer.name : 'نامشخص',
       customerPhone: selectedCustomer ? selectedCustomer.phone : '',
       customerAddress: selectedCustomer ? selectedCustomer.address : '',
+      sourceInvoiceId, // Pass it correctly
       items: items.map(item => {
         const prod = products.find(p => p.id.toString() === String(item.productId));
         return {
@@ -2529,6 +2570,7 @@ export default function App() {
                                   setInvoiceType(inv.type);
                                   setInvoiceCurrency(inv.currency || storeSettings.currency);
                                   setCustomerId(inv.customerId);
+                                  setSourceInvoiceId(inv.sourceInvoiceId || '');
                                   setItems(inv.items.map((i: any) => ({ ...i })));
                                   setOverallDiscountPercent(inv.overallDiscountPercent || 0);
                                   
