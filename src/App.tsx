@@ -7961,16 +7961,16 @@ export default function App() {
                            </table>
                         </div>
                         {/* Breakdown */}
-                        <div className="mt-6 flex justify-between items-end">
-                           <div className="w-1/2 p-4 border border-emerald-200 bg-emerald-100/50 space-y-2">
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-4 mt-2">
+                           <div className="w-full md:w-1/2 p-4 border border-emerald-200 bg-emerald-50/80 rounded-2xl space-y-3">
                              <p className="text-emerald-800 font-bold text-xs leading-relaxed max-w-sm">
                                 این سند مربوط به خرید ثبت شده در <strong>{storeSettings.storeName || 'مجموعه تجاری پیش‌فرض'}</strong> می‌باشد و معادل ارزی آن در سیستم لحاظ شده است.
                              </p>
-                             <div className="text-emerald-900 font-bold text-sm bg-emerald-200/50 p-2 border border-emerald-300">
+                             <div className="text-emerald-950 font-black text-sm bg-emerald-100/50 p-3 rounded-xl border border-emerald-200/60 mt-2">
                                 معادل حروفی: {numToPersianWords(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}
                              </div>
                            </div>
-                           <div className="w-[45%] bg-white border-2 border-emerald-900 flex flex-col font-bold text-emerald-950">
+                           <div className="w-full md:w-5/12 bg-white border-2 border-emerald-900 rounded-3xl overflow-hidden flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
                                <span className="font-mono text-left" dir="ltr">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
@@ -8353,16 +8353,16 @@ export default function App() {
                            </table>
                         </div>
                         {/* Breakdown */}
-                        <div className="mt-6 flex justify-between items-end">
-                           <div className="w-1/2 p-4 border border-emerald-200 bg-emerald-100/50 space-y-2">
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-4 mt-2">
+                           <div className="w-full md:w-1/2 p-4 border border-emerald-200 bg-emerald-50/80 rounded-2xl space-y-3">
                              <p className="text-emerald-800 font-bold text-xs leading-relaxed max-w-sm">
                                 این سند مربوط به خرید ثبت شده در <strong>{storeSettings.storeName || 'مجموعه تجاری پیش‌فرض'}</strong> می‌باشد و معادل ارزی آن در سیستم لحاظ شده است.
                              </p>
-                             <div className="text-emerald-900 font-bold text-sm bg-emerald-200/50 p-2 border border-emerald-300">
+                             <div className="text-emerald-950 font-black text-sm bg-emerald-100/50 p-3 rounded-xl border border-emerald-200/60 mt-2">
                                 معادل حروفی: {numToPersianWords(previewInvoiceData.totalAmount)} {showInvoiceCurrency(previewInvoiceData.currency)}
                              </div>
                            </div>
-                           <div className="w-[45%] bg-white border-2 border-emerald-900 flex flex-col font-bold text-emerald-950">
+                           <div className="w-full md:w-5/12 bg-white border-2 border-emerald-900 rounded-3xl overflow-hidden flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
                                <span className="font-mono text-left" dir="ltr">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
