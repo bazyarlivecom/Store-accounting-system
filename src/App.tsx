@@ -1409,11 +1409,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Initialize with one empty row
-    if (items.length === 0) {
-      handleAddItem();
-    }
-    
+    // Only fetch data
     if (user) {
       fetchData();
     }
@@ -1542,6 +1538,10 @@ export default function App() {
 
     const finalInvoiceNumber = invoiceMode === 'auto' ? `INV-${Math.floor(Math.random() * 1000000)}` : invoiceNumber;
 
+    const cleanItems = items.filter(
+      item => item.productName || item.productId || (item.quantity > 0 && item.unitPrice > 0)
+    );
+
     const payload = customPayload ? {
       ...customPayload,
       invoiceNumber: customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') ? `INV-${Math.floor(Math.random() * 1000000)}` : customPayload.invoiceNumber
@@ -1553,7 +1553,7 @@ export default function App() {
       date: typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString(),
       jalaliDate: new Date(date).toLocaleDateString('fa-IR'),
       customerId,
-      items,
+      items: cleanItems,
       overallDiscountPercent,
       totalAmount: calculateFinalTotal()
     };
@@ -1580,7 +1580,6 @@ export default function App() {
         setExchangeRateInput('1');
         setInvoiceType('sale');
         setInvoiceTitle('فاکتور فروش کالا');
-        handleAddItem();
         setSuccessMsg('');
         setPreviewInvoiceData(null); // Clear preview modal
       }, 1500);
@@ -1931,6 +1930,16 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
+                        {items.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-gray-400 font-bold text-sm bg-gray-50/50">
+                              <div className="flex flex-col items-center justify-center space-y-2">
+                                <Package className="w-8 h-8 text-indigo-200" />
+                                <span>هیچ کالا یا خدماتی به این سند اضافه نشده است. لطفاً از طریق جستجو یا دکمه افزودن سطر، اقلام را وارد کنید.</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         {items.map((item, index) => (
                             <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                               <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
@@ -2160,8 +2169,8 @@ export default function App() {
                         />
                       </div>
                     </div>
-                    <button onClick={handleAddItem} className="px-5 py-3 bg-white border border-emerald-200 text-emerald-700 shadow-sm rounded-xl font-bold hover:bg-emerald-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-emerald-500">
-                      <Plus className="w-4 h-4" /> کالا / خدمات جدید
+                    <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-emerald-200 text-emerald-700 shadow-sm rounded-xl font-bold hover:bg-emerald-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-emerald-500">
+                      <Plus className="w-4 h-4" /> تعریف کالا / خدمات جدید
                     </button>
                 </div>
                 <div className="overflow-x-auto">
@@ -2179,6 +2188,16 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-emerald-50/50">
+                        {items.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-emerald-400 font-bold text-sm bg-emerald-50/30">
+                              <div className="flex flex-col items-center justify-center space-y-2">
+                                <Box className="w-8 h-8 text-emerald-200" />
+                                <span>هیچ کالا یا خدماتی به این سند اضافه نشده است. لطفاً جستجو کرده یا محصول جدیدی تعریف کنید.</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         {items.map((item, index) => (
                             <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors">
                               <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
@@ -7950,7 +7969,7 @@ export default function App() {
                                </tr>
                              </thead>
                              <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold">
-                               {viewingInvoice.items?.map((item: any, idx: number) => (
+                               {viewingInvoice.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
                                  <tr key={idx}>
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
                                    <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
@@ -8068,7 +8087,7 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
-                              {viewingInvoice.items?.map((item: any, idx: number) => (
+                              {viewingInvoice.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                                   <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
@@ -8342,7 +8361,7 @@ export default function App() {
                                </tr>
                              </thead>
                              <tbody className="divide-y divide-emerald-200 text-emerald-950 font-bold bg-white">
-                               {previewInvoiceData.items?.map((item: any, idx: number) => (
+                               {previewInvoiceData.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
                                  <tr key={idx} className="hover:bg-emerald-50">
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
                                    <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
@@ -8452,7 +8471,7 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
-                              {previewInvoiceData.items?.map((item: any, idx: number) => (
+                              {previewInvoiceData.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                                   <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
