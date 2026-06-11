@@ -163,4 +163,6 @@ export type CompanySettings = {
   printFooterText: string;
   taxPercent: number;
   invoiceNotes: string;
+  allowNegativeStock?: boolean;
+  requireWarehouse?: boolean;
 };
