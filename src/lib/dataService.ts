@@ -446,29 +446,7 @@ export const addInvoice = async (invoice: any) => {
   invoices.push(newInvoice);
   await saveLocalData('invoices', invoices);
 
-  // Update product stock based on invoice type
-  if (invoice.items && Array.isArray(invoice.items)) {
-    const products = await getLocalData<any[]>('products', []);
-    let productsUpdated = false;
-
-    for (const item of invoice.items) {
-      const prodIndex = products.findIndex((p: any) => p.id === item.productId || p.id === Number(item.productId) || p.id === String(item.productId));
-      if (prodIndex !== -1) {
-        const qty = Number(item.quantity) || 0;
-        if (invoice.type === 'sale' || invoice.type === 'warehouse_remittance') {
-          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) - qty;
-          productsUpdated = true;
-        } else if (invoice.type === 'purchase' || invoice.type === 'warehouse_receipt') {
-          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) + qty;
-          productsUpdated = true;
-        }
-      }
-    }
-
-    if (productsUpdated) {
-      await saveLocalData('products', products);
-    }
-  }
+  // Stock is computed dynamically from history instead 
 
   return newInvoice;
 };
@@ -477,29 +455,7 @@ export const deleteInvoice = async (id: string) => {
   const invoices = await getLocalData<any[]>('invoices', []);
   const invoiceToDelete = invoices.find((p: any) => p.id === id || p.id === Number(id) || p.id === String(id));
   
-  if (invoiceToDelete && invoiceToDelete.items && Array.isArray(invoiceToDelete.items)) {
-    const products = await getLocalData<any[]>('products', []);
-    let productsUpdated = false;
-
-    for (const item of invoiceToDelete.items) {
-      const prodIndex = products.findIndex((p: any) => p.id === item.productId || p.id === Number(item.productId) || p.id === String(item.productId));
-      if (prodIndex !== -1) {
-        const qty = Number(item.quantity) || 0;
-        // Revert the stock
-        if (invoiceToDelete.type === 'sale' || invoiceToDelete.type === 'warehouse_remittance') {
-          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) + qty;
-          productsUpdated = true;
-        } else if (invoiceToDelete.type === 'purchase' || invoiceToDelete.type === 'warehouse_receipt') {
-          products[prodIndex].stock = (Number(products[prodIndex].stock) || 0) - qty;
-          productsUpdated = true;
-        }
-      }
-    }
-
-    if (productsUpdated) {
-      await saveLocalData('products', products);
-    }
-  }
+  // Stock is computed dynamically from history instead 
 
   await saveLocalData('invoices', invoices.filter((p: any) => p.id !== id && p.id !== Number(id) && p.id !== String(id)));
 };

@@ -753,21 +753,35 @@ export default function App() {
       const isEdit = editingProductId !== null;
       const catName = productCategories.find(c => String(c.id) === String(newProductCategoryId))?.name || 'عمومی';
       
+      let finalCode = newProductCode;
+      if (!isEdit && !finalCode) {
+         const cat = productCategories.find(c => String(c.id) === String(newProductCategoryId));
+         let catCode = cat?.code;
+         if (!catCode) {
+            catCode = "GEN";
+         }
+         const existingProducts = products.filter(p => typeof p.code === 'string' && p.code.startsWith(catCode));
+         const maxCode = existingProducts.map(p => parseInt((p.code).replace(catCode, ''), 10))
+                                       .filter(n => !isNaN(n))
+                                       .reduce((a, b) => Math.max(a, b), 0);
+         finalCode = `${catCode}${String(maxCode + 1).padStart(4, '0')}`;
+      }
+
       const payload = { 
         name: newProductName, 
         price: Number(newProductPrice || 0),
-        buyPrice: Number(newProductPurchasePrice || 0), // Adding for firebase blueprint validation
-        sellPrice: Number(newProductPrice || 0), // Adding for firebase blueprint validation
+        buyPrice: Number(newProductPurchasePrice || 0),
+        sellPrice: Number(newProductPrice || 0),
         type: newProductType,
         categoryId: newProductCategoryId,
         category: catName,
-        code: newProductCode,
+        code: finalCode,
         barcode: newProductBarcode,
         purchasePrice: Number(newProductPurchasePrice || 0),
         stock: Number(newProductStock || 0),
         warehouseId: newProductWarehouseId,
         minStock: Number(newProductMinStock || 0),
-        unit: newProductUnit,
+        unit: newProductUnit || 'عدد',
         secondaryUnit: newProductSecondaryUnit,
         unitRatio: Number(newProductUnitRatio || 1),
         description: newProductDesc
@@ -815,7 +829,12 @@ export default function App() {
         await updateProductCategory(editingCategoryId, { name: newCatName, description: newCatDesc, parentId: newCatParentId || null });
         setSuccessMsg('گروه‌بندی با موفقیت ویرایش شد.');
       } else {
-        await addProductCategory({ name: newCatName, description: newCatDesc, parentId: newCatParentId || null });
+        const codechars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let newCode = "";
+        for (let i = 0; i < 3; i++) {
+           newCode += codechars.charAt(Math.floor(Math.random() * codechars.length));
+        }
+        await addProductCategory({ code: newCode, name: newCatName, description: newCatDesc, parentId: newCatParentId || null });
         setSuccessMsg('گروه‌بندی جدید ثبت شد.');
       }
       // re-fetch categories
@@ -1098,7 +1117,7 @@ export default function App() {
         personId: receiptPersonId,
         amount: Number(receiptAmount),
         date: typeof receiptDate.toDate === 'function' ? receiptDate.toDate().toISOString() : new Date(receiptDate).toISOString(),
-        jalaliDate: typeof receiptDate.toDate === 'function' ? new Date(receiptDate.toDate().toISOString()).toLocaleDateString('fa-IR') : new Date(receiptDate).toLocaleDateString('fa-IR'),
+        jalaliDate: typeof receiptDate.toDate === 'function' ? new Date(receiptDate.toDate().toISOString()).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR') : new Date(receiptDate).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
         resourceType: receiptResourceType,
         resourceId: receiptResourceId,
         description: receiptDescription,
@@ -1210,7 +1229,7 @@ export default function App() {
         personId: salaryPersonId,
         amount: netSalary,
         date: typeof salaryDate.toDate === 'function' ? salaryDate.toDate().toISOString() : new Date(salaryDate).toISOString(),
-        jalaliDate: new Date(salaryDate).toLocaleDateString('fa-IR'),
+        jalaliDate: new Date(salaryDate).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
         resourceType: salaryDirectPayment ? salaryResourceType : 'none',
         resourceId: salaryDirectPayment ? salaryResourceId : 0,
         description: payloadDescription
@@ -1964,7 +1983,7 @@ export default function App() {
       type: invoiceType,
       currency: invoiceCurrency,
       date: typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString(),
-      jalaliDate: new Date(date).toLocaleDateString('fa-IR'),
+      jalaliDate: new Date(date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
       customerId,
       sourceInvoiceId,
       items: cleanItems,
@@ -2071,7 +2090,7 @@ export default function App() {
       type: invoiceType,
       currency: invoiceCurrency,
       date: typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString(),
-      jalaliDate: new Date(date).toLocaleDateString('fa-IR'),
+      jalaliDate: new Date(date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
       customerId,
       customerName: selectedCustomer ? selectedCustomer.name : 'نامشخص',
       customerPhone: selectedCustomer ? selectedCustomer.phone : '',
@@ -2348,6 +2367,88 @@ export default function App() {
 
 
 
+
+  if (requiresInitSetup && user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 pt-10 pb-10" dir="rtl">
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-xl w-full border border-gray-100">
+          <div className="bg-gradient-to-l from-indigo-600 to-indigo-800 p-8 text-center text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mx-24 -mt-24 pointer-events-none"></div>
+            <h1 className="text-3xl font-black mb-2 relative z-10">خوش آمدید!</h1>
+            <p className="text-indigo-100 font-medium relative z-10">تنظیمات اولیه سیستم خود را تکمیل کنید</p>
+          </div>
+          <div className="p-8">
+            <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm font-bold flex items-start gap-3 mb-8 border border-amber-100">
+               <AlertTriangle className="w-5 h-5 shrink-0" />
+               <p className="leading-loose">توجه داشته باشید که <strong>نوع تقویم</strong> و <strong>واحد پولی</strong> پس از ثبت برای حفظ یکپارچگی پایگاه داده و نرم‌افزار <strong>غیرقابل تغییر</strong> خواهند بود.</p>
+            </div>
+            
+            <form onSubmit={handleSaveSettings} className="space-y-6">
+              <div>
+                <label className="block text-sm font-extrabold text-gray-800 mb-3">نام فروشگاه یا مجموعه تجاری</label>
+                <input
+                  type="text"
+                  required
+                  value={settingsForm.storeName}
+                  onChange={(e) => setSettingsForm({...settingsForm, storeName: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-gray-900"
+                  placeholder="وارد کنید..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-extrabold text-gray-800 mb-3">واحد پولی سیستم</label>
+                <select
+                  value={settingsForm.currency}
+                  onChange={(e) => setSettingsForm({...settingsForm, currency: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-gray-900"
+                >
+                  <option value="ریال">ریال</option>
+                  <option value="تومان">تومان</option>
+                  <option value="دلار">دلار (USD)</option>
+                  <option value="افغانی">افغانی</option>
+                  <option value="درهم">درهم (AED)</option>
+                  <option value="یورو">یورو (EUR)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-extrabold text-gray-800 mb-3">تاریخ و تقویم سیستم</label>
+                <div className="grid grid-cols-2 gap-4">
+                   <button 
+                     type="button" 
+                     onClick={() => setSettingsForm({...settingsForm, calendarType: 'jalali'})}
+                     className={`py-4 px-2 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType !== 'gregorian' ? 'border-indigo-600 bg-indigo-50 text-indigo-800' : 'border-gray-100 text-gray-500 hover:border-gray-200'}`}
+                   >
+                     تقویم شمسی (جلالی)
+                   </button>
+                   <button 
+                     type="button" 
+                     onClick={() => setSettingsForm({...settingsForm, calendarType: 'gregorian'})}
+                     className={`py-4 px-2 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType === 'gregorian' ? 'border-indigo-600 bg-indigo-50 text-indigo-800' : 'border-gray-100 text-gray-500 hover:border-gray-200'}`}
+                   >
+                     تقویم میلادی
+                   </button>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-gray-100">
+                <button
+                  type="submit"
+                  disabled={submittingSettings}
+                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {submittingSettings ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+                  ثبت نهایی و ورود به سیستم
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const renderTabContent = () => {
     switch(activeTab) {
         case 'create_warehouse_receipt':
@@ -2387,8 +2488,8 @@ export default function App() {
                       <DatePicker
                           value={date}
                           onChange={setDate}
-                          calendar={persian}
-                          locale={persian_fa}
+                          calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                          locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                           calendarPosition="bottom-right"
                           inputClass="w-full pl-11 pr-4 p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-sm"
                           containerClassName="w-full"
@@ -2742,8 +2843,8 @@ export default function App() {
                       <DatePicker
                           value={date}
                           onChange={setDate}
-                          calendar={persian}
-                          locale={persian_fa}
+                          calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                          locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                           calendarPosition="bottom-right"
                           inputClass="w-full pl-11 pr-4 p-3 bg-emerald-50/30 hover:bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white text-emerald-950 font-sans font-black text-center transition-all cursor-pointer outline-none text-sm"
                           containerClassName="w-full"
@@ -3029,8 +3130,8 @@ export default function App() {
                       <DatePicker
                           value={date}
                           onChange={setDate}
-                          calendar={persian}
-                          locale={persian_fa}
+                          calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                          locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                           calendarPosition="bottom-right"
                           inputClass="w-full pl-11 pr-4 p-3 bg-indigo-50/30 hover:bg-indigo-50 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer outline-none text-sm"
                           containerClassName="w-full"
@@ -3208,6 +3309,8 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
                 <div className="p-8">
                   <div className="flex flex-col lg:flex-row justify-between gap-10">
+                     {(!activeTab.includes('warehouse')) && (
+                        <div className="flex w-full flex-col lg:flex-row justify-between gap-10">
                       <div className="flex-1 space-y-4">
                         <div>
                             <label className="block text-sm font-black text-slate-700 mb-3 ml-1">تخفیف روی کل فاکتور (%)</label>
@@ -3237,6 +3340,8 @@ export default function App() {
                           )}
                         </div>
                       </div>
+                    </div>
+                   )}
                   </div>
                 </div>
                 <div className="p-6 bg-indigo-50/20 border-t border-indigo-100 flex justify-end gap-3">
@@ -3274,7 +3379,11 @@ export default function App() {
                              {activeTab.includes('warehouse') ? 'تحویل دهنده / گیرنده' : 'مشتری'}
                            </th>
                            <th className="p-4 font-bold">تاریخ</th>
-                           <th className="p-4 font-bold">مبلغ نهایی</th>
+                           {activeTab.includes('warehouse') ? (
+                              <th className="p-4 font-bold text-center">انبار مبدا/مقصد</th>
+                            ) : (
+                              <th className="p-4 font-bold">مبلغ نهایی</th>
+                            )}
                            <th className="p-4 font-bold text-center">عملیات</th>
                          </tr>
                        </thead>
@@ -3393,8 +3502,8 @@ export default function App() {
                           <DatePicker
                             value={receiptDate}
                             onChange={setReceiptDate}
-                            calendar={persian}
-                            locale={persian_fa}
+                            calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                            locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                             calendarPosition="bottom-right"
                             inputClass={`w-full pl-11 pr-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 ${themeRing} outline-none font-sans font-black text-slate-900 text-center transition-all cursor-pointer shadow-sm text-base`}
                             containerClassName="w-full"
@@ -3635,8 +3744,8 @@ export default function App() {
                        <DatePicker
                          value={salaryDate}
                          onChange={setSalaryDate}
-                         calendar={persian}
-                         locale={persian_fa}
+                         calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                         locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                          calendarPosition="bottom-right"
                          inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center"
                          containerClassName="w-full"
@@ -4143,11 +4252,13 @@ export default function App() {
                                         <span className="text-indigo-400 font-mono select-none">└─</span>
                                         <Tag className="w-3.5 h-3.5 text-slate-400" />
                                         <span>{cat.name}</span>
+                                        {cat.code && <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md border border-gray-200 leading-none">{cat.code}</span>}
                                       </div>
                                     ) : (
                                       <div className="flex items-center gap-1.5 font-extrabold text-indigo-950">
                                         <Tag className="w-4 h-4 text-indigo-500" />
                                         <span>{cat.name}</span>
+                                        {cat.code && <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md border border-gray-200 leading-none">{cat.code}</span>}
                                       </div>
                                     )}
                                     {cat.description && (
@@ -5557,8 +5668,8 @@ export default function App() {
                    dateSeparator=" تا "
                    value={reportDateRange as any}
                    onChange={setReportDateRange as any}
-                   calendar={persian}
-                   locale={persian_fa}
+                   calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                   locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                    calendarPosition="bottom-right"
                    inputClass="text-sm font-bold text-indigo-700 bg-transparent border-none outline-none max-w-[170px] text-center"
                    placeholder="انتخاب بازه تاریخ..."
@@ -5887,7 +5998,7 @@ export default function App() {
                   id: `inv-${inv.id}`,
                   refId: inv.invoiceNumber || `#${inv.id}`,
                   date: inv.date,
-                  jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString('fa-IR'),
+                  jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
                   type: inv.type === 'proforma' ? 'پیش‌فاکتور' : (inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا'),
                   desc: inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور')),
                   debit: (isSale && !isProforma) ? amount : 0,  // Sale increases how much they owe us
@@ -5951,7 +6062,7 @@ export default function App() {
                   id: `tx-${t.id}`,
                   refId: t.receiptNumber || `سند #${t.id}`,
                   date: t.date,
-                  jalaliDate: t.jalaliDate || new Date(t.date).toLocaleDateString('fa-IR'),
+                  jalaliDate: t.jalaliDate || new Date(t.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
                   type: typeLabel,
                   desc: finalDesc,
                   debit,
@@ -5978,7 +6089,7 @@ export default function App() {
                  id: 'opening-balance',
                  refId: 'افتتاحیه',
                  date: selectedPerson.registrationDate || new Date().toISOString(),
-                 jalaliDate: selectedPerson.registrationDate ? new Date(selectedPerson.registrationDate).toLocaleDateString('fa-IR') : '-',
+                 jalaliDate: selectedPerson.registrationDate ? new Date(selectedPerson.registrationDate).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR') : '-',
                  type: 'مانده از قبل',
                  desc: `ثبت سند افتتاحیه ${isDebtor ? '(بدهکار)' : '(بستانکار)'}`,
                  debit: isDebtor ? ibAmount : 0,
@@ -6351,21 +6462,22 @@ export default function App() {
                     </div>
                     
                     <div className="w-full text-right">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">واحد پولی سیستم</label>
-                      <select
-                        value={settingsForm.currency}
-                        onChange={e => setSettingsForm({...settingsForm, currency: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm bg-white"
-                        dir="ltr"
-                      >
-                        <option value="تومان">تومان (Toman)</option>
-                        <option value="ریال">ریال (Rial)</option>
-                        <option value="$">دلار آمریکا ($)</option>
-                        <option value="€">یورو (€)</option>
-                        <option value="£">پوند (£)</option>
-                        <option value="دینار">دینار</option>
-                        <option value="افغانی">افغانی</option>
-                      </select>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">واحد پولی سیستم (غیرقابل تغییر)</label>
+                      <input
+                        type="text"
+                        value={storeSettings.currency}
+                        disabled
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">تاریخ و تقویم سیستم (غیرقابل تغییر)</label>
+                      <input
+                        type="text"
+                        value={storeSettings.calendarType === 'gregorian' ? 'میلادی' : 'شمسی (جلالی)'}
+                        disabled
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
+                      />
                     </div>
 
                     <div className="w-full text-right">
@@ -6720,7 +6832,7 @@ export default function App() {
                             تیم توسعه مرکز
                           </span>
                           <span className="font-sans font-bold text-indigo-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
-                            {new Date(commitData.commit?.author?.date).toLocaleDateString('fa-IR')}
+                            {new Date(commitData.commit?.author?.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR')}
                           </span>
                         </div>
                       </div>
@@ -7782,7 +7894,7 @@ export default function App() {
                             const url = URL.createObjectURL(blob);
                             const link = document.createElement('a');
                             link.setAttribute('href', url);
-                            link.setAttribute('download', `persons_list_export_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.csv`);
+                            link.setAttribute('download', `persons_list_export_${new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR').replace(/\//g, '-')}.csv`);
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
@@ -7812,7 +7924,7 @@ export default function App() {
                             const url = URL.createObjectURL(blob);
                             const link = document.createElement('a');
                             link.setAttribute('href', url);
-                            link.setAttribute('download', `persons_data_export_${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`);
+                            link.setAttribute('download', `persons_data_export_${new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR').replace(/\//g, '-')}.json`);
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
@@ -8813,8 +8925,8 @@ export default function App() {
                           <DatePicker
                             value={newPersonRegistrationDate}
                             onChange={(date: any) => setNewPersonRegistrationDate(date?.toDate?.() || new Date())}
-                            calendar={persian}
-                            locale={persian_fa}
+                            calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                            locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                             calendarPosition="bottom-right"
                             inputClass="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 font-mono text-center outline-none"
                             containerClassName="w-full"
@@ -9275,18 +9387,18 @@ export default function App() {
                         <div className="flex justify-between items-start border-b-2 border-emerald-900 pb-6 mb-6">
                            <div className="space-y-4">
                                <div className="flex items-center gap-4">
-                                  <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">سند رسمی خرید کالا</h1>
-                                  <span className="bg-emerald-900 text-white font-mono px-3 py-1 text-sm rounded">#{viewingInvoice.invoiceNumber}</span>
+                                  <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">فاکتور خرید</h1>
+                                  <span className="bg-emerald-900 text-white font-sans px-3 py-1 text-sm rounded">#{viewingInvoice.invoiceNumber}</span>
                                </div>
                                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-emerald-900 font-bold">
-                                  <div>تاریخ خرید: <span className="font-sans text-emerald-700">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span></div>
+                                  <div>تاریخ خرید: <span className="font-sans text-emerald-700">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}</span></div>
                                   <div>ارز پایه: <span className="font-sans text-emerald-700 bg-emerald-200 px-1 py-0.5 inline-block">{showInvoiceCurrency(viewingInvoice.currency || 'تومان')}</span></div>
                                </div>
                            </div>
                            <div className="bg-white p-4 border border-emerald-200 rounded flex flex-col items-end min-w-[250px]">
                                <span className="text-xs text-emerald-600 font-bold mb-1">صادر کننده مبدا (فروشنده کالا):</span>
                                <h3 className="text-xl font-black text-emerald-900">{viewingInvoice.customerName}</h3>
-                               {viewingInvoice.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="ltr">{viewingInvoice.customerPhone}</span></p>}
+                               {viewingInvoice.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="rtl">{viewingInvoice.customerPhone}</span></p>}
                            </div>
                         </div>
                         {/* Table */}
@@ -9307,12 +9419,11 @@ export default function App() {
                                  <tr key={idx}>
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
                                    <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center font-mono" dir="ltr">
-                                      {formatNumber(item.quantity)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
+                                   <td className="p-3 border-l border-emerald-200 text-center font-sans" dir="rtl">{formatNumber(item.quantity)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
                                    </td>
-                                   <td className="p-3 border-l border-emerald-200 text-left font-mono font-bold text-emerald-950" dir="ltr">{formatCurrency(item.unitPrice)}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-mono" dir="ltr">{item.discountPercent || 0}٪</td>
-                                   <td className="p-3 text-left font-black font-mono text-emerald-950" dir="ltr">{formatCurrency(item.totalPrice)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-left font-sans font-bold text-emerald-950" dir="rtl">{formatCurrency(item.unitPrice)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans" dir="rtl">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 text-left font-black font-sans text-emerald-950" dir="rtl">{formatCurrency(item.totalPrice)}</td>
                                  </tr>
                                ))}
                              </tbody>
@@ -9331,17 +9442,17 @@ export default function App() {
                            <div className="w-full md:w-5/12 bg-white border-2 border-emerald-900 rounded-3xl overflow-hidden flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
-                               <span className="font-mono text-left" dir="ltr">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                               <span className="font-sans text-left" dir="rtl">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
                              </div>
                              {viewingInvoice.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
                                  <span>تخفیف کلی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
-                                 <span className="font-mono text-left" dir="ltr">{formatCurrency((viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100))}</span>
+                                 <span className="font-sans text-left" dir="rtl">{formatCurrency((viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100))}</span>
                                </div>
                              )}
                              <div className="flex justify-between p-4 bg-emerald-900 text-emerald-50 text-xl font-black">
                                <span>مبلغ قابل پرداخت:</span>
-                               <span className="font-mono text-left" dir="ltr">{formatCurrency(viewingInvoice.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(viewingInvoice.currency)}</span></span>
+                               <span className="font-sans text-left" dir="rtl">{formatCurrency(viewingInvoice.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(viewingInvoice.currency)}</span></span>
                              </div>
                            </div>
                         </div>
@@ -9363,7 +9474,7 @@ export default function App() {
                                     </div>
                                     <div className="flex items-center justify-between pb-1 text-gray-500">
                                       <span>تاریخ:</span>
-                                      <span className="text-gray-900">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString('fa-IR'))}</span>
+                                      <span className="text-gray-900">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-gray-500">
                                       <span>ارز:</span>
@@ -9425,8 +9536,7 @@ export default function App() {
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                                   <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
-                                  <td className="p-4 text-center text-gray-800 font-mono font-black border-r border-gray-100/50" dir="ltr">
-                                     {formatNumber(item.quantity)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
+                                  <td className="p-4 text-center text-gray-800 font-sans font-black border-r border-gray-100/50" dir="rtl">{formatNumber(item.quantity)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
                                   {!viewingInvoice.type.includes('warehouse') && (
                                     <>
@@ -9681,8 +9791,8 @@ export default function App() {
                         <div className="flex justify-between items-start border-b-2 border-emerald-900 pb-6 mb-6">
                            <div className="space-y-4">
                                <div className="flex items-center gap-4">
-                                  <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">سند رسمی خرید کالا <span className="text-sm font-normal text-amber-600 bg-amber-100 px-2 py-0.5 ml-2">(پیش‌نویس)</span></h1>
-                                  <span className="bg-emerald-900 text-white font-mono px-3 py-1 text-sm rounded">#{previewInvoiceData.invoiceNumber}</span>
+                                  <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">فاکتور خرید <span className="text-sm font-normal text-amber-600 bg-amber-100 px-2 py-0.5 ml-2">(پیش‌نویس)</span></h1>
+                                  <span className="bg-emerald-900 text-white font-sans px-3 py-1 text-sm rounded">#{previewInvoiceData.invoiceNumber}</span>
                                </div>
                                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-emerald-900 font-bold">
                                   <div>تاریخ خرید: <span className="font-sans text-emerald-700">{previewInvoiceData.jalaliDate}</span></div>
@@ -9692,7 +9802,7 @@ export default function App() {
                            <div className="bg-white p-4 border border-emerald-200 rounded flex flex-col items-end min-w-[250px]">
                                <span className="text-xs text-emerald-600 font-bold mb-1">صادر کننده مبدا (فروشنده کالا):</span>
                                <h3 className="text-xl font-black text-emerald-900">{previewInvoiceData.customerName}</h3>
-                               {previewInvoiceData.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="ltr">{previewInvoiceData.customerPhone}</span></p>}
+                               {previewInvoiceData.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="rtl">{previewInvoiceData.customerPhone}</span></p>}
                            </div>
                         </div>
                         {/* Table */}
@@ -9713,12 +9823,11 @@ export default function App() {
                                  <tr key={idx} className="hover:bg-emerald-50">
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans">{idx + 1}</td>
                                    <td className="p-3 border-l border-emerald-200">{item.productName || 'کالا/خدمات'}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center font-mono" dir="ltr">
-                                      {formatNumber(item.quantity || 1)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
+                                   <td className="p-3 border-l border-emerald-200 text-center font-sans" dir="rtl">{formatNumber(item.quantity || 1)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
                                    </td>
-                                   <td className="p-3 border-l border-emerald-200 text-left font-mono font-bold text-emerald-950" dir="ltr">{formatCurrency(item.unitPrice || 0)}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-mono" dir="ltr">{item.discountPercent || 0}٪</td>
-                                   <td className="p-3 text-left font-black font-mono text-emerald-950" dir="ltr">{formatCurrency(item.totalPrice || 0)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-left font-sans font-bold text-emerald-950" dir="rtl">{formatCurrency(item.unitPrice || 0)}</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans" dir="rtl">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 text-left font-black font-sans text-emerald-950" dir="rtl">{formatCurrency(item.totalPrice || 0)}</td>
                                  </tr>
                                ))}
                              </tbody>
@@ -9737,17 +9846,17 @@ export default function App() {
                            <div className="w-full md:w-5/12 bg-white border-2 border-emerald-900 rounded-3xl overflow-hidden flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
-                               <span className="font-mono text-left" dir="ltr">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                               <span className="font-sans text-left" dir="rtl">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
                              </div>
                              {previewInvoiceData.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
                                  <span>تخفیف کلی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
-                                 <span className="font-mono text-left" dir="ltr">{formatCurrency((previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100))}</span>
+                                 <span className="font-sans text-left" dir="rtl">{formatCurrency((previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100))}</span>
                                </div>
                              )}
                              <div className="flex justify-between p-4 bg-emerald-900 text-emerald-50 text-xl font-black">
                                <span>مبلغ قابل پرداخت:</span>
-                               <span className="font-mono text-left" dir="ltr">{formatCurrency(previewInvoiceData.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(previewInvoiceData.currency)}</span></span>
+                               <span className="font-sans text-left" dir="rtl">{formatCurrency(previewInvoiceData.totalAmount)} <span className="text-sm font-normal">{showInvoiceCurrency(previewInvoiceData.currency)}</span></span>
                              </div>
                            </div>
                         </div>
@@ -9813,9 +9922,9 @@ export default function App() {
                                 <th className="p-4 text-center w-12 font-black">ردیف</th>
                                 <th className="p-4 text-right font-black w-[40%]">شرح کالا یا خدمات</th>
                                 <th className="p-4 text-center w-32 font-black">مقدار</th>
-                                <th className="p-4 text-left w-48 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
-                                <th className="p-4 text-center w-28 font-black">تخفیف (٪)</th>
-                                <th className="p-4 text-left w-48 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>
+                                {!activeTab.includes('warehouse') && <th className="p-4 text-left w-48 font-black text-indigo-800">مبلغ واحد ({showInvoiceCurrency(previewInvoiceData.currency)})</th>}
+                                {!activeTab.includes('warehouse') && <th className="p-4 text-center w-28 font-black">تخفیف (٪)</th>}
+                                {!activeTab.includes('warehouse') && <th className="p-4 text-left w-48 font-black text-indigo-800">کل خالص ({showInvoiceCurrency(previewInvoiceData.currency)})</th>}
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white">
@@ -9823,8 +9932,7 @@ export default function App() {
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
                                   <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
-                                  <td className="p-4 text-center text-gray-800 font-mono font-black border-r border-gray-100/50" dir="ltr">
-                                     {formatNumber(item.quantity || 1)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
+                                  <td className="p-4 text-center text-gray-800 font-sans font-black border-r border-gray-100/50" dir="rtl">{formatNumber(item.quantity || 1)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
                                   {(!activeTab.includes('warehouse')) && (
                                     <>
@@ -9840,6 +9948,7 @@ export default function App() {
                         </div>
 
                         {/* Pricing summaries + Letters */}
+                        {(!activeTab.includes('warehouse')) && (
                         <div className="flex flex-col md:flex-row justify-between items-start gap-6 pt-2 relative" style={{ zIndex: 10 }}>
                           <div className="w-full md:w-1/2 mt-4 md:mt-0">
                             <div className="p-4 border border-amber-200 bg-amber-50/50 rounded-2xl">
@@ -9875,6 +9984,7 @@ export default function App() {
                             </div>
                           </div>
                         </div>
+                        )}
 
                         {/* Custom Footer Notes & Signature Block */}
                         {storeSettings.print_footer_note && (
