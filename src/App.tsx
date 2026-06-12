@@ -6615,7 +6615,7 @@ export default function App() {
           <div className="bg-gradient-to-r from-indigo-50/50 to-slate-50/30 px-6 py-5 border-b border-gray-100">
             <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-indigo-600 animate-spin-slow" />
-              بروزرسانی هوشمند سیستم فاکتور
+              بروزرسانی هوشمند سیستم
             </h2>
             <p className="mt-2 text-xs font-semibold text-gray-500 leading-relaxed">
               این بخش به صورت زنده و کاملاً خودکار فایل‌ها، جداول پایگاه داده و بهبودهای جدید هسته سیستم حسابداری را دریافت و بر روی سرور شما مستقر می‌سازد. لطفاً در حین فرآیند بروزرسانی از بستن پنجره خودداری کنید.
@@ -6726,7 +6726,7 @@ export default function App() {
                             </div>
                             تیم توسعه مرکز
                           </span>
-                          <span className="font-mono bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                          <span className="font-sans font-bold text-indigo-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
                             {new Date(commitData.commit?.author?.date).toLocaleDateString('fa-IR')}
                           </span>
                         </div>
