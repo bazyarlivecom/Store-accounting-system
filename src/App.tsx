@@ -551,8 +551,15 @@ export default function App() {
   const [editingWarehouseId, setEditingWarehouseId] = useState<string | number | null>(null);
 
   // Settings form state
-  const [settingsForm, setSettingsForm] = useState<any>({ storeName: '', address: '', phone: '', logoUrl: '', currency: 'تومان', allowNegativeStock: false, requireWarehouse: false });
+  const [settingsForm, setSettingsForm] = useState<any>({ 
+    storeName: '', address: '', phone: '', logoUrl: '', currency: 'تومان', 
+    allowNegativeStock: false, requireWarehouse: false,
+    prefix_warehouse_receipt: 'REC-', prefix_warehouse_remittance: 'REM-',
+    prefix_purchase: 'PUR-', prefix_sale: 'INV-',
+    prefix_receive_receipt: 'RD-', prefix_pay_receipt: 'PD-'
+  });
   const [submittingSettings, setSubmittingSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'numbering'>('general');
 
   // Fetch API data on mount
   const fetchInvoices = async () => {
@@ -981,7 +988,7 @@ export default function App() {
     }
     
     // Generate simple receipt number for review
-    const receiptPrefix = type === 'receive' ? 'RD' : 'PD';
+    const receiptPrefix = type === 'receive' ? (storeSettings.prefix_receive_receipt || 'RD-') : (storeSettings.prefix_pay_receipt || 'PD-');
     const existingRelated = transactions.filter((t: any) => t.type === type && t.receiptNumber);
     let nextNum = 1001;
     if (existingRelated.length > 0) {
@@ -991,7 +998,7 @@ export default function App() {
       });
       nextNum = Math.max(...nums) + 1;
     }
-    const receiptNumber = `${receiptPrefix}-${nextNum}`;
+    const receiptNumber = `${receiptPrefix}${nextNum}`;
     
     const payload = {
         type,
@@ -1347,9 +1354,19 @@ export default function App() {
     try {
       const data = await getStoreSettings();
       if (data && (data as any).isSetup) {
-        setStoreSettings(data as any);
-        setSettingsForm(data as any);
-        setInvoiceCurrency(data.currency || 'تومان');
+        const savedData = data as any;
+        const mergedSettings = {
+           ...savedData,
+           prefix_warehouse_receipt: savedData.prefix_warehouse_receipt ?? 'REC-',
+           prefix_warehouse_remittance: savedData.prefix_warehouse_remittance ?? 'REM-',
+           prefix_purchase: savedData.prefix_purchase ?? 'PUR-',
+           prefix_sale: savedData.prefix_sale ?? 'INV-',
+           prefix_receive_receipt: savedData.prefix_receive_receipt ?? 'RD-',
+           prefix_pay_receipt: savedData.prefix_pay_receipt ?? 'PD-'
+        };
+        setStoreSettings(mergedSettings);
+        setSettingsForm(mergedSettings);
+        setInvoiceCurrency(mergedSettings.currency || 'تومان');
         setExchangeRate(1);
         setExchangeRateInput('1');
         setRequiresInitSetup(false);
@@ -1779,14 +1796,10 @@ export default function App() {
   };
 
   const getInvoicePrefix = () => {
-    if (activeTab === 'create_warehouse_receipt') return 'REC-';
-    if (activeTab === 'create_warehouse_remittance') return 'REM-';
-    if (activeTab === 'create_purchase') return 'PUR-';
-    if (activeTab === 'create_sale') return 'INV-';
-    // Fallback based on type if activeTab is list
-    if (invoiceType === 'warehouse_receipt') return 'REC-';
-    if (invoiceType === 'warehouse_remittance') return 'REM-';
-    if (invoiceType === 'purchase') return 'PUR-';
+    if (activeTab === 'create_warehouse_receipt' || invoiceType === 'warehouse_receipt') return storeSettings.prefix_warehouse_receipt || 'REC-';
+    if (activeTab === 'create_warehouse_remittance' || invoiceType === 'warehouse_remittance') return storeSettings.prefix_warehouse_remittance || 'REM-';
+    if (activeTab === 'create_purchase' || invoiceType === 'purchase') return storeSettings.prefix_purchase || 'PUR-';
+    if (activeTab === 'create_sale' || invoiceType === 'sale') return storeSettings.prefix_sale || 'INV-';
     return 'INV-';
   };
 
@@ -6040,106 +6053,210 @@ export default function App() {
             </div>
           )}
 
-          <div className="p-6">
+          <div className="border-b border-gray-100 flex gap-6 px-6 bg-white overflow-x-auto">
+            <button
+               onClick={() => setSettingsTab('general')}
+               className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === 'general' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
+            >
+               تب عمومی
+               {settingsTab === 'general' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            </button>
+            <button
+               onClick={() => setSettingsTab('numbering')}
+               className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === 'numbering' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
+            >
+               شماره‌گذاری فاکتورها
+               {settingsTab === 'numbering' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            </button>
+          </div>
+
+          <div className="p-6 bg-white">
             <form id="settingsForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ذخیره تنظیمات اطمینان دارید؟', () => handleSaveSettings(e as any)) }} className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="w-full text-right md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">نام فروشگاه / شرکت</label>
-                  <input
-                    type="text"
-                    value={settingsForm.storeName}
-                    onChange={e => setSettingsForm({...settingsForm, storeName: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                    required
-                  />
-                </div>
-                
-                <div className="w-full text-right">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">واحد پولی سیستم</label>
-                  <select
-                    value={settingsForm.currency}
-                    onChange={e => setSettingsForm({...settingsForm, currency: e.target.value})}
-                    disabled={storeSettings.isSetup}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
-                  >
-                    <option value="تومان">تومان</option>
-                    <option value="ریال">ریال</option>
-                    <option value="دلار">دلار (USD)</option>
-                    <option value="یورو">یورو (EUR)</option>
-                    <option value="درهم">درهم امارات (AED)</option>
-                    <option value="افغانی">افغانی (AFN)</option>
-                  </select>
-                  {storeSettings.isSetup && (
-                    <p className="text-[10px] text-gray-400 mt-1">واحد پولی سیستم پس از راه‌اندازی اولیه قابل تغییر نمی‌باشد.</p>
-                  )}
-                </div>
-
-                <div className="w-full text-right">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">شماره تماس پشتیبانی / فروشگاه</label>
-                  <input
-                    type="text"
-                    value={settingsForm.phone}
-                    onChange={e => setSettingsForm({...settingsForm, phone: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                    dir="ltr"
-                  />
-                </div>
-
-                <div className="w-full text-right md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">آدرس</label>
-                  <textarea
-                    value={settingsForm.address}
-                    onChange={e => setSettingsForm({...settingsForm, address: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="w-full text-right md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">آدرس لوگوی فروشگاه (URL)</label>
-                  <input
-                    type="url"
-                    value={settingsForm.logoUrl}
-                    onChange={e => setSettingsForm({...settingsForm, logoUrl: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-left"
-                    dir="ltr"
-                    placeholder="https://example.com/logo.png"
-                  />
-                  {settingsForm.logoUrl && (
-                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4 inline-block">
-                      <img src={settingsForm.logoUrl} alt="Logo Preview" className="h-16 object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
+              
+              {settingsTab === 'general' && (
+                <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex flex-col gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="w-full text-right md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">نام فروشگاه / شرکت</label>
+                      <input
+                        type="text"
+                        value={settingsForm.storeName}
+                        onChange={e => setSettingsForm({...settingsForm, storeName: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                        required
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
+                    
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">واحد پولی سیستم</label>
+                      <select
+                        value={settingsForm.currency}
+                        onChange={e => setSettingsForm({...settingsForm, currency: e.target.value})}
+                        disabled={storeSettings.isSetup}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
+                      >
+                        <option value="تومان">تومان</option>
+                        <option value="ریال">ریال</option>
+                        <option value="دلار">دلار (USD)</option>
+                        <option value="یورو">یورو (EUR)</option>
+                        <option value="درهم">درهم امارات (AED)</option>
+                        <option value="افغانی">افغانی (AFN)</option>
+                      </select>
+                      {storeSettings.isSetup && (
+                        <p className="text-[10px] text-gray-400 mt-1">واحد پولی سیستم پس از راه‌اندازی اولیه قابل تغییر نمی‌باشد.</p>
+                      )}
+                    </div>
 
-              <div className="border-t border-gray-100 pt-6 mt-2">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Package className="w-5 h-5 text-indigo-500" />
-                  تنظیمات انبار
-                </h3>
-                <div className="flex flex-col gap-3">
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, allowNegativeStock: !settingsForm.allowNegativeStock})}>
-                    <div className="pr-2">
-                      <div className="font-bold text-gray-800 text-sm">مجوز فروش موجودی منفی انبار</div>
-                      <div className="text-xs text-gray-500 mt-1">امکان ثبت فاکتور فروش برای کالاهایی که موجودی آنها صفر یا ناکافی است فراهم می‌شود.</div>
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">شماره تماس پشتیبانی / فروشگاه</label>
+                      <input
+                        type="text"
+                        value={settingsForm.phone}
+                        onChange={e => setSettingsForm({...settingsForm, phone: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                        dir="ltr"
+                      />
                     </div>
-                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.allowNegativeStock ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.allowNegativeStock ? '-translate-x-6' : 'translate-x-0'}`}></div>
+
+                    <div className="w-full text-right md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">آدرس</label>
+                      <textarea
+                        value={settingsForm.address}
+                        onChange={e => setSettingsForm({...settingsForm, address: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                        rows={3}
+                      />
                     </div>
+                    
+                    <div className="w-full text-right md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">آدرس لوگوی فروشگاه (URL)</label>
+                      <input
+                        type="url"
+                        value={settingsForm.logoUrl}
+                        onChange={e => setSettingsForm({...settingsForm, logoUrl: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-left"
+                        dir="ltr"
+                        placeholder="https://example.com/logo.png"
+                      />
+                      {settingsForm.logoUrl && (
+                        <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4 inline-block">
+                          <img src={settingsForm.logoUrl} alt="Logo Preview" className="h-16 object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-6 mt-2">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Package className="w-5 h-5 text-indigo-500" />
+                      تنظیمات انبار
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, allowNegativeStock: !settingsForm.allowNegativeStock})}>
+                        <div className="pr-2">
+                          <div className="font-bold text-gray-800 text-sm">مجوز فروش موجودی منفی انبار</div>
+                          <div className="text-xs text-gray-500 mt-1">امکان ثبت فاکتور فروش برای کالاهایی که موجودی آنها صفر یا ناکافی است فراهم می‌شود.</div>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.allowNegativeStock ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                          <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.allowNegativeStock ? '-translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, requireWarehouse: !settingsForm.requireWarehouse})}>
+                        <div className="pr-2">
+                          <div className="font-bold text-gray-800 text-sm">اجباری بودن انتخاب انبار در ردیف فاکتور</div>
+                          <div className="text-xs text-gray-500 mt-1">هنگام ثبت فاکتورهای فروش و خرید، انتخاب انبار برای هر سطر کالا الزامی خواهد شد.</div>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.requireWarehouse ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                          <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.requireWarehouse ? '-translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {settingsTab === 'numbering' && (
+                <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex flex-col gap-6">
+                  <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl mb-2">
+                    <p className="text-sm text-indigo-800 font-medium">در این بخش پیشوند شماره‌گذاری خودکار انواع اسناد را تعیین کنید.</p>
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, requireWarehouse: !settingsForm.requireWarehouse})}>
-                    <div className="pr-2">
-                      <div className="font-bold text-gray-800 text-sm">اجباری بودن انتخاب انبار در ردیف فاکتور</div>
-                      <div className="text-xs text-gray-500 mt-1">هنگام ثبت فاکتورهای فروش و خرید، انتخاب انبار برای هر سطر کالا الزامی خواهد شد.</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند فاکتور فروش</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_sale || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_sale: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="INV-"
+                      />
                     </div>
-                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.requireWarehouse ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.requireWarehouse ? '-translate-x-6' : 'translate-x-0'}`}></div>
+                    
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند فاکتور خرید</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_purchase || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_purchase: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="PUR-"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند رسید انبار (ورود)</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_warehouse_receipt || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_warehouse_receipt: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="REC-"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند حواله انبار (خروج)</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_warehouse_remittance || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_warehouse_remittance: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="REM-"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند سند دریافت وجه</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_receive_receipt || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_receive_receipt: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="RD-"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند سند پرداخت وجه</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_pay_receipt || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_pay_receipt: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="PD-"
+                      />
                     </div>
                   </div>
-                </div>
-              </div>
+                </motion.div>
+              )}
 
               <div className="flex justify-start border-t border-gray-100 pt-6 mt-4">
                 <button
