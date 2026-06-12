@@ -1531,13 +1531,39 @@ export default function App() {
     setItems(items.filter((item) => item.id !== id));
   };
 
+  const getLastPriceForProduct = (productId: string | number, isPurchase: boolean) => {
+    let lastPrice = 0;
+    let latestDate = 0;
+    const targetTypes = isPurchase ? ['purchase', 'warehouse_receipt'] : ['sale', 'warehouse_remittance'];
+    
+    invoices.forEach(inv => {
+      if (targetTypes.includes(inv.type) && inv.items) {
+        inv.items.forEach((item: any) => {
+          if (item.productId?.toString() === productId.toString()) {
+            const invDate = new Date(inv.date || inv.createdAt || 0).getTime();
+            if (invDate > latestDate && (item.unitPrice || 0) > 0) {
+              latestDate = invDate;
+              // Normalize unit prices assuming the standard is the same unless exchange rate applies
+              const rate = inv.exchangeRate || 1;
+              lastPrice = (Number(item.unitPrice) || 0) * rate;
+            }
+          }
+        });
+      }
+    });
+    return lastPrice;
+  };
+
   const handleFastAddProduct = (productIdStr: string) => {
     if (!productIdStr) return;
     const product = products.find(p => p.id.toString() === productIdStr);
     if (!product) return;
 
     const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
-    const pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
+    let pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
+    if (!pPrice || pPrice === 0) {
+       pPrice = getLastPriceForProduct(product.id, isPurchase);
+    }
     const convertedPrice = exchangeRate > 0 ? (pPrice / exchangeRate) : pPrice;
     const unitPriceRounded = Number(convertedPrice.toFixed(4));
 
@@ -1585,7 +1611,10 @@ export default function App() {
               updatedItem.isSecondaryUnit = false;
               
               const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
-              const pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
+              let pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
+              if (!pPrice || pPrice === 0) {
+                 pPrice = getLastPriceForProduct(product.id, isPurchase);
+              }
               const convertedPrice = exchangeRate > 0 ? (pPrice / exchangeRate) : pPrice;
               
               updatedItem.unitPrice = Number(convertedPrice.toFixed(4));
@@ -1801,24 +1830,36 @@ export default function App() {
     };
 
     if (!storeSettings.allowNegativeStock && (payload.type === 'sale' || payload.type === 'warehouse_remittance')) {
+      // Group items by productId and warehouseId to check totals
+      const requiredQty: Record<string, number> = {};
+      
       for (const item of payload.items) {
-        if (!item.productId) continue;
-        let totalStock = 0;
-        invoices.forEach(inv => {
-          if (inv.items) {
-             const matchingItems = inv.items.filter((i: any) => i.productId?.toString() === item.productId?.toString());
-             matchingItems.forEach((i: any) => {
-                const qty = Number(i.quantity) || 0;
-                if (inv.type === 'purchase' || inv.type === 'warehouse_receipt') totalStock += qty;
-                else if (inv.type === 'sale' || inv.type === 'warehouse_remittance') totalStock -= qty;
-             });
-          }
-        });
-        if (totalStock < (Number(item.quantity) || 0)) {
-           alert(`موجودی کالای "${item.productName || 'نامشخص'}" کافی نیست. (موجودی فعلی: ${totalStock})`);
-           setSubmitting(false);
-           return false;
-        }
+         if (!item.productId) continue;
+         const q = (Number(item.quantity) || 0) * (item.isSecondaryUnit && item.unitRatio ? Number(item.unitRatio) : 1);
+         const key = `${item.productId}_${item.warehouseId || 'global'}`;
+         requiredQty[key] = (requiredQty[key] || 0) + q;
+      }
+
+      for (const key of Object.keys(requiredQty)) {
+         const [productId, whId] = key.split('_');
+         const q = requiredQty[key];
+         const stockInfo = getProductStockInfo(productId);
+         
+         if (payload.type === 'sale') {
+            const avail = stockInfo.totalAvailable;
+            if (avail < q) {
+               alert(`موجودی در دسترس کالا کافی نیست. (موجودی: ${avail})`);
+               setSubmitting(false);
+               return false;
+            }
+         } else if (payload.type === 'warehouse_remittance') {
+            const avail = stockInfo.warehouses[whId]?.physical || 0;
+            if (avail < q) {
+               alert(`موجودی فیزیکی در انبار انتخاب شده کافی نیست. (موجودی: ${avail})`);
+               setSubmitting(false);
+               return false;
+            }
+         }
       }
     }
 
@@ -1906,24 +1947,101 @@ export default function App() {
     setPreviewInvoiceData(tempPayload);
   };
 
-  const calculateProductCurrentStock = (productId: string | number) => {
-    let total = 0;
+  const getProductStockInfo = (productId: string | number) => {
+    let baseStock = 0;
     const product = products.find(p => p.id.toString() === productId.toString());
     if (product?.stock) {
-      total = Number(product.stock);
+      baseStock = Number(product.stock);
     }
+    const defaultWhId = product?.warehouseId?.toString() || 'unknown';
+
+    const info = {
+       totalPhysical: baseStock,
+       totalReserved: 0,
+       totalAvailable: baseStock,
+       warehouses: {} as Record<string, { physical: number, reserved: number, available: number }>
+    };
+
+    if (baseStock !== 0) {
+       info.warehouses[defaultWhId] = { physical: baseStock, reserved: 0, available: baseStock };
+    }
+
+    const saleQtys: Record<string, number> = {};
+    const remittedSaleQtys: Record<string, number> = {};
+
     invoices.forEach(inv => {
       if (!inv.items) return;
       inv.items.forEach((i: any) => {
         if (i.productId?.toString() === productId.toString()) {
-           const q = Number(i.quantity) || 0;
-           if (inv.type === 'warehouse_receipt') total += q;
-           else if (inv.type === 'warehouse_remittance') total -= q;
+           let q = Number(i.quantity) || 0;
+           if (i.isSecondaryUnit && product?.unitRatio) {
+              q = q * product.unitRatio;
+           }
+
+           const whId = (i.warehouseId || inv.warehouseId || defaultWhId).toString();
+           if (!info.warehouses[whId]) {
+              info.warehouses[whId] = { physical: 0, reserved: 0, available: 0 };
+           }
+
+           if (inv.type === 'warehouse_receipt') {
+               info.totalPhysical += q;
+               info.warehouses[whId].physical += q;
+           } else if (inv.type === 'warehouse_remittance') {
+               info.totalPhysical -= q;
+               info.warehouses[whId].physical -= q;
+               
+               if (inv.sourceInvoiceId) {
+                   const sourceInv = invoices.find(sinv => sinv.id.toString() === inv.sourceInvoiceId?.toString());
+                   if (sourceInv && sourceInv.type === 'sale') {
+                      remittedSaleQtys[whId] = (remittedSaleQtys[whId] || 0) + q;
+                   }
+               }
+           } else if (inv.type === 'sale') {
+               saleQtys[whId] = (saleQtys[whId] || 0) + q;
+           }
         }
       });
     });
-    return total;
+
+    Object.keys(saleQtys).forEach(whId => {
+       const totalSale = saleQtys[whId] || 0;
+       const totalRemittedForSale = remittedSaleQtys[whId] || 0;
+       const unremitted = Math.max(0, totalSale - totalRemittedForSale);
+       
+       if (!info.warehouses[whId]) info.warehouses[whId] = { physical: 0, reserved: 0, available: 0 };
+       info.warehouses[whId].reserved += unremitted;
+       info.totalReserved += unremitted;
+    });
+
+    Object.keys(info.warehouses).forEach(whId => {
+       info.warehouses[whId].available = info.warehouses[whId].physical - info.warehouses[whId].reserved;
+    });
+    info.totalAvailable = info.totalPhysical - info.totalReserved;
+
+    return info;
   };
+
+  const formatProductStockDetails = (product: any) => {
+    const info = getProductStockInfo(product.id);
+    let details = '';
+    const whCount = Object.keys(info.warehouses).filter(wid => info.warehouses[wid].available > 0).length;
+    
+    if (whCount > 0) {
+      details = ` | ` + Object.keys(info.warehouses)
+        .filter(wid => info.warehouses[wid].available > 0)
+        .map(wid => {
+           const wName = warehouses.find(w => w.id.toString() === wid)?.name || 'انبار نامشخص';
+           return `${wName}: ${info.warehouses[wid].available}`;
+        }).join('، ');
+    }
+    
+    return `موجودی در دسترس: ${info.totalAvailable} ${product.unit || ''}${info.totalReserved > 0 ? ` (رزرو شده: ${info.totalReserved})` : ''}${details}${product.barcode || product.code ? ' | ' : ''}${product.barcode ? `بارکد: ${product.barcode}` : (product.code ? `کد: ${product.code}` : '')}`;
+  };
+
+  const calculateProductCurrentStock = (productId: string | number) => {
+    return getProductStockInfo(productId).totalAvailable;
+  };
+
 
   const calculateSubtotal = () => items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
   const calculateFinalTotal = () => {
@@ -2232,7 +2350,7 @@ export default function App() {
                             options={products.map(p => ({
                               value: p.id,
                               label: p.name,
-                              subLabel: `موجودی: ${calculateProductCurrentStock(p.id) || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                              subLabel: formatProductStockDetails(p),
                               badge: p.type === 'service' ? 'خدمات' : 'کالا'
                             }))}
                             value=""
@@ -2346,9 +2464,21 @@ export default function App() {
                                     className="w-full p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 text-xs font-bold bg-white"
                                   >
                                     <option value="">-- انتخاب انبار --</option>
-                                    {warehouses.filter(w => w.isActive !== false).map(w => (
-                                      <option key={w.id} value={w.id}>{w.name}</option>
-                                    ))}
+                                    {(() => {
+                                      const stockInfo = item.productId ? getProductStockInfo(item.productId) : null;
+                                      return warehouses.filter(w => {
+                                         if (w.isActive === false) return false;
+                                         if (activeTab === 'create_warehouse_remittance' && stockInfo) {
+                                            const avail = stockInfo.warehouses[w.id]?.physical || 0;
+                                            return avail > 0 || String(item.warehouseId) === String(w.id);
+                                         }
+                                         return true;
+                                      }).map(w => {
+                                         const avail = stockInfo?.warehouses[w.id]?.physical || 0;
+                                         const text = (activeTab === 'create_warehouse_remittance' && stockInfo) ? `${w.name} (موجودی: ${avail})` : w.name;
+                                         return <option key={w.id} value={w.id}>{text}</option>;
+                                      });
+                                    })()}
                                   </select>
                                 </td>
                               )}
@@ -2516,7 +2646,7 @@ export default function App() {
                           options={products.map(p => ({
                             value: p.id,
                             label: p.name,
-                            subLabel: `موجودی فعلی: ${calculateProductCurrentStock(p.id) || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                            subLabel: formatProductStockDetails(p),
                             badge: p.type === 'service' ? 'خدمات' : 'کالا'
                           }))}
                           value=""
@@ -2768,7 +2898,7 @@ export default function App() {
                           options={products.filter(p => storeSettings.allowNegativeStock || p.type === 'service' || calculateProductCurrentStock(p.id) > 0).map(p => ({
                             value: p.id,
                             label: p.name,
-                            subLabel: `موجودی فعلی: ${calculateProductCurrentStock(p.id) || 0} ${p.unit || ''}${p.barcode || p.code ? ' | ' : ''}${p.barcode ? `بارکد: ${p.barcode}` : (p.code ? `کد: ${p.code}` : '')}`,
+                            subLabel: formatProductStockDetails(p),
                             badge: p.type === 'service' ? 'خدمات' : 'کالا'
                           }))}
                           value=""
@@ -6250,7 +6380,7 @@ export default function App() {
                 options={products.map(p => ({
                   value: p.id,
                   label: p.name,
-                  subLabel: `موجودی: ${calculateProductCurrentStock(p.id) || 0} ${p.unit || ''}${p.barcode ? ` | بارکد: ${p.barcode}` : (p.code ? ` | کد: ${p.code}` : '')}`,
+                  subLabel: formatProductStockDetails(p),
                   badge: p.type === 'service' ? 'خدمات' : 'کالا'
                 }))}
                 value=""
