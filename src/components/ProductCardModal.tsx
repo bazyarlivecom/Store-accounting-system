@@ -132,49 +132,102 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
             ) : history.length === 0 ? (
                <div className="text-center py-10 text-gray-400">تا کنون گردشی برای این کالا ثبت نشده است.</div>
             ) : (
-               <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                 <table className="w-full text-right text-sm">
-                   <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
-                     <tr>
-                       <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">نوع تراکنش</th>
-                       <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">تاریخ</th>
-                       <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">شماره سند</th>
-                       <th className="px-4 py-3 font-semibold text-xs">شخص / تامین‌کننده</th>
-                       <th className="px-4 py-3 font-semibold text-xs">انبار</th>
-                       <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">مقدار</th>
-                       <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">فی ({currency})</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-gray-50">
-                     {history.map((h, i) => (
-                       <tr key={i} className="hover:bg-gray-50">
-                         <td className="px-4 py-3 font-bold whitespace-nowrap">
-                            {h.type === 'sale' ? (
-                               <span className="text-emerald-600 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> فروش</span>
-                            ) : h.type === 'purchase' ? (
-                               <span className="text-rose-600 flex items-center gap-1"><TrendingDown className="w-3 h-3" /> خرید</span>
-                            ) : h.type === 'warehouse_receipt' ? (
-                               <span className="text-blue-600 flex items-center gap-1"><Package className="w-3 h-3" /> رسید انبار (ورود)</span>
-                            ) : (
-                               <span className="text-orange-600 flex items-center gap-1"><Package className="w-3 h-3" /> حواله انبار (خروج)</span>
-                            )}
-                         </td>
-                         <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{h.date}</td>
-                         <td className="px-4 py-3 text-gray-500 text-xs font-mono">{h.invoiceNumber || '---'}</td>
-                         <td className="px-4 py-3 font-bold text-gray-800 text-xs truncate max-w-[150px]">{h.personName || '---'}</td>
-                         <td className="px-4 py-3 text-xs text-gray-600">
-                            {warehouses?.find(w => String(w.id) === String(h.warehouseId))?.name || '---'}
-                         </td>
-                         <td className="px-4 py-3 font-bold font-mono">
-                            <span className={['sale', 'warehouse_remittance'].includes(h.type) ? 'text-rose-600' : 'text-emerald-600'} dir="ltr">
-                               {['sale', 'warehouse_remittance'].includes(h.type) ? '-' : '+'}{h.quantity}
-                            </span>
-                         </td>
-                         <td className="px-4 py-3 font-black text-indigo-700">{Number(h.unitPrice).toLocaleString()}</td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
+               <div className="space-y-8">
+                 {/* Financial History */}
+                 <div>
+                   <h5 className="text-sm font-bold text-indigo-700 mb-3 flex items-center gap-2">
+                     <TrendingUp className="w-4 h-4" /> فاکتورهای خرید و فروش
+                   </h5>
+                   {history.filter(h => h.type === 'sale' || h.type === 'purchase').length === 0 ? (
+                     <div className="text-sm text-gray-500 py-4 bg-gray-50 rounded-xl text-center border border-gray-100">فاکتوری برای این کالا ثبت نشده است.</div>
+                   ) : (
+                     <div className="overflow-x-auto border border-gray-100 rounded-xl shadow-sm">
+                       <table className="w-full text-right text-sm">
+                         <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                           <tr>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">نوع تراکنش</th>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">تاریخ</th>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">شماره سند</th>
+                             <th className="px-4 py-3 font-semibold text-xs">شخص / مشتری</th>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">مقدار</th>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">فی ({currency})</th>
+                           </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-50 bg-white">
+                           {history.filter(h => h.type === 'sale' || h.type === 'purchase').map((h, i) => (
+                             <tr key={i} className="hover:bg-gray-50 transition-colors">
+                               <td className="px-4 py-3 font-bold whitespace-nowrap">
+                                  {h.type === 'sale' ? (
+                                     <span className="text-emerald-600 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> فروش</span>
+                                  ) : (
+                                     <span className="text-rose-600 flex items-center gap-1"><TrendingDown className="w-3 h-3" /> خرید</span>
+                                  )}
+                               </td>
+                               <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{h.date}</td>
+                               <td className="px-4 py-3 text-gray-500 text-xs font-mono">{h.invoiceNumber || '---'}</td>
+                               <td className="px-4 py-3 font-bold text-gray-800 text-xs truncate max-w-[150px]">{h.personName || '---'}</td>
+                               <td className="px-4 py-3 font-bold font-mono">
+                                  <span className={h.type === 'sale' ? 'text-rose-600' : 'text-emerald-600'} dir="ltr">
+                                     {h.type === 'sale' ? '-' : '+'}{h.quantity}
+                                  </span>
+                               </td>
+                               <td className="px-4 py-3 font-black text-indigo-700">{Number(h.unitPrice).toLocaleString()}</td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Warehouse History */}
+                 <div>
+                   <h5 className="text-sm font-bold text-amber-700 mb-3 flex items-center gap-2">
+                     <Package className="w-4 h-4" /> رسید و حواله انبار
+                   </h5>
+                   {history.filter(h => h.type === 'warehouse_receipt' || h.type === 'warehouse_remittance').length === 0 ? (
+                     <div className="text-sm text-gray-500 py-4 bg-gray-50 rounded-xl text-center border border-gray-100">تراکنش انباری برای این کالا ثبت نشده است.</div>
+                   ) : (
+                     <div className="overflow-x-auto border border-gray-100 rounded-xl shadow-sm">
+                       <table className="w-full text-right text-sm">
+                         <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                           <tr>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">نوع تراکنش</th>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">تاریخ</th>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">شماره سند</th>
+                             <th className="px-4 py-3 font-semibold text-xs">شخص / تامین‌کننده</th>
+                             <th className="px-4 py-3 font-semibold text-xs">انبار</th>
+                             <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">مقدار</th>
+                           </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-50 bg-white">
+                           {history.filter(h => h.type === 'warehouse_receipt' || h.type === 'warehouse_remittance').map((h, i) => (
+                             <tr key={i} className="hover:bg-gray-50 transition-colors">
+                               <td className="px-4 py-3 font-bold whitespace-nowrap">
+                                  {h.type === 'warehouse_receipt' ? (
+                                     <span className="text-blue-600 flex items-center gap-1"><Package className="w-3 h-3" /> رسید انبار (ورود)</span>
+                                  ) : (
+                                     <span className="text-orange-600 flex items-center gap-1"><Package className="w-3 h-3" /> حواله انبار (خروج)</span>
+                                  )}
+                               </td>
+                               <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{h.date}</td>
+                               <td className="px-4 py-3 text-gray-500 text-xs font-mono">{h.invoiceNumber || '---'}</td>
+                               <td className="px-4 py-3 font-bold text-gray-800 text-xs truncate max-w-[150px]">{h.personName || '---'}</td>
+                               <td className="px-4 py-3 text-xs text-gray-600">
+                                  {warehouses?.find(w => String(w.id) === String(h.warehouseId))?.name || '---'}
+                               </td>
+                               <td className="px-4 py-3 font-bold font-mono">
+                                  <span className={h.type === 'warehouse_remittance' ? 'text-orange-600' : 'text-blue-600'} dir="ltr">
+                                     {h.type === 'warehouse_remittance' ? '-' : '+'}{h.quantity}
+                                  </span>
+                               </td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
+                     </div>
+                   )}
+                 </div>
                </div>
             )}
          </div>
