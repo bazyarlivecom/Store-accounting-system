@@ -6711,7 +6711,7 @@ export default function App() {
                 <div className="w-full mb-8" dir="rtl">
                   <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
                     <FileText className="w-4 h-4 text-indigo-500" />
-                    تغییرات آخرین نسخه‌ها
+                    لیست تغییرات بسته آپدیت
                   </h3>
                   <div className="space-y-3">
                     {latestCommits.map((commitData: any, idx: number) => (
@@ -6721,12 +6721,10 @@ export default function App() {
                         </p>
                         <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
                           <span className="flex items-center gap-1.5">
-                            <div className="w-5 h-5 rounded-full bg-slate-200 overflow-hidden">
-                              {commitData.author?.avatar_url && (
-                                <img src={commitData.author.avatar_url} alt="author" className="w-full h-full object-cover" />
-                              )}
+                            <div className="w-5 h-5 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
+                              <Shield className="w-3 h-3" />
                             </div>
-                            {commitData.commit?.author?.name || 'توسعه‌دهنده'}
+                            تیم توسعه مرکز
                           </span>
                           <span className="font-mono bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
                             {new Date(commitData.commit?.author?.date).toLocaleDateString('fa-IR')}
