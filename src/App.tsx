@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box } from 'lucide-react';
+import Barcode from 'react-barcode';
+import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addCommas, removeCommas, numberToWords } from './utils/format';
 import DatePicker from "react-multi-date-picker";
@@ -13,6 +14,7 @@ import SystemChecklist from './components/SystemChecklist';
 import ProductCardModal from './components/ProductCardModal';
 import CheckManagement from './components/CheckManagement';
 import SearchableSelect from './components/SearchableSelect';
+import BarcodeScannerModal from './components/BarcodeScannerModal';
 import FinancialTransfer from './components/FinancialTransfer';
 import UserManager from './components/UserManager';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem } from './types';
@@ -307,6 +309,8 @@ export default function App() {
   // Salary form state
   const [salaryPersonId, setSalaryPersonId] = useState<string | number | ''>('');
   const [salaryDate, setSalaryDate] = useState<any>(new Date());
+  const [salaryPeriodMonth, setSalaryPeriodMonth] = useState<string>('1');
+  const [salaryPeriodYear, setSalaryPeriodYear] = useState<string>('1403');
   const [salaryBaseAmount, setSalaryBaseAmount] = useState<string>('');
   const [salaryHousingAllowance, setSalaryHousingAllowance] = useState<string>('');
   const [salaryGroceryAllowance, setSalaryGroceryAllowance] = useState<string>('');
@@ -321,12 +325,15 @@ export default function App() {
   const salarySuccessMsg = false;
   const [submittingSalary, setSubmittingSalary] = useState<boolean>(false);
   const [viewingPayslip, setViewingPayslip] = useState<any | null>(null);
+  const [printingBarcodeProduct, setPrintingBarcodeProduct] = useState<any | null>(null);
 
   // Person Ledger state
   const [ledgerPersonId, setLedgerPersonId] = useState<string | number | ''>('');
 
   // Invoice Print & Preview State
-  const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+      // For financial report
+      const [reportDateRange, setReportDateRange] = useState<Date[]>([]);
+      const [viewingInvoice, setViewingInvoice] = useState<any>(null);
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
 
@@ -384,7 +391,7 @@ export default function App() {
   }, [activeTab, latestVersion, checkingUpdateVersion]);
 
   // Form State
-  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance'>('sale');
+  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance' | 'proforma'>('sale');
   const [listFilter, setListFilter] = useState<'all' | 'sale' | 'purchase'>('all');
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
@@ -396,8 +403,81 @@ export default function App() {
   const [customerId, setCustomerId] = useState<string | number | ''>('');
   const [sourceInvoiceId, setSourceInvoiceId] = useState<string | number | ''>('');
   
+
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [overallDiscountPercent, setOverallDiscountPercent] = useState<number>(0);
+
+  const [hasDraft, setHasDraft] = useState<boolean>(false);
+  
+  // Auto-save effect
+  useEffect(() => {
+    if (['create_sale', 'create_purchase', 'create_warehouse_receipt', 'create_warehouse_remittance'].includes(activeTab)) {
+       const draft = {
+         invoiceMode,
+         invoiceNumber,
+         customerId,
+         sourceInvoiceId,
+         items,
+         overallDiscountPercent,
+         invoiceCurrency,
+         exchangeRate,
+         exchangeRateInput,
+         invoiceType,
+         invoiceTitle,
+         activeTab,
+       };
+       if (items.length > 0 || customerId) {
+         localStorage.setItem('invoice_draft', JSON.stringify(draft));
+         setHasDraft(true);
+       } else {
+         localStorage.removeItem('invoice_draft');
+         setHasDraft(false);
+       }
+    }
+  }, [items, customerId, invoiceNumber, sourceInvoiceId, overallDiscountPercent, invoiceCurrency, exchangeRate, invoiceMode, invoiceType, invoiceTitle, activeTab]);
+  
+  useEffect(() => {
+    if (localStorage.getItem('invoice_draft')) {
+      setHasDraft(true);
+    }
+  }, []);
+  
+  const restoreDraft = () => {
+    const d = localStorage.getItem('invoice_draft');
+    if (d) {
+      try {
+        const parsed = JSON.parse(d);
+        if (parsed.activeTab) setActiveTab(parsed.activeTab);
+        setInvoiceMode(parsed.invoiceMode || 'auto');
+        setInvoiceNumber(parsed.invoiceNumber || '');
+        setCustomerId(parsed.customerId || '');
+        setSourceInvoiceId(parsed.sourceInvoiceId || '');
+        setItems(parsed.items || []);
+        setOverallDiscountPercent(parsed.overallDiscountPercent || 0);
+        setInvoiceCurrency(parsed.invoiceCurrency || 'تومان');
+        setExchangeRate(parsed.exchangeRate || 1);
+        setExchangeRateInput(parsed.exchangeRateInput || '1');
+        
+        // Timeout to let activeTab's effect finish, then override
+        setTimeout(() => {
+          setInvoiceType(parsed.invoiceType || 'sale');
+          setInvoiceTitle(parsed.invoiceTitle || '');
+        }, 50);
+        
+        showNotification('وضعیت ثبت نشده فاکتور، بازیابی شد.', 'info');
+      } catch (e) {}
+    }
+  };
+  
+  const clearDraft = () => {
+    localStorage.removeItem('invoice_draft');
+    setHasDraft(false);
+    setCustomerId('');
+    setItems([]);
+    setOverallDiscountPercent(0);
+    setSourceInvoiceId('');
+    if (invoiceMode === 'manual') setInvoiceNumber('');
+  };
   
   const [submitting, setSubmitting] = useState(false);
   
@@ -417,6 +497,17 @@ export default function App() {
 
   
   // Product state
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const handleBarcodeScan = (code: string) => {
+    setIsScannerOpen(false);
+    const product = products.find(p => p.barcode === code);
+    if (product) {
+      handleFastAddProduct(String(product.id));
+      showNotification('کالا با موفقیت اضافه شد', 'success');
+    } else {
+      showNotification('کالا با این بارکد یافت نشد', 'error');
+    }
+  };
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isGroupPriceModalOpen, setIsGroupPriceModalOpen] = useState(false);
   const [groupUpdateType, setGroupUpdateType] = useState<'category' | 'single'>('category');
@@ -556,10 +647,12 @@ export default function App() {
     allowNegativeStock: false, requireWarehouse: false,
     prefix_warehouse_receipt: 'REC-', prefix_warehouse_remittance: 'REM-',
     prefix_purchase: 'PUR-', prefix_sale: 'INV-',
-    prefix_receive_receipt: 'RD-', prefix_pay_receipt: 'PD-'
+    prefix_receive_receipt: 'RD-', prefix_pay_receipt: 'PD-',
+    prefix_proforma: 'PF-', prefix_salary: 'PAY-',
+    print_footer_note: '', print_signature_1: '', print_signature_2: '', print_signature_3: ''
   });
   const [submittingSettings, setSubmittingSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'general' | 'numbering'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'numbering' | 'features' | 'printing'>('general');
 
   // Fetch API data on mount
   const fetchInvoices = async () => {
@@ -1054,6 +1147,8 @@ export default function App() {
       return;
     }
 
+    if (!window.confirm('آیا از ثبت و صدور این فیش حقوقی اطمینان دارید؟ در صورت تایید، سند و گردش مالی به ثبت می‌رسد.')) return;
+
     const base = Number(salaryBaseAmount) || 0;
     const housing = Number(salaryHousingAllowance) || 0;
     const grocery = Number(salaryGroceryAllowance) || 0;
@@ -1078,6 +1173,8 @@ export default function App() {
       const payloadDescription = JSON.stringify({
         isPayslip: true,
         employeeName: personName,
+        periodMonth: salaryPeriodMonth,
+        periodYear: salaryPeriodYear,
         base,
         allowances: {
           housing,
@@ -1093,8 +1190,23 @@ export default function App() {
         userNote: salaryDescription || 'سند حقوق و دستمزد کارمند'
       });
 
+      
+      // Auto-assign receipt number for salary
+      const salaryPrefix = storeSettings.prefix_salary || 'PAY-';
+      const existingRelated = transactions.filter((t: any) => t.type === 'salary' && t.receiptNumber);
+      let nextNum = 1001;
+      if (existingRelated.length > 0) {
+        const nums = existingRelated.map((t: any) => {
+          const match = String(t.receiptNumber).match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        });
+        nextNum = Math.max(...nums) + 1;
+      }
+      const receiptNumber = `${salaryPrefix}${nextNum}`;
+
       const payload = {
         type: 'salary',
+        receiptNumber,
         personId: salaryPersonId,
         amount: netSalary,
         date: typeof salaryDate.toDate === 'function' ? salaryDate.toDate().toISOString() : new Date(salaryDate).toISOString(),
@@ -1114,6 +1226,8 @@ export default function App() {
       setSalaryTaxDeduction('');
       setSalaryOtherDeductions('');
       setSalaryDescription('');
+      setSalaryPeriodMonth('1');
+      setSalaryPeriodYear('1403');
       setSalaryDirectPayment(false);
       setSalaryResourceId('');
       
@@ -1799,6 +1913,7 @@ export default function App() {
     if (activeTab === 'create_warehouse_receipt' || invoiceType === 'warehouse_receipt') return storeSettings.prefix_warehouse_receipt || 'REC-';
     if (activeTab === 'create_warehouse_remittance' || invoiceType === 'warehouse_remittance') return storeSettings.prefix_warehouse_remittance || 'REM-';
     if (activeTab === 'create_purchase' || invoiceType === 'purchase') return storeSettings.prefix_purchase || 'PUR-';
+    if (invoiceType === 'proforma') return storeSettings.prefix_proforma || 'PF-';
     if (activeTab === 'create_sale' || invoiceType === 'sale') return storeSettings.prefix_sale || 'INV-';
     return 'INV-';
   };
@@ -1888,6 +2003,7 @@ export default function App() {
       await fetchInvoices();
       
       // Reset form after short delay
+      clearDraft();
       setTimeout(() => {
         if (invoiceMode === 'manual') setInvoiceNumber('');
         setCustomerId('');
@@ -2358,19 +2474,24 @@ export default function App() {
                     <h3 className="font-extrabold text-gray-900 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> {activeTab.includes('warehouse') ? 'اقلام سند (کالاها)' : 'اقلام فاکتور'}</h3>
                     {(!activeTab.includes('warehouse')) && (
                       <div className="flex-1 w-full flex gap-2">
-                        <div className="flex-1 w-full relative z-10 max-w-2xl">
-                          <SearchableSelect 
-                            options={products.map(p => ({
-                              value: p.id,
-                              label: p.name,
-                              subLabel: formatProductStockDetails(p),
-                              badge: p.type === 'service' ? 'خدمات' : 'کالا'
-                            }))}
-                            value=""
-                            onChange={(val) => handleFastAddProduct(String(val))}
-                            placeholder="🔎 جستجو و افزودن سریع کالا به لیست (نام، کد، بارکد)..."
-                            searchPlaceholder="جستجوی کالا..."
-                          />
+                        <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
+                          <div className="flex-1 w-full relative z-10 ">
+                            <SearchableSelect 
+                              options={products.map(p => ({
+                                value: p.id,
+                                label: p.name,
+                                subLabel: formatProductStockDetails(p),
+                                badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                              }))}
+                              value=""
+                              onChange={(val) => handleFastAddProduct(String(val))}
+                              placeholder="🔎 جستجو و افزودن سریع کالا به لیست (نام، کد، بارکد)..."
+                              searchPlaceholder="جستجوی کالا..."
+                            />
+                          </div>
+                          <button onClick={() => setIsScannerOpen(true)} className="p-3 bg-white border border-gray-200 text-gray-600 rounded-xl shadow-sm hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
+                            <ScanLine className="w-5 h-5"/>
+                          </button>
                         </div>
                         <button onClick={handleAddItem} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-xl font-bold hover:bg-gray-100 flex items-center gap-2 transition-colors whitespace-nowrap">
                           <Plus className="w-4 h-4" /> سطر دلخواه
@@ -2583,6 +2704,15 @@ export default function App() {
         case 'create_purchase':
            return (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
+              {hasDraft && (
+                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center text-amber-800 shadow-sm col-span-full w-full">
+                    <span className="font-bold flex items-center gap-2.5 mb-3 md:mb-0"><History className="w-5 h-5 text-amber-500" /> یک فاکتور ناتمام و ثبت نشده بازیابی شد. مایلید از آن استفاده کنید یا فاکتور جدیدی آغاز کنید؟</span>
+                    <div className="flex gap-2">
+                       <button onClick={restoreDraft} className="px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-sm font-bold transition-colors">بازیابی فاکتور ناتمام</button>
+                       <button onClick={clearDraft} className="px-4 py-2.5 bg-white border border-amber-200 hover:bg-amber-50 rounded-xl text-sm font-bold transition-colors">پاک کردن و فاکتور جدید</button>
+                    </div>
+                 </div>
+              )}
               {successMsg && (
                 <div className="bg-emerald-50 text-emerald-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-emerald-100 font-bold shadow-sm">
                   <CheckCircle className="w-5 h-5" />
@@ -2653,21 +2783,26 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
                 <div className="p-5 bg-emerald-50/30 border-b border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام خریداری شده</h3>
-                    <div className="flex-1 w-full relative z-10 max-w-2xl">
-                      <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
-                        <SearchableSelect 
-                          options={products.map(p => ({
-                            value: p.id,
-                            label: p.name,
-                            subLabel: formatProductStockDetails(p),
-                            badge: p.type === 'service' ? 'خدمات' : 'کالا'
-                          }))}
-                          value=""
-                          onChange={(val) => handleFastAddProduct(String(val))}
-                          placeholder="جستجو و افزودن سریع کالا به لیست خرید (نام، کد، بارکد)..."
-                          searchPlaceholder="جستجوی کالای خریداری شده..."
-                        />
+                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
+                      <div className="flex-1 relative z-10">
+                        <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
+                          <SearchableSelect 
+                            options={products.map(p => ({
+                              value: p.id,
+                              label: p.name,
+                              subLabel: formatProductStockDetails(p),
+                              badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                            }))}
+                            value=""
+                            onChange={(val) => handleFastAddProduct(String(val))}
+                            placeholder="جستجو و افزودن سریع کالا به لیست خرید (نام، کد، بارکد)..."
+                            searchPlaceholder="جستجوی کالای خریداری شده..."
+                          />
+                        </div>
                       </div>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 transition-colors focus:ring-2 focus:ring-emerald-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-6 h-6"/>
+                      </button>
                     </div>
                     <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-emerald-200 text-emerald-700 shadow-sm rounded-xl font-bold hover:bg-emerald-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-emerald-500">
                       <Plus className="w-4 h-4" /> تعریف کالا / خدمات جدید
@@ -2835,6 +2970,15 @@ export default function App() {
         case 'create_sale':
            return (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
+              {hasDraft && (
+                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center text-amber-800 shadow-sm col-span-full w-full">
+                    <span className="font-bold flex items-center gap-2.5 mb-3 md:mb-0"><History className="w-5 h-5 text-amber-500" /> یک فاکتور ناتمام و ثبت نشده بازیابی شد. مایلید از آن استفاده کنید یا فاکتور جدیدی آغاز کنید؟</span>
+                    <div className="flex gap-2">
+                       <button onClick={restoreDraft} className="px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-sm font-bold transition-colors">بازیابی فاکتور ناتمام</button>
+                       <button onClick={clearDraft} className="px-4 py-2.5 bg-white border border-amber-200 hover:bg-amber-50 rounded-xl text-sm font-bold transition-colors">پاک کردن و فاکتور جدید</button>
+                    </div>
+                 </div>
+              )}
               {successMsg && (
                 <div className="bg-indigo-50 text-indigo-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-indigo-100 font-bold shadow-sm">
                   <CheckCircle className="w-5 h-5" />
@@ -2844,12 +2988,33 @@ export default function App() {
 
               {/* Header Info */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-indigo-50">
-                <h2 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
-                  <span className="bg-indigo-100/50 p-2.5 rounded-xl text-indigo-600">
-                     <ShoppingCart className="w-6 h-6" />
-                  </span>
-                  {invoiceTitle}
-                </h2>
+                <div className="flex justify-between items-center mb-8 gap-4 border-b border-indigo-100 pb-5">
+                  <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                    <span className="bg-indigo-100/50 p-2.5 rounded-xl text-indigo-600">
+                       <ShoppingCart className="w-6 h-6" />
+                    </span>
+                    {invoiceTitle}
+                  </h2>
+                  
+                  <div className="flex items-center gap-2">
+                     <span className="text-xs font-bold text-gray-500">نوع فاکتور:</span>
+                     <select 
+                       value={invoiceType}
+                       onChange={(e) => {
+                          setInvoiceType(e.target.value as any);
+                          if (e.target.value === 'proforma') {
+                             setInvoiceTitle('پیش‌فاکتور (بدون کسر موجودی)');
+                          } else {
+                             setInvoiceTitle('فاکتور فروش کالا');
+                          }
+                       }}
+                       className="p-2 border border-gray-200 rounded-lg text-sm font-bold bg-white text-indigo-700 outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500"
+                     >
+                       <option value="sale">فاکتور فروش (استاندارد)</option>
+                       <option value="proforma">صدور پیش‌فاکتور</option>
+                     </select>
+                  </div>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
@@ -2905,21 +3070,26 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
                 <div className="p-5 bg-indigo-50/30 border-b border-indigo-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> لیست اقلام آماده فروش</h3>
-                    <div className="flex-1 w-full relative z-10 max-w-2xl">
-                      <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
-                        <SearchableSelect 
-                          options={products.filter(p => storeSettings.allowNegativeStock || p.type === 'service' || calculateProductCurrentStock(p.id) > 0).map(p => ({
-                            value: p.id,
-                            label: p.name,
-                            subLabel: formatProductStockDetails(p),
-                            badge: p.type === 'service' ? 'خدمات' : 'کالا'
-                          }))}
-                          value=""
-                          onChange={(val) => handleFastAddProduct(String(val))}
-                          placeholder="جستجو و افزودن سریع کالا به لیست فروش (نام، کد، بارکد)..."
-                          searchPlaceholder="جستجوی کالای مورد نظر برای فروش..."
-                        />
+                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
+                      <div className="flex-1 relative z-10">
+                        <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
+                          <SearchableSelect 
+                            options={products.filter(p => storeSettings.allowNegativeStock || p.type === 'service' || calculateProductCurrentStock(p.id) > 0).map(p => ({
+                              value: p.id,
+                              label: p.name,
+                              subLabel: formatProductStockDetails(p),
+                              badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                            }))}
+                            value=""
+                            onChange={(val) => handleFastAddProduct(String(val))}
+                            placeholder="جستجو و افزودن سریع کالا به لیست فروش (نام، کد، بارکد)..."
+                            searchPlaceholder="جستجوی کالای مورد نظر برای فروش..."
+                          />
+                        </div>
                       </div>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-6 h-6"/>
+                      </button>
                     </div>
                     <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-indigo-200 text-indigo-700 shadow-sm rounded-xl font-bold hover:bg-indigo-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-indigo-500">
                       <Plus className="w-4 h-4" /> تعریف کالا / خدمات جدید
@@ -3116,7 +3286,7 @@ export default function App() {
                        </thead>
                        <tbody className="divide-y divide-gray-50">
                          {invoices.filter(i => 
-                           activeTab === 'list_sale' ? i.type === 'sale' : 
+                           activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
                            activeTab === 'list_purchase' ? i.type === 'purchase' :
                            activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
                            i.type === 'warehouse_remittance'
@@ -3148,7 +3318,7 @@ export default function App() {
                              </td>
                            </tr>
                          ))}
-                         {invoices.filter(i => activeTab === 'list_sale' ? i.type === 'sale' : i.type === 'purchase').length === 0 && (
+                         {invoices.filter(i => activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : i.type === 'purchase').length === 0 && (
                            <tr>
                              <td colSpan={5} className="p-8 text-center text-gray-400">هیچ فاکتوری یافت نشد.</td>
                            </tr>
@@ -3406,7 +3576,7 @@ export default function App() {
                                 </div>
                               </td>
                              <td className="p-4 text-center flex items-center justify-center gap-2">
-                               <button onClick={() => { setPrintingTransaction(tx); }} className={`p-2 text-slate-400 hover:bg-slate-100 hover:${themeText} rounded-lg cursor-pointer border-none bg-transparent transition-colors`}>
+                               <button onClick={() => { if (tx.type === 'salary') openPayslip(tx); else setPrintingTransaction(tx); }} className={`p-2 text-slate-400 hover:bg-slate-100 hover:${themeText} rounded-lg cursor-pointer border-none bg-transparent transition-colors`}>
                                  <Eye className="w-4 h-4"/>
                                </button>
                                <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent transition-colors">
@@ -3439,7 +3609,7 @@ export default function App() {
                  </h2>
 
                  <form onSubmit={handleSubmitSalary} className="space-y-6">
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                      <div>
                        <label className="block text-sm font-bold text-gray-700 mb-1">انتخاب کارمند</label>
                        <select 
@@ -3455,6 +3625,17 @@ export default function App() {
                        </select>
                      </div>
 
+                     <div>
+                       <label className="block text-sm font-bold text-gray-700 mb-1">دوره حقوق (ماه و سال)</label>
+                       <div className="flex gap-2">
+                         <select value={salaryPeriodMonth} onChange={(e) => setSalaryPeriodMonth(e.target.value)} className="w-[120px] p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans">
+                           {['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'].map((m, i) => (
+                             <option key={String(i+1)} value={String(i+1)}>{m}</option>
+                           ))}
+                         </select>
+                         <input type="number" value={salaryPeriodYear} onChange={(e) => setSalaryPeriodYear(e.target.value)} className="flex-1 min-w-[80px] p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-center font-mono" />
+                       </div>
+                     </div>
                      <div>
                        <label className="block text-sm font-bold text-gray-700 mb-1">تاریخ پرداخت/اصدار</label>
                        <DatePicker
@@ -3628,7 +3809,19 @@ export default function App() {
                            <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
                              <td className="p-4 font-mono font-bold text-indigo-600">#{tx.id}</td>
                              <td className="p-4 font-bold text-gray-800">{person?.name || 'نامشخص'}</td>
-                             <td className="p-4 font-mono text-gray-500" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
+                             <td className="p-4 text-gray-500 text-right">
+                               <div className="font-mono text-sm mb-1" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</div>
+                               {(() => {
+                                 try {
+                                   const parsed = typeof tx.description === 'string' && tx.description.includes('isPayslip') ? JSON.parse(tx.description) : null;
+                                   if(parsed && parsed.periodMonth && parsed.periodYear) {
+                                     const pMonthName = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'][Number(parsed.periodMonth)-1];
+                                     return <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">{pMonthName} {parsed.periodYear}</span>;
+                                   }
+                                 } catch(e) {}
+                                 return null;
+                               })()}
+                             </td>
                              <td className="p-4 text-xs font-semibold text-gray-600 text-right">
                                {isDirectPay ? (
                                  <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg">بله، تسویه شده</span>
@@ -4231,8 +4424,12 @@ export default function App() {
               <Menu className="w-5 h-5" />
             </button>
             <div className="font-extrabold text-slate-900 flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-indigo-600 md:hidden" />
-              <span className="md:hidden">{storeSettings.storeName || 'سیستم مدیریت'}</span>
+              {storeSettings.logoUrl ? (
+                <img src={storeSettings.logoUrl} className={`w-6 h-6 rounded object-contain ${menuLayout === 'vertical' ? 'md:hidden' : ''}`} alt="logo"/>
+              ) : (
+                <Receipt className={`w-5 h-5 text-indigo-600 ${menuLayout === 'vertical' ? 'md:hidden' : ''}`} />
+              )}
+              <span className={`${menuLayout === 'vertical' ? 'md:hidden' : ''}`}>{storeSettings.storeName || 'سیستم مدیریت'}</span>
             </div>
           </div>
           
@@ -4460,6 +4657,13 @@ export default function App() {
                     title="سابقه قیمت‌ها"
                   >
                     <Activity className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setPrintingBarcodeProduct(p)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
+                            title="چاپ بارکد"
+                          >
+                            <Printer className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => confirmAction('آیا از حذف این کالا اطمینان دارید؟', () => handleDeleteProduct(p.id))}
@@ -5337,20 +5541,39 @@ export default function App() {
                 نگاهی خلاصه به عملکرد خرید، فروش، نقدینگی صندوق‌ها و تراز کلی حساب‌های بانکی
               </p>
             </div>
-            <button
-              onClick={async () => {
-                await Promise.all([
-                  fetchInvoices(),
-                  fetchTransactions(),
-                  fetchAccounts(),
-                  fetchCashboxes()
-                ]);
-              }}
-              className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-indigo-100 shadow-sm"
-            >
-              <RefreshCw className="w-4 h-4 animate-spin-slow" />
-              بروزرسانی داده‌ها
-            </button>
+            <div className="flex flex-col md:flex-row items-center gap-3">
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+                 <span className="text-xs font-bold text-gray-500">بازه زمانی:</span>
+                 <DatePicker
+                   range
+                   dateSeparator=" تا "
+                   value={reportDateRange as any}
+                   onChange={setReportDateRange as any}
+                   calendar={persian}
+                   locale={persian_fa}
+                   calendarPosition="bottom-right"
+                   inputClass="text-sm font-bold text-indigo-700 bg-transparent border-none outline-none max-w-[170px] text-center"
+                   placeholder="انتخاب بازه تاریخ..."
+                 />
+                 {reportDateRange && reportDateRange.length > 0 && (
+                   <button onClick={() => setReportDateRange([])} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                 )}
+              </div>
+              <button
+                onClick={async () => {
+                  await Promise.all([
+                    fetchInvoices(),
+                    fetchTransactions(),
+                    fetchAccounts(),
+                    fetchCashboxes()
+                  ]);
+                }}
+                className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-indigo-100 shadow-sm"
+              >
+                <RefreshCw className="w-4 h-4 animate-spin-slow" />
+                بروزرسانی داده‌ها
+              </button>
+            </div>
           </div>
 
           {/* Top KPI Cards Grid */}
@@ -5365,14 +5588,12 @@ export default function App() {
                 <h3 className="text-xs font-semibold text-gray-400">مجموع کل فروش (فاکتورها)</h3>
                 <span className="text-xl font-extrabold text-gray-900 block mt-1">
                   {formatNumber(
-                    invoices
-                      .filter(inv => inv.type !== 'purchase')
-                      .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+                    invoices.filter(inv => inv.type !== 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
                   )}{' '}
                   <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
                 </span>
                 <span className="text-xs text-indigo-600 font-bold mt-1 block">
-                  {formatNumber(invoices.filter(inv => inv.type !== 'purchase').length)} فاکتور فروش ثبت شده
+                  {formatNumber(invoices.filter(inv => inv.type !== 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).length)} فاکتور فروش ثبت شده
                 </span>
               </div>
             </div>
@@ -5387,26 +5608,20 @@ export default function App() {
                 <h3 className="text-xs font-semibold text-gray-400">مجموع کل خرید (فاکتورها)</h3>
                 <span className="text-xl font-extrabold text-gray-900 block mt-1">
                   {formatNumber(
-                    invoices
-                      .filter(inv => inv.type === 'purchase')
-                      .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+                    invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
                   )}{' '}
                   <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
                 </span>
                 <span className="text-xs text-amber-600 font-bold mt-1 block">
-                  {formatNumber(invoices.filter(inv => inv.type === 'purchase').length)} فاکتور خرید ثبت شده
+                  {formatNumber(invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).length)} فاکتور خرید ثبت شده
                 </span>
               </div>
             </div>
 
             {/* Net Difference Card */}
             {(() => {
-              const salesVal = invoices
-                .filter(inv => inv.type !== 'purchase')
-                .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
-              const purchasesVal = invoices
-                .filter(inv => inv.type === 'purchase')
-                .reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const salesVal = invoices.filter(inv => inv.type !== 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const purchasesVal = invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
               const netVal = salesVal - purchasesVal;
               const isPositive = netVal >= 0;
 
@@ -5545,7 +5760,7 @@ export default function App() {
                   <span className="text-[10px] text-gray-500 font-semibold">(آمارهای حاصل از اسناد دریافتی صادره)</span>
                 </div>
                 <span className="text-lg font-black text-emerald-700 font-sans">
-                  {formatNumber(transactions.filter(t => t.type === 'receive').reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
+                  {formatNumber(transactions.filter(t => t.type === 'receive' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(t.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(t.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
                 </span>
               </div>
               <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100/50 flex justify-between items-center">
@@ -5554,7 +5769,7 @@ export default function App() {
                   <span className="text-[10px] text-gray-500 font-semibold">(آمارهای حاصل از اسناد پرداختی صادره)</span>
                 </div>
                 <span className="text-lg font-black text-rose-700 font-sans">
-                  {formatNumber(transactions.filter(t => t.type === 'pay').reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
+                  {formatNumber(transactions.filter(t => t.type === 'pay' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(t.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(t.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
                 </span>
               </div>
             </div>
@@ -5657,17 +5872,18 @@ export default function App() {
             const invoiceEntries = invoices
               .filter(inv => inv.customerId?.toString() === ledgerPersonId.toString())
               .map(inv => {
-                const isSale = inv.type !== 'purchase';
-                const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+                const isSale = inv.type === 'sale';
+                  const isProforma = inv.type === 'proforma';
+                  const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
                 return {
                   id: `inv-${inv.id}`,
                   refId: inv.invoiceNumber || `#${inv.id}`,
                   date: inv.date,
                   jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString('fa-IR'),
-                  type: inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا',
-                  desc: inv.title || (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور'),
-                  debit: isSale ? amount : 0,  // Sale increases how much they owe us
-                  credit: isSale ? 0 : amount, // Purchase decreases how much they owe us
+                  type: inv.type === 'proforma' ? 'پیش‌فاکتور' : (inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا'),
+                  desc: inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور')),
+                  debit: (isSale && !isProforma) ? amount : 0,  // Sale increases how much they owe us
+                  credit: (!isSale && !isProforma) ? amount : 0, // Purchase decreases how much they owe us
                   rawItem: inv,
                   entryType: 'invoice'
                 };
@@ -6058,15 +6274,29 @@ export default function App() {
                onClick={() => setSettingsTab('general')}
                className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === 'general' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
             >
-               تب عمومی
+               عمومی و اطلاعات فروشگاه
                {settingsTab === 'general' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            </button>
+            <button
+               onClick={() => setSettingsTab('features')}
+               className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === 'features' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
+            >
+               امکانات سیستم (انبار/فروش)
+               {settingsTab === 'features' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
             </button>
             <button
                onClick={() => setSettingsTab('numbering')}
                className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === 'numbering' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
             >
-               شماره‌گذاری فاکتورها
+               شماره‌گذاری اسناد
                {settingsTab === 'numbering' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            </button>
+            <button
+               onClick={() => setSettingsTab('printing')}
+               className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === 'printing' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
+            >
+               چاپ و امضائات
+               {settingsTab === 'printing' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
             </button>
           </div>
 
@@ -6074,7 +6304,7 @@ export default function App() {
             <form id="settingsForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ذخیره تنظیمات اطمینان دارید؟', () => handleSaveSettings(e as any)) }} className="flex flex-col gap-6">
               
               {settingsTab === 'general' && (
-                <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="w-full text-right md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">نام فروشگاه / شرکت</label>
@@ -6092,26 +6322,24 @@ export default function App() {
                       <select
                         value={settingsForm.currency}
                         onChange={e => setSettingsForm({...settingsForm, currency: e.target.value})}
-                        disabled={storeSettings.isSetup}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm bg-white"
+                        dir="ltr"
                       >
-                        <option value="تومان">تومان</option>
-                        <option value="ریال">ریال</option>
-                        <option value="دلار">دلار (USD)</option>
-                        <option value="یورو">یورو (EUR)</option>
-                        <option value="درهم">درهم امارات (AED)</option>
-                        <option value="افغانی">افغانی (AFN)</option>
+                        <option value="تومان">تومان (Toman)</option>
+                        <option value="ریال">ریال (Rial)</option>
+                        <option value="$">دلار آمریکا ($)</option>
+                        <option value="€">یورو (€)</option>
+                        <option value="£">پوند (£)</option>
+                        <option value="دینار">دینار</option>
+                        <option value="افغانی">افغانی</option>
                       </select>
-                      {storeSettings.isSetup && (
-                        <p className="text-[10px] text-gray-400 mt-1">واحد پولی سیستم پس از راه‌اندازی اولیه قابل تغییر نمی‌باشد.</p>
-                      )}
                     </div>
 
                     <div className="w-full text-right">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">شماره تماس پشتیبانی / فروشگاه</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">تلفن تماس</label>
                       <input
                         type="text"
-                        value={settingsForm.phone}
+                        value={settingsForm.phone || ''}
                         onChange={e => setSettingsForm({...settingsForm, phone: e.target.value})}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
                         dir="ltr"
@@ -6120,38 +6348,24 @@ export default function App() {
 
                     <div className="w-full text-right md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">آدرس</label>
-                      <textarea
-                        value={settingsForm.address}
+                      <input
+                        type="text"
+                        value={settingsForm.address || ''}
                         onChange={e => setSettingsForm({...settingsForm, address: e.target.value})}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                        rows={3}
                       />
-                    </div>
-                    
-                    <div className="w-full text-right md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">آدرس لوگوی فروشگاه (URL)</label>
-                      <input
-                        type="url"
-                        value={settingsForm.logoUrl}
-                        onChange={e => setSettingsForm({...settingsForm, logoUrl: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-left"
-                        dir="ltr"
-                        placeholder="https://example.com/logo.png"
-                      />
-                      {settingsForm.logoUrl && (
-                        <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-4 inline-block">
-                          <img src={settingsForm.logoUrl} alt="Logo Preview" className="h-16 object-contain" onError={e => (e.currentTarget.style.display = 'none')} />
-                        </div>
-                      )}
                     </div>
                   </div>
+                </div>
+              )}
 
-                  <div className="border-t border-gray-100 pt-6 mt-2">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Package className="w-5 h-5 text-indigo-500" />
-                      تنظیمات انبار
+              {settingsTab === 'features' && (
+                <div className="flex flex-col gap-6">
+                  <div className="col-span-full border border-gray-100 rounded-2xl p-6 bg-white shadow-sm space-y-6">
+                    <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 flex items-center gap-2">
+                      تنظیمات انبار و فروش
                     </h3>
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-4">
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, allowNegativeStock: !settingsForm.allowNegativeStock})}>
                         <div className="pr-2">
                           <div className="font-bold text-gray-800 text-sm">مجوز فروش موجودی منفی انبار</div>
@@ -6173,18 +6387,18 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {settingsTab === 'numbering' && (
-                <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-6">
                   <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl mb-2">
                     <p className="text-sm text-indigo-800 font-medium">در این بخش پیشوند شماره‌گذاری خودکار انواع اسناد را تعیین کنید.</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند فاکتور فروش</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">فاکتور فروش</label>
                       <input
                         type="text"
                         value={settingsForm.prefix_sale || ''}
@@ -6196,7 +6410,19 @@ export default function App() {
                     </div>
                     
                     <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند فاکتور خرید</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">پیش‌فاکتور (Proforma)</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_proforma || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_proforma: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="PF-"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">فاکتور خرید</label>
                       <input
                         type="text"
                         value={settingsForm.prefix_purchase || ''}
@@ -6208,7 +6434,7 @@ export default function App() {
                     </div>
 
                     <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند رسید انبار (ورود)</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">رسید انبار (ورود)</label>
                       <input
                         type="text"
                         value={settingsForm.prefix_warehouse_receipt || ''}
@@ -6220,7 +6446,7 @@ export default function App() {
                     </div>
 
                     <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند حواله انبار (خروج)</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">حواله انبار (خروج)</label>
                       <input
                         type="text"
                         value={settingsForm.prefix_warehouse_remittance || ''}
@@ -6232,7 +6458,7 @@ export default function App() {
                     </div>
 
                     <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند سند دریافت وجه</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">سند دریافت وجه</label>
                       <input
                         type="text"
                         value={settingsForm.prefix_receive_receipt || ''}
@@ -6244,7 +6470,7 @@ export default function App() {
                     </div>
 
                     <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">پیشوند سند پرداخت وجه</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">سند پرداخت وجه</label>
                       <input
                         type="text"
                         value={settingsForm.prefix_pay_receipt || ''}
@@ -6254,22 +6480,85 @@ export default function App() {
                         placeholder="PD-"
                       />
                     </div>
+                    
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">فیش حقوق و دستمزد</label>
+                      <input
+                        type="text"
+                        value={settingsForm.prefix_salary || ''}
+                        onChange={e => setSettingsForm({...settingsForm, prefix_salary: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                        dir="ltr"
+                        placeholder="PAY-"
+                      />
+                    </div>
                   </div>
-                </motion.div>
+                </div>
+              )}
+
+              {settingsTab === 'printing' && (
+                <div className="flex flex-col gap-6">
+                  <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
+                    <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">تنظیمات چاپ فاکتور و رسید</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="w-full text-right md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">یادداشت ثابت انتهای فاکتورها (فوتر)</label>
+                          <textarea
+                            value={settingsForm.print_footer_note || ''}
+                            onChange={e => setSettingsForm({...settingsForm, print_footer_note: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                            placeholder="متنی که مایلید همیشه در پایین فاکتورهای چاپ شده نمایش داده شود..."
+                            rows={3}
+                          ></textarea>
+                       </div>
+                       
+                       <div className="w-full text-right">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">عنوان امضاکننده 1 (خریدار/تحویل‌گیرنده)</label>
+                          <input
+                            type="text"
+                            value={settingsForm.print_signature_1 || ''}
+                            onChange={e => setSettingsForm({...settingsForm, print_signature_1: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                            placeholder="مثال: مهر و امضای خریدار"
+                          />
+                       </div>
+
+                       <div className="w-full text-right">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">عنوان امضاکننده 2 (فروشنده/تحویل‌دهنده)</label>
+                          <input
+                            type="text"
+                            value={settingsForm.print_signature_2 || ''}
+                            onChange={e => setSettingsForm({...settingsForm, print_signature_2: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                            placeholder="مثال: مهر و امضای فروشنده"
+                          />
+                       </div>
+                       
+                       <div className="w-full text-right">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">عنوان امضاکننده 3 (مدیر/تایید کننده)</label>
+                          <input
+                            type="text"
+                            value={settingsForm.print_signature_3 || ''}
+                            onChange={e => setSettingsForm({...settingsForm, print_signature_3: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                            placeholder="مثال: مدیریت"
+                          />
+                       </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
               <div className="flex justify-start border-t border-gray-100 pt-6 mt-4">
                 <button
                   type="submit"
                   disabled={submittingSettings}
-                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
                 >
                   {submittingSettings ? (
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
-                  ) : (
-                    <Save className="w-5 h-5" />
-                  )}
-                  <span>ذخیره تنظیمات</span>
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  ) : <Save className="w-5 h-5" />}
+                  ذخیره تغییرات و اعمال در سیستم
                 </button>
               </div>
             </form>
@@ -6518,7 +6807,8 @@ export default function App() {
         <SystemChecklist />
       ) : null}
           {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'person_ledger', 'database', 'update', 'checklist', 'checks', 'transfer'].includes(activeTab)) && renderTabContent()}
-
+          </div>
+        </main>
 
       <AnimatePresence>
         {viewingPayslip && (
@@ -6569,7 +6859,12 @@ export default function App() {
                   </div>
                   <div className="md:text-left">
                     <span className="text-gray-500 font-medium">مشتمل بر دوره پرداخت:</span>
-                    <span className="font-semibold text-gray-800 mr-2">{viewingPayslip.parsed?.userNote || 'بدون بابت'}</span>
+                    <span className="font-semibold text-gray-800 mr-2">
+                       {viewingPayslip.parsed?.periodMonth && viewingPayslip.parsed?.periodYear ? 
+                          ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'][Number(viewingPayslip.parsed.periodMonth)-1] + ' ' + viewingPayslip.parsed.periodYear 
+                          : (viewingPayslip.parsed?.userNote || 'بدون بابت')
+                       }
+                    </span>
                   </div>
                 </div>
 
@@ -6902,7 +7197,70 @@ export default function App() {
             </motion.div>
           </div>
         )}
-{isProductModalOpen && (
+{isScannerOpen && (<BarcodeScannerModal onClose={() => setIsScannerOpen(false)} onScan={handleBarcodeScan} />)}
+        {printingBarcodeProduct && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto print:shadow-none print:w-[60mm] print:h-auto print:max-w-none print:max-h-none print:overflow-visible print:p-0 print:m-0"
+            >
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center print:hidden">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-indigo-500" />
+                  چاپ لیبل بارکد
+                </h3>
+                <button
+                  onClick={() => setPrintingBarcodeProduct(null)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-8 print:p-0 flex flex-col items-center justify-center min-h-[250px] print:min-h-0 text-center mx-auto print:mx-0">
+                <div className="border border-gray-100 p-6 rounded-2xl shadow-sm text-center w-full max-w-xs mx-auto print:border-none print:shadow-none bg-white print:m-0 print:p-1 print:max-w-[58mm] flex flex-col justify-center items-center">
+                   <div className="font-extrabold text-gray-900 text-lg mb-2 truncate px-2 print:text-[12px] print:mb-1 print:leading-tight">{printingBarcodeProduct.name}</div>
+                   
+                   <div className="flex justify-center my-2 text-center items-center overflow-hidden w-full print:my-0 scale-100 print:scale-[0.80] origin-top">
+                     {(printingBarcodeProduct.barcode && printingBarcodeProduct.barcode.length > 0) ? (
+                       <Barcode value={printingBarcodeProduct.barcode} format="CODE128" width={2} height={50} fontSize={12} textMargin={2} margin={0} background="#ffffff" lineColor="#000000" />
+                     ) : (printingBarcodeProduct.code && printingBarcodeProduct.code.length > 0) ? (
+                       <Barcode value={printingBarcodeProduct.code} format="CODE128" width={2} height={50} fontSize={12} textMargin={2} margin={0} background="#ffffff" lineColor="#000000" />
+                     ) : (
+                       <div className="py-8 text-gray-400 text-sm font-bold bg-gray-50 rounded-xl w-full border border-gray-100 print:hidden">بدون کد/بارکد</div>
+                     )}
+                   </div>
+                   
+                   <div className="text-sm font-bold text-gray-500 flex justify-between w-full mt-4 px-3 print:hidden">
+                     <span>قیمت مصرف‌کننده:</span>
+                     <span className="text-indigo-600">{typeof formatNumber === 'function' ? formatNumber(printingBarcodeProduct.price) : printingBarcodeProduct.price} {storeSettings?.currency || 'تومان'}</span>
+                   </div>
+                   <div className="text-[14px] font-black tracking-wider text-gray-900 justify-between items-center hidden print:flex mt-0 pt-1 text-center w-full">
+                     <span className="mx-auto block w-full text-center">{typeof formatNumber === 'function' ? formatNumber(printingBarcodeProduct.price) : printingBarcodeProduct.price} {storeSettings?.currency || 'تومان'}</span>
+                   </div>
+                </div>
+              </div>
+              <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 print:hidden">
+                 <button
+                   onClick={() => setPrintingBarcodeProduct(null)}
+                   className="px-5 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold transition-all shadow-sm"
+                 >
+                   بستن
+                 </button>
+                 <button
+                   onClick={() => window.print()}
+                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-sm flex items-center gap-2"
+                   disabled={!(printingBarcodeProduct.barcode || printingBarcodeProduct.code)}
+                 >
+                   <Printer className="w-5 h-5" />
+                   چاپ لیبل استاندارد
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {isProductModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -9114,16 +9472,24 @@ export default function App() {
                         </div>
 
                         )}
-                        {/* Standard Signature Block */}
-                        <div className="grid grid-cols-2 gap-6 pt-8 text-center text-xs font-bold text-gray-400 relative" style={{ zIndex: 10 }}>
-                          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-gray-500">{viewingInvoice.type.includes('warehouse') ? 'تحویل دهنده / مراجعه کننده' : 'مهر و امضای خریدار'}</span>
-                            <span className="text-[10px] text-gray-400">تاریخ و رویت</span>
+                        {/* Custom Footer Notes & Signature Block */}
+                        {storeSettings.print_footer_note && (
+                           <div className="mt-8 text-xs font-bold text-slate-500 text-center leading-relaxed">
+                              {storeSettings.print_footer_note}
+                           </div>
+                        )}
+                        <div className={`grid gap-6 pt-6 text-center text-xs font-bold text-gray-400 relative ${storeSettings.print_signature_3 ? 'grid-cols-3' : 'grid-cols-2'}`} style={{ zIndex: 10 }}>
+                          <div className="border border-dashed border-gray-200 bg-gray-50 p-4 rounded-2xl h-24 flex flex-col justify-between items-center">
+                            <span className="text-gray-500">{storeSettings.print_signature_1 || (viewingInvoice.type.includes('warehouse') ? 'تحویل دهنده / مراجعه کننده' : 'مهر و امضای خریدار')}</span>
                           </div>
-                          <div className="border border-indigo-200 bg-indigo-50/20 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-indigo-900">{viewingInvoice.type.includes('warehouse') ? `تایید کننده (انباردار ${storeSettings.storeName})` : `مهر و امضای فروشنده (${storeSettings.storeName})`}</span>
-                            <span className="text-[10px] text-indigo-400">{viewingInvoice.type.includes('warehouse') ? 'تاییدیه ورود/خروج کالا' : 'تضمین اعتبار'}</span>
+                          <div className="border border-indigo-200 bg-indigo-50/20 p-4 rounded-2xl h-24 flex flex-col justify-between items-center">
+                            <span className="text-indigo-900">{storeSettings.print_signature_2 || (viewingInvoice.type.includes('warehouse') ? `تایید کننده (انباردار ${storeSettings.storeName})` : `مهر و امضای فروشنده (${storeSettings.storeName})`)}</span>
                           </div>
+                          {storeSettings.print_signature_3 && (
+                             <div className="border border-emerald-200 bg-emerald-50/20 p-4 rounded-2xl h-24 flex flex-col justify-between items-center">
+                                <span className="text-emerald-900">{storeSettings.print_signature_3}</span>
+                             </div>
+                          )}
                         </div>
                     </div>
                   )}
@@ -9502,16 +9868,24 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Standard Signature Block */}
-                        <div className="grid grid-cols-2 gap-6 pt-8 text-center text-xs font-bold text-gray-400 relative" style={{ zIndex: 10 }}>
-                          <div className="border border-dashed border-gray-200 bg-gray-50 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-gray-500">{previewInvoiceData.type?.includes('warehouse') ? 'تحویل دهنده / مراجعه کننده' : 'مهر و امضای خریدار'}</span>
-                            <span className="text-[10px] text-gray-400">تاریخ و رویت</span>
+                        {/* Custom Footer Notes & Signature Block */}
+                        {storeSettings.print_footer_note && (
+                           <div className="mt-8 text-xs font-bold text-slate-500 text-center leading-relaxed">
+                              {storeSettings.print_footer_note}
+                           </div>
+                        )}
+                        <div className={`grid gap-6 pt-6 text-center text-xs font-bold text-gray-400 relative ${storeSettings.print_signature_3 ? 'grid-cols-3' : 'grid-cols-2'}`} style={{ zIndex: 10 }}>
+                          <div className="border border-dashed border-gray-200 bg-gray-50 p-4 rounded-2xl h-24 flex flex-col justify-between items-center">
+                            <span className="text-gray-500">{storeSettings.print_signature_1 || (previewInvoiceData.type?.includes('warehouse') ? 'تحویل دهنده / مراجعه کننده' : 'مهر و امضای خریدار')}</span>
                           </div>
-                          <div className="border border-amber-200 bg-amber-50/20 p-6 rounded-2xl h-32 flex flex-col justify-between items-center">
-                            <span className="text-amber-900">{previewInvoiceData.type?.includes('warehouse') ? `تایید کننده (انباردار ${storeSettings.storeName})` : `مهر و امضای فروشنده (${storeSettings.storeName})`}</span>
-                            <span className="text-[10px] text-amber-600">{previewInvoiceData.type?.includes('warehouse') ? 'تاییدیه ورود/خروج کالا' : 'تضمین اعتبار'}</span>
+                          <div className="border border-amber-200 bg-amber-50/20 p-4 rounded-2xl h-24 flex flex-col justify-between items-center">
+                            <span className="text-amber-900">{storeSettings.print_signature_2 || (previewInvoiceData.type?.includes('warehouse') ? `تایید کننده (انباردار ${storeSettings.storeName})` : `مهر و امضای فروشنده (${storeSettings.storeName})`)}</span>
                           </div>
+                          {storeSettings.print_signature_3 && (
+                             <div className="border border-emerald-200 bg-emerald-50/20 p-4 rounded-2xl h-24 flex flex-col justify-between items-center">
+                                <span className="text-emerald-900">{storeSettings.print_signature_3}</span>
+                             </div>
+                          )}
                         </div>
                     </div>
                   )}
@@ -9564,8 +9938,6 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-                  </div>
-        </main>
         {/* System Version Footer */}
       <footer className="w-full bg-white border-t border-gray-200 py-6 mt-auto shrink-0 no-print">
         <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
