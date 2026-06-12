@@ -2346,28 +2346,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50/50 p-6" dir="rtl">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 rounded-2xl shadow-xl shadow-indigo-100 border border-gray-100 max-w-md w-full text-center"
-        >
-          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Store className="w-8 h-8 text-indigo-600" />
-          </div>
-          <h1 className="text-2xl font-black text-gray-900 mb-2">به سیستم حسابداری خوش آمدید</h1>
-          <p className="text-gray-500 font-medium mb-8">برای دسترسی به اطلاعات فروشگاه، لطفاً وارد شوید.</p>
-                      
-          <button onClick={() => signIn({ id: 1, username: 'admin', name: 'مدیر کل', role: 'admin', isActive: true })} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
-            <LogIn className="w-5 h-5" />
-            ورود به سیستم
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
+
 
   const renderTabContent = () => {
     switch(activeTab) {
@@ -4449,6 +4428,20 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            {user && (
+               <div className="hidden md:flex items-center gap-3 ml-4 pl-4 border-l border-slate-200">
+                 <div className="flex flex-col text-left">
+                   <div className="text-sm font-black text-slate-800 leading-tight">{user.name}</div>
+                   <div className="text-[10px] font-bold text-slate-500 uppercase">{user.role === 'admin' ? 'مدیر سیستم' : user.role === 'accountant' ? 'حسابدار' : user.role === 'cashier' ? 'صندوق‌دار' : 'کاربر عادی'}</div>
+                 </div>
+                 <div className="w-9 h-9 bg-indigo-100 text-indigo-700 rounded-xl flex items-center justify-center font-black shadow-sm">
+                   {user.name?.charAt(0) || <User className="w-5 h-5" />}
+                 </div>
+                 <button onClick={signOut} className="w-8 h-8 flex items-center justify-center mr-1 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="خروج از حساب">
+                   <LogOut className="w-4 h-4" />
+                 </button>
+               </div>
+            )}
             <button
               onClick={() => setMenuLayout(menuLayout === 'vertical' ? 'horizontal' : 'vertical')}
               className={`px-3 py-2 border rounded-xl transition-all cursor-pointer font-black gap-2 hidden md:flex items-center text-xs shadow-3xs active:scale-95 text-slate-600 hover:text-indigo-700 bg-white border-slate-200`}
