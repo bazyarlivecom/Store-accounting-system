@@ -8,7 +8,7 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './lib/AuthContext';
-import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction } from './lib/dataService';
+import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './lib/dataService';
 import DatabaseDashboard from './components/DatabaseDashboard';
 import SystemChecklist from './components/SystemChecklist';
 import ProductCardModal from './components/ProductCardModal';
@@ -17,7 +17,7 @@ import SearchableSelect from './components/SearchableSelect';
 import BarcodeScannerModal from './components/BarcodeScannerModal';
 import FinancialTransfer from './components/FinancialTransfer';
 import UserManager from './components/UserManager';
-import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem } from './types';
+import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
 
 const getBaseValueInToman = (cur: string) => {
   if (!cur) return 1;
@@ -246,8 +246,12 @@ export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
     const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStock[]>([]);
+  const [warehouseSubTab, setWarehouseSubTab] = useState<'list' | 'stocks'>('list');
+  const [recalculating, setRecalculating] = useState(false);
   const [personSearchTerm, setPersonSearchTerm] = useState('');
   const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [whStockSearch, setWhStockSearch] = useState('');
   const [selectedProductCategory, setSelectedProductCategory] = useState<string>('all');
   const [selectedPersonGroup, setSelectedPersonGroup] = useState<string>('all');
   const [selectedPersonRole, setSelectedPersonRole] = useState<string>('all');
@@ -1078,6 +1082,9 @@ export default function App() {
     try {
       const data = await getWarehouses();
       setWarehouses(data as any);
+      
+      const stocks = await getWarehouseStocks();
+      setWarehouseStocks(stocks as any);
     } catch (error) {
       console.error('Error fetching warehouses', error);
     }
@@ -1368,6 +1375,25 @@ export default function App() {
       await fetchWarehouses();
     } catch (error) {
       console.error('Error deleting warehouse', error);
+    }
+  };
+
+  const handleRecalculateStocks = async () => {
+    try {
+      setRecalculating(true);
+      await recalculateAllWarehouseStocks();
+      const stocks = await getWarehouseStocks();
+      setWarehouseStocks(stocks as any);
+      
+      const fetchedProds = await getProducts();
+      setProducts(fetchedProds as any);
+      
+      showNotification('موجودی انبارها و کارت‌های کالا با موفقیت بر اساس اسناد فاکتورها، ورود و خروج‌ها محاسبه مجدد شد.', 'success');
+    } catch (e) {
+      console.error(e);
+      showNotification('خطا در محاسبه مجدد موجودی انبار.', 'error');
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -3998,6 +4024,16 @@ export default function App() {
                   </div>
                   <div className="flex gap-2">
                     <button
+                      type="button"
+                      disabled={recalculating}
+                      onClick={handleRecalculateStocks}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium cursor-pointer"
+                      title="محاسبه مجدد موجودی انبارها بر اساس اسناد رسید و حواله"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
+                      محاسبه مجدد موجودی
+                    </button>
+                    <button
                       onClick={handleGenerateDemoData}
                       disabled={submittingProduct}
                       className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold"
@@ -5556,90 +5592,246 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
         >
-          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-                <Box className="w-6 h-6 text-indigo-600" />
-                مدیریت انبارها
-              </h1>
-              <p className="text-sm text-gray-500 font-medium mt-1">مدیریت انبارهای فیزیکی و مسیرهای نگهداری کالا</p>
-            </div>
-            <button
-              onClick={() => {
-                setEditingWarehouseId(null);
-                setNewWarehouseName('');
-                setNewWarehouseManager('');
-                setNewWarehouseLocation('');
-                setNewWarehouseIsActive(true);
-                setIsWarehouseModalOpen(true);
-              }}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 text-sm font-semibold"
-            >
-              <Plus className="w-4 h-4" />
-              انبار جدید
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            {warehouses.length === 0 ? (
-              <div className="py-12 text-center text-gray-500 font-medium">
-                هیچ انباری ثبت نشده است. برای شروع یک انبار جدید ثبت کنید.
+          {/* Header with Switcher Tab */}
+          <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-6">
+              <div>
+                <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                  <Box className="w-6 h-6 text-indigo-600" />
+                  {warehouseSubTab === 'list' ? 'مدیریت و شعب انبارها' : 'موجودی و موازنه کالاها'}
+                </h1>
+                <p className="text-sm text-gray-500 font-medium mt-1">
+                  {warehouseSubTab === 'list' 
+                    ? 'مدیریت انبارهای فیزیکی، شعبه‌ها و مسیرهای نگهداری کالا' 
+                    : 'مشاهده و موازنه دقیق‌ترین موجودی لحظه‌ای فیزیکی، رزرو شده و آماده فروش کالاها'}
+                </p>
               </div>
+
+              {/* Sub-tab segment bar */}
+              <div className="flex gap-1.5 bg-indigo-150 p-1.5 rounded-xl border border-indigo-150/40">
+                <button
+                  type="button"
+                  onClick={() => setWarehouseSubTab('list')}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${warehouseSubTab === 'list' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-800 hover:bg-indigo-200/50'}`}
+                >
+                  شعبه‌ها و انبارها
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWarehouseSubTab('stocks')}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${warehouseSubTab === 'stocks' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-800 hover:bg-indigo-200/50'}`}
+                >
+                  تراز موجودی انبارها
+                </button>
+              </div>
+            </div>
+
+            {warehouseSubTab === 'list' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingWarehouseId(null);
+                  setNewWarehouseName('');
+                  setNewWarehouseManager('');
+                  setNewWarehouseLocation('');
+                  setNewWarehouseIsActive(true);
+                  setIsWarehouseModalOpen(true);
+                }}
+                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 text-sm font-semibold self-start lg:self-auto cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                انبار جدید
+              </button>
             ) : (
-              <table className="w-full text-right border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
-                    <th className="py-4 px-6 font-semibold">ردیف</th>
-                    <th className="py-4 px-6 font-semibold">نام انبار</th>
-                    <th className="py-4 px-6 font-semibold">مسئول انبار</th>
-                    <th className="py-4 px-6 font-semibold">موقعیت / مکان</th>
-                    <th className="py-4 px-6 font-semibold">وضعیت فعالیت</th>
-                    <th className="py-4 px-6 font-semibold text-center w-24">عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {warehouses.map((wh, index) => (
-                    <tr key={wh.id} className="hover:bg-gray-50/50 transition-colors text-gray-700">
-                      <td className="py-4 px-6 font-medium text-gray-400">{index + 1}</td>
-                      <td className="py-4 px-6 font-semibold text-gray-950">
-                        <span className="flex items-center gap-2">
-                          <Box className="w-4 h-4 text-indigo-500" />
-                          {wh.name}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-sm">{wh.manager || '-'}</td>
-                      <td className="py-4 px-6 text-sm">{wh.location || '-'}</td>
-                      <td className="py-4 px-6 text-sm">
-                        {wh.isActive ? (
-                          <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">فعال</span>
-                        ) : (
-                          <span className="bg-rose-100 text-rose-800 px-2 py-1 rounded text-xs font-bold">غیرفعال</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleEditWarehouse(wh)}
-                            className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
-                            title="ویرایش انبار"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => confirmAction('آیا از حذف این انبار اطمینان دارید؟', () => handleDeleteWarehouse(wh.id))}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
-                            title="حذف انبار"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <button
+                type="button"
+                disabled={recalculating}
+                onClick={handleRecalculateStocks}
+                className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 text-sm font-semibold self-start lg:self-auto cursor-pointer"
+                title="محاسبه مجدد موجودی بر اساس اسناد رسید و حواله"
+              >
+                <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
+                محاسبه مجدد موجودی انبارها
+              </button>
             )}
           </div>
+
+          {/* Sub-tab panels */}
+          {warehouseSubTab === 'list' ? (
+            <div className="overflow-x-auto">
+              {warehouses.length === 0 ? (
+                <div className="py-12 text-center text-gray-500 font-medium">
+                  هیچ انباری ثبت نشده است. برای شروع یک انبار جدید ثبت کنید.
+                </div>
+              ) : (
+                <table className="w-full text-right border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+                      <th className="py-4 px-6 font-semibold">ردیف</th>
+                      <th className="py-4 px-6 font-semibold">نام انبار</th>
+                      <th className="py-4 px-6 font-semibold">مسئول انبار</th>
+                      <th className="py-4 px-6 font-semibold">موقعیت / مکان</th>
+                      <th className="py-4 px-6 font-semibold">وضعیت فعالیت</th>
+                      <th className="py-4 px-6 font-semibold text-center w-24">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {warehouses.map((wh, index) => (
+                      <tr key={wh.id} className="hover:bg-gray-50/50 transition-colors text-gray-700">
+                        <td className="py-4 px-6 font-medium text-gray-400">{index + 1}</td>
+                        <td className="py-4 px-6 font-semibold text-gray-950">
+                          <span className="flex items-center gap-2">
+                            <Box className="w-4 h-4 text-indigo-500" />
+                            {wh.name}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-sm">{wh.manager || '-'}</td>
+                        <td className="py-4 px-6 text-sm">{wh.location || '-'}</td>
+                        <td className="py-4 px-6 text-sm">
+                          {wh.isActive ? (
+                            <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">فعال</span>
+                          ) : (
+                            <span className="bg-rose-100 text-rose-800 px-2 py-1 rounded text-xs font-bold">غیرفعال</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleEditWarehouse(wh)}
+                              className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block cursor-pointer"
+                              title="ویرایش انبار"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => confirmAction('آیا از حذف این انبار اطمینان دارید؟', () => handleDeleteWarehouse(wh.id))}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block cursor-pointer"
+                              title="حذف انبار"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ) : (
+            <div>
+              {/* Search Stocks bar */}
+              <div className="p-5 border-b border-gray-100 bg-gray-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex-1 max-w-md relative">
+                  <span className="absolute inset-y-0 right-3 flex items-center pr-1 text-gray-400 pointer-events-none">
+                    <Search className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="text"
+                    value={whStockSearch}
+                    onChange={e => setWhStockSearch(e.target.value)}
+                    placeholder="جستجوی سریع بر اساس کالا یا انبار..."
+                    className="w-full pr-10 pl-4 py-2.5 text-xs bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-bold"
+                  />
+                </div>
+                
+                <div className="text-right text-xs text-gray-400 font-bold">
+                  تعداد رکوردهای تراز: <span className="text-indigo-650 font-black font-sans">{
+                    warehouseStocks.filter(stock => {
+                      const prodName = products.find(p => p.id?.toString() === stock.productId?.toString())?.name || '';
+                      const whName = warehouses.find(w => w.id?.toString() === stock.warehouseId?.toString())?.name || '';
+                      const searchLower = whStockSearch.toLowerCase();
+                      return prodName.toLowerCase().includes(searchLower) || whName.toLowerCase().includes(searchLower);
+                    }).length
+                  }</span> کالا-انبار
+                </div>
+              </div>
+
+              {/* Recalculated stock logs table */}
+              <div className="overflow-x-auto">
+                {(() => {
+                  const filteredStocks = warehouseStocks.filter(stock => {
+                    const prodName = products.find(p => p.id?.toString() === stock.productId?.toString())?.name || '';
+                    const whName = warehouses.find(w => w.id?.toString() === stock.warehouseId?.toString())?.name || '';
+                    const searchLower = whStockSearch.toLowerCase();
+                    return prodName.toLowerCase().includes(searchLower) || whName.toLowerCase().includes(searchLower);
+                  });
+
+                  if (filteredStocks.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-gray-500 font-medium">
+                        {whStockSearch ? 'هیچ رکوردی منطبق با عبارت جستجو پیدا نشد.' : 'هیچ رکورد موجودی ثبت نشده است. ابتدا اسناد ورود و خروج ثبت کنید.'}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <table className="w-full text-right border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+                          <th className="py-4 px-6 font-semibold w-16 text-center">ردیف</th>
+                          <th className="py-4 px-6 font-semibold">نام کالا</th>
+                          <th className="py-4 px-6 font-semibold">انبار ذخیره‌سازی</th>
+                          <th className="py-4 px-6 font-semibold text-center bg-gray-100/30">موجودی فیزیکی</th>
+                          <th className="py-4 px-6 font-semibold text-center bg-amber-50/20">رزرو شده</th>
+                          <th className="py-4 px-6 font-semibold text-center bg-emerald-50/20 text-emerald-900">آماده فروش و تحویل</th>
+                          <th className="py-4 px-6 font-semibold text-center w-28">واحد</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 font-sans font-bold">
+                        {filteredStocks.map((stock, index) => {
+                          const associatedProd = products.find(p => p.id?.toString() === stock.productId?.toString());
+                          const associatedWh = warehouses.find(w => w.id?.toString() === stock.warehouseId?.toString());
+                          
+                          // Highlight low stock
+                          const isNegative = stock.availableStock < 0; 
+                          const isZero = stock.availableStock === 0;
+
+                          return (
+                            <tr key={`${stock.productId}-${stock.warehouseId}`} className="hover:bg-slate-50/50 transition-colors text-gray-700">
+                              <td className="py-4 px-6 text-center text-gray-400 font-medium">{index + 1}</td>
+                              <td className="py-4 px-6 text-gray-950 font-semibold">
+                                <span className="flex flex-col">
+                                  <span className="font-extrabold text-slate-900">{associatedProd?.name || 'کالای ناشناخته'}</span>
+                                  {associatedProd?.code && <span className="text-[10px] text-gray-400 mt-0.5">کد کالا: {associatedProd.code}</span>}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-indigo-900">
+                                <span className="flex items-center gap-1.5 text-xs text-indigo-950">
+                                  <Box className="w-3.5 h-3.5 text-indigo-500" />
+                                  {associatedWh?.name || 'انبار صادرکننده'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-center bg-gray-100/10 font-bold text-gray-800 text-sm">
+                                {formatNumber(stock.physicalStock)}
+                              </td>
+                              <td className="py-4 px-6 text-center bg-amber-50/10 font-bold text-amber-700 text-sm">
+                                {formatNumber(stock.reservedStock)}
+                              </td>
+                              <td className={`py-4 px-6 text-center font-black text-sm bg-emerald-50/10 ${
+                                isNegative ? 'text-red-650 bg-rose-50/30' :
+                                isZero ? 'text-gray-400' : 'text-emerald-700'
+                              }`}>
+                                <span className="inline-flex items-center gap-1.5">
+                                  {formatNumber(stock.availableStock)}
+                                  {isNegative && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-bold">کسری موجودی</span>}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6 text-center text-xs text-gray-500">
+                                {associatedProd?.unit || 'عدد'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </motion.div>
       ) : activeTab === 'financial_report' ? (
         /* Financial Report & Treasury View */
@@ -6360,7 +6552,7 @@ export default function App() {
           })()}
         </motion.div>
             ) : activeTab === 'checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement showNotification={showNotification} /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
       ) : activeTab === 'users_manager' ? (
@@ -9484,8 +9676,8 @@ export default function App() {
                             </div>
                             <div className="col-span-1 flex items-center justify-center h-full">
                                <div className="text-center font-black text-3xl tracking-tighter text-indigo-900 z-10">
-                                 {viewingInvoice.type === 'warehouse_receipt' ? 'رسید ورود کالا' :
-                                  viewingInvoice.type === 'warehouse_remittance' ? 'حواله خروج کالا' :
+                                 {viewingInvoice.type === 'warehouse_receipt' ? 'رسید انبار (ورود کالا)' :
+                                  viewingInvoice.type === 'warehouse_remittance' ? 'حواله انبار (خروج کالا)' :
                                   'فاکتور فروش'}
                                </div>
                             </div>
@@ -9496,11 +9688,15 @@ export default function App() {
                         </div>
 
                         {/* Customer / Party details */}
-                        <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4 relative" style={{ zIndex: 10 }}>
+                        <div className={`bg-gray-50/50 p-5 rounded-2xl border border-gray-200 grid grid-cols-1 ${viewingInvoice.type?.includes('warehouse') ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 relative`} style={{ zIndex: 10 }}>
                           <div className="space-y-1 text-right">
-                            <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block">مخاطب (خریدار)</span>
+                            <span className="text-[10px] uppercase tracking-widest text-indigo-650 font-black block">
+                              {viewingInvoice.type === 'warehouse_receipt' ? 'تحویل‌دهنده کالا' :
+                               viewingInvoice.type === 'warehouse_remittance' ? 'تحویل‌گیرنده کالا (بدهکار)' :
+                               'مخاطب (خریدار)'}
+                            </span>
                             <h3 className="text-lg font-black text-gray-900">{viewingInvoice.customerName}</h3>
-                            {viewingInvoice.customerPhone && <p className="text-sm text-gray-600 font-bold">تلفن: <span dir="ltr">{viewingInvoice.customerPhone}</span></p>}
+                            {viewingInvoice.customerPhone && <p className="text-sm text-gray-650 font-bold">تلفن: <span dir="ltr">{viewingInvoice.customerPhone}</span></p>}
                           </div>
                           <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
                             {(() => {
@@ -9516,6 +9712,19 @@ export default function App() {
                               return null;
                             })()}
                           </div>
+                          {viewingInvoice.type?.includes('warehouse') && (
+                            <div className="space-y-1 text-right self-center bg-indigo-50/50 p-4 border border-indigo-100 rounded-2xl w-full">
+                              <span className="text-[10px] uppercase tracking-widest text-indigo-650 font-extrabold block">انبار منتسب به سند</span>
+                              <h4 className="text-sm font-black text-indigo-900 mt-1">
+                                انبار: {warehouses.find(w => w.id?.toString() === viewingInvoice.warehouseId?.toString() || w.id?.toString() === viewingInvoice.items?.[0]?.warehouseId?.toString())?.name || 'انبار مرکزی'}
+                              </h4>
+                              {warehouses.find(w => w.id?.toString() === viewingInvoice.warehouseId?.toString() || w.id?.toString() === viewingInvoice.items?.[0]?.warehouseId?.toString())?.manager && (
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                  مسئول: {warehouses.find(w => w.id?.toString() === viewingInvoice.warehouseId?.toString() || w.id?.toString() === viewingInvoice.items?.[0]?.warehouseId?.toString())?.manager}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Table of Items */}
@@ -9618,6 +9827,14 @@ export default function App() {
 
               {/* Sticky bottom (No print) */}
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 no-print">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-xs"
+                >
+                  <Printer className="w-4 h-4" />
+                  چاپ و پرینت سند
+                </button>
                 <button
                   type="button"
                   onClick={() => setViewingInvoice(null)}

@@ -552,3 +552,140 @@ export const deleteReceivedCheck = async (id: string) => {
   const data = await getLocalData<any[]>('received_checks', []);
   await saveLocalData('received_checks', data.filter((p: any) => p.id !== id));
 };
+
+// Warehouse Stocks Persistence & Recalculation
+export const getWarehouseStocks = async () => {
+  const data = await getLocalData<any[]>('warehouse_stocks', []);
+  if (data.length === 0) {
+    // Perform initial recalculation if empty
+    return await recalculateAllWarehouseStocks();
+  }
+  return data;
+};
+
+export const saveWarehouseStocks = async (stocks: any[]) => {
+  await saveLocalData('warehouse_stocks', stocks);
+};
+
+export const recalculateAllWarehouseStocks = async () => {
+  const products = await getLocalData<any[]>('products', []);
+  const invoices = await getLocalData<any[]>('invoices', []);
+  const warehouses = await getLocalData<any[]>('warehouses', []);
+
+  const stocksMap: Record<string, {
+    productId: string | number;
+    warehouseId: string | number;
+    physicalStock: number;
+    reservedStock: number;
+    availableStock: number;
+  }> = {};
+
+  // 1. Initialize for all products that have stock/warehouse
+  products.forEach(p => {
+    if (p.type === 'service') return;
+    const baseStock = Number(p.stock) || 0;
+    const defaultWhId = (p.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
+    const key = `${p.id}_${defaultWhId}`;
+    
+    if (!stocksMap[key]) {
+      stocksMap[key] = {
+        productId: p.id,
+        warehouseId: defaultWhId,
+        physicalStock: 0,
+        reservedStock: 0,
+        availableStock: 0
+      };
+    }
+    stocksMap[key].physicalStock += baseStock;
+  });
+
+  // Track sales and remittances to calculate reserved stock
+  const saleQtysMap: Record<string, number> = {};
+  const remittedSaleQtysMap: Record<string, number> = {};
+
+  // 2. Process all invoices
+  invoices.forEach(inv => {
+    if (!inv.items || !Array.isArray(inv.items)) return;
+    inv.items.forEach((i: any) => {
+      const prodId = i.productId;
+      if (!prodId) return;
+
+      const product = products.find(p => p.id?.toString() === prodId.toString());
+      if (!product || product.type === 'service') return;
+
+      let q = Number(i.quantity) || 0;
+      if (i.isSecondaryUnit && product.unitRatio) {
+        q = q * Number(product.unitRatio);
+      }
+
+      const defaultWhId = (product.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
+      const whId = (i.warehouseId || inv.warehouseId || defaultWhId).toString();
+      const key = `${prodId}_${whId}`;
+
+      if (!stocksMap[key]) {
+        stocksMap[key] = {
+          productId: prodId,
+          warehouseId: whId,
+          physicalStock: 0,
+          reservedStock: 0,
+          availableStock: 0
+        };
+      }
+
+      if (inv.type === 'warehouse_receipt') {
+        stocksMap[key].physicalStock += q;
+      } else if (inv.type === 'warehouse_remittance') {
+        stocksMap[key].physicalStock -= q;
+        if (inv.sourceInvoiceId) {
+          const sourceInv = invoices.find(sinv => sinv.id?.toString() === inv.sourceInvoiceId?.toString());
+          if (sourceInv && sourceInv.type === 'sale') {
+            remittedSaleQtysMap[key] = (remittedSaleQtysMap[key] || 0) + q;
+          }
+        }
+      } else if (inv.type === 'sale') {
+        saleQtysMap[key] = (saleQtysMap[key] || 0) + q;
+      }
+    });
+  });
+
+  // 3. Process reservations from saleQtys vs remittedSaleQtys
+  Object.keys(saleQtysMap).forEach(key => {
+    const totalSale = saleQtysMap[key] || 0;
+    const totalRemittedForSale = remittedSaleQtysMap[key] || 0;
+    const unremitted = Math.max(0, totalSale - totalRemittedForSale);
+
+    if (unremitted > 0) {
+      if (!stocksMap[key]) {
+        const parts = key.split('_');
+        const prodId = parts[0];
+        const whId = parts.slice(1).join('_');
+        stocksMap[key] = {
+          productId: prodId,
+          warehouseId: whId,
+          physicalStock: 0,
+          reservedStock: 0,
+          availableStock: 0
+        };
+      }
+      stocksMap[key].reservedStock += unremitted;
+    }
+  });
+
+  // 4. Transform and save
+  const finalStocksList: any[] = Object.keys(stocksMap).map(key => {
+    const item = stocksMap[key];
+    return {
+      id: key,
+      productId: item.productId,
+      warehouseId: item.warehouseId,
+      physicalStock: item.physicalStock,
+      reservedStock: item.reservedStock,
+      availableStock: item.physicalStock - item.reservedStock,
+      lastUpdated: Date.now()
+    };
+  });
+
+  await saveLocalData('warehouse_stocks', finalStocksList);
+  return finalStocksList;
+};
+

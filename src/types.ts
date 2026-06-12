@@ -166,3 +166,14 @@ export type CompanySettings = {
   allowNegativeStock?: boolean;
   requireWarehouse?: boolean;
 };
+
+export interface WarehouseStock {
+  id: string;
+  productId: string | number;
+  warehouseId: string | number;
+  physicalStock: number;
+  reservedStock: number;
+  availableStock: number;
+  lastUpdated: number;
+}
+
