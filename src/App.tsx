@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Barcode from 'react-barcode';
-import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box } from 'lucide-react';
+import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addCommas, removeCommas, numberToWords } from './utils/format';
 import DatePicker from "react-multi-date-picker";
@@ -1508,6 +1508,21 @@ export default function App() {
     }
   };
 
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        customAlert('حجم تصویر نباید بیشتر از 2 مگابایت باشد.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSettingsForm({...settingsForm, logoUrl: reader.result as string});
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   const handleCurrencyChange = (newCurrency: string) => {
     const oldRate = exchangeRate;
     const newRate = getDefaultExchangeRate(newCurrency, storeSettings.currency);
@@ -6306,6 +6321,31 @@ export default function App() {
               {settingsTab === 'general' && (
                 <div className="flex flex-col gap-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="w-full text-right md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">لوگو فروشگاه / شرکت</label>
+                      <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        {settingsForm.logoUrl ? (
+                          <div className="relative group">
+                            <img src={settingsForm.logoUrl} alt="Logo preview" className="w-16 h-16 object-contain rounded bg-white shadow-sm border border-gray-100" />
+                            <button type="button" onClick={() => setSettingsForm({...settingsForm, logoUrl: ''})} className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 bg-white border border-gray-200 rounded flex items-center justify-center text-gray-400 shadow-sm">
+                            <Image className="w-6 h-6" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm inline-block">
+                            انتخاب تصویر
+                            <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                          </label>
+                          <p className="text-xs text-gray-500 mt-2">حداکثر حجم فایل ۲ مگابایت. فرمت‌های JPG و PNG.</p>
+                        </div>
+                      </div>
+                    </div>
+                    
                     <div className="w-full text-right md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">نام فروشگاه / شرکت</label>
                       <input
