@@ -365,6 +365,7 @@ export default function App() {
       // For financial report
       const [reportDateRange, setReportDateRange] = useState<Date[]>([]);
       const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+  const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
 
@@ -2271,11 +2272,13 @@ export default function App() {
                info.totalPhysical -= q;
                info.warehouses[whId].physical -= q;
                
-               if (inv.sourceInvoiceId) {
+                if (inv.sourceInvoiceId) {
                    const sourceInv = invoices.find(sinv => sinv.id.toString() === inv.sourceInvoiceId?.toString());
                    if (sourceInv && sourceInv.type === 'sale') {
                       remittedSaleQtys[whId] = (remittedSaleQtys[whId] || 0) + q;
                    }
+               } else {
+                  remittedSaleQtys[whId] = (remittedSaleQtys[whId] || 0) + q;
                }
            } else if (inv.type === 'sale') {
                saleQtys[whId] = (saleQtys[whId] || 0) + q;
@@ -2284,15 +2287,15 @@ export default function App() {
       });
     });
 
-    Object.keys(saleQtys).forEach(whId => {
-       const totalSale = saleQtys[whId] || 0;
-       const totalRemittedForSale = remittedSaleQtys[whId] || 0;
-       const unremitted = Math.max(0, totalSale - totalRemittedForSale);
-       
-       if (!info.warehouses[whId]) info.warehouses[whId] = { physical: 0, reserved: 0, available: 0 };
-       info.warehouses[whId].reserved += unremitted;
-       info.totalReserved += unremitted;
-    });
+    const totalSale = Object.values(saleQtys).reduce((a, b) => a + b, 0);
+    const totalRemittedForSale = Object.values(remittedSaleQtys).reduce((a, b) => a + b, 0);
+    const globalUnremitted = Math.max(0, totalSale - totalRemittedForSale);
+
+    if (globalUnremitted > 0) {
+       if (!info.warehouses[defaultWhId]) info.warehouses[defaultWhId] = { physical: 0, reserved: 0, available: 0 };
+       info.warehouses[defaultWhId].reserved += globalUnremitted;
+       info.totalReserved += globalUnremitted;
+    }
 
     Object.keys(info.warehouses).forEach(whId => {
        info.warehouses[whId].available = info.warehouses[whId].physical - info.warehouses[whId].reserved;
@@ -2316,7 +2319,24 @@ export default function App() {
         }).join('، ');
     }
     
-    return `موجودی در دسترس: ${info.totalAvailable} ${product.unit || ''}${info.totalReserved > 0 ? ` (رزرو شده: ${info.totalReserved})` : ''}${details}${product.barcode || product.code ? ' | ' : ''}${product.barcode ? `بارکد: ${product.barcode}` : (product.code ? `کد: ${product.code}` : '')}`;
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className={info.totalAvailable > 0 ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold'}>
+          موجودی در دسترس: {info.totalAvailable} {product.unit || ''}
+        </span>
+        {info.totalReserved > 0 && (
+          <span className="text-amber-500 font-bold bg-amber-50 px-1 rounded">
+            (رزرو شده: {info.totalReserved})
+          </span>
+        )}
+        <span className="text-gray-400">{details}</span>
+        {(product.barcode || product.code) && (
+          <span className="text-gray-400">
+            {' | '}{product.barcode ? `بارکد: ${product.barcode}` : `کد: ${product.code}`}
+          </span>
+        )}
+      </div>
+    );
   };
 
   const calculateProductCurrentStock = (productId: string | number) => {
@@ -3498,6 +3518,16 @@ export default function App() {
                      activeTab === 'list_warehouse_receipt' ? 'رسیدهای انبار (ورود کالا)' :
                      'حواله‌های انبار (خروج کالا)'}
                   </h2>
+                  <div className="relative w-full md:w-96">
+                    <Search className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      placeholder="جستجوی حرفه‌ای (شماره سند، نام شخص)..." 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-slate-400 font-bold"
+                      value={invoiceSearchQuery}
+                      onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="overflow-x-auto">
@@ -3523,7 +3553,13 @@ export default function App() {
                            activeTab === 'list_purchase' ? i.type === 'purchase' :
                            activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
                            i.type === 'warehouse_remittance'
-                         ).map(inv => (
+                         ).filter(inv => {
+                            if (!invoiceSearchQuery) return true;
+                            const term = invoiceSearchQuery.toLowerCase();
+                            const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
+                            const invNum = (inv.invoiceNumber || '').toLowerCase();
+                            return pName.includes(term) || invNum.includes(term);
+                         }).map(inv => (
                            <tr key={inv.id} className="hover:bg-gray-50">
                              <td className="p-4 font-mono text-left font-bold text-gray-700" dir="ltr">#{inv.invoiceNumber}</td>
                              <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
@@ -3551,9 +3587,20 @@ export default function App() {
                              </td>
                            </tr>
                          ))}
-                         {invoices.filter(i => activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : i.type === 'purchase').length === 0 && (
+                         {invoices.filter(i => 
+                           activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
+                           activeTab === 'list_purchase' ? i.type === 'purchase' :
+                           activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
+                           i.type === 'warehouse_remittance'
+                         ).filter(inv => {
+                            if (!invoiceSearchQuery) return true;
+                            const term = invoiceSearchQuery.toLowerCase();
+                            const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
+                            const invNum = (inv.invoiceNumber || '').toLowerCase();
+                            return pName.includes(term) || invNum.includes(term);
+                         }).length === 0 && (
                            <tr>
-                             <td colSpan={5} className="p-8 text-center text-gray-400">هیچ فاکتوری یافت نشد.</td>
+                             <td colSpan={5} className="p-8 text-center text-gray-400">هیچ سندی یافت نشد.</td>
                            </tr>
                          )}
                        </tbody>
@@ -3773,6 +3820,16 @@ export default function App() {
                    <List className={`w-6 h-6 ${themeIcon}`} />
                    {isReceive ? 'لیست رسیدهای دریافت وجه رسمی' : 'لیست رسیدهای پرداخت وجه رسمی'}
                  </h2>
+                 <div className="relative w-full md:w-96">
+                   <Search className={`w-5 h-5 ${themeIcon} opacity-50 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2`} />
+                   <input
+                     type="text"
+                     placeholder="جستجوی حرفه‌ای (شماره رسید، نام شخص)..."
+                     className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pr-10 pl-4 text-sm focus:ring-2 outline-none transition-all placeholder-slate-400 font-bold ${isReceive ? 'focus:ring-emerald-500/50' : 'focus:ring-rose-500/50'}`}
+                     value={invoiceSearchQuery}
+                     onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                   />
+                 </div>
                </div>
 
                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -3789,7 +3846,13 @@ export default function App() {
                        </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-50">
-                       {filteredTxs.map(tx => {
+                       {filteredTxs.filter(tx => {
+                         if (!invoiceSearchQuery) return true;
+                         const term = invoiceSearchQuery.toLowerCase();
+                         const personName = (persons.find(p => p.id.toString() === tx.personId?.toString())?.name || 'نامشخص').toLowerCase();
+                         const receiptNum = (tx.receiptNumber || `#${tx.id}`).toLowerCase();
+                         return personName.includes(term) || receiptNum.includes(term);
+                       }).map(tx => {
                          const person = persons.find(p => p.id.toString() === tx.personId?.toString());
                          const resourceLabel = tx.resourceType === 'bank' 
                            ? `حساب بانکی: ${accounts.find(a => a.id.toString() === tx.resourceId?.toString())?.bankName || 'نامشخص'}`
@@ -3819,9 +3882,15 @@ export default function App() {
                            </tr>
                          );
                        })}
-                       {filteredTxs.length === 0 && (
+                       {filteredTxs.filter(tx => {
+                         if (!invoiceSearchQuery) return true;
+                         const term = invoiceSearchQuery.toLowerCase();
+                         const personName = (persons.find(p => p.id.toString() === tx.personId?.toString())?.name || 'نامشخص').toLowerCase();
+                         const receiptNum = (tx.receiptNumber || `#${tx.id}`).toLowerCase();
+                         return personName.includes(term) || receiptNum.includes(term);
+                       }).length === 0 && (
                          <tr>
-                           <td colSpan={6} className="p-8 text-center text-slate-400 font-bold">هیچ سند یا رسیدی در این بخش صادر نشده است.</td>
+                           <td colSpan={6} className="p-8 text-center text-slate-400 font-bold">هیچ سند یا رسیدی در این بخش یافت نشد.</td>
                          </tr>
                        )}
                      </tbody>
@@ -6672,7 +6741,22 @@ export default function App() {
                                   : 'bg-rose-50 text-rose-700 border-rose-200';
 
                             return (
-                              <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors group">
+                              <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => {
+                                if (entry.entryType === 'invoice' && entry.rawItem) {
+                                  setViewingInvoice(entry.rawItem);
+                                } else if (entry.entryType === 'transaction' && entry.rawItem) {
+                                  if (entry.rawItem.type === 'salary') {
+                                    try {
+                                      const parsedDesc = JSON.parse(entry.rawItem.description);
+                                      if (parsedDesc.isPayslip) {
+                                        setViewingPayslip({ ...entry.rawItem, parsed: parsedDesc, computedPersonName: selectedPerson.name });
+                                        return;
+                                      }
+                                    } catch (e) {}
+                                  }
+                                  setPreviewReceiptData({ ...entry.rawItem, jalaliDate: entry.jalaliDate, personId: selectedPerson.id, _isReadOnly: true });
+                                }
+                              }}>
                                 <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6">
                                   <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors">
                                     {index + 1}
@@ -10145,14 +10229,23 @@ export default function App() {
 
               </div>
               
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 no-print">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-xs"
+                >
+                  <Printer className="w-4 h-4" />
+                  چاپ
+                </button>
                 <button
                   type="button"
                   onClick={() => setPreviewReceiptData(null)}
                   className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs transition-colors"
                 >
-                  بازگشت و اصلاح
+                  {previewReceiptData._isReadOnly ? 'بستن پیش‌نمایش' : 'بازگشت و اصلاح'}
                 </button>
+                {!previewReceiptData._isReadOnly && (
                 <button
                   type="button"
                   disabled={submittingReceipt}
@@ -10166,6 +10259,7 @@ export default function App() {
                   )}
                   {isReceive ? 'تایید و صدور رسید دریافت' : 'تایید و صدور رسید پرداخت'}
                 </button>
+                )}
               </div>
             </motion.div>
           </div>

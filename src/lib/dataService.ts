@@ -703,6 +703,8 @@ export const recalculateAllWarehouseStocks = async () => {
           if (sourceInv && sourceInv.type === 'sale') {
             remittedSaleQtysMap[key] = (remittedSaleQtysMap[key] || 0) + q;
           }
+        } else {
+          remittedSaleQtysMap[key] = (remittedSaleQtysMap[key] || 0) + q;
         }
       } else if (inv.type === 'sale') {
         saleQtysMap[key] = (saleQtysMap[key] || 0) + q;
@@ -710,20 +712,34 @@ export const recalculateAllWarehouseStocks = async () => {
     });
   });
 
-  // 3. Process reservations from saleQtys vs remittedSaleQtys
+  // 3. Process reservations by aggregating globally per product
+  const productGlobalSales: Record<string, number> = {};
+  const productGlobalRemitted: Record<string, number> = {};
+  
   Object.keys(saleQtysMap).forEach(key => {
-    const totalSale = saleQtysMap[key] || 0;
-    const totalRemittedForSale = remittedSaleQtysMap[key] || 0;
+    const prodId = key.split('_')[0];
+    productGlobalSales[prodId] = (productGlobalSales[prodId] || 0) + saleQtysMap[key];
+  });
+  
+  Object.keys(remittedSaleQtysMap).forEach(key => {
+    const prodId = key.split('_')[0];
+    productGlobalRemitted[prodId] = (productGlobalRemitted[prodId] || 0) + remittedSaleQtysMap[key];
+  });
+  
+  Object.keys(productGlobalSales).forEach(prodId => {
+    const totalSale = productGlobalSales[prodId] || 0;
+    const totalRemittedForSale = productGlobalRemitted[prodId] || 0;
     const unremitted = Math.max(0, totalSale - totalRemittedForSale);
-
+    
     if (unremitted > 0) {
+      const product = products.find(p => p.id.toString() === prodId.toString());
+      const defaultWhId = (product?.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
+      const key = `${prodId}_${defaultWhId}`;
+      
       if (!stocksMap[key]) {
-        const parts = key.split('_');
-        const prodId = parts[0];
-        const whId = parts.slice(1).join('_');
         stocksMap[key] = {
           productId: prodId,
-          warehouseId: whId,
+          warehouseId: defaultWhId,
           physicalStock: 0,
           reservedStock: 0,
           availableStock: 0

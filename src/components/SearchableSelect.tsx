@@ -5,7 +5,7 @@ import { Search, ChevronDown, Check } from 'lucide-react';
 interface Option {
   value: string | number;
   label: string;
-  subLabel?: string;
+  subLabel?: React.ReactNode;
   badge?: string;
 }
 

@@ -79,7 +79,15 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
     return changes;
   }, [history]);
 
-  const content = (
+   const chartData = useMemo(() => {
+     return history.filter(h => h.type === 'sale' || h.type === 'purchase').reverse().map(h => ({
+       ...h,
+       salePrice: h.type === 'sale' ? Number(h.unitPrice) : null,
+       purchasePrice: h.type === 'purchase' ? Number(h.unitPrice) : null,
+     }));
+   }, [history]);
+
+   const content = (
       <motion.div initial={isModal ? { opacity: 0, scale: 0.95 } : { opacity: 0 }} animate={isModal ? { opacity: 1, scale: 1 } : { opacity: 1 }} exit={isModal ? { opacity: 0, scale: 0.95 } : undefined} className={`bg-white rounded-2xl w-full ${isModal ? 'max-w-4xl max-h-[90vh]' : 'h-full min-h-[500px] border border-gray-100'} overflow-hidden shadow-2xl flex flex-col`}>
          
          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -319,7 +327,7 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                    <div className="w-full h-full border border-gray-100 rounded-xl shadow-sm p-4 pt-8 bg-white" dir="ltr">
                      <ResponsiveContainer width="100%" height="100%">
                        <LineChart
-                         data={history.filter(h => h.type === 'sale' || h.type === 'purchase').reverse()}
+                         data={chartData}
                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                        >
                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -338,13 +346,14 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                            width={80}
                          />
                          <Tooltip 
-                           formatter={(value: any, name: string) => [new Intl.NumberFormat('fa-IR').format(value) + ` ${currency}`, name === 'unitPrice' ? 'مبلغ واحد' : 'مبلغ']}
+                           formatter={(value: any, name: string) => [new Intl.NumberFormat('fa-IR').format(value) + ` ${currency}`, name === 'salePrice' ? 'قیمت فروش' : 'قیمت خرید']}
                            labelFormatter={(label) => `تاریخ: ${label}`}
                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontFamily: 'vazirmatn, system-ui, sans-serif' }}
                            itemStyle={{ textAlign: 'right' }}
                          />
                          <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                         <Line type="monotone" dataKey="unitPrice" name="مبلغ واحد" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 8 }} />
+                         <Line connectNulls type="monotone" dataKey="salePrice" name="قیمت فروش" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 8 }} />
+                         <Line connectNulls type="monotone" dataKey="purchasePrice" name="قیمت خرید" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 8 }} />
                        </LineChart>
                      </ResponsiveContainer>
                    </div>
