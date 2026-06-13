@@ -2150,8 +2150,23 @@ export default function App() {
         setInvoiceCurrency(storeSettings.currency || 'تومان');
         setExchangeRate(1);
         setExchangeRateInput('1');
-        setInvoiceType('sale');
-        setInvoiceTitle('فاکتور فروش کالا');
+        // Re-initialize based on active tab
+        if (activeTab === 'create_sale') {
+          setInvoiceType('sale');
+          setInvoiceTitle('فاکتور فروش کالا');
+        } else if (activeTab === 'create_purchase') {
+          setInvoiceType('purchase');
+          setInvoiceTitle('فاکتور خرید کالا');
+        } else if (activeTab === 'create_warehouse_receipt') {
+          setInvoiceType('warehouse_receipt');
+          setInvoiceTitle('رسید انبار (ورود کالا)');
+        } else if (activeTab === 'create_warehouse_remittance') {
+          setInvoiceType('warehouse_remittance');
+          setInvoiceTitle('حواله انبار (خروج کالا)');
+        } else {
+          setInvoiceType('sale');
+          setInvoiceTitle('فاکتور فروش کالا');
+        }
         setSuccessMsg('');
         setPreviewInvoiceData(null); // Clear preview modal
       }, 1500);
@@ -6082,12 +6097,12 @@ export default function App() {
                 <h3 className="text-xs font-semibold text-gray-400">مجموع کل فروش (فاکتورها)</h3>
                 <span className="text-xl font-extrabold text-gray-900 block mt-1">
                   {formatNumber(
-                    invoices.filter(inv => inv.type !== 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+                    invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
                   )}{' '}
                   <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
                 </span>
                 <span className="text-xs text-indigo-600 font-bold mt-1 block">
-                  {formatNumber(invoices.filter(inv => inv.type !== 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).length)} فاکتور فروش ثبت شده
+                  {formatNumber(invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).length)} فاکتور فروش ثبت شده
                 </span>
               </div>
             </div>
@@ -6114,7 +6129,7 @@ export default function App() {
 
             {/* Net Difference Card */}
             {(() => {
-              const salesVal = invoices.filter(inv => inv.type !== 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const salesVal = invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
               const purchasesVal = invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
               const netVal = salesVal - purchasesVal;
               const isPositive = netVal >= 0;
@@ -6364,7 +6379,7 @@ export default function App() {
             // Calculations
             // Invoices
             const invoiceEntries = invoices
-              .filter(inv => inv.customerId?.toString() === ledgerPersonId.toString())
+              .filter(inv => inv.customerId?.toString() === ledgerPersonId.toString() && inv.type !== 'warehouse_receipt' && inv.type !== 'warehouse_remittance')
               .map(inv => {
                 const isSale = inv.type === 'sale';
                   const isProforma = inv.type === 'proforma';

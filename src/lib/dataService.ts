@@ -506,7 +506,8 @@ export const addInvoice = async (invoice: any) => {
   invoices.push(newInvoice);
   await saveLocalData('invoices', invoices);
 
-  // Stock is computed dynamically from history instead 
+  // Recalculate warehouse stocks automatically
+  await recalculateAllWarehouseStocks();
 
   return newInvoice;
 };
@@ -515,9 +516,10 @@ export const deleteInvoice = async (id: string) => {
   const invoices = await getLocalData<any[]>('invoices', []);
   const invoiceToDelete = invoices.find((p: any) => p.id === id || p.id === Number(id) || p.id === String(id));
   
-  // Stock is computed dynamically from history instead 
-
   await saveLocalData('invoices', invoices.filter((p: any) => p.id !== id && p.id !== Number(id) && p.id !== String(id)));
+
+  // Recalculate warehouse stocks automatically
+  await recalculateAllWarehouseStocks();
 };
 
 // Checkbooks
