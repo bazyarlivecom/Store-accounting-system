@@ -5,6 +5,14 @@ export type PersonGroup = {
   color?: string; // e.g., 'indigo', 'emerald', 'amber', 'rose'
 };
 
+export type PersonRole = {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  color?: string;
+};
+
 export type Person = { 
   id: string | number; 
   personCode?: string;

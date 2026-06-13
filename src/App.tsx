@@ -53,7 +53,7 @@ const customPersonFilter = (option: any, inputValue: string) => {
 
 const mapPersonToOption = (p: any) => ({
   value: p.id.toString(),
-  label: (p.personCode ? '[' + p.personCode + '] ' : '') + (p.alias || p.name) + ' (' + (p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند') + ')',
+  label: (p.personCode ? '[' + p.personCode + '] ' : '') + (p.alias || p.name) + ' (' + (getRoleName(p.role)) + ')',
   searchStr: `${p.alias||''} ${p.name||''} ${p.title||''} ${p.firstName||''} ${p.lastName||''} ${p.phone||''} ${p.nationalId||''} ${p.personCode||''} ${p.companyName||''}`
 });
 
@@ -98,7 +98,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_receipt' | 'list_warehouse_receipt' | 'create_warehouse_remittance' | 'list_warehouse_remittance' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_receipt' | 'list_warehouse_receipt' | 'create_warehouse_remittance' | 'list_warehouse_remittance' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -207,6 +207,7 @@ export default function App() {
       items: [
         { id: 'persons', label: 'اشخاص و شرکت‌ها', roles: ['admin', 'accountant'] },
         { id: 'person_groups', label: 'گروه‌بندی اشخاص', roles: ['admin', 'accountant'] },
+        { id: 'person_roles', label: 'نقش‌های ارتباطی (کدینگ)', roles: ['admin'] },
       ]
     },
     {
@@ -241,6 +242,7 @@ export default function App() {
   
   const [persons, setPersons] = useState<Person[]>([]);
   const [personGroups, setPersonGroups] = useState<PersonGroup[]>([]);
+  const [personRoles, setPersonRoles] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -260,6 +262,22 @@ export default function App() {
   const [newPersonGroupName, setNewPersonGroupName] = useState('');
   const [newPersonGroupColor, setNewPersonGroupColor] = useState('indigo');
   const [editingPersonGroupId, setEditingPersonGroupId] = useState<string | null>(null);
+
+  const [newPersonRoleName, setNewPersonRoleName] = useState('');
+  const [newPersonRoleCode, setNewPersonRoleCode] = useState('');
+  const [editingPersonRoleId, setEditingPersonRoleId] = useState<string | null>(null);
+
+  const getRoleName = (roleId?: string) => {
+    if (!roleId) return 'نامشخص';
+    const role = personRoles.find(r => r.id === roleId);
+    return role ? role.name : roleId === 'customer' ? 'مشتری' : roleId === 'supplier' ? 'تامین کننده' : roleId === 'employee' ? 'کارمند' : 'نامشخص';
+  };
+
+  const getRoleBadgeClasses = (roleId?: string) => {
+    const role = personRoles.find(r => r.id === roleId);
+    if (role && role.color) return role.color;
+    return roleId === 'customer' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : roleId === 'supplier' ? 'bg-orange-50 text-orange-850 border-orange-100' : 'bg-purple-50 text-purple-800 border-purple-100';
+  };
 
   const filteredPersons = persons.filter(p => {
     // 0. Role Filter
@@ -562,7 +580,7 @@ export default function App() {
   const [newPersonFatherName, setNewPersonFatherName] = useState('');
   const [newPersonNationalId, setNewPersonNationalId] = useState('');
   const [newPersonAddress, setNewPersonAddress] = useState('');
-  const [newPersonRole, setNewPersonRole] = useState<'customer' | 'employee' | 'supplier'>('customer');
+  const [newPersonRole, setNewPersonRole] = useState<string>('');
   const [newPersonPhone, setNewPersonPhone] = useState('');
   const [newPersonGroup, setNewPersonGroup] = useState('');
   const [newPersonProvince, setNewPersonProvince] = useState('');
@@ -891,6 +909,15 @@ export default function App() {
       setPersonGroups(data as any);
     } catch (error) {
       console.error('Error fetching person groups', error);
+    }
+  };
+
+  const fetchPersonRoles = async () => {
+    try {
+      const data = await getPersonRoles();
+      setPersonRoles(data as any);
+    } catch (error) {
+      console.error('Error fetching person roles', error);
     }
   };
 
@@ -1426,6 +1453,41 @@ export default function App() {
     setIsProductModalOpen(true);
   };
 
+  const handleSavePersonRole = async () => {
+    if (!newPersonRoleName.trim() || !newPersonRoleCode.trim()) {
+      alert('تمامی فیلدها الزامی است');
+      return;
+    }
+    try {
+      if (editingPersonRoleId) {
+        await updatePersonRole(editingPersonRoleId, { name: newPersonRoleName, code: newPersonRoleCode });
+      } else {
+        await addPersonRole({ name: newPersonRoleName, code: newPersonRoleCode });
+      }
+      await fetchPersonRoles();
+      setNewPersonRoleName('');
+      setNewPersonRoleCode('');
+      setEditingPersonRoleId(null);
+    } catch (e) {
+      console.error('Error saving role', e);
+    }
+  };
+
+  const handleDeletePersonRole = async (id: string) => {
+    if (['customer', 'supplier', 'employee'].includes(id)) {
+      alert('نقش‌های سیستمی پیش‌فرض قابل حذف نیستند.');
+      return;
+    }
+    confirmAction('آیا از حذف این نقش اطمینان دارید؟', async () => {
+      try {
+        await deletePersonRole(id);
+        await fetchPersonRoles();
+      } catch (e) {
+        console.error('Error deleting role', e);
+      }
+    });
+  };
+
   const handleSavePersonGroup = async () => {
     if (!newPersonGroupName.trim()) {
       alert('نام گروه الزامی است');
@@ -1684,6 +1746,7 @@ export default function App() {
     setLoading(true);
     try {
       await Promise.all([
+        fetchPersonRoles(),
         fetchPersonGroups(),
         fetchPersons(),
         fetchProducts(),
@@ -2549,7 +2612,7 @@ export default function App() {
                         value: p.id,
                         label: p.alias || p.name,
                         subLabel: p.phone || undefined,
-                        badge: p.role === 'customer' ? 'مشتری' : p.role === 'employee' ? 'کارمند' : 'تامین کننده'
+                        badge: getRoleName(p.role)
                       }))}
                       value={customerId}
                       onChange={val => setCustomerId(val)}
@@ -2905,7 +2968,7 @@ export default function App() {
                           value: p.id,
                           label: p.alias || p.name,
                           subLabel: p.phone || undefined,
-                          badge: p.role === 'customer' ? 'مشتری' : p.role === 'employee' ? 'کارمند' : 'تامین کننده'
+                          badge: getRoleName(p.role)
                         }))}
                         value={customerId}
                         onChange={val => setCustomerId(val)}
@@ -3192,7 +3255,7 @@ export default function App() {
                           value: p.id,
                           label: p.alias || p.name,
                           subLabel: p.phone || undefined,
-                          badge: p.role === 'customer' ? 'مشتری' : p.role === 'employee' ? 'کارمند' : 'مشتری'
+                          badge: getRoleName(p.role)
                         }))}
                         value={customerId}
                         onChange={val => setCustomerId(val)}
@@ -3766,7 +3829,7 @@ export default function App() {
                        >
                          <option value="">-- انتخاب پرسنل --</option>
                          {persons.map(p => (
-                           <option key={p.id} value={p.id}>{p.alias || p.name} {p.role === 'employee' ? '(پرسنل)' : ''}</option>
+                         <option key={p.id} value={p.id}>{p.alias || p.name} - {getRoleName(p.role)}</option>
                          ))}
                        </select>
                      </div>
@@ -4966,24 +5029,15 @@ export default function App() {
                 >
                   همه اشخاص
                 </button>
-                <button
-                  onClick={() => { setSelectedPersonRole('customer'); setPersonCurrentPage(1); }}
-                  className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === 'customer' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                >
-                  مشتریان
-                </button>
-                <button
-                  onClick={() => { setSelectedPersonRole('supplier'); setPersonCurrentPage(1); }}
-                  className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === 'supplier' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                >
-                  تامین‌کنندگان
-                </button>
-                <button
-                  onClick={() => { setSelectedPersonRole('employee'); setPersonCurrentPage(1); }}
-                  className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === 'employee' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                >
-                  کارمندان / پرسنل
-                </button>
+                {personRoles.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => { setSelectedPersonRole(r.id); setPersonCurrentPage(1); }}
+                    className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === r.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                  >
+                    {r.name}
+                  </button>
+                ))}
               </div>
 
               <div className="mx-6 mt-6 flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between animate-fade-in">
@@ -5148,8 +5202,8 @@ export default function App() {
                             {p.nationalId || '-'}
                           </td>
                           <td className="py-4 px-6 text-gray-600 text-sm">
-                            <span className={`px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 font-bold text-xs ${p.role === 'customer' ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : p.role === 'supplier' ? 'bg-orange-50 text-orange-850 border border-orange-100' : 'bg-purple-50 text-purple-800 border border-purple-100'}`}>
-                              {p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند'}
+                            <span className={`px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 font-bold text-xs ${getRoleBadgeClasses(p.role)}`}>
+                              {getRoleName(p.role)}
                             </span>
                           </td>
                           <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
@@ -5404,6 +5458,109 @@ export default function App() {
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </motion.div>
+      ) : activeTab === 'person_roles' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-gradient-to-l from-indigo-50/50 to-white px-8 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                  <Tag className="w-6 h-6 text-indigo-500" />
+                  مدیریت نقش‌های ارتباطی اشخاص
+                </h1>
+                <p className="text-xs text-slate-500 font-bold mt-1">تعریف نقش‌ها (مثل راننده، بازاریاب) و مدیریت کدهای پیش‌فرض برای صدور کد اشخاص</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-800 mb-4">{editingPersonRoleId ? 'ویرایش نقش' : 'ثبت نقش جدید'}</h3>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-[2]">
+                <input
+                  type="text"
+                  value={newPersonRoleName}
+                  onChange={(e) => setNewPersonRoleName(e.target.value)}
+                  placeholder="عنوان نقش (مثلا راننده پایانه)"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-slate-900 font-bold text-sm"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={newPersonRoleCode}
+                  onChange={(e) => setNewPersonRoleCode(e.target.value)}
+                  placeholder="کد پیش‌فرض (مثلا 40)"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-slate-900 font-bold text-sm"
+                />
+              </div>
+              <button
+                onClick={handleSavePersonRole}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 justify-center"
+              >
+                {editingPersonRoleId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {editingPersonRoleId ? 'ذخیره تغییرات' : 'افزودن نقش'}
+              </button>
+              {editingPersonRoleId && (
+                <button
+                  onClick={() => {
+                    setEditingPersonRoleId(null);
+                    setNewPersonRoleName('');
+                    setNewPersonRoleCode('');
+                  }}
+                  className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all cursor-pointer"
+                >
+                  انصراف
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+            {personRoles.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 font-bold text-sm">هیچ نقشی ثبت نشده است.</div>
+            ) : (
+              <table className="w-full text-right whitespace-nowrap">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-black">
+                    <th className="py-4 px-6 w-full">عنوان نقش</th>
+                    <th className="py-4 px-6 text-center">کد پایه (Prefix)</th>
+                    <th className="py-4 px-6 text-center">عملیات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {personRoles.map(g => (
+                    <tr key={g.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 px-6 font-bold text-sm text-slate-900">{g.name}</td>
+                      <td className="py-4 px-6 text-center font-mono font-black text-xs text-indigo-600">{g.code}</td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingPersonRoleId(g.id);
+                              setNewPersonRoleName(g.name);
+                              setNewPersonRoleCode(g.code);
+                            }}
+                            className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            title="ویرایش نقش"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePersonRole(g.id)}
+                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="حذف نقش"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
@@ -6333,14 +6490,8 @@ export default function App() {
                   <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                          selectedPerson.role === 'customer' 
-                            ? 'bg-indigo-50 text-indigo-700' 
-                            : selectedPerson.role === 'supplier' 
-                              ? 'bg-emerald-50 text-emerald-700' 
-                              : 'bg-purple-50 text-purple-700'
-                        }`}>
-                          {selectedPerson.role === 'customer' ? 'مشتری' : selectedPerson.role === 'supplier' ? 'تأمین‌کننده' : 'کارمند'}
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getRoleBadgeClasses(selectedPerson.role)}`}>
+                          {getRoleName(selectedPerson.role)}
                         </span>
                         <span className="text-xs text-gray-400 font-medium font-mono text-left">کد شخص: #{selectedPerson.personCode ? selectedPerson.personCode : selectedPerson.id}</span>
                       </div>
@@ -8095,7 +8246,7 @@ export default function App() {
                                   p.name || '',
                                   p.personType === 'legal' ? 'حقوقی' : 'حقیقی',
                                   p.nationalId || '',
-                                  p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'کارمند',
+                                  getRoleName(p.role),
                                   p.phone || '',
                                   p.fatherName || '',
                                   p.companyName || '',
@@ -8847,12 +8998,14 @@ export default function App() {
                             <label className="block text-sm font-bold text-slate-700 mb-2">نقش ارتباطی</label>
                             <select
                               value={newPersonRole}
-                              onChange={(e) => setNewPersonRole(e.target.value as 'customer' | 'employee' | 'supplier')}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-slate-900 bg-white font-bold"
+                              onChange={(e) => setNewPersonRole(e.target.value)}
+                              disabled={!!editingPersonId}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-slate-900 bg-white font-bold disabled:bg-slate-100 disabled:cursor-not-allowed"
                             >
-                              <option value="customer">مشتری</option>
-                              <option value="supplier">تامین کننده</option>
-                              <option value="employee">کارمند</option>
+                              {!newPersonRole && <option value="">انتخاب نقش...</option>}
+                              {personRoles.map(r => (
+                                <option key={r.id} value={r.id}>{r.name} (کد: {r.code})</option>
+                              ))}
                             </select>
                           </div>
                         </div>

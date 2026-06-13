@@ -106,6 +106,47 @@ export const deletePersonGroup = async (id: string) => {
   await saveLocalData('person_groups', groups.filter((p: any) => p.id !== id));
 };
 
+// Person Roles
+export const getPersonRoles = async () => {
+  const roles = await getLocalData<any[]>('person_roles', []);
+  if (roles.length === 0) {
+    // initialize defaults
+    const defaults = [
+      { id: 'customer', name: 'مشتری', code: '10', color: 'bg-emerald-50 text-emerald-800 border-emerald-100', createdAt: Date.now() },
+      { id: 'supplier', name: 'تامین کننده', code: '20', color: 'bg-orange-50 text-orange-850 border-orange-100', createdAt: Date.now() },
+      { id: 'employee', name: 'کارمند', code: '30', color: 'bg-purple-50 text-purple-800 border-purple-100', createdAt: Date.now() }
+    ];
+    await saveLocalData('person_roles', defaults);
+    return defaults;
+  }
+  return roles.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+};
+
+export const addPersonRole = async (role: any) => {
+  const roles = await getLocalData<any[]>('person_roles', []);
+  const now = Date.now();
+  const newRole = { ...role, id: generateId(), createdAt: now, updatedAt: now };
+  roles.push(newRole);
+  await saveLocalData('person_roles', roles);
+  return newRole;
+};
+
+export const updatePersonRole = async (id: string, role: any) => {
+  const roles = await getLocalData<any[]>('person_roles', []);
+  const index = roles.findIndex((p: any) => p.id === id);
+  if (index !== -1) {
+    roles[index] = { ...roles[index], ...role, updatedAt: Date.now() };
+    await saveLocalData('person_roles', roles);
+    return roles[index];
+  }
+  return null;
+};
+
+export const deletePersonRole = async (id: string) => {
+  const roles = await getLocalData<any[]>('person_roles', []);
+  await saveLocalData('person_roles', roles.filter((p: any) => p.id !== id));
+};
+
 // Persons
 export const getPersons = async () => {
   const persons = await getLocalData<any[]>('persons', []);
@@ -114,17 +155,36 @@ export const getPersons = async () => {
 
 export const addPerson = async (person: any) => {
   const persons = await getLocalData<any[]>('persons', []);
+  const roles = await getPersonRoles();
   
-  let nextCode = 10000;
-  if (persons.length > 0) {
-    const maxCode = Math.max(...persons.map(p => Number(p.personCode) || 0));
-    if (maxCode >= 10000) {
-      nextCode = maxCode + 1;
+  const roleId = person.role;
+  const roleObj = roles.find(r => r.id === roleId); // Try to find dynamic role
+  
+  // if not found, maybe fallback to standard code mapping '10', '20', '30'
+  let roleCodePrefix = '10';
+  if (roleObj && roleObj.code) {
+    roleCodePrefix = roleObj.code;
+  } else if (roleId === 'supplier') {
+    roleCodePrefix = '20';
+  } else if (roleId === 'employee') {
+    roleCodePrefix = '30';
+  }
+  
+  let maxSuffix = 0;
+  for (const p of persons) {
+    if (p.role === roleId && p.personCode && p.personCode.startsWith(roleCodePrefix)) {
+      const suffix = Number(p.personCode.substring(roleCodePrefix.length));
+      if (!isNaN(suffix) && suffix > maxSuffix) {
+        maxSuffix = suffix;
+      }
     }
   }
 
+  const nextSuffix = (maxSuffix + 1).toString().padStart(4, '0'); // e.g. 0001
+  const finalPersonCode = `${roleCodePrefix}${nextSuffix}`;
+
   const now = Date.now();
-  const newPerson = { ...person, personCode: String(nextCode), id: generateId(), createdAt: now, updatedAt: now };
+  const newPerson = { ...person, personCode: finalPersonCode, id: generateId(), createdAt: now, updatedAt: now };
   persons.push(newPerson);
   await saveLocalData('persons', persons);
   return newPerson;
