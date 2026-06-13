@@ -360,6 +360,7 @@ export default function App() {
 
   // Person Ledger state
   const [ledgerPersonId, setLedgerPersonId] = useState<string | number | ''>('');
+  const [drawerPersonId, setDrawerPersonId] = useState<string | number | ''>('');
 
   // Invoice Print & Preview State
       // For financial report
@@ -5242,7 +5243,11 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {paginatedPersons.map((p, index) => (
-                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                        <tr 
+                          key={p.id} 
+                          className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                          onClick={() => setDrawerPersonId(p.id)}
+                        >
                           <td className="py-4 px-6 text-gray-500 w-16 text-center font-mono text-xs">
                             {((safeCurrentPage - 1) * personPageSize + index + 1).toLocaleString('fa-IR')}
                           </td>
@@ -5317,17 +5322,29 @@ export default function App() {
                           <td className="py-4 px-6 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDrawerPersonId(p.id);
+                                }}
+                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                                title="پیش‌نمایش سریع حساب"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setLedgerPersonId(p.id);
                                   setActiveTab('person_ledger');
                                 }}
                                 className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors inline-block"
-                                title="مشاهده کارت حساب"
+                                title="مشاهده کارت حساب تخصصی"
                               >
                                 <FileText className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setPersonExtraId(p.id);
                                   setPersonBankName(p.bankName || '');
                                   setPersonBankAcc(p.bankAccountNumber || '');
@@ -5337,20 +5354,26 @@ export default function App() {
                                   setIsPersonExtraModalOpen(true);
                                 }}
                                 className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors inline-block"
-                                title="اطلاعات تکمیلی"
+                                title="اطلاعات تکمیلی بانکی"
                               >
                                 <Info className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => handleEditPerson(p)}
-                                className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditPerson(p);
+                                }}
+                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
                                 title="ویرایش شخص"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
-                                onClick={() => confirmAction('آیا از حذف این شخص اطمینان دارید؟', () => handleDeletePerson(p.id))}
-                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  confirmAction('آیا از حذف این شخص اطمینان دارید؟', () => handleDeletePerson(p.id));
+                                }}
+                                className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-block"
                                 title="حذف شخص"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -6652,7 +6675,7 @@ export default function App() {
                     {(() => {
                       const isOwedToUs = finalBalance > 0;
                       const isClear = finalBalance === 0;
-                      const borderStripe = isClear ? 'bg-emerald-500' : (isOwedToUs ? 'bg-amber-500' : 'bg-rose-500');
+                      const borderStripe = isClear ? 'bg-slate-500' : (isOwedToUs ? 'bg-rose-500' : 'bg-emerald-500');
                       
                       return (
                         <>
@@ -6662,16 +6685,16 @@ export default function App() {
                             <div className="py-2 font-semibold">
                               <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-md inline-block mb-2 ${
                                 isClear 
-                                  ? 'bg-emerald-50 text-emerald-700' 
+                                  ? 'bg-slate-50 text-slate-700' 
                                   : isOwedToUs 
-                                    ? 'bg-amber-50 text-amber-700' 
-                                    : 'bg-rose-50 text-rose-700'
+                                    ? 'bg-rose-50 text-rose-700' 
+                                    : 'bg-emerald-50 text-emerald-700'
                               }`}>
                                 {isClear ? '✔ کاملاً تسویه شده' : isOwedToUs ? '🔺 بدهکار به فروشگاه' : '🔻 بستانکار از فروشگاه'}
                               </span>
                               
                               <span className={`text-2xl font-black block tracking-tight ${
-                                isClear ? 'text-emerald-700' : isOwedToUs ? 'text-amber-700' : 'text-rose-700'
+                                isClear ? 'text-slate-700' : isOwedToUs ? 'text-rose-700' : 'text-emerald-700'
                               }`}>
                                 {formatNumber(Math.abs(finalBalance))}{' '}
                                 <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
@@ -6797,17 +6820,17 @@ export default function App() {
                                 <td className="py-5 px-6 text-left font-mono align-top pt-5" dir="ltr">
                                   <div className={`flex flex-col items-end gap-1.5 font-extrabold ${
                                     isBalZero 
-                                      ? 'text-emerald-600' 
+                                      ? 'text-slate-600' 
                                       : isDeb 
-                                        ? 'text-amber-600' 
-                                        : 'text-rose-600'
+                                        ? 'text-rose-600' 
+                                        : 'text-emerald-600'
                                   }`}>
                                     {isBalZero ? (
-                                      <span className="bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100 text-xs shadow-sm mt-0.5">صفر (تسویه)</span>
+                                      <span className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm mt-0.5 text-slate-700">صفر (تسویه)</span>
                                     ) : (
                                       <>
                                         <span className="text-[17px] tracking-tight">{formatNumber(Math.abs(entry.runningBalance))}</span>
-                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border shadow-sm ${isDeb ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border shadow-sm ${isDeb ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
                                           {isDeb ? 'بدهکار به ما' : 'بستانکار (طلبکار)'}
                                         </span>
                                       </>
@@ -10139,6 +10162,300 @@ export default function App() {
         )}
 
         
+        {/* Person Ledger Drawer overlay */}
+        <AnimatePresence>
+          {drawerPersonId && (() => {
+            const selectedPerson = persons.find(p => p.id.toString() === drawerPersonId.toString());
+            if (!selectedPerson) return null;
+
+            // Calculations
+            // Invoices
+            const invoiceEntries = invoices
+              .filter(inv => inv.customerId?.toString() === drawerPersonId.toString() && inv.type !== 'warehouse_receipt' && inv.type !== 'warehouse_remittance')
+              .map(inv => {
+                const isSale = inv.type === 'sale';
+                const isProforma = inv.type === 'proforma';
+                const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+                return {
+                  id: `inv-${inv.id}`,
+                  refId: inv.invoiceNumber || `#${inv.id}`,
+                  date: inv.date,
+                  jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
+                  type: inv.type === 'proforma' ? 'پیش‌فاکتور' : (inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا'),
+                  desc: inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور')),
+                  debit: (isSale && !isProforma) ? amount : 0,
+                  credit: (!isSale && !isProforma) ? amount : 0,
+                  rawItem: inv,
+                  entryType: 'invoice'
+                };
+              });
+
+            // Transactions
+            const transactionEntries = transactions
+              .filter(t => t.personId?.toString() === drawerPersonId.toString())
+              .map(t => {
+                const isReceive = t.type === 'receive';
+                const isSalary = t.type === 'salary';
+                
+                let debit = 0;
+                let credit = 0;
+                let typeLabel = '';
+                
+                if (isSalary) {
+                  debit = 0;
+                  credit = t.amount;
+                  typeLabel = 'سند حقوق و دستمزد';
+                } else if (isReceive) {
+                  debit = 0;
+                  credit = t.amount;
+                  typeLabel = 'رسید دریافت وجه (وصول)';
+                } else {
+                  debit = t.amount;
+                  credit = 0;
+                  typeLabel = 'رسید پرداخت وجه (پرداخت)';
+                }
+
+                let desc = t.description;
+                if (t.description && t.description.startsWith('{')) {
+                  try {
+                    const parsed = JSON.parse(t.description);
+                    if (parsed.isPayslip) {
+                      desc = `ثبت حقوق و دستمزد: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || 'حقوق دوره‌ای'})`;
+                    }
+                  } catch (e) {
+                    desc = t.description;
+                  }
+                }
+                
+                let resourceLabel = '';
+                if (t.resourceType && t.resourceType !== 'none') {
+                  if (t.resourceType === 'bank') {
+                    const acc = accounts.find(a => a.id === t.resourceId || a.id.toString() === t.resourceId?.toString());
+                    resourceLabel = acc ? `از/به بانک ${acc.bankName}` : '';
+                  } else {
+                    const cb = cashboxes.find(c => c.id === t.resourceId || c.id.toString() === t.resourceId?.toString());
+                    resourceLabel = cb ? `از/به صندوق ${cb.name}` : '';
+                  }
+                }
+                
+                const finalDesc = desc ? `${desc} ${resourceLabel ? `(${resourceLabel})` : ''}` : (isSalary ? `ثبت حقوق و دستمزد کارمند ${resourceLabel ? `(${resourceLabel})` : ''}` : (isReceive ? `بابت تسویه حساب مالی ${resourceLabel ? `(${resourceLabel})` : ''}` : `بابت پرداخت به طرف حساب ${resourceLabel ? `(${resourceLabel})` : ''}`));
+
+                return {
+                  id: `tx-${t.id}`,
+                  refId: t.receiptNumber || `سند #${t.id}`,
+                  date: t.date,
+                  jalaliDate: t.jalaliDate || new Date(t.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
+                  type: typeLabel,
+                  desc: finalDesc,
+                  debit,
+                  credit,
+                  rawItem: t,
+                  entryType: 'transaction'
+                };
+              });
+
+            let allEntries = [...invoiceEntries, ...transactionEntries].sort((a, b) => {
+              const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+              if (dateDiff === 0) {
+                return (a.rawItem?.createdAt || 0) - (b.rawItem?.createdAt || 0);
+              }
+              return dateDiff;
+            });
+            
+            if (selectedPerson.initialBalance && selectedPerson.initialBalanceType !== 'settled') {
+               const ibAmount = selectedPerson.initialBalance;
+               const isDebtor = selectedPerson.initialBalanceType === 'debtor';
+               const ibEntry = {
+                 id: 'opening-balance',
+                 refId: 'افتتاحیه',
+                 date: selectedPerson.registrationDate || new Date().toISOString(),
+                 jalaliDate: selectedPerson.registrationDate ? new Date(selectedPerson.registrationDate).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR') : '-',
+                 type: 'مانده از قبل',
+                 desc: `ثبت سند افتتاحیه ${isDebtor ? '(بدهکار)' : '(بستانکار)'}`,
+                 debit: isDebtor ? ibAmount : 0,
+                 credit: isDebtor ? 0 : ibAmount,
+                 rawItem: null,
+                 entryType: 'opening'
+               };
+               allEntries = [ibEntry, ...allEntries];
+            }
+
+            let runningSum = 0;
+            const ledgerEntries = allEntries.map(entry => {
+              runningSum += (entry.debit - entry.credit);
+              return {
+                ...entry,
+                runningBalance: runningSum
+              };
+            });
+
+            const totalDebits = allEntries.reduce((sum, entry) => sum + entry.debit, 0);
+            const totalCredits = allEntries.reduce((sum, entry) => sum + entry.credit, 0);
+            const finalBalance = totalDebits - totalCredits;
+            
+            const isOwedToUs = finalBalance > 0;
+            const isClear = finalBalance === 0;
+
+            return (
+              <>
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }} 
+                  onClick={() => setDrawerPersonId('')} 
+                  className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[150]"
+                />
+                <motion.div
+                  initial={{ x: '100%', opacity: 0.5 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: '100%', opacity: 0.5 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed top-0 bottom-0 right-0 w-full md:w-[700px] bg-gray-50 z-[160] shadow-2xl flex flex-col border-l border-slate-200"
+                  dir="rtl"
+                >
+                  {/* Header */}
+                  <div className="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center shrink-0 shadow-sm z-10">
+                    <div>
+                      <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
+                        <User className="w-5 h-5 text-indigo-600" />
+                        پیش‌نمایش گردش حساب: {selectedPerson.name}
+                      </h3>
+                    </div>
+                    <button
+                      onClick={() => setDrawerPersonId('')}
+                      className="text-gray-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-xl transition-colors border border-transparent shadow-none"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                    {/* Status Card */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden">
+                      <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${isClear ? 'bg-slate-500' : (isOwedToUs ? 'bg-rose-500' : 'bg-emerald-500')}`}></div>
+                      <div>
+                        <span className="text-xs font-bold text-gray-400 block mb-2">وضعیت نهایی تراز حساب شخص</span>
+                        <div className="py-2 font-semibold">
+                          <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-md inline-block mb-2 ${
+                            isClear 
+                              ? 'bg-slate-50 text-slate-700' 
+                              : isOwedToUs 
+                                ? 'bg-rose-50 text-rose-700' 
+                                : 'bg-emerald-50 text-emerald-700'
+                          }`}>
+                            {isClear ? '✔ کاملاً تسویه شده' : isOwedToUs ? '🔺 بدهکار به فروشگاه' : '🔻 بستانکار از فروشگاه'}
+                          </span>
+                          
+                          <span className={`text-2xl font-black block tracking-tight ${
+                            isClear ? 'text-slate-700' : isOwedToUs ? 'text-rose-700' : 'text-emerald-700'
+                          }`}>
+                            {formatNumber(Math.abs(finalBalance))}{' '}
+                            <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timeline / Simplified Table */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                      <div className="bg-gray-50/50 px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="font-extrabold text-gray-800 text-sm">ریز ۵۰ تراکنش اخیر</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        {ledgerEntries.length === 0 ? (
+                          <div className="p-8 text-center text-gray-400 text-sm">
+                            هیچ گردش مالی یا سندی برای این شخص یافت نشد.
+                          </div>
+                        ) : (
+                          <table className="w-full text-right text-xs whitespace-nowrap min-w-[600px]">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
+                                <th className="py-3 px-4 font-bold">تاریخ / ردیف</th>
+                                <th className="py-3 px-4 font-bold">نوع سند</th>
+                                <th className="py-3 px-4 font-bold text-left">مبلغ رویداد</th>
+                                <th className="py-3 px-4 font-bold text-left">مانده نهایی</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 text-gray-700">
+                              {ledgerEntries.slice(-50).reverse().map((entry, idx) => {
+                                const isDeb = entry.debit > 0;
+                                const isCred = entry.credit > 0;
+                                const isTxBalZero = entry.runningBalance === 0;
+                                const isTxDeb = entry.runningBalance > 0;
+
+                                return (
+                                  <tr key={entry.id} className="hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => {
+                                    if (entry.entryType === 'invoice' && entry.rawItem) {
+                                      setViewingInvoice(entry.rawItem);
+                                    } else if (entry.entryType === 'transaction' && entry.rawItem) {
+                                      if (entry.rawItem.type === 'salary') {
+                                        try {
+                                          const parsedDesc = JSON.parse(entry.rawItem.description);
+                                          if (parsedDesc.isPayslip) {
+                                            setViewingPayslip({ ...entry.rawItem, parsed: parsedDesc, computedPersonName: selectedPerson.name });
+                                            return;
+                                          }
+                                        } catch (e) {}
+                                      }
+                                      setPreviewReceiptData({ ...entry.rawItem, jalaliDate: entry.jalaliDate, personId: selectedPerson.id, _isReadOnly: true });
+                                    }
+                                  }}>
+                                    <td className="py-3 px-4">
+                                      <div className="font-mono text-gray-500 font-bold">{entry.jalaliDate}</div>
+                                      <div className="text-[10px] text-gray-400 mt-0.5">{entry.refId}</div>
+                                    </td>
+                                    <td className="py-3 px-4">
+                                      <div className="font-bold">{entry.type}</div>
+                                      <div className="text-[10px] text-gray-400 font-normal whitespace-pre-wrap line-clamp-1 max-w-[200px]" title={entry.desc}>{entry.desc}</div>
+                                    </td>
+                                    <td className="py-3 px-4 text-left font-mono" dir="ltr">
+                                      {isDeb ? (
+                                        <span className="text-rose-600 font-bold block">{formatNumber(entry.debit)}</span>
+                                      ) : isCred ? (
+                                        <span className="text-emerald-600 font-bold block">{formatNumber(entry.credit)}</span>
+                                      ) : (
+                                        <span className="text-gray-400">---</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-4 text-left font-mono" dir="ltr">
+                                      <div className="flex flex-col items-end">
+                                        {isTxBalZero ? (
+                                          <span className="text-slate-500 font-bold">۰</span>
+                                        ) : (
+                                          <span className={`font-bold ${isTxDeb ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                            {formatNumber(Math.abs(entry.runningBalance))}
+                                          </span>
+                                        )}
+                                        <span className="text-[9px] text-gray-400 mt-0.5">{isTxBalZero ? 'تسویه' : isTxDeb ? 'بدهکار' : 'بستانکار'}</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gray-50 border-t border-gray-200 shrink-0 flex justify-end gap-3 z-10">
+                    <button
+                      onClick={() => {
+                        setLedgerPersonId(selectedPerson.id);
+                        setActiveTab('person_ledger');
+                        setDrawerPersonId('');
+                      }}
+                      className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors w-full"
+                    >
+                      مشاهده در کارت حساب بصورت کامل
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            );
+          })()}
+        </AnimatePresence>
+
         {/* Receipt PRE-REGISTER Preview overlay */}
         {previewReceiptData && (() => {
           const isReceive = previewReceiptData.type === 'receive';
