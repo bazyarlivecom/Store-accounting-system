@@ -48,16 +48,12 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
 
                 if (!whStock[whId]) whStock[whId] = 0;
 
-                if (inv.type === 'warehouse_receipt' || inv.type === 'purchase') {
-                  // actually purchasing and receiving increases stock, but often purchase is separate from receipt. 
-                  // Wait, earlier logic only updated on warehouse_receipt/remittance:
-                  if (inv.type === 'warehouse_receipt') {
-                     totalStock += qty;
-                     whStock[whId] += qty;
-                  } else if (inv.type === 'warehouse_remittance') {
-                     totalStock -= qty;
-                     whStock[whId] -= qty;
-                  }
+                if (inv.type === 'warehouse_receipt') {
+                   totalStock += qty;
+                   whStock[whId] += qty;
+                } else if (inv.type === 'warehouse_remittance') {
+                   totalStock -= qty;
+                   whStock[whId] -= qty;
                 }
              });
           }

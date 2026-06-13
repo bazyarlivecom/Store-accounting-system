@@ -4956,8 +4956,8 @@ export default function App() {
              } else if (p.initialBalanceType === 'debtor') {
                b = Math.abs(b);
              }
-             invoices.filter(i => i.customerId?.toString() === pid).forEach(inv => {
-               const isSale = inv.type !== 'purchase';
+             invoices.filter(i => i.customerId?.toString() === pid && i.type !== 'warehouse_receipt' && i.type !== 'warehouse_remittance' && i.type !== 'proforma').forEach(inv => {
+               const isSale = inv.type === 'sale';
                const amt = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
                b += isSale ? amt : -amt;
              });
