@@ -293,7 +293,7 @@ export default function App() {
   const [issuedChecks, setIssuedChecks] = useState<any[]>([]);
   const [receivedChecks, setReceivedChecks] = useState<any[]>([]);
 
-  const [storeSettings, setStoreSettings] = useState<any>({ storeName: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان', isSetup: false });
+  const [storeSettings, setStoreSettings] = useState<any>({ storeName: 'فروشگاه پیش‌فرض', address: '', phone: '', logoUrl: '', currency: 'تومان', isSetup: false, fontFamily: 'Vazirmatn' });
   const [loading, setLoading] = useState(false);
   const [requiresInitSetup, setRequiresInitSetup] = useState(false);
 
@@ -647,7 +647,7 @@ export default function App() {
 
   // Settings form state
   const [settingsForm, setSettingsForm] = useState<any>({ 
-    storeName: '', address: '', phone: '', logoUrl: '', currency: 'تومان', 
+    storeName: '', address: '', phone: '', logoUrl: '', currency: 'تومان', fontFamily: 'Vazirmatn',
     allowNegativeStock: false, requireWarehouse: false,
     prefix_warehouse_receipt: 'REC-', prefix_warehouse_remittance: 'REM-',
     prefix_purchase: 'PUR-', prefix_sale: 'INV-',
@@ -2461,6 +2461,18 @@ export default function App() {
                      تقویم میلادی
                    </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-extrabold text-gray-800 mb-3">فونت سیستم</label>
+                <select
+                  value={settingsForm.fontFamily || 'Vazirmatn'}
+                  onChange={(e) => setSettingsForm({...settingsForm, fontFamily: e.target.value})}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-gray-900"
+                >
+                  <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
+                  <option value="IRANYekanXFaNum">ایران یکان (IRANYekanX)</option>
+                </select>
               </div>
 
               <div className="pt-6 border-t border-gray-100">
