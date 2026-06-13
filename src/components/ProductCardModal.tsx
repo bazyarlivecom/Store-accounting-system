@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { X, Package, TrendingUp, TrendingDown, History } from 'lucide-react';
+import { X, Package, TrendingUp, TrendingDown, History, BarChart2 } from 'lucide-react';
 import { Product, InvoiceItem, Warehouse } from '../types';
 import { getInvoices } from '../lib/dataService';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function ProductCardModal({ product, warehouses = [], currency = 'تومان', onClose, isModal = true }: { product: Product, warehouses?: Warehouse[], currency?: string, onClose: () => void, isModal?: boolean }) {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculatedStock, setCalculatedStock] = useState<number>(0);
   const [stockPerWarehouse, setStockPerWarehouse] = useState<{ [key: string]: number }>({});
-  const [activeTab, setActiveTab] = useState<'info' | 'financial' | 'warehouse'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'financial' | 'warehouse' | 'price_chart'>('info');
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -69,6 +70,19 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
     fetchHistory();
   }, [product.id, product.warehouseId]);
 
+  const recentPriceChanges = useMemo(() => {
+    const changes: any[] = [];
+    const financialHistory = history.filter(h => h.type === 'sale' || h.type === 'purchase');
+    for (const h of financialHistory) {
+       const price = Number(h.unitPrice);
+       if (changes.length === 0 || Number(changes[changes.length - 1].unitPrice) !== price) {
+          changes.push(h);
+       }
+       if (changes.length >= 3) break;
+    }
+    return changes;
+  }, [history]);
+
   const content = (
       <motion.div initial={isModal ? { opacity: 0, scale: 0.95 } : { opacity: 0 }} animate={isModal ? { opacity: 1, scale: 1 } : { opacity: 1 }} exit={isModal ? { opacity: 0, scale: 0.95 } : undefined} className={`bg-white rounded-2xl w-full ${isModal ? 'max-w-4xl max-h-[90vh]' : 'h-full min-h-[500px] border border-gray-100'} overflow-hidden shadow-2xl flex flex-col`}>
          
@@ -109,6 +123,13 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
             >
                گردش انبار (رسید و حواله)
                {activeTab === 'warehouse' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            </button>
+            <button
+               onClick={() => setActiveTab('price_chart')}
+               className={`pb-3 font-bold text-sm whitespace-nowrap transition-colors relative ${activeTab === 'price_chart' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
+            >
+               نمودار قیمت
+               {activeTab === 'price_chart' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
             </button>
          </div>
 
@@ -158,6 +179,33 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                      </div>
                    </div>
                 )}
+
+                 {!loading && recentPriceChanges.length > 0 && (
+                   <div className="mb-0 bg-white border border-slate-200 p-4 rounded-xl shadow-sm mt-6">
+                     <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-4">
+                       <BarChart2 className="w-5 h-5 text-indigo-500" />
+                       آخرین تغییرات قیمت (۳ تغییر اخیر)
+                     </h4>
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                       {recentPriceChanges.map((change, index) => (
+                         <div key={index} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+                           <div className="flex items-center gap-3 relative z-10">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${change.type === 'sale' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                 {change.type === 'sale' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                              </div>
+                              <div className="flex flex-col text-right">
+                                 <span className="text-[10px] font-bold text-slate-500">{change.type === 'sale' ? 'فروش' : 'خرید'}</span>
+                                 <span className="text-xs font-bold text-slate-700">{change.date}</span>
+                              </div>
+                           </div>
+                           <div className="font-sans font-black text-indigo-700 text-left relative z-10" dir="ltr">
+                              {Number(change.unitPrice).toLocaleString()} <span className="text-[9px] font-normal font-sans text-slate-500 block text-right mt-0.5">{currency}</span>
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
               </motion.div>
             )}
 
@@ -260,6 +308,49 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                          ))}
                        </tbody>
                      </table>
+                   </div>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'price_chart' && (
+              <motion.div initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} className="w-full h-[400px]">
+                {loading ? (
+                   <div className="text-center py-10 text-gray-400 font-bold animate-pulse">در حال استخراج سوابق ...</div>
+                ) : history.filter(h => h.type === 'sale' || h.type === 'purchase').length === 0 ? (
+                   <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-xl border border-gray-100">در حال حاضر سابقه‌ای برای تشکیل نمودار وجود ندارد.</div>
+                ) : (
+                   <div className="w-full h-full border border-gray-100 rounded-xl shadow-sm p-4 pt-8 bg-white" dir="ltr">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <LineChart
+                         data={history.filter(h => h.type === 'sale' || h.type === 'purchase').reverse()}
+                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                       >
+                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                         <XAxis 
+                           dataKey="date" 
+                           stroke="#8884d8" 
+                           fontSize={12}
+                           tick={{fill: '#9CA3AF'}}
+                           tickMargin={10}
+                         />
+                         <YAxis 
+                           stroke="#8884d8" 
+                           fontSize={12}
+                           tickFormatter={(value) => new Intl.NumberFormat('fa-IR').format(value)}
+                           tick={{fill: '#9CA3AF'}}
+                           width={80}
+                         />
+                         <Tooltip 
+                           formatter={(value: any, name: string) => [new Intl.NumberFormat('fa-IR').format(value) + ` ${currency}`, name === 'unitPrice' ? 'مبلغ واحد' : 'مبلغ']}
+                           labelFormatter={(label) => `تاریخ: ${label}`}
+                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontFamily: 'vazirmatn, system-ui, sans-serif' }}
+                           itemStyle={{ textAlign: 'right' }}
+                         />
+                         <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                         <Line type="monotone" dataKey="unitPrice" name="مبلغ واحد" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 8 }} />
+                       </LineChart>
+                     </ResponsiveContainer>
                    </div>
                 )}
               </motion.div>

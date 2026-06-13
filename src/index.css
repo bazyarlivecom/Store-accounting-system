@@ -1,12 +1,43 @@
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap');
 @import "tailwindcss";
 
+@font-face {
+	font-family: IRANYekanXFaNum;
+	font-style: normal;
+	font-weight: 100;
+	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Thin.woff2') format('woff2');		
+}
+@font-face {
+	font-family: IRANYekanXFaNum;
+	font-style: normal;
+	font-weight: 200;
+	src: url('/Webfonts/Woff2/IRANYekanXFaNum-UltraLight.woff2') format('woff2');	
+}
+@font-face {
+	font-family: IRANYekanXFaNum;
+	font-style: normal;
+	font-weight: 300;
+	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Light.woff2') format('woff2');		 
+}
+@font-face {
+	font-family: IRANYekanXFaNum;
+	font-style: normal;
+	font-weight: 500;
+	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Medium.woff2') format('woff2');		 
+}
+@font-face {
+	font-family: IRANYekanXFaNum;
+	font-style: normal;
+	font-weight: normal;
+	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Regular.woff2') format('woff2');	
+}
+
 @theme {
-  --font-sans: "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--app-font, "Vazirmatn"), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  font-family: 'Vazirmatn', sans-serif;
+  font-family: var(--app-font, "Vazirmatn"), sans-serif;
   direction: rtl;
   background-color: #f3f4f6;
 }

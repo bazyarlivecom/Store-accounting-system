@@ -1665,7 +1665,12 @@ export default function App() {
     if (storeSettings?.storeName) {
       document.title = storeSettings.storeName;
     }
-  }, [storeSettings?.storeName]);
+    if (storeSettings?.fontFamily) {
+      document.documentElement.style.setProperty('--app-font', storeSettings.fontFamily);
+    } else {
+      document.documentElement.style.setProperty('--app-font', 'Vazirmatn');
+    }
+  }, [storeSettings?.storeName, storeSettings?.fontFamily]);
 
   const fetchChecks = async () => {
     try {
@@ -6670,6 +6675,19 @@ export default function App() {
                         disabled
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
                       />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">فونت سیستم</label>
+                      <select
+                        value={settingsForm.fontFamily || 'Vazirmatn'}
+                        onChange={(e) => setSettingsForm({...settingsForm, fontFamily: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
+                      >
+                        <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
+                        <option value="IRANYekanXFaNum">ایران یکان (IRANYekanX)</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-2">انتخاب فونت برای نمایش در کل سیستم.</p>
                     </div>
 
                     <div className="w-full text-right">
