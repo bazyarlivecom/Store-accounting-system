@@ -51,11 +51,7 @@ const customPersonFilter = (option: any, inputValue: string) => {
   return terms.every(term => searchable.includes(term));
 };
 
-const mapPersonToOption = (p: any) => ({
-  value: p.id.toString(),
-  label: (p.personCode ? '[' + p.personCode + '] ' : '') + (p.alias || p.name) + ' (' + (getRoleName(p.role)) + ')',
-  searchStr: `${p.alias||''} ${p.name||''} ${p.title||''} ${p.firstName||''} ${p.lastName||''} ${p.phone||''} ${p.nationalId||''} ${p.personCode||''} ${p.companyName||''}`
-});
+
 
 const CurrencyInput = ({ value, onChange, placeholder, className, ...props }: any) => {
   const [localVal, setLocalVal] = useState(value ? addCommas(value) : '');
@@ -162,13 +158,20 @@ export default function App() {
       ]
     },
     {
-      id: 'warehousing',
-      label: 'کالا و انبار',
-      icon: <Box className="w-5 h-5" />,
+      id: 'products_management',
+      label: 'کالا و خدمات',
+      icon: <Package className="w-5 h-5" />,
       items: [
         { id: 'products', label: 'مدیریت کالا و خدمات', roles: ['admin', 'accountant'] },
         { id: 'product_view', label: 'کارت کالا', roles: ['admin', 'accountant'] },
         { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'warehousing',
+      label: 'انبارداری',
+      icon: <Box className="w-5 h-5" />,
+      items: [
         { id: 'warehouses', label: 'انبارها', roles: ['admin', 'accountant'] },
         { id: 'create_warehouse_receipt', label: 'ثبت رسید انبار', roles: ['admin', 'accountant'] },
         { id: 'list_warehouse_receipt', label: 'لیست رسید انبار', roles: ['admin', 'accountant'] },
@@ -278,6 +281,12 @@ export default function App() {
     if (role && role.color) return role.color;
     return roleId === 'customer' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : roleId === 'supplier' ? 'bg-orange-50 text-orange-850 border-orange-100' : 'bg-purple-50 text-purple-800 border-purple-100';
   };
+
+  const mapPersonToOption = (p: any) => ({
+    value: p.id.toString(),
+    label: (p.personCode ? '[' + p.personCode + '] ' : '') + (p.alias || p.name) + ' (' + (getRoleName(p.role)) + ')',
+    searchStr: `${p.alias||''} ${p.name||''} ${p.title||''} ${p.firstName||''} ${p.lastName||''} ${p.phone||''} ${p.nationalId||''} ${p.personCode||''} ${p.companyName||''}`
+  });
 
   const filteredPersons = persons.filter(p => {
     // 0. Role Filter
