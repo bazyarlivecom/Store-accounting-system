@@ -34,7 +34,7 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                    invoiceNumber: inv.invoiceNumber,
                    quantity: item.quantity,
                    isSecondaryUnit: item.isSecondaryUnit,
-                   unitPrice: item.unitPrice,
+                   unitPrice: (item.isSecondaryUnit && product.unitRatio && product.unitRatio > 0) ? Number((Number(item.unitPrice) / product.unitRatio).toFixed(4)) : item.unitPrice,
                    personName: inv.personName,
                    warehouseId: item.warehouseId || inv.warehouseId
                 });
