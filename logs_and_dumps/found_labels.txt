@@ -1,0 +1,54 @@
+153:      label: 'فاکتورها و فروش',
+156:        { id: 'create_sale', label: 'ثبت فاکتور فروش', roles: ['admin', 'cashier', 'accountant'] },
+157:        { id: 'create_purchase', label: 'ثبت فاکتور خرید', roles: ['admin', 'accountant'] },
+158:        { id: 'list_sale', label: 'لیست فاکتورهای فروش', roles: ['admin', 'cashier', 'accountant'] },
+159:        { id: 'list_purchase', label: 'لیست فاکتورهای خرید', roles: ['admin', 'accountant'] },
+226:      setInvoiceTitle('فاکتور فروش کالا');
+229:      setInvoiceTitle('فاکتور خرید کالا');
+365:  const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
+1650:         'فاکتور';
+1666:        setInvoiceTitle('فاکتور فروش کالا');
+1704:      title: invoiceTitle || (invoiceType === 'sale' ? 'فاکتور فروش کالا' : 'فاکتور خرید کالا'),
+1806:        setUpdateStepName('در حال دریافت بسته‌های تغییر یافته فاکتور و خدمات جدید...');
+1832:        setUpdateLog(`نسخه اصلی نرم‌افزار حسابداری و فاکتور با موفقیت به آخرین بیلد سیستم ارتقا یافت.\nتغییرات نرم‌افزاری جدید با موفقیت همگام‌سازی شدند.\n\nسیستم تا لحظاتی دیگر به صورت خودکار مجدداً راه‌اندازی و بارگذاری می‌شود...`);
+1926:                    <label className="block text-sm font-bold text-gray-700 mb-1">{activeTab.includes('warehouse') ? 'شماره سند/رسید' : 'شماره فاکتور'}</label>
+1938:                    <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> {activeTab.includes('warehouse') ? 'تاریخ سند/رسید' : 'تاریخ فاکتور'}</label>
+1971:                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> ارتباط با فاکتور خرید مرجع (فراخوانی خودکار اقلام)</label>
+1975:                           label: `فاکتور خرید ${i.invoiceMode === 'manual' ? '(دستی) ' : ''}#${i.invoiceNumber}`,
+1980:                         placeholder="-- در صورت تمایل فاکتور خرید مرتبط را انتخاب کنید --"
+1981:                         searchPlaceholder="جستجو در مقادیر فاکتورهای خرید..."
+2005:                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> {activeTab.includes('warehouse') ? 'اقلام سند (کالاها)' : 'اقلام فاکتور'}</h3>
+2164:                                  <p className="font-bold">کالایی به فاکتور اضافه نشده است.</p>
+2182:                            <label className="block text-sm font-bold text-gray-700 mb-2">تخفیف کلی فاکتور (درصد)</label>
+2212:                      {activeTab.includes('warehouse') ? 'ثبت و بررسی سند' : 'ثبت و بررسی فاکتور'}
+2239:                    <label className="block text-sm font-bold text-slate-600 mb-2">شماره فاکتور خرید</label>
+2246:                          <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-slate-800 outline-none bg-emerald-50/20" dir="ltr" placeholder="شماره فاکتور سیستم تامین..." />
+2251:                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-emerald-500"/> تاریخ صدور فاکتور</label>
+2432:                            <label className="block text-sm font-black text-slate-700 mb-3 ml-1">تخفیف روی کل فاکتور (%)</label>
+2479:                    {activeTab === 'list_sale' ? 'لیست فاکتورهای فروش' : 
+2480:                     activeTab === 'list_purchase' ? 'لیست فاکتورهای خرید' :
+2524:                                <button onClick={() => confirmAction('آیا می‌خواهید این فاکتور را ویرایش مجدد کنید؟ نسخه فعلی حذف خواهد شد.', () => {
+2559:                             <td colSpan={5} className="p-8 text-center text-gray-400">هیچ فاکتوری یافت نشد.</td>
+4725:                <h3 className="text-xs font-semibold text-gray-400">مجموع کل فروش (فاکتورها)</h3>
+4735:                  {formatNumber(invoices.filter(inv => inv.type !== 'purchase').length)} فاکتور فروش ثبت شده
+4747:                <h3 className="text-xs font-semibold text-gray-400">مجموع کل خرید (فاکتورها)</h3>
+4757:                  {formatNumber(invoices.filter(inv => inv.type === 'purchase').length)} فاکتور خرید ثبت شده
+4942:                گزارش یکپارچه و به ترتیب زمان از تمام فاکتورهای فروش/خرید و رسیدهای دریافت/پرداخت هر یک از طرف حساب‌ها
+5000:                    برای بررسی گردش مالی، ریز فاکتورها، واریزی‌ها و دریافت/پرداخت‌ها، لطفاً از کادر بالا یک شخص را انتخاب و بررسی کنید.
+5027:                  type: inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا',
+5028:                  desc: inv.title || (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور'),
+5218:                       تعداد کل اسناد مرتبط: {formatNumber(allEntries.length)} سند (شامل {formatNumber(invoiceEntries.length)} فاکتور و {formatNumber(transactionEntries.length)} رسید مالی)
+5517:              بروزرسانی هوشمند سیستم فاکتور
+6330:                          placeholder="توضیحات کالا که ممکن است در فاکتور چاپ شود..."
+8031:                  برگه رسمی فاکتور سیستم
+8126:                                 <span>تخفیف کلی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
+8149:                                      <span>شماره فاکتور:</span>
+8166:                                  'فاکتور فروش'}
+8250:                                <span>تخفیف روی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
+8431:                    {activeTab.includes('warehouse') ? 'پیش‌نمایش قبل از ثبت قطع' : 'پیش‌نمایش فاکتور قبل از ثبت قطعی'}
+8520:                                 <span>تخفیف کلی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
+8543:                                      <span>شماره فاکتور:</span>
+8561:                                    'فاکتور فروش'}
+8639:                                <span>تخفیف روی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
+8680:                  {activeTab.includes('warehouse') ? 'بازگشت و ویرایش سند' : 'بازگشت و ویرایش فاکتور'}
+8708:                      تایید نهایی و ثبت سند فاکتور
