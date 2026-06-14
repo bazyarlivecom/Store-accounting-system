@@ -18,6 +18,7 @@ import BarcodeScannerModal from './components/modals/BarcodeScannerModal';
 import FinancialTransfer from './components/financial/FinancialTransfer';
 import UserManager from './components/admin/UserManager';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
+import appVersion from './version.json';
 
 const getBaseValueInToman = (cur: string) => {
   if (!cur) return 1;
@@ -10894,9 +10895,14 @@ export default function App() {
         {/* System Version Footer */}
       <footer className="w-full bg-white border-t border-gray-200 py-6 mt-auto shrink-0 no-print">
         <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-indigo-900 border border-indigo-100 bg-indigo-50/50 px-3 py-1.5 rounded-lg">
+          <div className="flex items-center gap-3 text-indigo-900 border border-indigo-100 bg-indigo-50/50 px-3 py-1.5 rounded-lg">
             <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Version</span>
             <span className="text-xs font-black font-mono">v1.0.0</span>
+            <div className="w-px h-3 bg-indigo-200"></div>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-mono font-medium text-indigo-400">commit: {appVersion.hash}</span>
+              <span className="text-[9px] font-medium text-indigo-400">{appVersion.date}</span>
+            </div>
           </div>
           
           <div className="flex items-center gap-2 text-gray-400">
