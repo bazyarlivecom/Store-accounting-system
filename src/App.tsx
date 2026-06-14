@@ -7,16 +7,16 @@ import DatePicker from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
-import { useAuth } from './lib/AuthContext';
-import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './lib/dataService';
-import DatabaseDashboard from './components/DatabaseDashboard';
-import SystemChecklist from './components/SystemChecklist';
-import ProductCardModal from './components/ProductCardModal';
-import CheckManagement from './components/CheckManagement';
-import SearchableSelect from './components/SearchableSelect';
-import BarcodeScannerModal from './components/BarcodeScannerModal';
-import FinancialTransfer from './components/FinancialTransfer';
-import UserManager from './components/UserManager';
+import { useAuth } from './context/AuthContext';
+import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
+import DatabaseDashboard from './components/admin/DatabaseDashboard';
+import SystemChecklist from './components/admin/SystemChecklist';
+import ProductCardModal from './components/modals/ProductCardModal';
+import CheckManagement from './components/financial/CheckManagement';
+import SearchableSelect from './components/ui/SearchableSelect';
+import BarcodeScannerModal from './components/modals/BarcodeScannerModal';
+import FinancialTransfer from './components/financial/FinancialTransfer';
+import UserManager from './components/admin/UserManager';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
 
 const getBaseValueInToman = (cur: string) => {
