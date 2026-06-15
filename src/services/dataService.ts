@@ -512,6 +512,18 @@ export const addInvoice = async (invoice: any) => {
   return newInvoice;
 };
 
+export const updateInvoice = async (id: string | number, updated: any) => {
+  const invoices = await getLocalData<any[]>('invoices', []);
+  const idx = invoices.findIndex((i: any) => i.id.toString() === id.toString());
+  if (idx !== -1) {
+    invoices[idx] = { ...invoices[idx], ...updated, updatedAt: Date.now() };
+    await saveLocalData('invoices', invoices);
+    await recalculateAllWarehouseStocks();
+    return invoices[idx];
+  }
+  throw new Error('Invoice not found');
+};
+
 export const deleteInvoice = async (id: string) => {
   const invoices = await getLocalData<any[]>('invoices', []);
   const invoiceToDelete = invoices.find((p: any) => p.id === id || p.id === Number(id) || p.id === String(id));

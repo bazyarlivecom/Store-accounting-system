@@ -8,7 +8,7 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './context/AuthContext';
-import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
+import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, updateInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
 import DatabaseDashboard from './components/admin/DatabaseDashboard';
 import SystemChecklist from './components/admin/SystemChecklist';
 import ProductCardModal from './components/modals/ProductCardModal';
@@ -341,6 +341,7 @@ export default function App() {
   const [receiptResourceType, setReceiptResourceType] = useState<'bank' | 'cashbox'>('bank');
   const [receiptResourceId, setReceiptResourceId] = useState<string | number | ''>('');
   const [receiptDescription, setReceiptDescription] = useState<string>('');
+  const [receiptLinkedInvoices, setReceiptLinkedInvoices] = useState<Record<string, number>>({});
   const [submittingReceipt, setSubmittingReceipt] = useState<boolean>(false);
   const receiptSuccessMsg = false;
 
@@ -1159,6 +1160,13 @@ export default function App() {
       return;
     }
     
+    // Validate allocated amounts
+    const totalAllocated = Object.values(receiptLinkedInvoices).reduce((a, b) => a + b, 0);
+    if (totalAllocated > Number(receiptAmount)) {
+       customAlert(`جمع مبالغ تخصیص داده شده (${totalAllocated}) از مبلغ کل رسید (${receiptAmount}) بیشتر است.`);
+       return;
+    }
+    
     // Generate simple receipt number for review
     const typeKey = type === 'receive' ? 'receive_receipt' : 'pay_receipt';
     const defaultPrefix = type === 'receive' ? 'RD-' : 'PD-';
@@ -1212,7 +1220,18 @@ export default function App() {
     if (!previewReceiptData) return;
     setSubmittingReceipt(true);
     try {
-      await addTransaction(previewReceiptData as any);
+      const txPayload = { ...previewReceiptData, linkedInvoices: receiptLinkedInvoices };
+      const txId = await addTransaction(txPayload as any);
+      
+      // Update actual invoices payment status and paid amount out of linkedInvoices
+      for (const [invId, amount] of Object.entries(receiptLinkedInvoices)) {
+         const inv = invoices.find(i => i.id.toString() === invId);
+         if (inv && amount > 0) {
+            const newPaid = (inv.paidAmount || 0) + amount;
+            const newStatus = newPaid >= (inv.totalAmount || 0) ? 'paid' : 'partial';
+            await updateInvoice(inv.id, { ...inv, paidAmount: newPaid, paymentStatus: newStatus });
+         }
+      }
       
       setReceiptPersonId('');
       setReceiptAmount('');
@@ -1220,11 +1239,13 @@ export default function App() {
       setReceiptResourceId('');
       setReceiptDescription('');
       setReceiptDate(new Date());
+      setReceiptLinkedInvoices({});
       setPreviewReceiptData(null);
       setReceiptPersonSearchText('');
       
       await Promise.all([
         fetchTransactions(),
+        fetchInvoices(),
         fetchPersons(),
         fetchAccounts(),
         fetchCashboxes(),
@@ -2518,6 +2539,31 @@ export default function App() {
     return getProductStockInfo(productId).totalAvailable;
   };
 
+  const calculatePersonBalance = (personId: string | number) => {
+    const person = persons.find(p => p.id.toString() === personId.toString());
+    if (!person) return { amount: 0, status: 'بی‌حساب' };
+    
+    let balance = 0;
+    if (person.initialBalance && person.initialBalanceType !== 'settled') {
+       balance += (person.initialBalanceType === 'debtor' ? person.initialBalance : -person.initialBalance);
+    }
+    
+    invoices.filter(i => i.customerId?.toString() === personId.toString() && i.type !== 'warehouse_receipt' && i.type !== 'warehouse_remittance' && i.type !== 'proforma').forEach(inv => {
+        const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+        if (inv.type === 'sale') balance += amount;
+        else if (inv.type === 'purchase') balance -= amount;
+    });
+
+    transactions.filter(t => t.personId?.toString() === personId.toString()).forEach(t => {
+        if (t.type === 'receive') balance -= (t.amount || 0);
+        else if (t.type === 'pay') balance += (t.amount || 0);
+        else if (t.type === 'salary') balance -= (t.amount || 0);
+    });
+    
+    if (balance > 0) return { amount: balance, status: 'بدهکار', color: 'text-rose-600', bg: 'bg-rose-50' };
+    if (balance < 0) return { amount: Math.abs(balance), status: 'بستانکار', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    return { amount: 0, status: 'بی‌حساب', color: 'text-gray-500', bg: 'bg-gray-100' };
+  };
 
   const calculateSubtotal = () => items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
   const calculateFinalTotal = () => {
@@ -3023,6 +3069,14 @@ export default function App() {
                           placeholder="-- انتخاب کنید --"
                           searchPlaceholder="جستجوی شخص..."
                         />
+                        {customerId && (
+                          <div className="mt-2 text-xs font-bold w-full bg-gray-50 border border-gray-100 rounded-lg p-2 px-3 flex justify-between items-center text-gray-600">
+                             <span>مانده حساب فعلی:</span>
+                             <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+                                {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
+                             </span>
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">انبار انتخابی</label>
@@ -3249,6 +3303,14 @@ export default function App() {
                         searchPlaceholder="جستجوی شخص یا شرکت..."
                       />
                     </div>
+                    {customerId && (
+                      <div className="mt-2 text-xs font-bold w-full bg-emerald-50/50 border border-emerald-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
+                         <span>مانده حساب فعلی:</span>
+                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
+                         </span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Wallet className="w-4 h-4 text-emerald-500"/> وضعیت پرداخت</label>
@@ -3584,6 +3646,14 @@ export default function App() {
                         searchPlaceholder="جستجوی شخص یا شرکت..."
                       />
                     </div>
+                    {customerId && (
+                      <div className="mt-2 text-xs font-bold w-full bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
+                         <span>مانده حساب فعلی:</span>
+                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
+                         </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -4002,7 +4072,10 @@ export default function App() {
                         <Select
                           isRtl
                           value={receiptPersonId ? { value: receiptPersonId, label: persons.find(p => p.id.toString() === receiptPersonId.toString())?.personCode ? '[' + persons.find(p => p.id.toString() === receiptPersonId.toString())?.personCode + '] ' + (persons.find(p => p.id.toString() === receiptPersonId.toString())?.alias || persons.find(p => p.id.toString() === receiptPersonId.toString())?.name) : (persons.find(p => p.id.toString() === receiptPersonId.toString())?.alias || persons.find(p => p.id.toString() === receiptPersonId.toString())?.name) } : null}
-                          onChange={(option: any) => setReceiptPersonId(option ? option.value : '')}
+                          onChange={(option: any) => {
+                            setReceiptPersonId(option ? option.value : '');
+                            setReceiptLinkedInvoices({});
+                          }}
                           options={persons.map(mapPersonToOption) as any}
                           filterOption={customPersonFilter}
                           placeholder="انتخاب یا جستجوی نام شخص..."
@@ -4025,6 +4098,14 @@ export default function App() {
                           value={receiptPersonId}
                           onChange={() => {}}
                         />
+                        {receiptPersonId && (
+                          <div className={`mt-2 text-xs font-bold w-full ${isReceive ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-rose-50/50 border-rose-100/50'} border rounded-lg p-2 px-3 flex justify-between items-center text-slate-600`}>
+                             <span>مانده حساب فعلی:</span>
+                             <span className={`${calculatePersonBalance(receiptPersonId).bg} ${calculatePersonBalance(receiptPersonId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+                                {calculatePersonBalance(receiptPersonId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(receiptPersonId).amount)} ${storeSettings.currency} (${calculatePersonBalance(receiptPersonId).status})`}
+                             </span>
+                          </div>
+                        )}
                       </div>
 
                      <div>
@@ -4138,6 +4219,66 @@ export default function App() {
                          placeholder="شرح تراکنش و بابت تراکنش..."
                        />
                      </div>
+
+                     {receiptPersonId && (() => {
+                       const personInvoices = invoices.filter(inv => inv.customerId?.toString() === receiptPersonId.toString() && inv.paymentStatus !== 'paid' && ((isReceive && inv.type === 'sale') || (!isReceive && inv.type === 'purchase')));
+                       if (personInvoices.length === 0) return null;
+                       return (
+                         <div className="md:col-span-2 lg:col-span-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mt-2">
+                           <h3 className="font-extrabold text-sm text-slate-700 mb-3 flex items-center gap-2"><CheckSquare className="w-4 h-4 text-indigo-500" /> تخصیص به فاکتورهای باز (اختیاری)</h3>
+                           <p className="text-xs text-slate-500 font-bold mb-3">در صورتیکه این تراکنش بابت یک یا چند فاکتور خاص میباشد، میتوانید آن را مستقیم اینجا تسویه فرمایید</p>
+                           <div className="overflow-x-auto">
+                              <table className="w-full text-sm text-right bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                <thead>
+                                  <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                                    <th className="p-3">شماره فاکتور</th>
+                                    <th className="p-3">تاریخ</th>
+                                    <th className="p-3">مبلغ کل فاکتور</th>
+                                    <th className="p-3">مانده وتسویه نشده</th>
+                                    <th className="p-3">مبلغ تخصیصی در این رسید</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                   {personInvoices.map(inv => {
+                                      const total = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+                                      const paid = (inv.paidAmount || 0);
+                                      const remainder = Math.max(total - paid, 0);
+                                      const currentAllocated = receiptLinkedInvoices[inv.id] || 0;
+                                      return (
+                                        <tr key={inv.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                                          <td className="p-3 font-mono text-xs font-bold text-slate-600">{inv.invoiceNumber || `#${inv.id}`}</td>
+                                          <td className="p-3 font-mono text-xs">{inv.jalaliDate}</td>
+                                          <td className="p-3 font-mono text-xs font-bold text-slate-700">{formatCurrency(total)}</td>
+                                          <td className="p-3 font-mono text-xs font-bold text-rose-600">{formatCurrency(remainder)}</td>
+                                          <td className="p-3">
+                                            <input 
+                                               type="number" 
+                                               className="p-1 px-2 border border-slate-200 rounded text-xs font-mono w-28 outline-none focus:border-indigo-400" 
+                                               placeholder="0"
+                                               value={currentAllocated || ''}
+                                               onChange={(e) => {
+                                                 const val = Number(e.target.value);
+                                                 if (val > remainder) {
+                                                    customAlert('مبلغ تخصیصی نمیتواند بیشتر از مانده فاکتور باشد');
+                                                    return;
+                                                 }
+                                                 setReceiptLinkedInvoices(prev => ({ ...prev, [inv.id]: val }));
+                                               }}
+                                            />
+                                          </td>
+                                        </tr>
+                                      );
+                                   })}
+                                </tbody>
+                              </table>
+                           </div>
+                           <div className="mt-3 text-xs font-bold text-slate-600 flex justify-end gap-2 items-center">
+                              جمع مبالغ تخصیص یافته:
+                              <span className="font-mono text-sm text-indigo-700">{formatCurrency(Object.values(receiptLinkedInvoices).reduce((a, b) => a + b, 0))} {storeSettings.currency}</span>
+                           </div>
+                         </div>
+                       );
+                     })()}
                    </div>
 
                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
@@ -4281,6 +4422,14 @@ export default function App() {
                          <option key={p.id} value={p.id}>{p.alias || p.name} - {getRoleName(p.role)}</option>
                          ))}
                        </select>
+                       {salaryPersonId && (
+                         <div className="mt-2 text-xs font-bold w-full bg-slate-50 border border-slate-100 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
+                            <span>مانده حساب فعلی:</span>
+                            <span className={`${calculatePersonBalance(salaryPersonId).bg} ${calculatePersonBalance(salaryPersonId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+                               {calculatePersonBalance(salaryPersonId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(salaryPersonId).amount)} ${storeSettings.currency} (${calculatePersonBalance(salaryPersonId).status})`}
+                            </span>
+                         </div>
+                       )}
                      </div>
 
                      <div>
@@ -10878,6 +11027,34 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Linked Invoices Section */}
+                {Object.keys(previewReceiptData.linkedInvoices || receiptLinkedInvoices || {}).filter(k => (previewReceiptData.linkedInvoices || receiptLinkedInvoices)[k] > 0).length > 0 && (
+                  <div className="border border-gray-100 rounded-xl overflow-hidden mb-6">
+                    <div className="p-3 bg-indigo-50 border-b border-indigo-100 font-bold text-indigo-900 text-sm">
+                      فاکتورهای تخصیص یافته به این رسید
+                    </div>
+                    <table className="w-full text-sm text-right bg-white">
+                       <thead className="bg-gray-50 border-b border-gray-100 text-gray-500">
+                         <tr>
+                            <th className="p-3 font-bold">مربوط به فاکتور</th>
+                            <th className="p-3 font-bold text-center">مبلغ کسر شده</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-gray-50">
+                         {Object.entries(previewReceiptData.linkedInvoices || receiptLinkedInvoices || {}).filter(([_, amt]) => (amt as number) > 0).map(([invId, amt]) => {
+                            const inv = invoices.find(i => i.id.toString() === invId.toString());
+                            return (
+                               <tr key={invId}>
+                                  <td className="p-3 font-bold text-gray-800">فاکتور {inv ? (inv.invoiceNumber || `#${inv.id}`) : `#${invId}`}</td>
+                                  <td className="p-3 font-mono font-bold text-indigo-700 text-center">{formatCurrency(amt as number)} {storeSettings.currency}</td>
+                               </tr>
+                            );
+                         })}
+                       </tbody>
+                    </table>
+                  </div>
+                )}
 
               </div>
               
