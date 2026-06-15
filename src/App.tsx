@@ -2049,6 +2049,30 @@ export default function App() {
     );
   };
 
+  // helper to render clickable person link
+  const renderPersonLink = (personId: string | number | undefined, name: string | undefined) => {
+    const defaultName = name || 'نامشخص';
+    if (!personId || defaultName === 'نامشخص') return <span>{defaultName}</span>;
+    return (
+      <span 
+        className="cursor-pointer text-indigo-600 hover:text-indigo-800 transition-colors font-bold border-b border-dashed border-indigo-300 hover:border-indigo-600 pb-[1px]"
+        onClick={(e) => {
+           e.stopPropagation();
+           setLedgerPersonId(personId);
+           setActiveTab('person_ledger');
+           setDrawerPersonId('');
+           setViewingInvoice(null);
+           setPreviewInvoiceData(null);
+           setPreviewReceiptData(null);
+           setViewingPayslip(null);
+        }}
+        title="مشاهده کارت حساب"
+      >
+         {defaultName}
+      </span>
+    );
+  };
+
   const handleDeleteInvoice = async (id: string | number) => {
     const invoice = invoices.find(inv => inv.id.toString() === id.toString());
     if (!invoice) return;
@@ -3959,7 +3983,7 @@ export default function App() {
                                   )}
                                </td>
                              )}
-                             <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
+                             <td className="p-4">{renderPersonLink(inv.customerId, persons.find(p => p.id.toString() === inv.customerId?.toString())?.name)}</td>
                              <td className="p-4">
                                 <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
                                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
@@ -4378,7 +4402,7 @@ export default function App() {
                          return (
                            <tr key={tx.id} className={`${themeRowHover} transition-colors`}>
                              <td className={`p-4 font-mono font-bold ${themeHighlightTxt}`}>{tx.receiptNumber || `#${tx.id}`}</td>
-                             <td className="p-4 font-bold text-slate-800">{person?.name || 'نامشخص'}</td>
+                             <td className="p-4 font-bold text-slate-800">{renderPersonLink(person?.id, person?.name)}</td>
                              <td className="p-4 font-mono text-slate-500 font-bold" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
                              <td className="p-4 text-xs font-black text-slate-600 text-right">{resourceLabel}</td>
                              <td className="p-4 text-right">
@@ -4636,7 +4660,7 @@ export default function App() {
                          return (
                            <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
                              <td className="p-4 font-mono font-bold text-indigo-600">#{tx.id}</td>
-                             <td className="p-4 font-bold text-gray-800">{person?.name || 'نامشخص'}</td>
+                             <td className="p-4 font-bold text-gray-800">{renderPersonLink(person?.id, person?.name)}</td>
                              <td className="p-4 text-gray-500 text-right">
                                <div className="font-mono text-sm mb-1" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</div>
                                {(() => {
@@ -10401,7 +10425,7 @@ export default function App() {
                            </div>
                            <div className="bg-white p-4 border border-emerald-200 rounded flex flex-col items-end min-w-[250px]">
                                <span className="text-xs text-emerald-600 font-bold mb-1">صادر کننده مبدا (فروشنده کالا):</span>
-                               <h3 className="text-xl font-black text-emerald-900">{viewingInvoice.customerName}</h3>
+                               <h3 className="text-xl font-black text-emerald-900">{renderPersonLink(viewingInvoice.customerId, viewingInvoice.customerName)}</h3>
                                {viewingInvoice.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="rtl">{viewingInvoice.customerPhone}</span></p>}
                            </div>
                         </div>
@@ -10550,7 +10574,7 @@ export default function App() {
                                viewingInvoice.type === 'warehouse_remittance' ? 'تحویل‌گیرنده کالا (بدهکار)' :
                                'مخاطب (خریدار)'}
                             </span>
-                            <h3 className="text-lg font-black text-gray-900">{viewingInvoice.customerName}</h3>
+                            <h3 className="text-lg font-black text-gray-900">{renderPersonLink(viewingInvoice.customerId, viewingInvoice.customerName)}</h3>
                             {viewingInvoice.customerPhone && <p className="text-sm text-gray-650 font-bold">تلفن: <span dir="ltr">{viewingInvoice.customerPhone}</span></p>}
                           </div>
                           <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
@@ -11102,7 +11126,7 @@ export default function App() {
                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                          <span className="text-gray-500 font-bold block mb-1">طرف حساب:</span>
-                         <span className="font-black text-gray-900">{receiptPerson ? receiptPerson.name : 'نامشخص'} {receiptPerson?.personCode ? `[${receiptPerson.personCode}]` : ''}</span>
+                         <span className="font-black text-gray-900">{renderPersonLink(receiptPerson?.id, receiptPerson?.name)} {receiptPerson?.personCode ? `[${receiptPerson.personCode}]` : ''}</span>
                       </div>
                       <div>
                          <span className="text-gray-500 font-bold block mb-1">شماره تماس:</span>
@@ -11263,7 +11287,7 @@ export default function App() {
                            </div>
                            <div className="bg-white p-4 border border-emerald-200 rounded flex flex-col items-end min-w-[250px]">
                                <span className="text-xs text-emerald-600 font-bold mb-1">صادر کننده مبدا (فروشنده کالا):</span>
-                               <h3 className="text-xl font-black text-emerald-900">{previewInvoiceData.customerName}</h3>
+                               <h3 className="text-xl font-black text-emerald-900">{renderPersonLink(previewInvoiceData.customerId, previewInvoiceData.customerName)}</h3>
                                {previewInvoiceData.customerPhone && <p className="text-xs font-bold text-emerald-700 mt-2">تلفن: <span dir="rtl">{previewInvoiceData.customerPhone}</span></p>}
                            </div>
                         </div>
@@ -11370,7 +11394,7 @@ export default function App() {
                             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block">
                               {activeTab === 'create_warehouse_doc' ? (invoiceType === 'warehouse_receipt' ? 'تحویل‌دهنده کالا' : 'تحویل‌گیرنده کالا (بدهکار)') : 'مخاطب (خریدار)'}
                             </span>
-                            <h3 className="text-lg font-black text-gray-900">{previewInvoiceData.customerName}</h3>
+                            <h3 className="text-lg font-black text-gray-900">{renderPersonLink(previewInvoiceData.customerId, previewInvoiceData.customerName)}</h3>
                             {previewInvoiceData.customerPhone && <p className="text-sm text-gray-600 font-bold">تلفن: <span dir="ltr">{previewInvoiceData.customerPhone}</span></p>}
                           </div>
                           <div className="space-y-1 text-left font-sans text-xs text-gray-500 self-center">
@@ -11667,7 +11691,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-4 bg-gray-50/50 p-3 md:p-4 rounded-xl border border-gray-100">
                       <div>
                         <span className="block text-[10px] md:text-[11px] text-gray-500 font-bold mb-1 uppercase tracking-wide">در وجه / طرف حساب</span>
-                        <span className="text-sm md:text-base font-black text-gray-900">{personCode}{personName}</span>
+                        <span className="text-sm md:text-base font-black text-gray-900">{personCode}{renderPersonLink(printingTransaction.personId, personName)}</span>
                       </div>
                       {!isSalary && (
                         <div>
