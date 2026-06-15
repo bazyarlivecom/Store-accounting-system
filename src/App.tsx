@@ -8,11 +8,13 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './context/AuthContext';
-import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, updateInvoice, deleteInvoice, getTransactions, addTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
+import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, updateInvoice, deleteInvoice, getTransactions, addTransaction, updateTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
 import DatabaseDashboard from './components/admin/DatabaseDashboard';
 import SystemChecklist from './components/admin/SystemChecklist';
 import ProductCardModal from './components/modals/ProductCardModal';
 import CheckManagement from './components/financial/CheckManagement';
+import InvoiceAllocation from './components/financial/InvoiceAllocation';
+
 import SearchableSelect from './components/ui/SearchableSelect';
 import BarcodeScannerModal from './components/modals/BarcodeScannerModal';
 import FinancialTransfer from './components/financial/FinancialTransfer';
@@ -200,6 +202,7 @@ export default function App() {
         { id: 'list_receive_receipt', label: 'لیست رسید دریافت', roles: ['admin', 'accountant'] },
         { id: 'create_pay_receipt', label: 'ثبت رسید پرداخت', roles: ['admin', 'accountant'] },
         { id: 'list_pay_receipt', label: 'لیست رسید پرداخت', roles: ['admin', 'accountant'] },
+        { id: 'invoice_allocation', label: 'تخصیص اسناد به فاکتور', roles: ['admin', 'accountant'] },
       ]
     },
     {
@@ -7358,6 +7361,14 @@ export default function App() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement showNotification={showNotification} /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
+            ) : activeTab === 'invoice_allocation' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <InvoiceAllocation 
+            customAlert={customAlert} 
+            formatCurrency={formatCurrency} 
+            getDefaultExchangeRate={getDefaultExchangeRate} 
+          />
+        </motion.div>
       ) : activeTab === 'users_manager' ? (
         <UserManager />
       ) : activeTab === 'settings' ? (

@@ -461,6 +461,17 @@ export const addTransaction = async (transaction: any) => {
   return newTransaction;
 };
 
+export const updateTransaction = async (id: string | number, updated: any) => {
+  const transactions = await getLocalData<any[]>('transactions', []);
+  const idx = transactions.findIndex((t: any) => t.id.toString() === id.toString());
+  if (idx !== -1) {
+    transactions[idx] = { ...transactions[idx], ...updated, updatedAt: Date.now() };
+    await saveLocalData('transactions', transactions);
+    return transactions[idx];
+  }
+  throw new Error('Transaction not found');
+};
+
 export const deleteTransaction = async (id: string) => {
   const transactions = await getLocalData<any[]>('transactions', []);
   const t = transactions.find(tx => tx.id === id);
