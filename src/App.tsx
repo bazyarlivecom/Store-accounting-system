@@ -3916,12 +3916,12 @@ export default function App() {
                             ) : (
                               <th className="p-4 font-bold text-left">مبلغ فاکتور</th>
                             )}
-                           {activeTab === 'list_purchase' && (
+                           {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
                                <>
-                                 <th className="p-4 font-bold text-left">پرداختی</th>
+                                 <th className="p-4 font-bold text-left">{activeTab === 'list_sale' ? 'دریافتی' : 'پرداختی'}</th>
                                  <th className="p-4 font-bold text-left">باقیمانده</th>
-                                 <th className="p-4 font-bold text-center">وضعیت حساب</th>
-                                 <th className="p-4 font-bold text-center">وضعیت رسید</th>
+                                 <th className="p-4 font-bold text-center">وضعیت تسویه</th>
+                                 <th className="p-4 font-bold text-center">{activeTab === 'list_sale' ? 'وضعیت حواله' : 'وضعیت رسید'}</th>
                                </>
                            )}
                            <th className="p-4 font-bold text-center">عملیات</th>
@@ -3977,7 +3977,7 @@ export default function App() {
                                   </span>
                                 </td>
                              )}
-                             {activeTab === 'list_purchase' && (
+                             {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
                                <>
                                  <td className="p-4 text-left">
                                   <span className="font-mono font-bold text-xs text-emerald-700 bg-emerald-50 px-2 py-1 flex items-center gap-1 w-max ml-0 mr-auto rounded-lg" dir="ltr">
@@ -3995,7 +3995,11 @@ export default function App() {
                                       <span className="bg-rose-100 text-rose-800 text-[10px] px-2 py-1 font-bold rounded">پرداخت نشده</span>}
                                  </td>
                                  <td className="p-4 text-xs font-bold text-center">
-                                     {invoices.some(i => i.type === 'warehouse_receipt' && i.sourceInvoiceId?.toString() === inv.id.toString()) ? <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded">رسید شده</span> : <span className="text-amber-500 bg-amber-50 px-2 py-1 rounded border border-amber-100">در انتظار رسید</span>}
+                                     {activeTab === 'list_purchase' ? (
+                                        invoices.some(i => i.type === 'warehouse_receipt' && i.sourceInvoiceId?.toString() === inv.id.toString()) ? <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded">رسید شده</span> : <span className="text-amber-500 bg-amber-50 px-2 py-1 rounded border border-amber-100">در انتظار رسید</span>
+                                     ) : (
+                                        invoices.some(i => i.type === 'warehouse_remittance' && i.sourceInvoiceId?.toString() === inv.id.toString()) ? <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded">حواله شده</span> : <span className="text-amber-500 bg-amber-50 px-2 py-1 rounded border border-amber-100">در انتظار حواله</span>
+                                     )}
                                  </td>
                                </>
                              )}
@@ -4028,7 +4032,7 @@ export default function App() {
                             return pName.includes(term) || invNum.includes(term);
                          }).length === 0 && (
                            <tr>
-                             <td colSpan={activeTab === 'list_purchase' ? 10 : (activeTab.includes('warehouse') ? 6 : 5)} className="p-8 text-center text-gray-400">هیچ سندی یافت نشد.</td>
+                             <td colSpan={10} className="p-8 text-center text-gray-400">هیچ سندی یافت نشد.</td>
                            </tr>
                          )}
                        </tbody>
@@ -10442,6 +10446,49 @@ export default function App() {
                              </div>
                            </div>
                         </div>
+                        {(() => {
+                          const allocatedTxs = transactions.filter(t => t.linkedInvoices && t.linkedInvoices[viewingInvoice.id] > 0);
+                          if (allocatedTxs.length > 0) {
+                            return (
+                              <div className="mt-8 border-2 border-emerald-900 bg-white">
+                                <div className="bg-emerald-900 border-b-2 border-emerald-800 p-2 flex justify-between items-center text-emerald-50">
+                                  <span className="font-bold text-sm">رسیدهای پرداختی/تخصیص یافته به این فاکتور</span>
+                                </div>
+                                <table className="w-full text-right text-xs font-sans text-emerald-950 font-bold">
+                                  <thead>
+                                    <tr className="bg-emerald-50 border-b border-emerald-200">
+                                      <th className="p-3 border-l border-emerald-200 w-32">شماره سند پرداختی</th>
+                                      <th className="p-3 border-l border-emerald-200 w-32">تاریخ پرداخت</th>
+                                      <th className="p-3 border-l border-emerald-200">فرستنده وجه (بانک/صندوق ما)</th>
+                                      <th className="p-3 text-left w-64">مبلغ پرداختی برای این فاکتور</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-emerald-100">
+                                    {allocatedTxs.map(tx => (
+                                      <tr key={tx.id} className="hover:bg-emerald-50/50">
+                                        <td className="p-3 border-l border-emerald-100 font-mono text-emerald-700">{tx.receiptNumber || `#${tx.id}`}</td>
+                                        <td className="p-3 border-l border-emerald-100 font-mono">{tx.jalaliDate}</td>
+                                        <td className="p-3 border-l border-emerald-100">{accounts.find(a => a.id.toString() === tx.accountId?.toString())?.title || cashboxes.find(c => c.id.toString() === tx.cashboxId?.toString())?.name || 'نامشخص'}</td>
+                                        <td className="p-3 text-left font-mono font-black" dir="ltr">{formatCurrency(tx.linkedInvoices![viewingInvoice.id])} <span className="text-[9px] text-emerald-600">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot className="bg-emerald-100/50 border-t-2 border-emerald-900">
+                                    <tr>
+                                      <td colSpan={3} className="p-3 text-left font-black text-emerald-900">جمع کل پرداختی‌ها:</td>
+                                      <td className="p-3 text-left font-mono font-black text-emerald-900" dir="ltr">{formatCurrency(viewingInvoice.paidAmount || 0)} <span className="text-[9px] text-emerald-700">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
+                                    </tr>
+                                    <tr>
+                                      <td colSpan={3} className="p-3 text-left font-black text-rose-700">باقیمانده بدهی فاکتور:</td>
+                                      <td className="p-3 text-left font-mono font-black text-rose-700" dir="ltr">{formatCurrency(Math.max((viewingInvoice.totalAmount || 0) - (viewingInvoice.paidAmount || 0), 0))} <span className="text-[9px] text-rose-500">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         {/* Signatures */}
                         <div className="mt-12 flex justify-around text-emerald-900 font-bold text-sm">
                             <div className="text-center w-1/3">صادر کننده: {viewingInvoice.customerName}</div>
@@ -10608,6 +10655,49 @@ export default function App() {
                         </div>
 
                         )}
+                        {(() => {
+                          const allocatedTxs = transactions.filter(t => t.linkedInvoices && t.linkedInvoices[viewingInvoice.id] > 0);
+                          if (!viewingInvoice.type.includes('warehouse') && allocatedTxs.length > 0) {
+                            return (
+                              <div className="mt-8 border border-gray-200 rounded-2xl overflow-hidden relative" style={{ zIndex: 10 }}>
+                                <div className="bg-gray-50 border-b border-gray-200 p-3 flex justify-between items-center text-gray-700">
+                                  <span className="font-bold text-sm">رسیدهای دریافتی/تخصیص یافته به این فاکتور</span>
+                                </div>
+                                <table className="w-full text-right text-xs font-sans text-gray-700 font-bold">
+                                  <thead>
+                                    <tr className="bg-white border-b border-gray-100">
+                                      <th className="p-3 w-32">شماره سند دریافتی</th>
+                                      <th className="p-3 w-32">تاریخ پرداخت</th>
+                                      <th className="p-3">گیرنده وجه (بانک/صندوق ما)</th>
+                                      <th className="p-3 text-left w-64">مبلغ دریافتی برای این فاکتور</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-50 bg-white">
+                                    {allocatedTxs.map(tx => (
+                                      <tr key={tx.id} className="hover:bg-gray-50">
+                                        <td className="p-3 font-mono text-gray-500">{tx.receiptNumber || `#${tx.id}`}</td>
+                                        <td className="p-3 font-mono">{tx.jalaliDate}</td>
+                                        <td className="p-3">{accounts.find(a => a.id.toString() === tx.accountId?.toString())?.title || cashboxes.find(c => c.id.toString() === tx.cashboxId?.toString())?.name || 'نامشخص'}</td>
+                                        <td className="p-3 text-left font-mono font-black text-indigo-700" dir="ltr">{formatCurrency(tx.linkedInvoices![viewingInvoice.id])} <span className="text-[9px] text-indigo-400">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot className="bg-gray-50 border-t border-gray-200">
+                                    <tr>
+                                      <td colSpan={3} className="p-3 text-left font-black text-gray-900">جمع کل دریافتی‌ها:</td>
+                                      <td className="p-3 text-left font-mono font-black text-gray-900" dir="ltr">{formatCurrency(viewingInvoice.paidAmount || 0)} <span className="text-[9px] text-gray-500">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
+                                    </tr>
+                                    <tr>
+                                      <td colSpan={3} className="p-3 text-left font-black text-rose-600">باقیمانده طلب فاکتور:</td>
+                                      <td className="p-3 text-left font-mono font-black text-rose-600" dir="ltr">{formatCurrency(Math.max((viewingInvoice.totalAmount || 0) - (viewingInvoice.paidAmount || 0), 0))} <span className="text-[9px] text-rose-400">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         {/* Custom Footer Notes & Signature Block */}
                         {storeSettings.print_footer_note && (
                            <div className="mt-8 text-xs font-bold text-slate-500 text-center leading-relaxed">
