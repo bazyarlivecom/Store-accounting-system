@@ -33,7 +33,8 @@
 }
 
 @theme {
-  --font-sans: var(--app-font, "Vazirmatn"), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--app-font, "Vazirmatn"), "IRANYekanXFaNum", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--app-font, "Vazirmatn"), "IRANYekanXFaNum", ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
