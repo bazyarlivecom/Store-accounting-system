@@ -96,7 +96,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_receipt' | 'list_warehouse_receipt' | 'create_warehouse_remittance' | 'list_warehouse_remittance' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -176,10 +176,8 @@ export default function App() {
       icon: <Box className="w-5 h-5" />,
       items: [
         { id: 'warehouses', label: 'انبارها', roles: ['admin', 'accountant'] },
-        { id: 'create_warehouse_receipt', label: 'ثبت رسید انبار', roles: ['admin', 'accountant'] },
-        { id: 'list_warehouse_receipt', label: 'لیست رسید انبار', roles: ['admin', 'accountant'] },
-        { id: 'create_warehouse_remittance', label: 'ثبت حواله انبار', roles: ['admin', 'accountant'] },
-        { id: 'list_warehouse_remittance', label: 'لیست حواله انبار', roles: ['admin', 'accountant'] },
+        { id: 'create_warehouse_doc', label: 'صدور رسید پایانه انبار', roles: ['admin', 'accountant'] },
+        { id: 'list_warehouse_docs', label: 'لیست اسناد انبار', roles: ['admin', 'accountant'] },
       ]
     },
     {
@@ -244,16 +242,11 @@ export default function App() {
     } else if (activeTab === 'create_purchase') {
       setInvoiceType('purchase');
       setInvoiceTitle('فاکتور خرید کالا');
-    } else if (activeTab === 'create_warehouse_receipt') {
+    } else if (activeTab === 'create_warehouse_doc') {
       setInvoiceType('warehouse_receipt');
-      setInvoiceTitle('رسید انبار (ورود کالا)');
+      setInvoiceTitle('اسناد انبار (ورود/خروج)');
       setWarehouseWizardStep(1);
       setWarehouseOperationType('purchase_invoice');
-    } else if (activeTab === 'create_warehouse_remittance') {
-      setInvoiceType('warehouse_remittance');
-      setInvoiceTitle('حواله انبار (خروج کالا)');
-      setWarehouseWizardStep(1);
-      setWarehouseOperationType('sales_invoice');
     }
   }, [activeTab]);
   
@@ -381,6 +374,7 @@ export default function App() {
       const [reportDateRange, setReportDateRange] = useState<Date[]>([]);
       const [viewingInvoice, setViewingInvoice] = useState<any>(null);
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
+  
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
 
@@ -439,7 +433,7 @@ export default function App() {
 
   // Form State
   const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance' | 'proforma'>('sale');
-  const [listFilter, setListFilter] = useState<'all' | 'sale' | 'purchase'>('all');
+  const [listFilter, setListFilter] = useState<any>('all');
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
   const [warehouseWizardStep, setWarehouseWizardStep] = useState(1);
@@ -458,12 +452,14 @@ export default function App() {
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [overallDiscountPercent, setOverallDiscountPercent] = useState<number>(0);
+  const [invoicePaymentStatus, setInvoicePaymentStatus] = useState<'paid' | 'unpaid' | 'partial'>('unpaid');
+  const [invoicePaidAmount, setInvoicePaidAmount] = useState<number>(0);
 
   const [hasDraft, setHasDraft] = useState<boolean>(false);
   
   // Auto-save effect
   useEffect(() => {
-    if (['create_sale', 'create_purchase', 'create_warehouse_receipt', 'create_warehouse_remittance'].includes(activeTab)) {
+    if (['create_sale', 'create_purchase', 'create_warehouse_doc'].includes(activeTab)) {
        const draft = {
          invoiceMode,
          invoiceNumber,
@@ -1728,11 +1724,12 @@ export default function App() {
 
     const sourceInv = invoices.find(i => i.id.toString() === invoiceId.toString());
     if (sourceInv) {
-      if (activeTab === 'create_warehouse_receipt') {
-        setInvoiceDescription(`رسید ورود به انبار - فاکتور خرید # ${sourceInv.invoiceNumber}`);
-      } else if (activeTab === 'create_warehouse_remittance') {
-        setInvoiceDescription(`حواله خروج از انبار - فاکتور فروش # ${sourceInv.invoiceNumber}`);
-      }
+      if (activeTab === 'create_warehouse_doc') {
+      const dbDraftsStr = localStorage.getItem('drafts');
+      let drafts = dbDraftsStr ? JSON.parse(dbDraftsStr) : {};
+      delete drafts[invoiceId];
+      localStorage.setItem('drafts', JSON.stringify(drafts));
+    }
       
       if (sourceInv.customerId) setCustomerId(sourceInv.customerId);
       if (sourceInv.currency) {
@@ -1741,7 +1738,7 @@ export default function App() {
         setExchangeRateInput(String(sourceInv.exchangeRate || 1));
       }
       if (sourceInv.items && Array.isArray(sourceInv.items)) {
-        const isRemittance = activeTab === 'create_warehouse_remittance';
+        const isRemittance = activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_remittance';
         
         // Calculate previously received/remitted amounts
         const pastDocs = invoices.filter(i => 
@@ -1893,7 +1890,7 @@ export default function App() {
     const product = products.find(p => p.id.toString() === productIdStr);
     if (!product) return;
 
-    const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
+    const isPurchase = activeTab === 'create_purchase' || (activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_receipt');
     let pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
     if (!pPrice || pPrice === 0) {
        pPrice = getLastPriceForProduct(product.id, isPurchase);
@@ -1944,7 +1941,7 @@ export default function App() {
               updatedItem.unitRatio = product.unitRatio || 1;
               updatedItem.isSecondaryUnit = false;
               
-              const isPurchase = activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt';
+              const isPurchase = activeTab === 'create_purchase' || (activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_receipt');
               let pPrice = isPurchase && product.purchasePrice ? product.purchasePrice : product.price;
               if (!pPrice || pPrice === 0) {
                  pPrice = getLastPriceForProduct(product.id, isPurchase);
@@ -1977,13 +1974,13 @@ export default function App() {
             }
 
             let qty = field === 'quantity' ? Number(value) : Number(updatedItem.quantity);
-            const isWarehouseTab = activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance';
+            const isWarehouseTab = activeTab === 'create_warehouse_doc';
             if (isWarehouseTab && sourceInvoiceId) {
                const sourceInv = invoices.find(i => i.id.toString() === sourceInvoiceId.toString());
                if (sourceInv) {
                  const pastDocs = invoices.filter(i => 
                    i.sourceInvoiceId?.toString() === sourceInvoiceId.toString() && 
-                   (activeTab === 'create_warehouse_remittance' ? i.type === 'warehouse_remittance' : i.type === 'warehouse_receipt')
+                   (invoiceType === 'warehouse_remittance' ? i.type === 'warehouse_remittance' : i.type === 'warehouse_receipt')
                  );
                  const processedAmounts: Record<string, number> = {};
                  pastDocs.forEach(doc => {
@@ -2077,8 +2074,7 @@ export default function App() {
     setActiveTab(
       inv.type === 'sale' ? 'create_sale' : 
       inv.type === 'purchase' ? 'create_purchase' : 
-      inv.type === 'warehouse_receipt' ? 'create_warehouse_receipt' : 
-      'create_warehouse_remittance'
+      'create_warehouse_doc'
     );
   };
 
@@ -2086,7 +2082,7 @@ export default function App() {
     const sourceInv = invoices.find(i => i.id.toString() === invoiceId.toString());
     if (!sourceInv || !sourceInv.items) return false;
 
-    const isRemittance = activeTab === 'create_warehouse_remittance' || activeTab === 'list_warehouse_remittance';
+    const isRemittance = (activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_remittance') || activeTab === 'list_warehouse_docs';
     const pastDocs = invoices.filter(i => 
       i.sourceInvoiceId?.toString() === invoiceId.toString() && 
       (isRemittance ? i.type === 'warehouse_remittance' : i.type === 'warehouse_receipt')
@@ -2114,8 +2110,8 @@ export default function App() {
 
   const getInvoiceNumber = () => {
     let typeKey = 'sale';
-    if (activeTab === 'create_warehouse_receipt' || invoiceType === 'warehouse_receipt') typeKey = 'warehouse_receipt';
-    else if (activeTab === 'create_warehouse_remittance' || invoiceType === 'warehouse_remittance') typeKey = 'warehouse_remittance';
+    if ((activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_receipt') || invoiceType === 'warehouse_receipt') typeKey = 'warehouse_receipt';
+    else if ((activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_remittance') || invoiceType === 'warehouse_remittance') typeKey = 'warehouse_remittance';
     else if (activeTab === 'create_purchase' || invoiceType === 'purchase') typeKey = 'purchase';
     else if (invoiceType === 'proforma') typeKey = 'proforma';
     
@@ -2125,13 +2121,13 @@ export default function App() {
       warehouse_receipt: 'REC-', warehouse_remittance: 'REM-'
     };
     
-    const prefix = typeof storeSettings[`prefix_${typeKey}`] !== 'undefined' 
-      ? storeSettings[`prefix_${typeKey}`] 
+    const prefix = typeof (storeSettings as any)["prefix_" + typeKey] !== 'undefined' 
+      ? (storeSettings as any)["prefix_" + typeKey] 
       : defaultPrefixes[typeKey];
       
     // Calculate sequential number based on settings
-    const startNumStr = storeSettings[`start_${typeKey}`] || storeSettings.invoiceStartNumber || '1000';
-    const lenStr = storeSettings[`len_${typeKey}`] || storeSettings.invoiceNumberLength || '6';
+    const startNumStr = (storeSettings as any)["start_" + typeKey] || storeSettings.invoiceStartNumber || '1000';
+    const lenStr = (storeSettings as any)["len_" + typeKey] || storeSettings.invoiceNumberLength || '6';
     
     const startNum = parseInt(startNumStr, 10);
     const numLength = Math.max(1, parseInt(lenStr, 10));
@@ -2157,7 +2153,7 @@ export default function App() {
 
     const nextNum = maxNum + 1;
     const formattedNum = String(nextNum).padStart(numLength, '0');
-    return `${prefix}${formattedNum}`;
+    return prefix + formattedNum;
   };
 
   const saveInvoiceData = async (customPayload?: any) => {
@@ -2166,7 +2162,7 @@ export default function App() {
 
     const finalInvoiceNumber = invoiceMode === 'auto' ? getInvoiceNumber() : invoiceNumber;
 
-    if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && !invoiceWarehouseId) {
+    if ((activeTab === 'create_warehouse_doc') && !invoiceWarehouseId) {
       customAlert('لطفاً در قسمت توضیحات مبدا/مقصد فرم، یک انبار را مشخص کنید.');
       setSubmitting(false);
       return;
@@ -2201,7 +2197,9 @@ export default function App() {
         warehouseId: activeTab.includes('warehouse') && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId
       })),
       overallDiscountPercent,
-      totalAmount: calculateFinalTotal()
+      totalAmount: calculateFinalTotal(),
+      paymentStatus: invoicePaymentStatus,
+      paidAmount: Number(invoicePaidAmount) || 0
     };
 
     if (!storeSettings.allowNegativeStock && (payload.type === 'sale' || payload.type === 'warehouse_remittance')) {
@@ -2211,7 +2209,7 @@ export default function App() {
       for (const item of payload.items) {
          if (!item.productId) continue;
          const q = (Number(item.quantity) || 0) * (item.isSecondaryUnit && item.unitRatio ? Number(item.unitRatio) : 1);
-         const key = `${item.productId}_${item.warehouseId || 'global'}`;
+         const key = item.productId + "_" + (item.warehouseId || 'global');
          requiredQty[key] = (requiredQty[key] || 0) + q;
       }
 
@@ -2304,16 +2302,25 @@ export default function App() {
         if (activeTab === 'create_sale') {
           setInvoiceType('sale');
           setInvoiceTitle('فاکتور فروش کالا');
+          setInvoicePaymentStatus('unpaid');
+          setInvoicePaidAmount(0);
         } else if (activeTab === 'create_purchase') {
           setInvoiceType('purchase');
           setInvoiceTitle('فاکتور خرید کالا');
-        } else if (activeTab === 'create_warehouse_receipt') {
-          setInvoiceType('warehouse_receipt');
-          setInvoiceTitle('رسید انبار (ورود کالا)');
-        } else if (activeTab === 'create_warehouse_remittance') {
-          setInvoiceType('warehouse_remittance');
-          setInvoiceTitle('حواله انبار (خروج کالا)');
+          setInvoicePaymentStatus('unpaid');
+          setInvoicePaidAmount(0);
+        } else if (activeTab === 'create_warehouse_doc') {
+        if (draft.type === 'warehouse_receipt') {
+            setInvoiceType('warehouse_receipt');
+            setInvoiceTitle('رسید انبار (ورود کالا)');
+            setWarehouseOperationType('purchase_invoice');
         } else {
+            setInvoiceType('warehouse_remittance');
+            setInvoiceTitle('حواله انبار (خروج کالا)');
+            setWarehouseOperationType('sales_invoice');
+        }
+        setWarehouseWizardStep(1);
+    } else {
           setInvoiceType('sale');
           setInvoiceTitle('فاکتور فروش کالا');
         }
@@ -2336,7 +2343,7 @@ export default function App() {
       customAlert('لطفاً همه فیلدهای ضروری را پر کنید.');
       return;
     }
-    if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && !invoiceWarehouseId) {
+    if ((activeTab === 'create_warehouse_doc') && !invoiceWarehouseId) {
       customAlert('لطفاً انبار را مشخص کنید.');
       return;
     }
@@ -2353,7 +2360,7 @@ export default function App() {
       return;
     }
     
-    if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && !invoiceWarehouseId) {
+    if ((activeTab === 'create_warehouse_doc') && !invoiceWarehouseId) {
       customAlert('لطفاً انبار را مشخص کنید.');
       return;
     }
@@ -2389,7 +2396,9 @@ export default function App() {
         };
       }),
       overallDiscountPercent,
-      totalAmount: calculateFinalTotal()
+      totalAmount: calculateFinalTotal(),
+      paymentStatus: invoicePaymentStatus,
+      paidAmount: Number(invoicePaidAmount) || 0
     };
 
     setPreviewInvoiceData(tempPayload);
@@ -2521,7 +2530,7 @@ export default function App() {
     return new Intl.NumberFormat('fa-IR').format(amount);
   };
 
-  const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase' || activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') ? invoiceCurrency : storeSettings.currency;
+  const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase' || activeTab === 'create_warehouse_doc') ? invoiceCurrency : storeSettings.currency;
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fa-IR').format(num);
@@ -2767,16 +2776,15 @@ export default function App() {
 
   const renderTabContent = () => {
     switch(activeTab) {
-        case 'create_warehouse_receipt':
-        case 'create_warehouse_remittance': {
-           const isReceipt = activeTab === 'create_warehouse_receipt';
+        case 'create_warehouse_doc': {
+           const isReceipt = ['purchase_invoice', 'sales_return', 'transfer_in'].includes(warehouseOperationType);
            if (warehouseWizardStep === 1) {
               return (
                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
                     <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 max-w-xl mx-auto">
                        <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
                          {isReceipt ? <Plus className="w-6 h-6 text-emerald-600" /> : <ShoppingCart className="w-6 h-6 text-indigo-600" />}
-                         {invoiceTitle} - انتخاب انبار و نوع عملیات
+                         رسید / حواله پایانه انبار - اطلاعات اولیه
                        </h2>
                        <div className="space-y-6">
                           <div>
@@ -2790,20 +2798,26 @@ export default function App() {
                           </div>
                           <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">نوع حواله / رسید</label>
-                            <select value={warehouseOperationType} onChange={(e) => setWarehouseOperationType(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-base font-bold">
-                               {isReceipt ? (
-                                  <>
-                                     <option value="purchase_invoice">از فاکتور خرید</option>
-                                     <option value="sales_return">از برگشت فروش</option>
-                                     <option value="transfer">انتقال / سایر ورود</option>
-                                  </>
-                               ) : (
-                                  <>
-                                     <option value="sales_invoice">از فاکتور فروش</option>
-                                     <option value="purchase_return">از برگشت خرید</option>
-                                     <option value="transfer">انتقال / سایر خروج</option>
-                                  </>
-                               )}
+                            <select value={warehouseOperationType} onChange={(e) => {
+                               setWarehouseOperationType(e.target.value);
+                               if (['purchase_invoice', 'sales_return', 'transfer_in'].includes(e.target.value)) {
+                                  setInvoiceType('warehouse_receipt');
+                                  setInvoiceTitle('رسید انبار (ورود)');
+                               } else {
+                                  setInvoiceType('warehouse_remittance');
+                                  setInvoiceTitle('حواله انبار (خروج)');
+                               }
+                            }} className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-base font-bold">
+                               <optgroup label="ورود به انبار (رسید)">
+                                  <option value="purchase_invoice">رسید از فاکتور خرید</option>
+                                  <option value="sales_return">رسید از برگشت فروش</option>
+                                  <option value="transfer_in">انتقال به این انبار (سایر ورود)</option>
+                               </optgroup>
+                               <optgroup label="خروج از انبار (حواله)">
+                                  <option value="sales_invoice">حواله از فاکتور فروش</option>
+                                  <option value="purchase_return">حواله از برگشت خرید</option>
+                                  <option value="transfer_out">انتقال از این انبار (سایر خروج)</option>
+                               </optgroup>
                             </select>
                           </div>
                           <div className="pt-4 border-t border-gray-100 flex justify-end">
@@ -2842,7 +2856,7 @@ export default function App() {
                          {invoiceTitle} - انتخاب سند مرجع
                        </h2>
                        <div className="space-y-6">
-                          {warehouseOperationType !== 'transfer' ? (
+                          {!['transfer_in', 'transfer_out'].includes(warehouseOperationType) ? (
                             <div>
                                <label className="block text-sm font-bold text-gray-700 mb-2">انتخاب فاکتور مرتبط</label>
                                <SearchableSelect
@@ -2865,7 +2879,7 @@ export default function App() {
                             </div>
                           ) : (
                             <div className="bg-indigo-50 p-6 rounded-xl text-indigo-800 text-center font-bold">
-                               صدور سند آزاد (مستقیم)
+                               صدور سند انتقال (مستقیم)
                             </div>
                           )}
 
@@ -2874,11 +2888,11 @@ export default function App() {
                                 مرحله قبل
                              </button>
                              <button onClick={() => {
-                                if (warehouseOperationType !== 'transfer' && !sourceInvoiceId) {
+                                if (!['transfer_in', 'transfer_out'].includes(warehouseOperationType) && !sourceInvoiceId) {
                                   customAlert('لطفاً فاکتور مرجع را انتخاب کنید');
                                   return;
                                 }
-                                if (warehouseOperationType !== 'transfer') {
+                                if (!['transfer_in', 'transfer_out'].includes(warehouseOperationType)) {
                                     const sourceInv = invoices.find(i => i.id.toString() === sourceInvoiceId?.toString());
                                     if (sourceInv) {
                                         if (isReceipt) {
@@ -3185,7 +3199,7 @@ export default function App() {
                   {invoiceTitle}
                 </h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2">شماره فاکتور خرید</label>
                     <div className="flex gap-2">
@@ -3197,6 +3211,10 @@ export default function App() {
                           <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-slate-800 outline-none bg-emerald-50/20" dir="ltr" placeholder="شماره فاکتور سیستم تامین..." />
                         )}
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-emerald-500"/> عنوان فاکتور</label>
+                    <input type="text" value={invoiceTitle} onChange={(e) => setInvoiceTitle(e.target.value)} className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-slate-800 outline-none bg-emerald-50/20" placeholder="عنوانی برای فاکتور وارد کنید..." />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-emerald-500"/> تاریخ صدور فاکتور</label>
@@ -3230,6 +3248,40 @@ export default function App() {
                         placeholder="-- جستجوی تامین کننده --"
                         searchPlaceholder="جستجوی شخص یا شرکت..."
                       />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Wallet className="w-4 h-4 text-emerald-500"/> وضعیت پرداخت</label>
+                    <select value={invoicePaymentStatus} onChange={(e) => {
+                      const val = e.target.value as any;
+                      setInvoicePaymentStatus(val);
+                      if (val === 'paid') setInvoicePaidAmount(calculateFinalTotal());
+                      else if (val === 'unpaid') setInvoicePaidAmount(0);
+                    }} className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30 text-sm font-bold text-emerald-900 outline-none">
+                      <option value="unpaid">پرداخت نشده</option>
+                      <option value="partial">تسویه بخشی (علی‌الحساب)</option>
+                      <option value="paid">تسویه کامل</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><DollarSign className="w-4 h-4 text-emerald-500"/> مبلغ پرداختی</label>
+                    <div className="relative">
+                       <input type="number" 
+                         value={invoicePaidAmount} 
+                         onChange={(e) => {
+                             setInvoicePaidAmount(Number(e.target.value));
+                             if (Number(e.target.value) >= calculateFinalTotal()) setInvoicePaymentStatus('paid');
+                             else if (Number(e.target.value) > 0) setInvoicePaymentStatus('partial');
+                             else setInvoicePaymentStatus('unpaid');
+                         }} 
+                         disabled={invoicePaymentStatus === 'unpaid'}
+                         className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-slate-800 outline-none bg-emerald-50/20 disabled:opacity-50" 
+                         dir="ltr" 
+                         placeholder="0" 
+                       />
+                       <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 font-bold text-xs select-none">
+                         {invoiceCurrency}
+                       </div>
                     </div>
                   </div>
                 </div>
@@ -3736,37 +3788,43 @@ export default function App() {
                 <div className="p-6 bg-indigo-50/20 border-t border-indigo-100 flex justify-end gap-3">
                     <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20">
                       {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
-                      ثبت و صدور فاکتور فروش
+                      ثبت و بررسی فاکتور/سند
                     </button>
                 </div>
               </div>
             </motion.div>
            );
-        
         case 'list_sale':
         case 'list_purchase':
-        case 'list_warehouse_receipt':
-        case 'list_warehouse_remittance':
+        case 'list_warehouse_docs':
            return (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-                    <List className="w-6 h-6 text-indigo-600" />
-                    {activeTab === 'list_sale' ? 'لیست فاکتورهای فروش' : 
-                     activeTab === 'list_purchase' ? 'لیست فاکتورهای خرید' :
-                     activeTab === 'list_warehouse_receipt' ? 'رسیدهای انبار (ورود کالا)' :
-                     'حواله‌های انبار (خروج کالا)'}
-                  </h2>
-                  <div className="relative w-full md:w-96">
-                    <Search className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" />
-                    <input 
-                      type="text" 
-                      placeholder="جستجوی حرفه‌ای (شماره سند، نام شخص)..." 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-slate-400 font-bold"
-                      value={invoiceSearchQuery}
-                      onChange={(e) => setInvoiceSearchQuery(e.target.value)}
-                    />
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-between gap-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+                      <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                        <List className="w-6 h-6 text-indigo-600" />
+                        {activeTab === 'list_sale' ? 'لیست فاکتورهای فروش' : 
+                         activeTab === 'list_purchase' ? 'لیست فاکتورهای خرید' :
+                         'اسناد انبار (رسید و حواله)'}
+                      </h2>
+                      <div className="relative w-full md:w-96">
+                        <Search className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" />
+                        <input 
+                          type="text" 
+                          placeholder="جستجوی حرفه‌ای (شماره سند، نام شخص)..." 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-slate-400 font-bold"
+                          value={invoiceSearchQuery}
+                          onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                        />
+                      </div>
                   </div>
+                  {activeTab === 'list_warehouse_docs' && (
+                      <div className="flex bg-slate-100 rounded-xl p-1 w-full max-w-sm ml-auto mr-auto md:mr-0 md:ml-auto">
+                        <button onClick={() => setListFilter('all')} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${listFilter === 'all' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>همه اسناد</button>
+                        <button onClick={() => setListFilter('receipt')} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${listFilter === 'receipt' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>رسیدهای ورود</button>
+                        <button onClick={() => setListFilter('remittance')} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${listFilter === 'remittance' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>حواله‌های خروج</button>
+                      </div>
+                  )}
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="overflow-x-auto">
@@ -3774,15 +3832,25 @@ export default function App() {
                        <thead>
                          <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                            <th className="p-4 font-bold">شماره</th>
+                           {activeTab === 'list_purchase' && <th className="p-4 font-bold">عنوان فاکتور</th>}
+                           {activeTab.includes('warehouse') && <th className="p-4 font-bold">نوع سند</th>}
                            <th className="p-4 font-bold">
-                             {activeTab.includes('warehouse') ? 'تحویل دهنده / گیرنده' : 'مشتری'}
+                             {activeTab.includes('warehouse') ? 'تحویل دهنده / گیرنده' : (activeTab === 'list_purchase' ? 'تامین کننده' : 'مشتری')}
                            </th>
                            <th className="p-4 font-bold">تاریخ</th>
                            {activeTab.includes('warehouse') ? (
                               <th className="p-4 font-bold text-center">انبار مبدا/مقصد</th>
                             ) : (
-                              <th className="p-4 font-bold">مبلغ نهایی</th>
+                              <th className="p-4 font-bold text-left">مبلغ فاکتور</th>
                             )}
+                           {activeTab === 'list_purchase' && (
+                               <>
+                                 <th className="p-4 font-bold text-left">پرداختی</th>
+                                 <th className="p-4 font-bold text-left">باقیمانده</th>
+                                 <th className="p-4 font-bold text-center">وضعیت حساب</th>
+                                 <th className="p-4 font-bold text-center">وضعیت رسید</th>
+                               </>
+                           )}
                            <th className="p-4 font-bold text-center">عملیات</th>
                          </tr>
                        </thead>
@@ -3790,8 +3858,11 @@ export default function App() {
                          {invoices.filter(i => 
                            activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
                            activeTab === 'list_purchase' ? i.type === 'purchase' :
-                           activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
-                           i.type === 'warehouse_remittance'
+                           activeTab === 'list_warehouse_docs' ? (
+                               typeof listFilter !== 'undefined' && listFilter === 'receipt' ? i.type === 'warehouse_receipt' :
+                               typeof listFilter !== 'undefined' && listFilter === 'remittance' ? i.type === 'warehouse_remittance' :
+                               (i.type === 'warehouse_receipt' || i.type === 'warehouse_remittance')
+                           ) : false
                          ).filter(inv => {
                             if (!invoiceSearchQuery) return true;
                             const term = invoiceSearchQuery.toLowerCase();
@@ -3800,7 +3871,21 @@ export default function App() {
                             return pName.includes(term) || invNum.includes(term);
                          }).map(inv => (
                            <tr key={inv.id} className="hover:bg-gray-50">
-                             <td className="p-4 font-mono text-left font-bold text-gray-700" dir="ltr">#{inv.invoiceNumber}</td>
+                             <td className="p-4 font-mono text-left font-bold text-gray-700 w-24" dir="ltr">#{inv.invoiceNumber}</td>
+                             {activeTab === 'list_purchase' && (
+                               <td className="p-4 font-bold text-slate-800 text-xs">
+                                  {inv.title || 'فاکتور خرید'}
+                               </td>
+                             )}
+                             {activeTab.includes('warehouse') && (
+                               <td className="p-4">
+                                  {inv.type === 'warehouse_receipt' ? (
+                                     <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">رسید ورود</span>
+                                  ) : (
+                                     <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">حواله خروج</span>
+                                  )}
+                               </td>
+                             )}
                              <td className="p-4">{persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص'}</td>
                              <td className="p-4">
                                 <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
@@ -3808,11 +3893,39 @@ export default function App() {
                                   <span className="font-mono font-bold tracking-tight">{inv.jalaliDate}</span>
                                 </div>
                               </td>
-                             <td className="p-4 text-left">
-                                <span className="font-mono font-black text-sm text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
-                                  {formatCurrency(inv.totalAmount || 0)} <span className="text-[10px] text-indigo-600 font-extrabold mr-1">{inv.currency || storeSettings.currency}</span>
-                                </span>
-                              </td>
+                             {activeTab.includes('warehouse') ? (
+                               <td className="p-4 font-bold text-indigo-900 text-center">
+                                   {warehouses.find(w => w.id?.toString() === inv.warehouseId?.toString())?.name || 'نامشخص'}
+                               </td>
+                             ) : (
+                               <td className="p-4 text-left">
+                                  <span className="font-mono font-black text-sm text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
+                                    {formatCurrency(inv.totalAmount || 0)} <span className="text-[10px] text-indigo-600 font-extrabold mr-1">{inv.currency || storeSettings.currency}</span>
+                                  </span>
+                                </td>
+                             )}
+                             {activeTab === 'list_purchase' && (
+                               <>
+                                 <td className="p-4 text-left">
+                                  <span className="font-mono font-bold text-xs text-emerald-700 bg-emerald-50 px-2 py-1 flex items-center gap-1 w-max ml-0 mr-auto rounded-lg" dir="ltr">
+                                    {formatCurrency(inv.paidAmount || 0)} <span className="text-[9px] text-emerald-600">{inv.currency || storeSettings.currency}</span>
+                                  </span>
+                                 </td>
+                                 <td className="p-4 text-left">
+                                  <span className="font-mono font-bold text-xs text-rose-700 bg-rose-50 px-2 py-1 flex items-center gap-1 w-max ml-0 mr-auto rounded-lg" dir="ltr">
+                                    {formatCurrency(Math.max((inv.totalAmount || 0) - (inv.paidAmount || 0), 0))} <span className="text-[9px] text-rose-600">{inv.currency || storeSettings.currency}</span>
+                                  </span>
+                                 </td>
+                                 <td className="p-4 text-center">
+                                     {inv.paymentStatus === 'paid' ? <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-1 font-bold rounded">تسویه کامل</span> :
+                                      inv.paymentStatus === 'partial' ? <span className="bg-amber-100 text-amber-800 text-[10px] px-2 font-bold py-1 rounded">علی‌الحساب</span> :
+                                      <span className="bg-rose-100 text-rose-800 text-[10px] px-2 py-1 font-bold rounded">پرداخت نشده</span>}
+                                 </td>
+                                 <td className="p-4 text-xs font-bold text-center">
+                                     {invoices.some(i => i.type === 'warehouse_receipt' && i.sourceInvoiceId?.toString() === inv.id.toString()) ? <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded">رسید شده</span> : <span className="text-amber-500 bg-amber-50 px-2 py-1 rounded border border-amber-100">در انتظار رسید</span>}
+                                 </td>
+                               </>
+                             )}
                              <td className="p-4 text-center flex items-center justify-center gap-2">
                                 <button onClick={() => { setViewingInvoice(inv); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none" title="مشاهده نهایی">
                                   <Eye className="w-4 h-4"/>
@@ -3820,17 +3933,20 @@ export default function App() {
                                 <button onClick={() => handleEditInvoiceAction(inv)} className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none" title="ویرایش (بازگشت به پیش‌نویس)">
                                    <Edit2 className="w-4 h-4"/>
                                  </button>
-                                 <button onClick={() => handleDeleteInvoice(inv.id)} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer bg-transparent border-none justify-center" title="حذف">
+                                <button onClick={() => handleDeleteInvoice(inv.id)} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer bg-transparent border-none" title="حذف دائمی">
                                    <Trash2 className="w-4 h-4"/>
-                                 </button>
+                                </button>
                              </td>
                            </tr>
                          ))}
                          {invoices.filter(i => 
                            activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
                            activeTab === 'list_purchase' ? i.type === 'purchase' :
-                           activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
-                           i.type === 'warehouse_remittance'
+                           activeTab === 'list_warehouse_docs' ? (
+                               typeof listFilter !== 'undefined' && listFilter === 'receipt' ? i.type === 'warehouse_receipt' :
+                               typeof listFilter !== 'undefined' && listFilter === 'remittance' ? i.type === 'warehouse_remittance' :
+                               (i.type === 'warehouse_receipt' || i.type === 'warehouse_remittance')
+                           ) : false
                          ).filter(inv => {
                             if (!invoiceSearchQuery) return true;
                             const term = invoiceSearchQuery.toLowerCase();
@@ -3839,7 +3955,7 @@ export default function App() {
                             return pName.includes(term) || invNum.includes(term);
                          }).length === 0 && (
                            <tr>
-                             <td colSpan={5} className="p-8 text-center text-gray-400">هیچ سندی یافت نشد.</td>
+                             <td colSpan={activeTab === 'list_purchase' ? 10 : (activeTab.includes('warehouse') ? 6 : 5)} className="p-8 text-center text-gray-400">هیچ سندی یافت نشد.</td>
                            </tr>
                          )}
                        </tbody>
@@ -3848,6 +3964,7 @@ export default function App() {
                 </div>
              </motion.div>
            );
+        
         case 'create_receive_receipt':
         case 'create_pay_receipt': {
            const isReceive = activeTab === 'create_receive_receipt';
@@ -10959,9 +11076,7 @@ export default function App() {
                         <div className={`bg-gray-50/50 p-5 rounded-2xl border border-gray-200 grid grid-cols-1 ${activeTab.includes('warehouse') ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 relative`} style={{ zIndex: 10 }}>
                           <div className="space-y-1 text-right">
                             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-bold block">
-                              {activeTab === 'create_warehouse_receipt' ? 'تحویل‌دهنده کالا' :
-                               activeTab === 'create_warehouse_remittance' ? 'تحویل‌گیرنده کالا (بدهکار)' :
-                               'مخاطب (خریدار)'}
+                              {activeTab === 'create_warehouse_doc' ? (invoiceType === 'warehouse_receipt' ? 'تحویل‌دهنده کالا' : 'تحویل‌گیرنده کالا (بدهکار)') : 'مخاطب (خریدار)'}
                             </span>
                             <h3 className="text-lg font-black text-gray-900">{previewInvoiceData.customerName}</h3>
                             {previewInvoiceData.customerPhone && <p className="text-sm text-gray-600 font-bold">تلفن: <span dir="ltr">{previewInvoiceData.customerPhone}</span></p>}

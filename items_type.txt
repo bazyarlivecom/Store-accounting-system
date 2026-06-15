@@ -1,0 +1,15 @@
+1747:          (isRemittance ? i.type === 'warehouse_remittance' : i.type === 'warehouse_receipt')
+1984:                   (invoiceType === 'warehouse_remittance' ? i.type === 'warehouse_remittance' : i.type === 'warehouse_receipt')
+2090:      (isRemittance ? i.type === 'warehouse_remittance' : i.type === 'warehouse_receipt')
+2838:              const relevantInvoices = expectedType ? invoices.filter(i => i.type === expectedType && hasRemainingWarehouseItems(i.id)) : [];
+2904:                                              (isReceipt ? i.type === 'warehouse_receipt' : i.type === 'warehouse_remittance')
+2916:                                              (isReceipt ? i.type === 'warehouse_receipt' : i.type === 'warehouse_remittance')
+3801:                           activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
+3802:                           activeTab === 'list_purchase' ? i.type === 'purchase' :
+3803:                           activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
+3804:                           i.type === 'warehouse_remittance'
+3840:                           activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
+3841:                           activeTab === 'list_purchase' ? i.type === 'purchase' :
+3842:                           activeTab === 'list_warehouse_receipt' ? i.type === 'warehouse_receipt' :
+3843:                           i.type === 'warehouse_remittance'
+5277:             invoices.filter(i => i.customerId?.toString() === pid && i.type !== 'warehouse_receipt' && i.type !== 'warehouse_remittance' && i.type !== 'proforma').forEach(inv => {
