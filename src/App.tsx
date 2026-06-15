@@ -4258,20 +4258,34 @@ export default function App() {
                                           <td className="p-3 font-mono text-xs font-bold text-slate-700">{formatCurrency(total)}</td>
                                           <td className="p-3 font-mono text-xs font-bold text-rose-600">{formatCurrency(remainder)}</td>
                                           <td className="p-3">
-                                            <input 
-                                               type="number" 
-                                               className="p-1 px-2 border border-slate-200 rounded text-xs font-mono w-28 outline-none focus:border-indigo-400" 
-                                               placeholder="0"
-                                               value={currentAllocated || ''}
-                                               onChange={(e) => {
-                                                 const val = Number(e.target.value);
-                                                 if (val > remainder) {
-                                                    customAlert('مبلغ تخصیصی نمیتواند بیشتر از مانده فاکتور باشد');
-                                                    return;
-                                                 }
-                                                 setReceiptLinkedInvoices(prev => ({ ...prev, [inv.id]: val }));
-                                               }}
-                                            />
+                                            <div className="flex items-center gap-2 justify-end">
+                                              <button
+                                                type="button"
+                                                className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors border border-indigo-100"
+                                                title="تخصیص حداکثری (تکمیل وجه)"
+                                                onClick={() => {
+                                                  setReceiptLinkedInvoices(prev => ({ ...prev, [inv.id]: remainder }));
+                                                }}
+                                              >
+                                                <CheckSquare className="w-3.5 h-3.5" />
+                                              </button>
+                                              <input 
+                                                 type="number" 
+                                                 className="p-1.5 px-2 border border-slate-200 rounded-md text-xs font-mono w-28 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 bg-white transition-all shadow-sm" 
+                                                 placeholder="0"
+                                                 value={currentAllocated || ''}
+                                                 onChange={(e) => {
+                                                   const val = Number(e.target.value);
+                                                   if (val > remainder) {
+                                                      customAlert('مبلغ تخصیصی نمیتواند بیشتر از مانده فاکتور باشد');
+                                                      return;
+                                                   }
+                                                   setReceiptLinkedInvoices(prev => ({ ...prev, [inv.id]: val }));
+                                                 }}
+                                                 min={0}
+                                                 max={remainder}
+                                              />
+                                            </div>
                                           </td>
                                         </tr>
                                       );

@@ -56,39 +56,46 @@ export default function InvoiceAllocation({
   const openInvoices = invoices.filter(inv => 
     inv.customerId?.toString() === selectedPersonId.toString() && 
     (inv.type === 'sale' || inv.type === 'purchase') && 
-    inv.paymentStatus !== 'paid'
+    (inv.paymentStatus !== 'paid' || 
+      transactions.some(t => t.personId?.toString() === selectedPersonId.toString() && t.linkedInvoices?.[inv.id] > 0)
+    )
   );
+
+  // Initialize allocations from DB
+  useEffect(() => {
+    if (selectedPersonId) {
+      const initialAllocations: Record<string, Record<string, number>> = {};
+      transactions.filter(tx => tx.personId?.toString() === selectedPersonId.toString()).forEach(tx => {
+        if (tx.linkedInvoices && Object.keys(tx.linkedInvoices).length > 0) {
+          initialAllocations[tx.id] = { ...tx.linkedInvoices };
+        }
+      });
+      setAllocations(initialAllocations);
+    } else {
+      setAllocations({});
+    }
+  }, [selectedPersonId, transactions]);
 
   // Filter open transactions for the selected person
   const openTransactions = transactions.filter(tx => 
     tx.personId?.toString() === selectedPersonId.toString() && 
     (tx.type === 'receive' || tx.type === 'pay')
   ).map(tx => {
-    // calculate unallocated based on current DB state first
-    const dbAllocated = Object.values(tx.linkedInvoices || {}).reduce((sum: any, val: any) => sum + (Number(val) || 0), 0) as number;
     // local modified allocations for this tx
     const localAllocations = Object.values(allocations[tx.id] || {}).reduce((sum, val) => sum + (Number(val) || 0), 0);
     return {
       ...tx,
-      unallocatedDB: (tx.amount || 0) - dbAllocated,
-      unallocatedLocal: (tx.amount || 0) - dbAllocated - localAllocations
+      unallocatedLocal: (tx.amount || 0) - localAllocations
     };
-  }).filter(tx => tx.unallocatedDB > 0 || (allocations[tx.id] && Object.keys(allocations[tx.id]).length > 0)); // show if there's space OR if we are allocating now
+  }).filter(tx => tx.unallocatedLocal > 0 || (allocations[tx.id] && Object.values(allocations[tx.id]).some(v => v > 0))); 
 
   const handleAllocationChange = (txId: string, invId: string, amount: number, maxAllowedInv: number, maxAllowedTx: number) => {
      // Amount can't exceed what's remaining on the invoice
      let cleanAmount = amount;
      if (cleanAmount < 0) cleanAmount = 0;
      
-     const currentTxAlloc = allocations[txId]?.[invId] || 0;
-     const newAdd = cleanAmount - currentTxAlloc; // How much more we are trying to add
-     if (newAdd > maxAllowedTx) {
-        cleanAmount = currentTxAlloc + maxAllowedTx;
-     }
-
-     if (cleanAmount > maxAllowedInv) {
-        cleanAmount = maxAllowedInv;
-     }
+     if (cleanAmount > maxAllowedTx) cleanAmount = maxAllowedTx;
+     if (cleanAmount > maxAllowedInv) cleanAmount = maxAllowedInv;
      
      setAllocations(prev => ({
        ...prev,
@@ -103,40 +110,56 @@ export default function InvoiceAllocation({
      setLoading(true);
      try {
         let hasChanges = false;
-        // Process each transaction that has allocations
-        for (const [txId, invAllocations] of Object.entries(allocations)) {
+        // Process each transaction that has allocations OR had allocations
+        const allTxIds = Array.from(new Set([
+           ...Object.keys(allocations),
+           ...transactions.filter(t => t.personId?.toString() === selectedPersonId.toString() && t.linkedInvoices && Object.keys(t.linkedInvoices).length > 0).map(t => t.id.toString())
+        ]));
+
+        for (const txId of allTxIds) {
            const tx = transactions.find(t => t.id.toString() === txId);
            if (!tx) continue;
            
-           const newLinkedInvoices = { ...(tx.linkedInvoices || {}) };
+           const oldLinkedInvoices = tx.linkedInvoices || {};
+           const newLinkedInvoices = { ...(allocations[txId] || {}) };
+           
+           // Clean up zeros
+           Object.keys(newLinkedInvoices).forEach(k => {
+               if (!newLinkedInvoices[k]) delete newLinkedInvoices[k];
+           });
+
            let txChanged = false;
            
-           for (const [invId, amt] of Object.entries(invAllocations)) {
-              if (amt > 0) {
-                 hasChanges = true;
-                 txChanged = true;
-                 // Update the transaction's linked invoices
-                 newLinkedInvoices[invId] = (newLinkedInvoices[invId] || 0) + amt;
-                 
-                 // Update the actual invoice
-                 const inv = invoices.find(i => i.id.toString() === invId);
-                 if (inv) {
-                    const newPaid = (inv.paidAmount || 0) + amt;
-                    const total = (inv.totalAmount || 0) * (getDefaultExchangeRate ? getDefaultExchangeRate(inv.currency, storeSettings.currency) : 1);
-                    const newStatus = newPaid >= total ? 'paid' : 'partial';
-                    await updateInvoice(inv.id, { ...inv, paidAmount: newPaid, paymentStatus: newStatus });
-                 }
-              }
+           // Apply diff to invoices
+           const allInvIds = Array.from(new Set([...Object.keys(oldLinkedInvoices), ...Object.keys(newLinkedInvoices)]));
+           
+           for (const invId of allInvIds) {
+               const oldAmt = oldLinkedInvoices[invId] || 0;
+               const newAmt = newLinkedInvoices[invId] || 0;
+               const diff = newAmt - oldAmt;
+               
+               if (diff !== 0) {
+                  txChanged = true;
+                  hasChanges = true;
+                  
+                  const inv = invoices.find(i => i.id.toString() === invId);
+                  if (inv) {
+                     const newPaid = Math.max((inv.paidAmount || 0) + diff, 0);
+                     const total = (inv.totalAmount || 0) * (getDefaultExchangeRate ? getDefaultExchangeRate(inv.currency, storeSettings.currency) : 1);
+                     const newStatus = newPaid >= total ? 'paid' : (newPaid > 0 ? 'partial' : 'pending');
+                     await updateInvoice(inv.id, { ...inv, paidAmount: newPaid, paymentStatus: newStatus });
+                  }
+               }
            }
            
            if (txChanged) {
-              await updateTransaction(tx.id, { ...tx, linkedInvoices: newLinkedInvoices });
+               await updateTransaction(tx.id, { ...tx, linkedInvoices: newLinkedInvoices });
            }
         }
         
         if (hasChanges) {
            alertUser('تخصیص‌ها با موفقیت ثبت شد.');
-           setAllocations({});
+           // Don't need to setAllocations({}) here, fetchData will trigger the useEffect
            await fetchData(); // refresh data
         } else {
            alertUser('هیچ تغییری برای ثبت وجود ندارد.');
@@ -227,18 +250,23 @@ export default function InvoiceAllocation({
                            <tbody className="divide-y divide-slate-100">
                              {eligibleInvoices.map(inv => {
                                 const total = (inv.totalAmount || 0) * (getDefaultExchangeRate ? getDefaultExchangeRate(inv.currency, storeSettings.currency) : 1);
-                                const paid = (inv.paidAmount || 0);
-                                const remainderDB = Math.max(total - paid, 0);
+                                const paidInDB = (inv.paidAmount || 0);
                                 
-                                // Subtract other transactions allocations from this invoice's remainder to prevent over-allocation across multiple tx
-                                let otherTxAllocationsForThisInv = 0;
+                                let oldAllocationsSum = 0;
+                                transactions.filter(t => t.personId?.toString() === selectedPersonId.toString()).forEach(t => {
+                                    oldAllocationsSum += (t.linkedInvoices?.[inv.id] || 0);
+                                });
+                                
+                                const basePaid = paidInDB - oldAllocationsSum;
+                                
+                                let otherTxNewAllocations = 0;
                                 Object.entries(allocations).forEach(([tId, invs]) => {
                                    if (tId !== String(tx.id) && invs[inv.id]) {
-                                      otherTxAllocationsForThisInv += invs[inv.id];
+                                      otherTxNewAllocations += invs[inv.id];
                                    }
                                 });
                                 
-                                const currentRemainder = Math.max(remainderDB - otherTxAllocationsForThisInv, 0);
+                                const currentRemainder = Math.max(total - basePaid - otherTxNewAllocations, 0);
                                 const currentAllocated = allocations[tx.id]?.[inv.id] || 0;
                                 
                                 return (
@@ -248,23 +276,42 @@ export default function InvoiceAllocation({
                                    <td className="p-3 font-mono text-slate-700">{formatCurrency(total)}</td>
                                    <td className="p-3 font-mono font-bold text-rose-600">{formatCurrency(currentRemainder)}</td>
                                    <td className="p-3">
-                                     <input 
-                                       type="number"
-                                       className="p-1.5 border border-slate-200 rounded-lg text-sm font-mono w-32 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-left bg-white transition-all shadow-sm"
-                                       placeholder="0"
-                                       value={currentAllocated || ''}
-                                       min={0}
-                                       max={Math.min(currentRemainder + currentAllocated, tx.unallocatedLocal + currentAllocated)}
-                                       onChange={(e) => {
-                                          handleAllocationChange(
-                                             String(tx.id), 
-                                             String(inv.id), 
-                                             Number(e.target.value), 
-                                             currentRemainder + currentAllocated, // max for invoice
-                                             tx.unallocatedLocal + currentAllocated // max we have from transaction
-                                          );
-                                       }}
-                                     />
+                                     <div className="flex items-center gap-2 justify-end">
+                                       <button 
+                                         type="button" 
+                                         className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-100" 
+                                         title="تخصیص حداکثری (تکمیل وجه)"
+                                         onClick={() => {
+                                           const maxAlloc = Math.min(currentRemainder, tx.unallocatedLocal + currentAllocated);
+                                           handleAllocationChange(
+                                              String(tx.id), 
+                                              String(inv.id), 
+                                              maxAlloc, 
+                                              currentRemainder, // max for invoice
+                                              tx.unallocatedLocal + currentAllocated // max we have from transaction
+                                           );
+                                         }}
+                                       >
+                                         <CheckSquare className="w-4 h-4" />
+                                       </button>
+                                       <input 
+                                         type="number"
+                                         className="p-1.5 border border-slate-200 rounded-lg text-sm font-mono w-32 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-left bg-white transition-all shadow-sm"
+                                         placeholder="0"
+                                         value={currentAllocated || ''}
+                                         min={0}
+                                         max={Math.min(currentRemainder, tx.unallocatedLocal + currentAllocated)}
+                                         onChange={(e) => {
+                                            handleAllocationChange(
+                                               String(tx.id), 
+                                               String(inv.id), 
+                                               Number(e.target.value), 
+                                               currentRemainder, // max for invoice
+                                               tx.unallocatedLocal + currentAllocated // max we have from transaction
+                                            );
+                                         }}
+                                       />
+                                     </div>
                                    </td>
                                  </tr>
                                 );
