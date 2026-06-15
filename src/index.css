@@ -104,7 +104,7 @@ body {
   
   /* Force page size margins */
   @page {
-    size: A4;
-    margin: 1cm;
+    size: auto;
+    margin: 5mm;
   }
 }

@@ -247,9 +247,13 @@ export default function App() {
     } else if (activeTab === 'create_warehouse_receipt') {
       setInvoiceType('warehouse_receipt');
       setInvoiceTitle('رسید انبار (ورود کالا)');
+      setWarehouseWizardStep(1);
+      setWarehouseOperationType('purchase_invoice');
     } else if (activeTab === 'create_warehouse_remittance') {
       setInvoiceType('warehouse_remittance');
       setInvoiceTitle('حواله انبار (خروج کالا)');
+      setWarehouseWizardStep(1);
+      setWarehouseOperationType('sales_invoice');
     }
   }, [activeTab]);
   
@@ -438,6 +442,9 @@ export default function App() {
   const [listFilter, setListFilter] = useState<'all' | 'sale' | 'purchase'>('all');
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
+  const [warehouseWizardStep, setWarehouseWizardStep] = useState(1);
+  const [warehouseOperationType, setWarehouseOperationType] = useState('purchase_invoice');
+  const [deletePreviousDocs, setDeletePreviousDocs] = useState(false);
   const [invoiceDescription, setInvoiceDescription] = useState('');
   const [invoiceWarehouseId, setInvoiceWarehouseId] = useState<string | number | ''>('');
   const [invoiceCurrency, setInvoiceCurrency] = useState<string>('تومان');
@@ -2165,7 +2172,7 @@ export default function App() {
       return;
     }
     
-    if ((activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
       customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
       setSubmitting(false);
       return;
@@ -2333,7 +2340,7 @@ export default function App() {
       customAlert('لطفاً انبار را مشخص کنید.');
       return;
     }
-    if ((activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
       customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
       return;
     }
@@ -2351,7 +2358,7 @@ export default function App() {
       return;
     }
     
-    if ((activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
       customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
       return;
     }
@@ -2488,12 +2495,12 @@ export default function App() {
             (رزرو شده: {info.totalReserved})
           </span>
         )}
-        <span className="text-gray-400">{details}</span>
-        {(product.barcode || product.code) && (
-          <span className="text-gray-400">
-            {' | '}{product.barcode ? `بارکد: ${product.barcode}` : `کد: ${product.code}`}
+        {(product.code || product.barcode) && (
+          <span className="text-slate-400 font-mono text-[10px] pr-1 border-r border-slate-200">
+            {product.code ? `کد: ${product.code}` : ''} {product.barcode ? `| بارکد: ${product.barcode}` : ''}
           </span>
         )}
+        <span className="text-gray-400">{details}</span>
       </div>
     );
   };
@@ -2761,380 +2768,395 @@ export default function App() {
   const renderTabContent = () => {
     switch(activeTab) {
         case 'create_warehouse_receipt':
-        case 'create_warehouse_remittance':
-           return (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
-              {successMsg && (
-                <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100 font-bold shadow-sm">
-                  <CheckCircle className="w-5 h-5" />
-                  {successMsg}
-                </div>
-              )}
-
-              {/* Header Info */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
-                  {activeTab === 'create_warehouse_remittance' ? <ShoppingCart className="w-6 h-6 text-indigo-600" /> : <Plus className="w-6 h-6 text-indigo-600" />}
-                  {invoiceTitle}
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">{activeTab.includes('warehouse') ? 'شماره سند/رسید' : 'شماره فاکتور'}</label>
-                    <div className="flex gap-2">
-                        <select value={invoiceMode} onChange={(e) => setInvoiceMode(e.target.value as 'auto' | 'manual')} className="p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-sm">
-                          <option value="auto">خودکار</option>
-                          <option value="manual">دستی</option>
-                        </select>
-                        {invoiceMode === 'manual' && (
-                          <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" dir="ltr" placeholder="شماره..." />
-                        )}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> {activeTab.includes('warehouse') ? 'تاریخ سند/رسید' : 'تاریخ فاکتور'}</label>
-                    <div className="relative">
-                      <DatePicker
-                          value={date}
-                          onChange={setDate}
-                          calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
-                          locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
-                          calendarPosition="bottom-right"
-                          inputClass="w-full pl-11 pr-4 p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-sm"
-                          containerClassName="w-full"
-                      />
-                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
-                        <Calendar className="w-5 h-5" />
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><User className="w-4 h-4"/> طرف حساب</label>
-                    <SearchableSelect 
-                      options={persons.map(p => ({
-                        value: p.id,
-                        label: p.alias || p.name,
-                        subLabel: p.phone || undefined,
-                        badge: getRoleName(p.role)
-                      }))}
-                      value={customerId}
-                      onChange={val => setCustomerId(val)}
-                      placeholder="-- انتخاب کنید --"
-                      searchPlaceholder="جستجوی شخص..."
-                    />
-                  </div>
-                  {activeTab.includes('warehouse') && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">انبار</label>
-                    <select
-                        value={invoiceWarehouseId}
-                        onChange={(e) => setInvoiceWarehouseId(e.target.value)}
-                        className="w-full p-2 text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500"
-                      >
-                         <option value="">-- انتخاب انبار --</option>
-                         {warehouses.filter(w => w.isActive !== false).map((v) => (
-                           <option key={v.id} value={v.id}>
-                             {v.name}
-                           </option>
-                         ))}
-                      </select>
-                  </div>
-                  )}
-                  {activeTab.includes('warehouse') && (
-                  <div className="lg:col-span-4 mt-2">
-                     <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> توضیحات (بابت)</label>
-                     <input
-                         type="text"
-                         value={invoiceDescription || ''}
-                         onChange={(e) => setInvoiceDescription(e.target.value)}
-                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
-                         placeholder="توضیحات مربوط به این رسید..."
-                     />
-                  </div>
-                  )}
-                  {activeTab === 'create_warehouse_receipt' && (
-                    <div className="lg:col-span-3 border-t border-gray-100 pt-4">
-                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> ارتباط با فاکتور خرید مرجع (فراخوانی خودکار اقلام)</label>
-                       <SearchableSelect
-                         options={invoices.filter(i => i.type === 'purchase' && (!customerId || i.customerId === customerId) && hasRemainingWarehouseItems(i.id)).map(i => ({
-                           value: i.id,
-                           label: `فاکتور خرید ${i.invoiceMode === 'manual' ? '(دستی) ' : ''}#${i.invoiceNumber}`,
-                           subLabel: `مبلغ: ${formatCurrency(i.totalAmount || 0)} ${i.currency || 'تومان'} - مشتری: ${persons.find(p => p.id.toString() === i.customerId.toString())?.name || 'نامشخص'}`,
-                         }))}
-                         value={String(sourceInvoiceId)}
-                         onChange={(val) => handleSourceInvoiceChange(val)}
-                         placeholder="-- در صورت تمایل فاکتور خرید مرتبط را انتخاب کنید --"
-                         searchPlaceholder="جستجو در مقادیر فاکتورهای خرید..."
-                       />
-                    </div>
-                  )}
-                  {activeTab === 'create_warehouse_remittance' && (
-                    <div className="lg:col-span-3 border-t border-gray-100 pt-4">
-                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> ارتباط با فاکتور فروش مرجع (فراخوانی خودکار اقلام)</label>
-                       <SearchableSelect
-                         options={invoices.filter(i => i.type === 'sale' && (!customerId || i.customerId === customerId) && hasRemainingWarehouseItems(i.id)).map(i => ({
-                           value: i.id,
-                           label: `فاکتور فروش ${i.invoiceMode === 'manual' ? '(دستی) ' : ''}#${i.invoiceNumber}`,
-                           subLabel: `مبلغ: ${formatCurrency(i.totalAmount || 0)} ${i.currency || 'تومان'} - مشتری: ${persons.find(p => p.id.toString() === i.customerId.toString())?.name || 'نامشخص'}`,
-                         }))}
-                         value={String(sourceInvoiceId)}
-                         onChange={(val) => handleSourceInvoiceChange(val)}
-                         placeholder="-- در صورت تمایل فاکتور فروش مرتبط را انتخاب کنید --"
-                         searchPlaceholder="جستجو در مقادیر فاکتورهای فروش..."
-                       />
-                    </div>
-                  )}
-                  {(!activeTab.includes('warehouse')) && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><DollarSign className="w-4 h-4"/> ارز و نرخ</label>
-                    <div className="flex gap-2">
-                      <select value={invoiceCurrency} onChange={(e) => handleCurrencyChange(e.target.value)} className="w-1/2 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm">
-                          <option value="تومان">تومان</option>
-                          <option value="دلار">دلار</option>
-                          <option value="یورو">یورو</option>
-                          <option value="درهم">درهم</option>
-                      </select>
-                      <input type="number" disabled={invoiceCurrency === storeSettings.currency} value={exchangeRateInput} onChange={(e) => handleExchangeRateChange(Number(e.target.value))} className="w-1/2 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left disabled:bg-gray-100" dir="ltr" />
-                    </div>
-                  </div>
-                )}
-                </div>
-              </div>
-
-              {/* Items List */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> {activeTab.includes('warehouse') ? 'اقلام سند (کالاها)' : 'اقلام فاکتور'}</h3>
-                    {(!activeTab.includes('warehouse')) && (
-                      <div className="flex-1 w-full flex gap-2">
-                        <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
-                          <div className="flex-1 w-full relative z-10 ">
-                            <SearchableSelect 
-                              options={products.map(p => ({
-                                value: p.id,
-                                label: p.name,
-                                subLabel: formatProductStockDetails(p),
-                                badge: p.type === 'service' ? 'خدمات' : 'کالا',
-                                searchStr: `${p.code || ''} ${p.barcode || ''}`
-                              }))}
-                              value=""
-                              onChange={(val) => handleFastAddProduct(String(val))}
-                              placeholder="🔎 جستجو و افزودن سریع کالا به لیست (نام، کد، بارکد)..."
-                              searchPlaceholder="جستجوی کالا..."
-                            />
+        case 'create_warehouse_remittance': {
+           const isReceipt = activeTab === 'create_warehouse_receipt';
+           if (warehouseWizardStep === 1) {
+              return (
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 max-w-xl mx-auto">
+                       <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
+                         {isReceipt ? <Plus className="w-6 h-6 text-emerald-600" /> : <ShoppingCart className="w-6 h-6 text-indigo-600" />}
+                         {invoiceTitle} - انتخاب انبار و نوع عملیات
+                       </h2>
+                       <div className="space-y-6">
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">انتخاب انبار</label>
+                            <select value={invoiceWarehouseId} onChange={(e) => setInvoiceWarehouseId(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-base font-bold">
+                               <option value="">-- انتخاب انبار --</option>
+                               {warehouses.filter(w => w.isActive !== false).map((v) => (
+                                 <option key={v.id} value={v.id}>{v.name}</option>
+                               ))}
+                            </select>
                           </div>
-                          <button onClick={() => setIsScannerOpen(true)} className="p-3 bg-white border border-gray-200 text-gray-600 rounded-xl shadow-sm hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
-                            <ScanLine className="w-5 h-5"/>
-                          </button>
+                          <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-2">نوع حواله / رسید</label>
+                            <select value={warehouseOperationType} onChange={(e) => setWarehouseOperationType(e.target.value)} className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-base font-bold">
+                               {isReceipt ? (
+                                  <>
+                                     <option value="purchase_invoice">از فاکتور خرید</option>
+                                     <option value="sales_return">از برگشت فروش</option>
+                                     <option value="transfer">انتقال / سایر ورود</option>
+                                  </>
+                               ) : (
+                                  <>
+                                     <option value="sales_invoice">از فاکتور فروش</option>
+                                     <option value="purchase_return">از برگشت خرید</option>
+                                     <option value="transfer">انتقال / سایر خروج</option>
+                                  </>
+                               )}
+                            </select>
+                          </div>
+                          <div className="pt-4 border-t border-gray-100 flex justify-end">
+                             <button onClick={() => {
+                               if(!invoiceWarehouseId) {
+                                 customAlert('لطفاً ابتدا انبار را مشخص کنید.');
+                                 return;
+                               }
+                               setWarehouseWizardStep(2);
+                             }} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">
+                                مرحله بعد
+                             </button>
+                          </div>
+                       </div>
+                    </div>
+                 </motion.div>
+              );
+           }
+           if (warehouseWizardStep === 2) {
+              let expectedType = '';
+              if (isReceipt) {
+                 if (warehouseOperationType === 'purchase_invoice') expectedType = 'purchase';
+                 if (warehouseOperationType === 'sales_return') expectedType = 'sale'; // returns use same invoice type often? Actually, let's keep it simple: filter by type
+              } else {
+                 if (warehouseOperationType === 'sales_invoice') expectedType = 'sale';
+                 if (warehouseOperationType === 'purchase_return') expectedType = 'purchase';
+              }
+
+              const relevantInvoices = expectedType ? invoices.filter(i => i.type === expectedType && hasRemainingWarehouseItems(i.id)) : [];
+
+              return (
+                 <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 max-w-2xl mx-auto">
+                       <h2 className="text-xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
+                         {isReceipt ? <Plus className="w-6 h-6 text-emerald-600" /> : <ShoppingCart className="w-6 h-6 text-indigo-600" />}
+                         {invoiceTitle} - انتخاب سند مرجع
+                       </h2>
+                       <div className="space-y-6">
+                          {warehouseOperationType !== 'transfer' ? (
+                            <div>
+                               <label className="block text-sm font-bold text-gray-700 mb-2">انتخاب فاکتور مرتبط</label>
+                               <SearchableSelect
+                                 options={relevantInvoices.map(i => ({
+                                   value: i.id,
+                                   label: `فاکتور ${i.invoiceMode === 'manual' ? '(دستی) ' : ''}#${i.invoiceNumber}`,
+                                   subLabel: `مبلغ: ${formatCurrency(i.totalAmount || 0)} ${i.currency || 'تومان'} - مشتری: ${persons.find(p => p.id.toString() === i.customerId?.toString())?.name || 'نامشخص'}`,
+                                 }))}
+                                 value={String(sourceInvoiceId || '')}
+                                 onChange={(val) => setSourceInvoiceId(val)}
+                                 placeholder="-- فاکتور مورد نظر را جستجو و انتخاب کنید --"
+                                 searchPlaceholder="جستجو در فاکتورها..."
+                               />
+                               <div className="mt-4 bg-amber-50 p-4 rounded-xl border border-amber-100 text-sm font-bold text-amber-800 flex items-start gap-2">
+                                  <input type="checkbox" id="deletePrev" checked={deletePreviousDocs} onChange={e => setDeletePreviousDocs(e.target.checked)} className="mt-1 w-4 h-4 cursor-pointer" />
+                                  <label htmlFor="deletePrev" className="cursor-pointer">
+                                     حذف حواله‌های انبار قبلی برای این فاکتور (تنظیم مجدد رسید/حواله)
+                                  </label>
+                               </div>
+                            </div>
+                          ) : (
+                            <div className="bg-indigo-50 p-6 rounded-xl text-indigo-800 text-center font-bold">
+                               صدور سند آزاد (مستقیم)
+                            </div>
+                          )}
+
+                          <div className="pt-4 border-t border-gray-100 flex justify-between">
+                             <button onClick={() => setWarehouseWizardStep(1)} className="px-6 py-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-bold transition-colors">
+                                مرحله قبل
+                             </button>
+                             <button onClick={() => {
+                                if (warehouseOperationType !== 'transfer' && !sourceInvoiceId) {
+                                  customAlert('لطفاً فاکتور مرجع را انتخاب کنید');
+                                  return;
+                                }
+                                if (warehouseOperationType !== 'transfer') {
+                                    const sourceInv = invoices.find(i => i.id.toString() === sourceInvoiceId?.toString());
+                                    if (sourceInv) {
+                                        if (isReceipt) {
+                                            setInvoiceDescription(`رسید ورود به انبار - فاکتور مرجع # ${sourceInv.invoiceNumber}`);
+                                        } else {
+                                            setInvoiceDescription(`حواله خروج از انبار - فاکتور مرجع # ${sourceInv.invoiceNumber}`);
+                                        }
+                                        if (sourceInv.customerId) setCustomerId(sourceInv.customerId);
+                                        if (sourceInv.currency) {
+                                            setInvoiceCurrency(sourceInv.currency);
+                                            setExchangeRate(sourceInv.exchangeRate || 1);
+                                            setExchangeRateInput(String(sourceInv.exchangeRate || 1));
+                                        }
+                                        
+                                        let processedAmounts = {};
+                                        if (deletePreviousDocs) {
+                                            // Delete past docs
+                                            const pastDocs = invoices.filter(i => 
+                                              i.sourceInvoiceId?.toString() === sourceInvoiceId?.toString() && 
+                                              (isReceipt ? i.type === 'warehouse_receipt' : i.type === 'warehouse_remittance')
+                                            );
+                                            if (pastDocs.length > 0) {
+                                              pastDocs.forEach(d => {
+                                                  if(typeof deleteInvoice !== 'undefined') deleteInvoice(d.id.toString());
+                                              });
+                                              setInvoices(prev => prev.filter(p => !pastDocs.find(pd => pd.id === p.id)));
+                                              if(typeof fetchInvoices !== 'undefined') fetchInvoices();
+                                            }
+                                        } else {
+                                            const pastDocs = invoices.filter(i => 
+                                              i.sourceInvoiceId?.toString() === sourceInvoiceId?.toString() && 
+                                              (isReceipt ? i.type === 'warehouse_receipt' : i.type === 'warehouse_remittance')
+                                            );
+                                            pastDocs.forEach(doc => {
+                                              if (doc.items) {
+                                                doc.items.forEach((rt) => {
+                                                   const key = String(rt.productId || rt.productName || '');
+                                                   if (!key) return;
+                                                   if (!processedAmounts[key]) processedAmounts[key] = 0;
+                                                   processedAmounts[key] += Number(rt.quantity) || 0;
+                                                });
+                                              }
+                                            });
+                                        }
+                                        
+                                        const remainingItems = sourceInv.items.map((it) => {
+                                          const key = String(it.productId || it.productName || '');
+                                          const processed = key ? (processedAmounts[key] || 0) : 0;
+                                          const remaining = (Number(it.quantity) || 0) - processed;
+                                          return {
+                                            ...it,
+                                            id: generateId(),
+                                            maxQuantity: remaining > 0 ? remaining : 0,
+                                            quantity: remaining > 0 ? remaining : 0,
+                                            warehouseId: invoiceWarehouseId,
+                                          };
+                                        }).filter((it) => it.quantity > 0);
+
+                                        setItems(remainingItems);
+                                    }
+                                } else {
+                                   setSourceInvoiceId('');
+                                   setItems([]);
+                                }
+                                setWarehouseWizardStep(3);
+                             }} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">
+                                تایید و تهیه فرم
+                             </button>
+                          </div>
+                       </div>
+                    </div>
+                 </motion.div>
+              );
+           }
+           if (warehouseWizardStep === 3) {
+              return (
+                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+                  <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div className="flex justify-between items-center mb-6">
+                       <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                         {isReceipt ? <Plus className="w-6 h-6 text-emerald-600" /> : <ShoppingCart className="w-6 h-6 text-indigo-600" />}
+                         {invoiceTitle} - صدور نهایی
+                       </h2>
+                       <button onClick={() => setWarehouseWizardStep(2)} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 text-sm">مرحله قبل</button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">{isReceipt ? 'شماره رسید' : 'شماره حواله'}</label>
+                        <div className="flex gap-2">
+                            <select value={invoiceMode} onChange={(e) => setInvoiceMode(e.target.value as 'auto' | 'manual')} className="p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-gray-50 text-sm">
+                              <option value="auto">خودکار</option>
+                              <option value="manual">دستی</option>
+                            </select>
+                            {invoiceMode === 'manual' && (
+                              <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" dir="ltr" placeholder="شماره..." />
+                            )}
                         </div>
-                        <button onClick={handleAddItem} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-xl font-bold hover:bg-gray-100 flex items-center gap-2 transition-colors whitespace-nowrap">
-                          <Plus className="w-4 h-4" /> سطر دلخواه
-                        </button>
                       </div>
-                    )}
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-right min-w-[1000px]">
-                      <thead>
-                        <tr className="bg-white text-sm text-gray-500 border-b border-gray-100">
-                          <th className="p-4 font-bold w-12 text-center">ردیف</th>
-                          <th className="p-4 font-bold min-w-[200px] w-[30%] text-right">شرح کالا / خدمات</th>
-                          <th className="p-4 font-bold w-32 text-center">تعداد</th>
-                          <th className="p-4 font-bold w-32 text-center border-r border-gray-100">واحد</th>
-                          {(activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance' || activeTab === 'create_sale') && (
-                            <th className="p-4 font-bold w-48 text-center border-r border-gray-100 text-emerald-800">انبار مقصد/مبدا</th>
-                          )}
-                          {(!activeTab.includes('warehouse')) && (
-                            <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">فی ({invoiceCurrency})</th>
-                          )}
-                          {(!activeTab.includes('warehouse')) && (
-                            <th className="p-4 font-bold w-28 text-center border-r border-gray-100">تخفیف %</th>
-                          )}
-                          {(!activeTab.includes('warehouse')) && (
-                            <th className="p-4 font-bold w-48 border-r border-gray-100 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
-                          )}
-                          <th className="p-4 font-bold w-12 text-center border-r border-gray-100">حذف</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {items.length === 0 && (
-                          <tr>
-                            <td colSpan={8} className="p-8 text-center text-gray-400 font-bold text-sm bg-gray-50/50">
-                              <div className="flex flex-col items-center justify-center space-y-2">
-                                <Package className="w-8 h-8 text-indigo-200" />
-                                <span>هیچ کالا یا خدماتی به این سند اضافه نشده است. لطفاً از طریق جستجو یا دکمه افزودن سطر، اقلام را وارد کنید.</span>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                        {items.map((item, index) => (
-                            <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
-                              <td className="p-4">
-                                  {item.productId ? (
-                                    <div className="font-extrabold text-slate-800 flex flex-col gap-1">
-                                      <span>{item.productName}</span>
-                                      <span className="text-xs text-slate-400 font-normal">کالا از سیستم انتخاب شده</span>
-                                    </div>
-                                  ) : (
-                                    <input
-                                      type="text"
-                                      placeholder="نام کالا / خدمات دلخواه..."
-                                      value={item.productName}
-                                      onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
-                                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
-                                    />
-                                  )}
-                              </td>
-                              <td className="p-4">
-                                  <div className="flex flex-col gap-1.5">
-                                    <CurrencyInput hideWords value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-bold" />
-                                    {activeTab === 'create_warehouse_receipt' && typeof item.maxQuantity !== 'undefined' && (
-                                       <span className="text-[10px] text-gray-500 text-center font-bold mt-1">
-                                          قابل رسید: {item.maxQuantity}
-                                       </span>
-                                    )}
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500 animate-pulse"/> {isReceipt ? 'تاریخ رسید' : 'تاریخ حواله'}</label>
+                        <div className="relative">
+                          <DatePicker
+                              value={date}
+                              onChange={setDate}
+                              calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                              locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
+                              calendarPosition="bottom-right"
+                              inputClass="w-full pl-11 pr-4 p-2.5 bg-slate-50 hover:bg-slate-100/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer shadow-sm text-sm"
+                              containerClassName="w-full"
+                          />
+                          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
+                            <Calendar className="w-5 h-5" />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><User className="w-4 h-4"/> نام تامین کننده یا خریدار</label>
+                        <SearchableSelect 
+                          options={persons.map(p => ({
+                            value: p.id,
+                            label: p.alias || p.name,
+                            subLabel: p.phone || undefined,
+                            badge: getRoleName(p.role)
+                          }))}
+                          value={String(customerId || '')}
+                          onChange={val => setCustomerId(val)}
+                          placeholder="-- انتخاب کنید --"
+                          searchPlaceholder="جستجوی شخص..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">انبار انتخابی</label>
+                        <div className="w-full p-2.5 bg-gray-50 text-gray-700 font-bold rounded-xl border border-gray-200 text-center">
+                           {warehouses.find(w => w.id?.toString() === invoiceWarehouseId?.toString())?.name || 'نامشخص'}
+                        </div>
+                      </div>
+                      <div className="lg:col-span-4 mt-2">
+                         <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><FileText className="w-4 h-4 text-emerald-500"/> توضیحات</label>
+                         <input
+                             type="text"
+                             value={invoiceDescription || ''}
+                             onChange={(e) => setInvoiceDescription(e.target.value)}
+                             className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
+                             placeholder="توضیحات مربوط به این سند..."
+                         />
+                      </div>
+                    </div>
+                  </div>
+    
+                  {/* Items List */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 bg-gray-50 border-b border-gray-100 flex flex-col justify-between items-center gap-4">
+                        <div className="w-full flex justify-between">
+                            <h3 className="font-extrabold text-gray-900 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> اقلام سند</h3>
+                            <button onClick={handleAddItem} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 shadow-sm rounded-xl font-bold hover:bg-gray-100 flex items-center gap-2 transition-colors whitespace-nowrap">
+                              <Plus className="w-4 h-4" /> افزودن سطر دستی
+                            </button>
+                        </div>
+                        <div className="w-full relative z-10 ">
+                             <SearchableSelect 
+                               options={products.map(p => ({
+                                 value: p.id,
+                                 label: p.name,
+                                 subLabel: formatProductStockDetails(p),
+                                 badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                                 searchStr: `${p.code || ''} ${p.barcode || ''}`
+                               }))}
+                               value=""
+                               onChange={(val) => handleFastAddProduct(String(val))}
+                               placeholder="🔎 جستجو و افزودن سریع کالا به لیست..."
+                               searchPlaceholder="جستجوی کالا..."
+                             />
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-right min-w-[800px]">
+                          <thead>
+                            <tr className="bg-white text-sm text-gray-500 border-b border-gray-100">
+                              <th className="p-4 font-bold w-12 text-center">ردیف</th>
+                              <th className="p-4 font-bold min-w-[200px] w-[50%] text-right">شرح کالا</th>
+                              <th className="p-4 font-bold w-32 text-center">تعداد</th>
+                              <th className="p-4 font-bold w-32 text-center border-r border-gray-100">واحد</th>
+                              <th className="p-4 font-bold w-12 text-center border-r border-gray-100">حذف</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {items.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="p-8 text-center text-gray-400 font-bold text-sm bg-gray-50/50">
+                                  <div className="flex flex-col items-center justify-center space-y-2">
+                                    <Package className="w-8 h-8 text-indigo-200" />
+                                    <span>هیچ کالایی به این سند اضافه نشده است.</span>
                                   </div>
-                              </td>
-                              <td className="p-4 text-center">
-                                  {(() => {
-                                    const product = item.productId ? products.find((p) => p.id.toString() === String(item.productId)) : null;
-                                    const hasSecondary = product?.secondaryUnit;
-                                    return (
+                                </td>
+                              </tr>
+                            )}
+                            {items.map((item, index) => (
+                                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="p-4 text-center font-bold text-gray-400">{index + 1}</td>
+                                  <td className="p-4">
+                                      {item.productId ? (
+                                        <div className="font-extrabold text-slate-800 flex flex-col gap-1">
+                                          <span>{item.productName}</span>
+                                          {(() => {
+                                            const p = products.find(prod => prod.id === item.productId);
+                                            return <span className="text-xs text-slate-400 font-normal flex gap-2">کالای سیستمی {p?.code ? <span className="font-mono bg-slate-100 px-1 rounded">کد: {p.code}</span> : ''} {p?.barcode ? <span className="font-mono bg-slate-100 px-1 rounded">بارکد: {p.barcode}</span> : ''}</span>;
+                                          })()}
+                                        </div>
+                                      ) : (
+                                        <input
+                                          type="text"
+                                          placeholder="نام کالا دلخواه..."
+                                          value={item.productName}
+                                          onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
+                                          className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
+                                        />
+                                      )}
+                                  </td>
+                                  <td className="p-4">
                                       <div className="flex flex-col gap-1.5">
-                                        {hasSecondary ? (
-                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-2 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-slate-400">
-                                            <option value="false">{product.unit} (اصلی)</option>
-                                            <option value="true">{product.secondaryUnit} (فرعی)</option>
-                                          </select>
-                                        ) : product ? (
-                                          <div className="w-full p-2 text-center text-slate-600 font-bold bg-slate-50 border border-slate-100 rounded-xl text-sm shadow-sm">
-                                            {product.unit || '-'}
-                                          </div>
-                                        ) : (
-                                          <input
-                                            type="text"
-                                            value={item.selectedUnit || ''}
-                                            onChange={(e) => handleItemChange(item.id, 'selectedUnit', e.target.value)}
-                                            placeholder="واحد..."
-                                            className="w-full p-2 text-center text-slate-700 font-bold bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                          />
+                                        <CurrencyInput hideWords value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-bold text-indigo-900" />
+                                        {isReceipt && typeof item.maxQuantity !== 'undefined' && item.maxQuantity > 0 && (
+                                           <span className="text-[10px] text-gray-500 text-center font-bold mt-1">
+                                              حداکثر סقף مجاز: {item.maxQuantity}
+                                           </span>
                                         )}
                                       </div>
-                                    );
-                                  })()}
-                              </td>
-                              {(activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance' || activeTab === 'create_sale') && (
-                                <td className="p-4">
-                                  <select 
-                                    value={item.warehouseId || ''} 
-                                    onChange={(e) => handleItemChange(item.id, 'warehouseId', e.target.value)}
-                                    className="w-full p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 text-xs font-bold bg-white"
-                                  >
-                                    <option value="">-- انتخاب انبار --</option>
-                                    {(() => {
-                                      const stockInfo = item.productId ? getProductStockInfo(item.productId) : null;
-                                      return warehouses.filter(w => {
-                                         if (w.isActive === false) return false;
-                                         if ((activeTab === 'create_warehouse_remittance' || activeTab === 'create_sale') && stockInfo) {
-                                            const avail = stockInfo.warehouses[w.id]?.physical || 0;
-                                            return storeSettings.allowNegativeStock || avail > 0 || String(item.warehouseId) === String(w.id);
-                                         }
-                                         return true;
-                                      }).map(w => {
-                                         const avail = stockInfo?.warehouses[w.id]?.physical || 0;
-                                         const text = ((activeTab === 'create_warehouse_remittance' || activeTab === 'create_sale') && stockInfo) ? `${w.name} (موجودی: ${avail})` : w.name;
-                                         return <option key={w.id} value={w.id}>{text}</option>;
-                                      });
-                                    })()}
-                                  </select>
-                                </td>
-                              )}
-                              {(!activeTab.includes('warehouse')) && (
-                              <td className="p-4">
-                                  <CurrencyInput currencyLabel={storeSettings?.currency}
-                                    value={item.unitPrice} 
-                                    onChange={(e: any) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
-                                    className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-left font-bold text-indigo-950 text-sm" 
-                                  />
-                              </td>
-                              )}
-                              {(!activeTab.includes('warehouse')) && (
-                              <td className="p-4">
-                                  <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600 font-bold" dir="ltr" />
-                              </td>
-                              )}
-                              {(!activeTab.includes('warehouse')) && (
-                              <td className="p-4 font-bold text-left font-mono" dir="ltr">
-                                  {formatCurrency(item.totalPrice)}
-                              </td>
-                              )}
-                              <td className="p-4 text-center">
-                                  <button onClick={() => handleRemoveItem(item.id)} className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors">
-                                    <Trash2 className="w-5 h-5"/>
-                                  </button>
-                              </td>
-                            </tr>
-                        ))}
-                        {items.length === 0 && (
-                            <tr>
-                              <td colSpan={7} className="p-12 text-center">
-                                <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
-                                  <Package className="w-12 h-12 opacity-50" />
-                                  <p className="font-bold">کالایی به فاکتور اضافه نشده است.</p>
-                                  <p className="text-sm">از نوار جستجوی بالا برای افزودن سریع محصولات استفاده کنید.</p>
-                                </div>
-                              </td>
-                            </tr>
-                        )}
-                      </tbody>
-                    </table>
-                </div>
-              </div>
-
-              {/* Totals & Submit */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {(!activeTab.includes('warehouse')) && (
-                <div className="p-6">
-                  <div className="flex flex-col lg:flex-row justify-between gap-8">
-                      <div className="flex-1 space-y-4">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">تخفیف کلی فاکتور (درصد)</label>
-                            <input type="number" min="0" max="100" value={overallDiscountPercent} onChange={(e) => setOverallDiscountPercent(Number(e.target.value))} className="w-48 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left" dir="ltr" />
-                        </div>
-                      </div>
-                      <div className="w-full lg:w-96 space-y-3 bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                        <div className="flex justify-between items-center text-gray-600">
-                          <span>جمع مبالغ:</span>
-                          <span className="font-mono font-bold" dir="ltr">{formatCurrency(calculateSubtotal())} {invoiceCurrency}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-rose-600">
-                          <span>تخفیف کل:</span>
-                          <span className="font-mono font-bold" dir="ltr">% {overallDiscountPercent}</span>
-                        </div>
-                        <div className="h-px bg-gray-200 w-full my-4"></div>
-                        <div className="flex justify-between items-center text-lg font-black text-indigo-700">
-                          <span>مبلغ نهایی:</span>
-                          <span className="font-mono text-xl text-indigo-950 font-black" dir="ltr">{formatCurrency(calculateFinalTotal())} {invoiceCurrency}</span>
-                        </div>
-                        {calculateFinalTotal() > 0 && (
-                          <div className="mt-2.5 pt-2.5 border-t border-dashed border-indigo-200 text-right leading-relaxed text-xs font-bold text-gray-600">
-                            به حروف: <span className="text-amber-800 font-black">{numToPersianWords(calculateFinalTotal())} {invoiceCurrency}</span> تمام.
-                          </div>
-                        )}
-                      </div>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                      {(() => {
+                                        const product = item.productId ? products.find((p) => p.id.toString() === String(item.productId)) : null;
+                                        const hasSecondary = product?.secondaryUnit;
+                                        return (
+                                          <div className="flex flex-col gap-1.5">
+                                            {hasSecondary ? (
+                                              <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-2 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-slate-400">
+                                                <option value="false">{product.unit} (اصلی)</option>
+                                                <option value="true">{product.secondaryUnit} (فرعی)</option>
+                                              </select>
+                                            ) : product ? (
+                                              <div className="w-full p-2 text-center text-slate-600 font-bold bg-slate-50 border border-slate-100 rounded-xl text-sm shadow-sm">
+                                                {product.unit || '-'}
+                                              </div>
+                                            ) : (
+                                              <input
+                                                type="text"
+                                                value={item.selectedUnit || ''}
+                                                onChange={(e) => handleItemChange(item.id, 'selectedUnit', e.target.value)}
+                                                placeholder="واحد..."
+                                                className="w-full p-2 text-center text-slate-700 font-bold bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                              />
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                  </td>
+                                  <td className="p-4 text-center">
+                                      <button onClick={() => handleRemoveItem(item.id)} className="p-2.5 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors">
+                                        <Trash2 className="w-5 h-5"/>
+                                      </button>
+                                  </td>
+                                </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                    </div>
+                    <div className="p-4 bg-gray-50 flex justify-end">
+                       <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0} className="px-10 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-colors shadow-sm focus:ring-4 focus:ring-indigo-500/20">
+                         {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
+                         {isReceipt ? 'صدور نهایی رسید انبار' : 'صدور نهایی حواله انبار'}
+                       </button>
+                    </div>
                   </div>
-                </div>
-                )}
-                <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
-                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                      {activeTab.includes('warehouse') ? 'ثبت و بررسی سند' : 'ثبت و بررسی فاکتور'}
-                    </button>
-                </div>
-              </div>
-            </motion.div>
-           );
+                 </motion.div>
+              );
+           }
+        }
         case 'create_purchase':
            return (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
@@ -3224,7 +3246,7 @@ export default function App() {
                             options={products.map(p => ({
                               value: p.id,
                               label: p.name,
-                              subLabel: undefined,
+                              subLabel: (p.code || p.barcode) ? `کد: ${p.code || '-'} | بارکد: ${p.barcode || '-'}` : undefined,
                               badge: p.type === 'service' ? 'خدمات' : 'کالا',
                               searchStr: `${p.code || ''} ${p.barcode || ''}`
                             }))}
@@ -3275,7 +3297,20 @@ export default function App() {
                                   {item.productId ? (
                                     <div className="font-black text-slate-800 flex flex-col gap-1">
                                       <span>{item.productName}</span>
-                                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 self-start px-2 py-0.5 rounded-md">کالای سیستمی</span>
+                                      {(() => {
+                                         const p = products.find(prod => prod.id === item.productId);
+                                         return (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 self-start px-2 py-0.5 rounded-md">کالای سیستمی</span>
+                                                {(p?.code || p?.barcode) && (
+                                                    <span className="text-[10px] text-emerald-500 font-mono flex gap-2">
+                                                        {p.code ? <span>کد: {p.code}</span> : null}
+                                                        {p.barcode ? <span>بارکد: {p.barcode}</span> : null}
+                                                    </span>
+                                                )}
+                                            </div>
+                                         );
+                                      })()}
                                     </div>
                                   ) : (
                                     <input
@@ -3563,7 +3598,20 @@ export default function App() {
                                   {item.productId ? (
                                     <div className="font-black text-slate-800 flex flex-col gap-1">
                                       <span>{item.productName}</span>
-                                      <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 self-start px-2 py-0.5 rounded-md">کالای سیستمی</span>
+                                      {(() => {
+                                         const p = products.find(prod => prod.id === item.productId);
+                                         return (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 self-start px-2 py-0.5 rounded-md">کالای سیستمی</span>
+                                                {(p?.code || p?.barcode) && (
+                                                    <span className="text-[10px] text-indigo-500 font-mono flex gap-2">
+                                                        {p.code ? <span>کد: {p.code}</span> : null}
+                                                        {p.barcode ? <span>بارکد: {p.barcode}</span> : null}
+                                                    </span>
+                                                )}
+                                            </div>
+                                         );
+                                      })()}
                                     </div>
                                   ) : (
                                     <input
@@ -11131,14 +11179,14 @@ export default function App() {
       const personCode = relatedPerson?.personCode ? `[${relatedPerson.personCode}] ` : '';
 
       return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-gray-900/50 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-2xl flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none"
+              className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-[450px] max-h-full flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-[148mm] print:h-auto print:max-w-none print:max-h-none mx-auto"
             >
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden relative z-10 shadow-sm">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden relative z-10 shadow-sm shrink-0">
                 <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <Printer className="w-5 h-5 text-indigo-500" />
                   پیش‌نمایش چاپ رسید
@@ -11151,77 +11199,77 @@ export default function App() {
                 </button>
               </div>
               
-              <div id="print-area" className="p-8 print:p-0 bg-white relative overflow-hidden min-h-[500px]">
+              <div id="print-area" className="p-6 md:p-8 print:p-2 bg-white relative overflow-y-auto overflow-x-hidden print:overflow-hidden flex-1 block">
                 {/* Background Watermark Pattern */}
                 <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none flex items-center justify-center overflow-hidden">
-                  <div className="grid grid-cols-4 gap-8 transform rotate-12 scale-150">
+                  <div className="grid grid-cols-4 gap-4 md:gap-8 transform rotate-12 scale-150">
                     {Array(24).fill(0).map((_, i) => (
-                      <Store key={i} className="w-32 h-32" />
+                      <Store key={i} className="w-24 h-24 md:w-32 md:h-32" />
                     ))}
                   </div>
                 </div>
 
                 {storeSettings?.logoUrl && (
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-[0.03] pointer-events-none">
-                    <img src={storeSettings.logoUrl} alt="" className="w-96 h-96 object-contain grayscale" />
+                    <img src={storeSettings.logoUrl} alt="" className="w-72 h-72 md:w-96 md:h-96 object-contain grayscale" />
                   </div>
                 )}
                 
-                <div className="relative z-10 border-2 border-gray-200 print:border-gray-800 rounded-xl p-8 bg-white/90 backdrop-blur-sm print:bg-white print:rounded-none print:border-none print:p-4">
+                <div className="relative z-10 border-2 border-gray-200 print:border-gray-800 rounded-xl p-5 md:p-8 bg-white/90 backdrop-blur-sm print:bg-white print:rounded-none print:border-none print:p-2">
                   {/* Internal Stamp Effect */}
-                  <div className={`absolute top-12 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-4 ${themeStamp} rounded-lg px-6 py-2 text-4xl font-black font-mono tracking-widest hidden print:block`}>
+                  <div className={`absolute top-12 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-4 ${themeStamp} rounded-lg px-6 py-2 text-2xl md:text-3xl font-black font-mono tracking-widest hidden print:block`}>
                     {isReceive ? 'RECEIVED' : isSalary ? 'PAYROLL' : 'PAID'}
                   </div>
 
                   {/* Header */}
-                  <div className="flex justify-between items-start mb-8 pb-6 border-b-2 border-gray-100">
+                  <div className="flex justify-between items-start mb-4 md:mb-6 pb-4 md:pb-6 border-b-2 border-gray-100">
                     <div className="flex flex-col gap-1 w-1/3">
                       {storeSettings?.logoUrl ? (
-                         <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 object-contain rounded-xl" />
+                         <img src={storeSettings.logoUrl} alt="Logo" className="w-12 h-12 md:w-16 md:h-16 object-contain rounded-xl" />
                       ) : (
-                         <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center">
-                           <Store className="w-7 h-7 text-indigo-500" />
+                         <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-50 rounded-xl flex items-center justify-center">
+                           <Store className="w-6 h-6 md:w-7 md:h-7 text-indigo-500" />
                          </div>
                       )}
-                      <h2 className="text-xl font-black text-gray-900 mt-2">{storeSettings?.storeName || 'فروشگاه من'}</h2>
-                      <p className="text-xs text-gray-500 font-medium leading-relaxed max-w-[200px] mt-1 line-clamp-2">{storeSettings?.address}</p>
-                      {storeSettings?.phone && <p className="text-xs text-gray-500 font-mono mt-1 text-left" dir="ltr">{storeSettings.phone}</p>}
+                      <h2 className="text-sm md:text-lg font-black text-gray-900 mt-2 line-clamp-1">{storeSettings?.storeName || 'فروشگاه من'}</h2>
+                      <p className="text-[10px] md:text-xs text-gray-500 font-medium leading-relaxed max-w-[200px] mt-1 line-clamp-2">{storeSettings?.address}</p>
+                      {storeSettings?.phone && <p className="text-[10px] md:text-xs text-gray-500 font-mono mt-1 text-left" dir="ltr">{storeSettings.phone}</p>}
                     </div>
                     
                     <div className="flex flex-col items-center justify-center text-center w-1/3">
-                      <div className={`px-4 py-1.5 rounded-full ${themeBg} border ${themeBorder} mb-3`}>
-                        <h1 className={`text-xl font-black tracking-tight ${themeText}`}>{receiptTitle}</h1>
+                      <div className={`px-3 py-1.5 md:px-4 md:py-1.5 rounded-full ${themeBg} border ${themeBorder} mb-2`}>
+                        <h1 className={`text-base md:text-lg font-black tracking-tight ${themeText} whitespace-nowrap`}>{receiptTitle}</h1>
                       </div>
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded">Official Receipt</span>
+                      <span className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded">Offical Receipt</span>
                     </div>
 
-                    <div className="flex flex-col items-end w-1/3 gap-3">
-                      <div className="bg-gray-50 rounded-xl border border-gray-200 p-3 min-w-[140px]">
-                        <span className="block text-[10px] text-gray-500 font-bold mb-1">شماره رسید</span>
-                        <span className="font-mono text-base font-bold text-gray-900">{printingTransaction.receiptNumber || `#${printingTransaction.id}`}</span>
+                    <div className="flex flex-col items-end w-1/3 gap-2">
+                      <div className="bg-gray-50 rounded-lg border border-gray-200 p-2 md:p-3 min-w-[120px] md:min-w-[140px]">
+                        <span className="block text-[9px] md:text-[10px] text-gray-500 font-bold mb-1">شماره رسید</span>
+                        <span className="font-mono text-sm md:text-base font-bold text-gray-900">{printingTransaction.receiptNumber || `#${printingTransaction.id}`}</span>
                       </div>
-                      <div className="bg-gray-50 rounded-xl border border-gray-200 p-3 min-w-[140px]">
-                        <span className="block text-[10px] text-gray-500 font-bold mb-1">تاریخ عملیات</span>
-                        <span className="text-sm font-bold text-gray-800">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                      <div className="bg-gray-50 rounded-lg border border-gray-200 p-2 md:p-3 min-w-[120px] md:min-w-[140px]">
+                        <span className="block text-[9px] md:text-[10px] text-gray-500 font-bold mb-1">تاریخ عملیات</span>
+                        <span className="text-xs md:text-sm font-bold text-gray-800">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
                       </div>
                     </div>
                   </div>
                   
                   {/* Body details */}
-                  <div className="mb-8 space-y-6">
-                    <div className="grid grid-cols-2 gap-6 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                  <div className="mb-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50/50 p-3 md:p-4 rounded-xl border border-gray-100">
                       <div>
-                        <span className="block text-[11px] text-gray-500 font-bold mb-2 uppercase tracking-wide">در وجه / طرف حساب</span>
-                        <span className="text-lg font-black text-gray-900">{personCode}{personName}</span>
+                        <span className="block text-[10px] md:text-[11px] text-gray-500 font-bold mb-1 uppercase tracking-wide">در وجه / طرف حساب</span>
+                        <span className="text-sm md:text-base font-black text-gray-900">{personCode}{personName}</span>
                       </div>
                       {!isSalary && (
                         <div>
-                          <span className="block text-[11px] text-gray-500 font-bold mb-2 uppercase tracking-wide">از طریق حساب عملیاتی</span>
-                          <span className="text-base font-bold text-gray-800 flex items-center gap-2">
+                          <span className="block text-[10px] md:text-[11px] text-gray-500 font-bold mb-1 uppercase tracking-wide">از طریق حساب عملیاتی</span>
+                          <span className="text-xs md:text-sm font-bold text-gray-800 flex items-center gap-1.5">
                              {printingTransaction.resourceType === 'bank' 
-                               ? <><Wallet className="w-4 h-4 text-gray-400"/> بانک {(accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص')}</>
+                               ? <><Wallet className="w-3.5 h-3.5 text-gray-400"/> بانک {(accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص')}</>
                                : printingTransaction.resourceType === 'cashbox' 
-                                 ? <><Database className="w-4 h-4 text-gray-400"/> صندوق {(cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص')}</>
+                                 ? <><Database className="w-3.5 h-3.5 text-gray-400"/> صندوق {(cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص')}</>
                                  : 'نامشخص'}
                           </span>
                         </div>
@@ -11229,9 +11277,9 @@ export default function App() {
                     </div>
 
                     {printingTransaction.description && (
-                      <div className="px-2">
-                        <span className="block text-[11px] text-gray-500 font-bold mb-2 uppercase tracking-wide">بابت / شرح سند</span>
-                        <span className="text-sm font-medium text-gray-800 leading-8 relative inline-block w-full border-b border-dashed border-gray-300 pb-1">
+                      <div className="px-2 pb-2">
+                        <span className="block text-[10px] md:text-[11px] text-gray-500 font-bold mb-1.5 uppercase tracking-wide">بابت / شرح سند</span>
+                        <span className="text-xs md:text-sm font-medium text-gray-800 leading-6 md:leading-8 relative inline-block w-full border-b border-dashed border-gray-300 pb-1">
                           {printingTransaction.description}
                         </span>
                       </div>
@@ -11239,17 +11287,17 @@ export default function App() {
                   </div>
                   
                   {/* Amount Block */}
-                  <div className="relative mb-12">
+                  <div className="relative mb-6 md:mb-8">
                     <div className="absolute inset-0 bg-gray-50 border-y border-dashed border-gray-300 blur-xs opacity-50"></div>
-                    <div className="relative py-8 flex flex-col justify-center items-center text-center">
-                       <span className="text-sm text-gray-500 font-bold mb-3 uppercase tracking-widest bg-white px-4 border border-gray-200 rounded-full py-1">مبلغ عملیات</span>
-                       <div className="flex items-end gap-3 text-gray-900">
-                         <span className="text-4xl font-black font-mono tracking-tight" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
-                         <span className="text-lg font-bold text-gray-500 mb-1">{storeSettings?.currency || 'تومان'}</span>
+                    <div className="relative py-4 md:py-6 flex flex-col justify-center items-center text-center">
+                       <span className="text-[10px] md:text-[11px] text-gray-500 font-bold mb-2 md:mb-3 uppercase tracking-widest bg-white px-3 md:px-4 border border-gray-200 rounded-full py-0.5 md:py-1">مبلغ عملیات</span>
+                       <div className="flex items-end gap-2 md:gap-3 text-gray-900">
+                         <span className="text-2xl md:text-3xl font-black font-mono tracking-tight" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
+                         <span className="text-sm md:text-base font-bold text-gray-500 mb-1">{storeSettings?.currency || 'تومان'}</span>
                        </div>
-                       <div className="mt-4 flex items-center gap-2">
-                          <span className="text-xs font-bold text-gray-400">حروف:</span>
-                          <span className="text-sm font-extrabold text-gray-800 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                       <div className="mt-3 md:mt-4 flex items-center gap-1.5 md:gap-2">
+                          <span className="text-[10px] md:text-xs font-bold text-gray-400">حروف:</span>
+                          <span className="text-xs md:text-sm font-extrabold text-gray-800 bg-gray-100 px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg border border-gray-200 shadow-sm">
                             {numToPersianWords(printingTransaction.amount)} {storeSettings?.currency || 'تومان'}
                           </span>
                        </div>
@@ -11257,16 +11305,16 @@ export default function App() {
                   </div>
 
                   {/* Signatures */}
-                  <div className="flex justify-between items-end px-6 mt-16 pt-8 border-t-2 border-gray-100">
-                    <div className="text-center w-48">
-                      <span className="block w-full border-t border-gray-400 mb-3 border-dashed"></span>
-                      <span className="block text-xs font-bold text-gray-600">
+                  <div className="flex justify-between items-end px-4 md:px-6 mt-8 md:mt-12 pt-6 border-t-2 border-gray-100">
+                    <div className="text-center w-32 md:w-48">
+                      <span className="block w-full border-t border-gray-400 mb-2 md:mb-3 border-dashed"></span>
+                      <span className="block text-[10px] md:text-xs font-bold text-gray-600">
                         {storeSettings?.print_signature_1 || (isReceive ? 'مهر و امضای پرداخت کننده' : isSalary ? 'امضای کارمند' : 'مهر و امضای گیرنده وجه')}
                       </span>
                     </div>
-                    <div className="text-center w-48">
-                      <span className="block w-full border-t border-gray-400 mb-3 border-dashed"></span>
-                      <span className="block text-xs font-bold text-gray-600">
+                    <div className="text-center w-32 md:w-48">
+                      <span className="block w-full border-t border-gray-400 mb-2 md:mb-3 border-dashed"></span>
+                      <span className="block text-[10px] md:text-xs font-bold text-gray-600">
                         {storeSettings?.print_signature_2 || 'مهر و امضای امور مالی / مدیریت'}
                       </span>
                     </div>
@@ -11274,22 +11322,22 @@ export default function App() {
 
                   {/* Footer Note */}
                   {storeSettings?.print_footer_note && (
-                    <div className="mt-12 text-center text-[10px] text-gray-500 font-medium px-12 leading-relaxed">
+                    <div className="mt-6 md:mt-8 text-center text-[9px] md:text-[10px] text-gray-500 font-medium px-4 md:px-12 leading-relaxed">
                       {storeSettings.print_footer_note}
                     </div>
                   )}
 
-                  <div className="mt-6 text-center text-[9px] text-gray-400 font-mono tracking-widest opacity-50 flex justify-between px-4 border-t border-gray-100 pt-3">
+                  <div className="mt-4 md:mt-6 text-center text-[8px] md:text-[9px] text-gray-400 font-mono tracking-widest opacity-50 flex justify-between px-2 md:px-4 border-t border-gray-100 pt-2 md:pt-3">
                      <span>DOC: {printingTransaction.receiptNumber || printingTransaction.id} - TYPE: {printingTransaction.type.toUpperCase()}</span>
                      <span>PRINTED: {new Date().toLocaleString('en-US', { hour12: false })}</span>
                   </div>
                 </div>
               </div>
               
-              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden rounded-b-2xl relative z-10 shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)]">
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden rounded-b-2xl relative z-10 shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)] shrink-0">
                 <button
                   onClick={() => setPrintingTransaction(null)}
-                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all shadow-sm"
+                  className="px-6 py-2 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all shadow-sm"
                 >
                   انصراف
                 </button>
@@ -11297,7 +11345,7 @@ export default function App() {
                   onClick={() => {
                     setTimeout(() => window.print(), 100);
                   }}
-                  className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 hover:shadow-indigo-200 hover:-translate-y-0.5"
+                  className="px-8 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 hover:shadow-indigo-200 hover:-translate-y-0.5"
                 >
                   <Printer className="w-5 h-5" />
                   چاپ رسید
