@@ -56,7 +56,7 @@ export default function SearchableSelect({
   const filteredOptions = options.filter(
     (opt) =>
       opt.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opt.subLabel?.toLowerCase().includes(searchQuery.toLowerCase())
+      (typeof opt.subLabel === 'string' && opt.subLabel.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
