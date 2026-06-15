@@ -7,6 +7,7 @@ interface Option {
   label: string;
   subLabel?: React.ReactNode;
   badge?: string;
+  searchStr?: string;
 }
 
 interface SearchableSelectProps {
@@ -56,7 +57,8 @@ export default function SearchableSelect({
   const filteredOptions = options.filter(
     (opt) =>
       opt.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (typeof opt.subLabel === 'string' && opt.subLabel.toLowerCase().includes(searchQuery.toLowerCase()))
+      (typeof opt.subLabel === 'string' && opt.subLabel.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (opt.searchStr && opt.searchStr.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (

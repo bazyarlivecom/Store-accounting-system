@@ -183,14 +183,21 @@ export default function App() {
       ]
     },
     {
+      id: 'banking',
+      label: 'بانکداری',
+      icon: <CreditCard className="w-5 h-5" />,
+      items: [
+        { id: 'accounts', label: 'حساب‌های بانکی', roles: ['admin', 'accountant'] },
+        { id: 'cashboxes', label: 'صندوق‌ها', roles: ['admin', 'accountant', 'cashier'] },
+        { id: 'transfer', label: 'انتقال بین حساب‌ها', roles: ['admin', 'accountant'] },
+        { id: 'checks', label: 'چک‌ها', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
       id: 'treasury_finance',
       label: 'خزانه‌داری و مالی',
       icon: <Wallet className="w-5 h-5" />,
       items: [
-        { id: 'cashboxes', label: 'صندوق‌ها', roles: ['admin', 'accountant', 'cashier'] },
-        { id: 'accounts', label: 'حساب‌های بانکی', roles: ['admin', 'accountant'] },
-        { id: 'checks', label: 'چک‌ها', roles: ['admin', 'accountant'] },
-        { id: 'transfer', label: 'انتقال وجه', roles: ['admin', 'accountant'] },
         { id: 'create_receive_receipt', label: 'ثبت رسید دریافت', roles: ['admin', 'accountant', 'cashier'] },
         { id: 'list_receive_receipt', label: 'لیست رسید دریافت', roles: ['admin', 'accountant'] },
         { id: 'create_pay_receipt', label: 'ثبت رسید پرداخت', roles: ['admin', 'accountant'] },
@@ -1150,17 +1157,38 @@ export default function App() {
     }
     
     // Generate simple receipt number for review
-    const receiptPrefix = type === 'receive' ? (storeSettings.prefix_receive_receipt || 'RD-') : (storeSettings.prefix_pay_receipt || 'PD-');
+    const typeKey = type === 'receive' ? 'receive_receipt' : 'pay_receipt';
+    const defaultPrefix = type === 'receive' ? 'RD-' : 'PD-';
+    const receiptPrefix = typeof storeSettings[`prefix_${typeKey}`] !== 'undefined' 
+      ? storeSettings[`prefix_${typeKey}`] 
+      : defaultPrefix;
+      
     const existingRelated = transactions.filter((t: any) => t.type === type && t.receiptNumber);
-    let nextNum = 1001;
+    
+    // Calculate sequential number based on settings
+    const startNumStr = storeSettings[`start_${typeKey}`] || storeSettings.invoiceStartNumber || '1000';
+    const lenStr = storeSettings[`len_${typeKey}`] || storeSettings.invoiceNumberLength || '6';
+    
+    const startNum = parseInt(startNumStr, 10);
+    const numLength = Math.max(1, parseInt(lenStr, 10));
+    
+    let maxNum = startNum - 1;
+    
     if (existingRelated.length > 0) {
       const nums = existingRelated.map((t: any) => {
-        const match = String(t.receiptNumber).match(/\d+/);
+        let numStr = String(t.receiptNumber);
+        if (numStr.startsWith(receiptPrefix)) {
+          numStr = numStr.substring(receiptPrefix.length);
+        }
+        const match = numStr.match(/\d+/);
         return match ? parseInt(match[0], 10) : 0;
       });
-      nextNum = Math.max(...nums) + 1;
+      const maxExisting = Math.max(...nums);
+      if (maxExisting > maxNum) maxNum = maxExisting;
     }
-    const receiptNumber = `${receiptPrefix}${nextNum}`;
+    const nextNum = maxNum + 1;
+    const formattedNum = String(nextNum).padStart(numLength, '0');
+    const receiptNumber = `${receiptPrefix}${formattedNum}`;
     
     const payload = {
         type,
@@ -1261,17 +1289,32 @@ export default function App() {
 
       
       // Auto-assign receipt number for salary
-      const salaryPrefix = storeSettings.prefix_salary || 'PAY-';
+      const salaryPrefix = storeSettings.prefix_salary !== undefined ? storeSettings.prefix_salary : 'PAY-';
+      
+      const startNumStr = storeSettings.start_salary || storeSettings.invoiceStartNumber || '1000';
+      const lenStr = storeSettings.len_salary || storeSettings.invoiceNumberLength || '6';
+      
+      const startNum = parseInt(startNumStr, 10);
+      const numLength = Math.max(1, parseInt(lenStr, 10));
+      
+      let maxNum = startNum - 1;
+      
       const existingRelated = transactions.filter((t: any) => t.type === 'salary' && t.receiptNumber);
-      let nextNum = 1001;
       if (existingRelated.length > 0) {
         const nums = existingRelated.map((t: any) => {
-          const match = String(t.receiptNumber).match(/\d+/);
+          let numStr = String(t.receiptNumber);
+          if (numStr.startsWith(salaryPrefix)) {
+            numStr = numStr.substring(salaryPrefix.length);
+          }
+          const match = numStr.match(/\d+/);
           return match ? parseInt(match[0], 10) : 0;
         });
-        nextNum = Math.max(...nums) + 1;
+        const maxExisting = Math.max(...nums);
+        if (maxExisting > maxNum) maxNum = maxExisting;
       }
-      const receiptNumber = `${salaryPrefix}${nextNum}`;
+      
+      const nextNum = maxNum + 1;
+      const receiptNumber = `${salaryPrefix}${String(nextNum).padStart(numLength, '0')}`;
 
       const payload = {
         type: 'salary',
@@ -2062,20 +2105,59 @@ export default function App() {
     return hasAny;
   };
 
-  const getInvoicePrefix = () => {
-    if (activeTab === 'create_warehouse_receipt' || invoiceType === 'warehouse_receipt') return storeSettings.prefix_warehouse_receipt || 'REC-';
-    if (activeTab === 'create_warehouse_remittance' || invoiceType === 'warehouse_remittance') return storeSettings.prefix_warehouse_remittance || 'REM-';
-    if (activeTab === 'create_purchase' || invoiceType === 'purchase') return storeSettings.prefix_purchase || 'PUR-';
-    if (invoiceType === 'proforma') return storeSettings.prefix_proforma || 'PF-';
-    if (activeTab === 'create_sale' || invoiceType === 'sale') return storeSettings.prefix_sale || 'INV-';
-    return 'INV-';
+  const getInvoiceNumber = () => {
+    let typeKey = 'sale';
+    if (activeTab === 'create_warehouse_receipt' || invoiceType === 'warehouse_receipt') typeKey = 'warehouse_receipt';
+    else if (activeTab === 'create_warehouse_remittance' || invoiceType === 'warehouse_remittance') typeKey = 'warehouse_remittance';
+    else if (activeTab === 'create_purchase' || invoiceType === 'purchase') typeKey = 'purchase';
+    else if (invoiceType === 'proforma') typeKey = 'proforma';
+    
+    // Default prefixes if not configured
+    const defaultPrefixes: Record<string, string> = {
+      sale: 'INV-', purchase: 'PUR-', proforma: 'PF-', 
+      warehouse_receipt: 'REC-', warehouse_remittance: 'REM-'
+    };
+    
+    const prefix = typeof storeSettings[`prefix_${typeKey}`] !== 'undefined' 
+      ? storeSettings[`prefix_${typeKey}`] 
+      : defaultPrefixes[typeKey];
+      
+    // Calculate sequential number based on settings
+    const startNumStr = storeSettings[`start_${typeKey}`] || storeSettings.invoiceStartNumber || '1000';
+    const lenStr = storeSettings[`len_${typeKey}`] || storeSettings.invoiceNumberLength || '6';
+    
+    const startNum = parseInt(startNumStr, 10);
+    const numLength = Math.max(1, parseInt(lenStr, 10));
+
+    let maxNum = startNum - 1;
+
+    invoices.forEach(inv => {
+      // Determine this invoice type
+      let invType = 'sale';
+      if (inv.type) invType = inv.type;
+      
+      if (invType === typeKey && inv.invoiceNumber) {
+        let numStr = String(inv.invoiceNumber);
+        if (numStr.startsWith(prefix)) {
+          numStr = numStr.substring(prefix.length);
+        }
+        const num = parseInt(numStr.replace(/\D/g, ''), 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+
+    const nextNum = maxNum + 1;
+    const formattedNum = String(nextNum).padStart(numLength, '0');
+    return `${prefix}${formattedNum}`;
   };
 
   const saveInvoiceData = async (customPayload?: any) => {
     setSubmitting(true);
     setSuccessMsg('');
 
-    const finalInvoiceNumber = invoiceMode === 'auto' ? `${getInvoicePrefix()}${Math.floor(Math.random() * 1000000)}` : invoiceNumber;
+    const finalInvoiceNumber = invoiceMode === 'auto' ? getInvoiceNumber() : invoiceNumber;
 
     if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && !invoiceWarehouseId) {
       customAlert('لطفاً در قسمت توضیحات مبدا/مقصد فرم، یک انبار را مشخص کنید.');
@@ -2095,7 +2177,7 @@ export default function App() {
 
     const payload = customPayload ? {
       ...customPayload,
-      invoiceNumber: customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') ? `${getInvoicePrefix()}${Math.floor(Math.random() * 1000000)}` : customPayload.invoiceNumber
+      invoiceNumber: customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') ? getInvoiceNumber() : customPayload.invoiceNumber
     } : {
       invoiceNumber: finalInvoiceNumber,
       title: invoiceTitle,
@@ -2163,7 +2245,18 @@ export default function App() {
       
       // Auto-create warehouse remittance for sales
       if (payload.type === 'sale') {
-        const autoRemittanceNumber = `${storeSettings.prefix_warehouse_remittance || 'REM-'}${Math.floor(Math.random() * 1000000)}`;
+        const startNum = parseInt(storeSettings.invoiceStartNumber || '1000', 10);
+        const remPrefix = storeSettings.prefix_warehouse_remittance || 'REM-';
+        const numLength = Math.max(1, parseInt(storeSettings.invoiceNumberLength || '6', 10));
+        let maxNum = startNum - 1;
+        invoices.forEach(inv => {
+          if (inv.invoiceNumber && inv.invoiceNumber.startsWith(remPrefix)) {
+             const num = parseInt(inv.invoiceNumber.substring(remPrefix.length), 10);
+             if (!isNaN(num) && num > maxNum) maxNum = num;
+          }
+        });
+        const autoRemittanceNumber = `${remPrefix}${String(maxNum + 1).padStart(numLength, '0')}`;
+
         const remittancePayload = {
            isAutoGenerated: true,
            invoiceNumber: autoRemittanceNumber,
@@ -2240,6 +2333,10 @@ export default function App() {
       customAlert('لطفاً انبار را مشخص کنید.');
       return;
     }
+    if ((activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+      customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
+      return;
+    }
     await saveInvoiceData();
   };
 
@@ -2251,6 +2348,11 @@ export default function App() {
     
     if ((activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && !invoiceWarehouseId) {
       customAlert('لطفاً انبار را مشخص کنید.');
+      return;
+    }
+    
+    if ((activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+      customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
       return;
     }
 
@@ -2812,7 +2914,8 @@ export default function App() {
                                 value: p.id,
                                 label: p.name,
                                 subLabel: formatProductStockDetails(p),
-                                badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                                badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                                searchStr: `${p.code || ''} ${p.barcode || ''}`
                               }))}
                               value=""
                               onChange={(val) => handleFastAddProduct(String(val))}
@@ -2921,7 +3024,7 @@ export default function App() {
                                     );
                                   })()}
                               </td>
-                              {(activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance') && (
+                              {(activeTab === 'create_warehouse_receipt' || activeTab === 'create_warehouse_remittance' || activeTab === 'create_sale') && (
                                 <td className="p-4">
                                   <select 
                                     value={item.warehouseId || ''} 
@@ -2933,14 +3036,14 @@ export default function App() {
                                       const stockInfo = item.productId ? getProductStockInfo(item.productId) : null;
                                       return warehouses.filter(w => {
                                          if (w.isActive === false) return false;
-                                         if ((activeTab === 'create_warehouse_remittance') && stockInfo) {
+                                         if ((activeTab === 'create_warehouse_remittance' || activeTab === 'create_sale') && stockInfo) {
                                             const avail = stockInfo.warehouses[w.id]?.physical || 0;
                                             return storeSettings.allowNegativeStock || avail > 0 || String(item.warehouseId) === String(w.id);
                                          }
                                          return true;
                                       }).map(w => {
                                          const avail = stockInfo?.warehouses[w.id]?.physical || 0;
-                                         const text = ((activeTab === 'create_warehouse_remittance') && stockInfo) ? `${w.name} (موجودی: ${avail})` : w.name;
+                                         const text = ((activeTab === 'create_warehouse_remittance' || activeTab === 'create_sale') && stockInfo) ? `${w.name} (موجودی: ${avail})` : w.name;
                                          return <option key={w.id} value={w.id}>{text}</option>;
                                       });
                                     })()}
@@ -3122,7 +3225,8 @@ export default function App() {
                               value: p.id,
                               label: p.name,
                               subLabel: undefined,
-                              badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                              badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                              searchStr: `${p.code || ''} ${p.barcode || ''}`
                             }))}
                             value=""
                             onChange={(val) => handleFastAddProduct(String(val))}
@@ -3409,7 +3513,8 @@ export default function App() {
                               value: p.id,
                               label: p.name,
                               subLabel: formatProductStockDetails(p),
-                              badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                              badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                              searchStr: `${p.code || ''} ${p.barcode || ''}`
                             }))}
                             value=""
                             onChange={(val) => handleFastAddProduct(String(val))}
@@ -7127,105 +7232,67 @@ export default function App() {
               {settingsTab === 'numbering' && (
                 <div className="flex flex-col gap-6">
                   <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl mb-2">
-                    <p className="text-sm text-indigo-800 font-medium">در این بخش پیشوند شماره‌گذاری خودکار انواع اسناد را تعیین کنید.</p>
+                    <p className="text-sm text-indigo-800 font-medium text-right">در این بخش الگو، پیشوند، شماره شروع و تعداد ارقام قسمت عددی انواع اسناد را به صورت جداگانه تعیین کنید.</p>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">فاکتور فروش</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_sale || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_sale: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="INV-"
-                      />
-                    </div>
-                    
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">پیش‌فاکتور (Proforma)</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_proforma || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_proforma: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="PF-"
-                      />
-                    </div>
 
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">فاکتور خرید</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_purchase || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_purchase: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="PUR-"
-                      />
-                    </div>
-
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">رسید انبار (ورود)</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_warehouse_receipt || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_warehouse_receipt: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="REC-"
-                      />
-                    </div>
-
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">حواله انبار (خروج)</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_warehouse_remittance || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_warehouse_remittance: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="REM-"
-                      />
-                    </div>
-
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">سند دریافت وجه</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_receive_receipt || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_receive_receipt: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="RD-"
-                      />
-                    </div>
-
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">سند پرداخت وجه</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_pay_receipt || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_pay_receipt: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="PD-"
-                      />
-                    </div>
-                    
-                    <div className="w-full text-right">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">فیش حقوق و دستمزد</label>
-                      <input
-                        type="text"
-                        value={settingsForm.prefix_salary || ''}
-                        onChange={e => setSettingsForm({...settingsForm, prefix_salary: e.target.value})}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                        dir="ltr"
-                        placeholder="PAY-"
-                      />
-                    </div>
+                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                    <table className="w-full text-sm text-right" dir="rtl">
+                      <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
+                        <tr>
+                          <th className="p-4 w-1/4">نوع سند / فرم</th>
+                          <th className="p-4 w-1/4">پیشوند نمادین</th>
+                          <th className="p-4 w-1/4">شماره شروع</th>
+                          <th className="p-4 w-1/4">تعداد مجاز ارقام</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 table-fixed">
+                        {[
+                          { key: 'sale', label: 'فاکتور فروش', defaultPrefix: 'INV-' },
+                          { key: 'proforma', label: 'پیش‌فاکتور (Proforma)', defaultPrefix: 'PF-' },
+                          { key: 'purchase', label: 'فاکتور خرید', defaultPrefix: 'PUR-' },
+                          { key: 'warehouse_receipt', label: 'رسید انبار (ورود)', defaultPrefix: 'REC-' },
+                          { key: 'warehouse_remittance', label: 'حواله انبار (خروج)', defaultPrefix: 'REM-' },
+                          { key: 'receive_receipt', label: 'رسید دریافت وجه', defaultPrefix: 'RD-' },
+                          { key: 'pay_receipt', label: 'رسید پرداخت وجه', defaultPrefix: 'PD-' },
+                          { key: 'salary', label: 'فیش حقوقی', defaultPrefix: 'PAY-' },
+                        ].map(doc => (
+                          <tr key={doc.key} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="p-4 font-bold text-gray-800 border-l border-gray-100">{doc.label}</td>
+                            <td className="p-4 border-l border-gray-100">
+                              <input
+                                type="text"
+                                value={settingsForm[`prefix_${doc.key}`] || ''}
+                                onChange={e => setSettingsForm({...settingsForm, [`prefix_${doc.key}`]: e.target.value})}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
+                                dir="ltr"
+                                placeholder={doc.defaultPrefix}
+                              />
+                            </td>
+                            <td className="p-4 border-l border-gray-100">
+                              <input
+                                type="number"
+                                value={settingsForm[`start_${doc.key}`] || ''}
+                                onChange={e => setSettingsForm({...settingsForm, [`start_${doc.key}`]: e.target.value})}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
+                                dir="ltr"
+                                placeholder="1000"
+                              />
+                            </td>
+                            <td className="p-4">
+                              <input
+                                type="number"
+                                min="1" max="15"
+                                value={settingsForm[`len_${doc.key}`] || ''}
+                                onChange={e => setSettingsForm({...settingsForm, [`len_${doc.key}`]: parseInt(e.target.value) || ''})}
+                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
+                                dir="ltr"
+                                placeholder="6"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
@@ -7498,7 +7565,8 @@ export default function App() {
                   value: p.id,
                   label: p.name,
                   subLabel: formatProductStockDetails(p),
-                  badge: p.type === 'service' ? 'خدمات' : 'کالا'
+                  badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                  searchStr: `${p.code || ''} ${p.barcode || ''}`
                 }))}
                 value=""
                 onChange={(val) => {
@@ -10151,7 +10219,16 @@ export default function App() {
                               {viewingInvoice.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
-                                  <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
+                                  <td className="p-4 text-right text-gray-900 font-extrabold">
+                                    <div className="flex flex-col gap-1">
+                                      <span>{item.productName || 'توضیحات پیش‌فرض'}</span>
+                                      {item.warehouseId && (
+                                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full w-max mt-0.5 border border-emerald-100/50">
+                                          انبار: {warehouses.find(w => w.id?.toString() === item.warehouseId?.toString())?.name || 'نامشخص'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
                                   <td className="p-4 text-center text-gray-800 font-sans font-black border-r border-gray-100/50" dir="rtl">{formatNumber(item.quantity)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
                                   {!viewingInvoice.type.includes('warehouse') && (
@@ -10877,7 +10954,16 @@ export default function App() {
                               {previewInvoiceData.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                   <td className="p-4 text-center text-gray-400 font-sans font-bold">{idx + 1}</td>
-                                  <td className="p-4 text-right text-gray-900 font-extrabold">{item.productName || 'توضیحات پیش‌فرض'}</td>
+                                  <td className="p-4 text-right text-gray-900 font-extrabold">
+                                    <div className="flex flex-col gap-1">
+                                      <span>{item.productName || 'توضیحات پیش‌فرض'}</span>
+                                      {item.warehouseId && (
+                                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full w-max mt-0.5 border border-emerald-100/50">
+                                          انبار: {warehouses.find(w => w.id?.toString() === item.warehouseId?.toString())?.name || 'نامشخص'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
                                   <td className="p-4 text-center text-gray-800 font-sans font-black border-r border-gray-100/50" dir="rtl">{formatNumber(item.quantity || 1)} <span className="text-[10px] text-gray-500 font-normal">{item.selectedUnit || '-'}</span>
                                   </td>
                                   {(!activeTab.includes('warehouse')) && (
@@ -11027,123 +11113,200 @@ export default function App() {
       </footer>
       </div>
     </div>
-    {printingTransaction && (
+    {printingTransaction && (() => {
+      const isReceive = printingTransaction.type === 'receive';
+      const isSalary = printingTransaction.type === 'salary';
+      const isPay = printingTransaction.type === 'pay';
+      
+      const themeColor = isReceive ? 'emerald' : isSalary ? 'blue' : 'rose';
+      const themeBg = isReceive ? 'bg-emerald-50' : isSalary ? 'bg-blue-50' : 'bg-rose-50';
+      const themeText = isReceive ? 'text-emerald-700' : isSalary ? 'text-blue-700' : 'text-rose-700';
+      const themeBorder = isReceive ? 'border-emerald-200' : isSalary ? 'border-blue-200' : 'border-rose-200';
+      const themeStamp = isReceive ? 'border-emerald-500/30 text-emerald-500/20' : isSalary ? 'border-blue-500/30 text-blue-500/20' : 'border-rose-500/30 text-rose-500/20';
+      
+      const receiptTitle = isReceive ? 'رسید دریافت وجه' : isSalary ? 'فیش حقوق و دستمزد' : 'رسید پرداخت وجه';
+      
+      const relatedPerson = persons.find(p => p.id === printingTransaction.personId || p.id?.toString() === printingTransaction.personId?.toString());
+      const personName = relatedPerson?.name || 'نامشخص';
+      const personCode = relatedPerson?.personCode ? `[${relatedPerson.personCode}] ` : '';
+
+      return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-full max-w-lg flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none"
+              className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-2xl flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none"
             >
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 print:hidden">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden relative z-10 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <Printer className="w-5 h-5 text-indigo-500" />
                   پیش‌نمایش چاپ رسید
                 </h3>
                 <button
                   onClick={() => setPrintingTransaction(null)}
-                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors bg-gray-50 border border-gray-200"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div id="print-area" className="p-8 print:p-0 bg-white">
-                <div className="text-center mb-6">
-                  {storeSettings?.logoUrl ? (
-                    <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 mx-auto object-cover rounded-xl mb-3" />
-                  ) : (
-                    <div className="w-16 h-16 mx-auto bg-indigo-50 rounded-xl flex items-center justify-center mb-3">
-                      <Store className="w-8 h-8 text-indigo-500" />
-                    </div>
-                  )}
-                  <h2 className="text-xl font-black text-gray-900 mb-1">{storeSettings?.storeName || 'فروشگاه من'}</h2>
-                  <p className="text-xs text-gray-500 font-medium">رسید {printingTransaction.type === 'receive' ? 'دریافت وجه' : printingTransaction.type === 'salary' ? 'حقوق و دستمزد' : 'پرداخت وجه'}</p>
+              <div id="print-area" className="p-8 print:p-0 bg-white relative overflow-hidden min-h-[500px]">
+                {/* Background Watermark Pattern */}
+                <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none flex items-center justify-center overflow-hidden">
+                  <div className="grid grid-cols-4 gap-8 transform rotate-12 scale-150">
+                    {Array(24).fill(0).map((_, i) => (
+                      <Store key={i} className="w-32 h-32" />
+                    ))}
+                  </div>
                 </div>
+
+                {storeSettings?.logoUrl && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-[0.03] pointer-events-none">
+                    <img src={storeSettings.logoUrl} alt="" className="w-96 h-96 object-contain grayscale" />
+                  </div>
+                )}
                 
-                <div className="border border-gray-200 rounded-xl p-5 mb-6">
-                  <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
-                    <div className="text-right">
-                      <span className="block text-[10px] text-gray-400 font-bold mb-1">شماره سند / رسید</span>
-                      <span className="font-mono text-sm font-bold shadow-sm px-2 py-1 bg-gray-50 rounded border border-gray-100">{printingTransaction.receiptNumber || `#${printingTransaction.id}`}</span>
+                <div className="relative z-10 border-2 border-gray-200 print:border-gray-800 rounded-xl p-8 bg-white/90 backdrop-blur-sm print:bg-white print:rounded-none print:border-none print:p-4">
+                  {/* Internal Stamp Effect */}
+                  <div className={`absolute top-12 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-4 ${themeStamp} rounded-lg px-6 py-2 text-4xl font-black font-mono tracking-widest hidden print:block`}>
+                    {isReceive ? 'RECEIVED' : isSalary ? 'PAYROLL' : 'PAID'}
+                  </div>
+
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-8 pb-6 border-b-2 border-gray-100">
+                    <div className="flex flex-col gap-1 w-1/3">
+                      {storeSettings?.logoUrl ? (
+                         <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 object-contain rounded-xl" />
+                      ) : (
+                         <div className="w-14 h-14 bg-indigo-50 rounded-xl flex items-center justify-center">
+                           <Store className="w-7 h-7 text-indigo-500" />
+                         </div>
+                      )}
+                      <h2 className="text-xl font-black text-gray-900 mt-2">{storeSettings?.storeName || 'فروشگاه من'}</h2>
+                      <p className="text-xs text-gray-500 font-medium leading-relaxed max-w-[200px] mt-1 line-clamp-2">{storeSettings?.address}</p>
+                      {storeSettings?.phone && <p className="text-xs text-gray-500 font-mono mt-1 text-left" dir="ltr">{storeSettings.phone}</p>}
                     </div>
-                    <div className="text-left">
-                      <span className="block text-[10px] text-gray-400 font-bold mb-1">تاریخ</span>
-                      <span className="text-sm font-bold text-gray-700">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                    
+                    <div className="flex flex-col items-center justify-center text-center w-1/3">
+                      <div className={`px-4 py-1.5 rounded-full ${themeBg} border ${themeBorder} mb-3`}>
+                        <h1 className={`text-xl font-black tracking-tight ${themeText}`}>{receiptTitle}</h1>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded">Official Receipt</span>
+                    </div>
+
+                    <div className="flex flex-col items-end w-1/3 gap-3">
+                      <div className="bg-gray-50 rounded-xl border border-gray-200 p-3 min-w-[140px]">
+                        <span className="block text-[10px] text-gray-500 font-bold mb-1">شماره رسید</span>
+                        <span className="font-mono text-base font-bold text-gray-900">{printingTransaction.receiptNumber || `#${printingTransaction.id}`}</span>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl border border-gray-200 p-3 min-w-[140px]">
+                        <span className="block text-[10px] text-gray-500 font-bold mb-1">تاریخ عملیات</span>
+                        <span className="text-sm font-bold text-gray-800">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">طرف حساب / ذینفع:</span>
-                      <span className="font-bold text-gray-900">
-                        {persons.find(p => p.id === printingTransaction.personId || p.id.toString() === printingTransaction.personId?.toString())?.name || 'نامشخص'}
-                      </span>
+                  {/* Body details */}
+                  <div className="mb-8 space-y-6">
+                    <div className="grid grid-cols-2 gap-6 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
+                      <div>
+                        <span className="block text-[11px] text-gray-500 font-bold mb-2 uppercase tracking-wide">در وجه / طرف حساب</span>
+                        <span className="text-lg font-black text-gray-900">{personCode}{personName}</span>
+                      </div>
+                      {!isSalary && (
+                        <div>
+                          <span className="block text-[11px] text-gray-500 font-bold mb-2 uppercase tracking-wide">از طریق حساب عملیاتی</span>
+                          <span className="text-base font-bold text-gray-800 flex items-center gap-2">
+                             {printingTransaction.resourceType === 'bank' 
+                               ? <><Wallet className="w-4 h-4 text-gray-400"/> بانک {(accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص')}</>
+                               : printingTransaction.resourceType === 'cashbox' 
+                                 ? <><Database className="w-4 h-4 text-gray-400"/> صندوق {(cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص')}</>
+                                 : 'نامشخص'}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    {printingTransaction.type !== 'salary' && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">حساب عملیاتی:</span>
-                        <span className="font-bold text-gray-900">
-                          {printingTransaction.resourceType === 'bank' 
-                            ? ('بانک ' + (accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || '')) 
-                            : printingTransaction.resourceType === 'cashbox' 
-                              ? ('صندوق ' + (cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || ''))
-                              : 'نامشخص'}
+
+                    {printingTransaction.description && (
+                      <div className="px-2">
+                        <span className="block text-[11px] text-gray-500 font-bold mb-2 uppercase tracking-wide">بابت / شرح سند</span>
+                        <span className="text-sm font-medium text-gray-800 leading-8 relative inline-block w-full border-b border-dashed border-gray-300 pb-1">
+                          {printingTransaction.description}
                         </span>
                       </div>
                     )}
-                    {printingTransaction.description && (
-                      <div className="flex flex-col mt-4 pt-4 border-t border-gray-100">
-                        <span className="text-xs text-gray-500 mb-2 font-bold">بابت / توضیحات:</span>
-                        <span className="text-sm text-gray-800 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100 text-right">{printingTransaction.description}</span>
-                      </div>
-                    )}
                   </div>
-                </div>
-                
-                <div className="bg-amber-50/20 rounded-xl p-5 flex flex-col items-center justify-center border border-amber-200/50 shadow-sm">
-                  <span className="text-xs text-amber-800 mb-2 font-bold uppercase tracking-widest bg-amber-100/50 px-3 py-1 rounded-full text-[10px]">مبلغ رسمی سند</span>
-                  <div className="flex items-end gap-2 text-indigo-950 mb-2">
-                    <span className="text-3xl font-black font-mono text-left" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
-                    <span className="text-sm font-bold opacity-75 mb-1.5">{storeSettings?.currency || 'تومان'}</span>
+                  
+                  {/* Amount Block */}
+                  <div className="relative mb-12">
+                    <div className="absolute inset-0 bg-gray-50 border-y border-dashed border-gray-300 blur-xs opacity-50"></div>
+                    <div className="relative py-8 flex flex-col justify-center items-center text-center">
+                       <span className="text-sm text-gray-500 font-bold mb-3 uppercase tracking-widest bg-white px-4 border border-gray-200 rounded-full py-1">مبلغ عملیات</span>
+                       <div className="flex items-end gap-3 text-gray-900">
+                         <span className="text-4xl font-black font-mono tracking-tight" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
+                         <span className="text-lg font-bold text-gray-500 mb-1">{storeSettings?.currency || 'تومان'}</span>
+                       </div>
+                       <div className="mt-4 flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-400">حروف:</span>
+                          <span className="text-sm font-extrabold text-gray-800 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                            {numToPersianWords(printingTransaction.amount)} {storeSettings?.currency || 'تومان'}
+                          </span>
+                       </div>
+                    </div>
                   </div>
-                  <div className="text-xs font-bold text-gray-600 text-center border-t border-gray-100 pt-2 w-full leading-relaxed">
-                    مبلغ به حروف: <span className="text-indigo-900 font-extrabold">{numToPersianWords(printingTransaction.amount)} {storeSettings?.currency || 'تومان'}</span> تمام.
+
+                  {/* Signatures */}
+                  <div className="flex justify-between items-end px-6 mt-16 pt-8 border-t-2 border-gray-100">
+                    <div className="text-center w-48">
+                      <span className="block w-full border-t border-gray-400 mb-3 border-dashed"></span>
+                      <span className="block text-xs font-bold text-gray-600">
+                        {storeSettings?.print_signature_1 || (isReceive ? 'مهر و امضای پرداخت کننده' : isSalary ? 'امضای کارمند' : 'مهر و امضای گیرنده وجه')}
+                      </span>
+                    </div>
+                    <div className="text-center w-48">
+                      <span className="block w-full border-t border-gray-400 mb-3 border-dashed"></span>
+                      <span className="block text-xs font-bold text-gray-600">
+                        {storeSettings?.print_signature_2 || 'مهر و امضای امور مالی / مدیریت'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="mt-12 flex justify-between px-6">
-                  <div className="text-center">
-                    <span className="block text-xs font-bold text-gray-400 mb-8">مُهر و امضای فروشگاه</span>
-                    <span className="block w-24 border-t border-gray-300 mx-auto"></span>
-                  </div>
-                  <div className="text-center">
-                    <span className="block text-xs font-bold text-gray-400 mb-8">امضای تحویل دهنده / گیرنده</span>
-                    <span className="block w-24 border-t border-gray-300 mx-auto"></span>
+
+                  {/* Footer Note */}
+                  {storeSettings?.print_footer_note && (
+                    <div className="mt-12 text-center text-[10px] text-gray-500 font-medium px-12 leading-relaxed">
+                      {storeSettings.print_footer_note}
+                    </div>
+                  )}
+
+                  <div className="mt-6 text-center text-[9px] text-gray-400 font-mono tracking-widest opacity-50 flex justify-between px-4 border-t border-gray-100 pt-3">
+                     <span>DOC: {printingTransaction.receiptNumber || printingTransaction.id} - TYPE: {printingTransaction.type.toUpperCase()}</span>
+                     <span>PRINTED: {new Date().toLocaleString('en-US', { hour12: false })}</span>
                   </div>
                 </div>
               </div>
               
-              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden">
+              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden rounded-b-2xl relative z-10 shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)]">
                 <button
                   onClick={() => setPrintingTransaction(null)}
-                  className="px-6 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors shadow-sm"
+                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all shadow-sm"
                 >
-                  بستن
+                  انصراف
                 </button>
                 <button
                   onClick={() => {
                     setTimeout(() => window.print(), 100);
                   }}
-                  className="px-8 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm flex items-center justify-center gap-2"
+                  className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 hover:shadow-indigo-200 hover:-translate-y-0.5"
                 >
-                  <Printer className="w-4 h-4" />
-                  شروع چاپ
+                  <Printer className="w-5 h-5" />
+                  چاپ رسید
                 </button>
               </div>
             </motion.div>
           </div>
-        )}
+        )
+    })()}
     </>
   );
 }

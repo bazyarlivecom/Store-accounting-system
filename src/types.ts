@@ -173,6 +173,10 @@ export type CompanySettings = {
   invoiceNotes: string;
   allowNegativeStock?: boolean;
   requireWarehouse?: boolean;
+  invoicePrefix?: string;
+  invoiceStartNumber?: string;
+  invoiceNumberLength?: number;
+  [key: string]: any; // Allow custom numbering properties
 };
 
 export interface WarehouseStock {
