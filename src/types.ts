@@ -113,6 +113,7 @@ export type Account = {
   shebaNumber?: string;
   balance: number;
   accountHolder?: string;
+  title?: string;
 };
 
 export type Cashbox = {

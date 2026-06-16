@@ -98,7 +98,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer' | 'invoice_allocation'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -2358,16 +2358,18 @@ export default function App() {
           setInvoicePaymentStatus('unpaid');
           setInvoicePaidAmount(0);
         } else if (activeTab === 'create_warehouse_doc') {
-        if (draft.type === 'warehouse_receipt') {
-            setInvoiceType('warehouse_receipt');
-            setInvoiceTitle('رسید انبار (ورود کالا)');
-            setWarehouseOperationType('purchase_invoice');
-        } else {
-            setInvoiceType('warehouse_remittance');
-            setInvoiceTitle('حواله انبار (خروج کالا)');
-            setWarehouseOperationType('sales_invoice');
-        }
-        setWarehouseWizardStep(1);
+          const storedDraftStr = localStorage.getItem('invoice_draft');
+          const storedDraft = storedDraftStr ? JSON.parse(storedDraftStr) : null;
+          if (storedDraft && storedDraft.type === 'warehouse_receipt') {
+              setInvoiceType('warehouse_receipt');
+              setInvoiceTitle('رسید انبار (ورود کالا)');
+              setWarehouseOperationType('purchase_invoice');
+          } else {
+              setInvoiceType('warehouse_remittance');
+              setInvoiceTitle('حواله انبار (خروج کالا)');
+              setWarehouseOperationType('sales_invoice');
+          }
+          setWarehouseWizardStep(1);
     } else {
           setInvoiceType('sale');
           setInvoiceTitle('فاکتور فروش کالا');
@@ -2597,6 +2599,16 @@ export default function App() {
     const subtotal = calculateSubtotal();
     const final = subtotal * (1 - (overallDiscountPercent / 100));
     return final > 0 ? final : 0;
+  };
+
+  const invoiceOriginalTotal = () => {
+    return items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unitPrice || 0)), 0);
+  };
+
+  const invoiceTotalDiscount = () => {
+    const original = invoiceOriginalTotal();
+    const final = calculateFinalTotal();
+    return Math.max(0, original - final);
   };
 
   const formatCurrency = (amount: number) => {
@@ -3554,14 +3566,25 @@ export default function App() {
                       <div className="w-full lg:w-[420px] space-y-1">
                         <div className="bg-emerald-50/40 p-6 rounded-2xl border border-emerald-100/50 space-y-4">
                           <div className="flex justify-between items-center text-slate-500 font-bold">
-                            <span>جمع مبالغ:</span>
-                            <span className="font-sans font-black text-slate-700" dir="rtl">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                            <span>جمع مبالغ (بدون تخفیف):</span>
+                            <span className="font-sans font-black text-slate-700" dir="rtl">{formatCurrency(invoiceOriginalTotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
                           </div>
                           <div className="flex justify-between items-center text-rose-500 font-bold">
-                            <span>تخفیف کلی:</span>
-                            <span className="font-sans font-black" dir="rtl">% {overallDiscountPercent}</span>
+                            <span>مجموع کل تخفیف‌ها:</span>
+                            <span className="font-sans font-black text-rose-600" dir="rtl">{formatCurrency(invoiceTotalDiscount())} <span className="text-[10px]">{invoiceCurrency}</span></span>
                           </div>
-                          <div className="h-px bg-emerald-100/60 w-full my-5"></div>
+                          <div className="h-px bg-emerald-100/30 w-full my-2"></div>
+                          <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                            <span>ارزش پس از تخفیف سطری:</span>
+                            <span className="font-sans font-bold text-slate-600" dir="rtl">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          {overallDiscountPercent > 0 && (
+                            <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                              <span>تخفیف کلی فاکتور:</span>
+                              <span className="font-sans font-bold text-slate-600" dir="rtl">% {overallDiscountPercent}</span>
+                            </div>
+                          )}
+                          <div className="h-px bg-emerald-100/60 w-full my-4"></div>
                           <div className="flex justify-between items-center text-xl font-black text-emerald-800">
                             <span>مبلغ نهایی خرید:</span>
                             <span className="font-sans text-2xl text-emerald-950" dir="rtl">{formatCurrency(calculateFinalTotal())} <span className="text-xs">{invoiceCurrency}</span></span>
@@ -3865,14 +3888,25 @@ export default function App() {
                       <div className="w-full lg:w-[420px] space-y-1">
                         <div className="bg-indigo-50/40 p-6 rounded-2xl border border-indigo-100/50 space-y-4">
                           <div className="flex justify-between items-center text-slate-500 font-bold">
-                            <span>جمع مبالغ:</span>
-                            <span className="font-sans font-black text-slate-700" dir="rtl">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                            <span>جمع مبالغ (بدون تخفیف):</span>
+                            <span className="font-sans font-black text-slate-700" dir="rtl">{formatCurrency(invoiceOriginalTotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
                           </div>
                           <div className="flex justify-between items-center text-rose-500 font-bold">
-                            <span>تخفیف کلی:</span>
-                            <span className="font-sans font-black" dir="rtl">% {overallDiscountPercent}</span>
+                            <span>مجموع کل تخفیف‌ها:</span>
+                            <span className="font-sans font-black text-rose-600" dir="rtl">{formatCurrency(invoiceTotalDiscount())} <span className="text-[10px]">{invoiceCurrency}</span></span>
                           </div>
-                          <div className="h-px bg-indigo-100/60 w-full my-5"></div>
+                          <div className="h-px bg-indigo-100/30 w-full my-2"></div>
+                          <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                            <span>ارزش پس از تخفیف سطری:</span>
+                            <span className="font-sans font-bold text-slate-600" dir="rtl">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          {overallDiscountPercent > 0 && (
+                            <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                              <span>تخفیف کلی فاکتور:</span>
+                              <span className="font-sans font-bold text-slate-600" dir="rtl">% {overallDiscountPercent}</span>
+                            </div>
+                          )}
+                          <div className="h-px bg-indigo-100/60 w-full my-4"></div>
                           <div className="flex justify-between items-center text-xl font-black text-indigo-800">
                             <span>مبلغ نهایی فاکتور:</span>
                             <span className="font-sans text-2xl text-indigo-950" dir="rtl">{formatCurrency(calculateFinalTotal())} <span className="text-xs">{invoiceCurrency}</span></span>
@@ -10476,7 +10510,19 @@ export default function App() {
                            <div className="w-full md:w-5/12 bg-white border-2 border-emerald-900 rounded-3xl overflow-hidden flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
-                               <span className="font-sans text-left" dir="rtl">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                               <span className="font-sans text-left text-slate-700" dir="rtl">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                              </div>
+                              <div className="flex justify-between p-3 border-b border-emerald-200 bg-slate-50/50">
+                                <span>مبلغ کل بدون تخفیف:</span>
+                                <span className="font-sans text-left text-slate-700" dir="rtl">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0)}</span>
+                              </div>
+                              <div className="flex justify-between p-3 border-b border-emerald-200 text-rose-700 bg-rose-50/50">
+                                <span>مجموع کل تخفیف‌ها:</span>
+                                <span className="font-sans text-left text-rose-600" dir="rtl">{formatCurrency(Math.max(0, (viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0) - viewingInvoice.totalAmount))}</span>
+                              </div>
+                              <div className="flex justify-between p-2.5 border-b border-emerald-100 text-xs text-slate-500 opacity-80">
+                                <span>ارزش پس از تخفیف سطری:</span>
+                                <span className="font-sans text-left" dir="rtl">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
                              </div>
                              {viewingInvoice.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
@@ -10677,6 +10723,25 @@ export default function App() {
                             <div className="flex justify-between items-center text-gray-500">
                               <span>جمع اقلام:</span>
                               <span className="text-gray-900 font-mono text-left font-bold" dir="ltr">{formatCurrency(
+                                viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
+                              )}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-gray-500">
+                              <span>جمع مبالغ (بدون تخفیف):</span>
+                              <span className="text-gray-900 font-mono text-left font-bold" dir="ltr">{formatCurrency(
+                                viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0
+                              )}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-red-600">
+                              <span>مجموع کل تخفیف‌ها:</span>
+                              <span className="text-red-700 font-mono text-left font-bold" dir="ltr">{formatCurrency(
+                                Math.max(0, (viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0) - viewingInvoice.totalAmount)
+                              )}</span>
+                            </div>
+                            <div className="h-px bg-gray-200 w-full my-1"></div>
+                            <div className="flex justify-between items-center text-xs text-gray-400 opacity-80">
+                              <span>ارزش پس از تخفیف سطری:</span>
+                              <span className="text-gray-500 font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                 viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
                               )}</span>
                             </div>
@@ -11338,7 +11403,19 @@ export default function App() {
                            <div className="w-full md:w-5/12 bg-white border-2 border-emerald-900 rounded-3xl overflow-hidden flex flex-col font-bold text-emerald-950">
                              <div className="flex justify-between p-3 border-b border-emerald-200">
                                <span>ارزش خالص اقلام:</span>
-                               <span className="font-sans text-left" dir="rtl">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                               <span className="font-sans text-left text-slate-700" dir="rtl">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
+                              </div>
+                              <div className="flex justify-between p-3 border-b border-emerald-200 bg-slate-50/50">
+                                <span>مبلغ کل بدون تخفیف:</span>
+                                <span className="font-sans text-left text-slate-700" dir="rtl">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0)}</span>
+                              </div>
+                              <div className="flex justify-between p-3 border-b border-emerald-200 text-rose-700 bg-rose-50/50">
+                                <span>مجموع کل تخفیف‌ها:</span>
+                                <span className="font-sans text-left text-rose-600" dir="rtl">{formatCurrency(Math.max(0, (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0) - previewInvoiceData.totalAmount))}</span>
+                              </div>
+                              <div className="flex justify-between p-2.5 border-b border-emerald-100 text-xs text-slate-500 opacity-80">
+                                <span>ارزش پس از تخفیف سطری:</span>
+                                <span className="font-sans text-left" dir="rtl">{formatCurrency(previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0)}</span>
                              </div>
                              {previewInvoiceData.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
@@ -11482,6 +11559,25 @@ export default function App() {
                               <span>جمع اقلام:</span>
                               <span className="text-gray-900 font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                 previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
+                              )}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-gray-500">
+                              <span>جمع مبالغ (بدون تخفیف):</span>
+                              <span className="text-gray-900 font-mono text-left font-bold" dir="ltr">{formatCurrency(
+                                 previewInvoiceData.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0
+                              )}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-red-600">
+                              <span>مجموع کل تخفیف‌ها:</span>
+                              <span className="text-red-700 font-mono text-left font-bold" dir="ltr">{formatCurrency(
+                                 Math.max(0, (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0) - previewInvoiceData.totalAmount)
+                              )}</span>
+                            </div>
+                            <div className="h-px bg-gray-200 w-full my-1"></div>
+                            <div className="flex justify-between items-center text-xs text-gray-400 opacity-80">
+                              <span>ارزش پس از تخفیف سطری:</span>
+                              <span className="text-gray-500 font-mono text-left font-bold" dir="ltr">{formatCurrency(
+                                 previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0
                               )}</span>
                             </div>
                             {previewInvoiceData.overallDiscountPercent > 0 && (
