@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import DatePickerModule from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
+const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import { 
   CreditCard, Plus, Edit2, Trash2, CheckCircle, Clock, X, Save, 
   ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart
@@ -12,7 +16,7 @@ import {
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void }) {
+export default function CheckManagement({ showNotification, onUpdate }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, onUpdate?: () => void }) {
   const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks'>('checkbooks');
   const [checkbooks, setCheckbooks] = useState<Checkbook[]>([]);
   const [issuedChecks, setIssuedChecks] = useState<IssuedCheck[]>([]);
@@ -72,6 +76,7 @@ export default function CheckManagement({ showNotification }: { showNotification
     setReceivedChecks(await getReceivedChecks());
     setAccounts(await getAccounts());
     setPersons(await getPersons());
+    onUpdate?.();
   };
 
   const handleSaveCheckbook = async (e: React.FormEvent) => {
@@ -795,11 +800,33 @@ export default function CheckManagement({ showNotification }: { showNotification
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-black text-gray-700 mb-1">تاریخ صدور</label>
-                    <input type="text" value={icIssueDate} onChange={e => setIcIssueDate(e.target.value)} className="w-full border rounded-xl px-4 py-2 text-sm text-center font-sans" dir="ltr" placeholder="1405/01/01" />
+                    <div className="relative">
+                       <DatePicker
+                         value={icIssueDate as any || ''}
+                         onChange={(d: any) => setIcIssueDate(d ? d.format('YYYY/MM/DD') : '')}
+                         calendar={persian}
+                         locale={persian_fa}
+                         calendarPosition="bottom-right"
+                         containerClassName="w-full"
+                         inputClass="w-full border rounded-xl px-4 py-2 text-sm text-center font-sans focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                         placeholder="انتخاب تاریخ"
+                       />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-black text-gray-700 mb-1">تاریخ سررسید چک *</label>
-                    <input required type="text" value={icDueDate} onChange={e => setIcDueDate(e.target.value)} className="w-full border rounded-xl px-4 py-2 text-xs text-center font-black" dir="ltr" placeholder="1405/02/01" />
+                    <div className="relative">
+                       <DatePicker
+                         value={icDueDate as any || ''}
+                         onChange={(d: any) => setIcDueDate(d ? d.format('YYYY/MM/DD') : '')}
+                         calendar={persian}
+                         locale={persian_fa}
+                         calendarPosition="bottom-right"
+                         containerClassName="w-full"
+                         inputClass="w-full border rounded-xl px-4 py-2 text-sm font-black text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                         placeholder="انتخاب تاریخ"
+                       />
+                    </div>
                   </div>
                 </div>
 
@@ -865,11 +892,33 @@ export default function CheckManagement({ showNotification }: { showNotification
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-black text-gray-700 mb-1">تاریخ دریافت چک</label>
-                    <input type="text" value={rcReceiveDate} onChange={e => setRcReceiveDate(e.target.value)} className="w-full border rounded-xl px-4 py-2 text-sm text-center font-sans" dir="ltr" placeholder="1405/01/01" />
+                    <div className="relative">
+                       <DatePicker
+                         value={rcReceiveDate as any || ''}
+                         onChange={(d: any) => setRcReceiveDate(d ? d.format('YYYY/MM/DD') : '')}
+                         calendar={persian}
+                         locale={persian_fa}
+                         calendarPosition="top-right"
+                         containerClassName="w-full"
+                         inputClass="w-full border rounded-xl px-4 py-2 text-sm text-center font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                         placeholder="انتخاب تاریخ"
+                       />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-black text-gray-700 mb-1">تاریخ سررسید چک *</label>
-                    <input required type="text" value={rcDueDate} onChange={e => setRcDueDate(e.target.value)} className="w-full border rounded-xl px-4 py-2 text-xs text-center font-black" dir="ltr" placeholder="1405/03/01" />
+                    <div className="relative">
+                       <DatePicker
+                         value={rcDueDate as any || ''}
+                         onChange={(d: any) => setRcDueDate(d ? d.format('YYYY/MM/DD') : '')}
+                         calendar={persian}
+                         locale={persian_fa}
+                         calendarPosition="top-right"
+                         containerClassName="w-full"
+                         inputClass="w-full border rounded-xl px-4 py-2 text-sm text-center font-black focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                         placeholder="انتخاب تاریخ"
+                       />
+                    </div>
                   </div>
                 </div>
 

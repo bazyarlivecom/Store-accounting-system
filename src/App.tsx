@@ -2597,12 +2597,12 @@ export default function App() {
     });
 
     // Active/Pending Issued Checks
-    issuedChecks.filter(c => c.payeeId?.toString() === personId.toString() && (c.status === 'issued' || c.status === 'bounced' || !c.status)).forEach(c => {
+    issuedChecks.filter(c => c.payeeId?.toString() === personId.toString() && (c.status === 'issued' || !c.status)).forEach(c => {
         balance += (c.amount || 0);
     });
 
     // Active/Pending Received Checks
-    receivedChecks.filter(c => c.payerId?.toString() === personId.toString() && (c.status === 'received' || c.status === 'deposited' || c.status === 'bounced' || !c.status)).forEach(c => {
+    receivedChecks.filter(c => c.payerId?.toString() === personId.toString() && (c.status === 'received' || c.status === 'deposited' || !c.status)).forEach(c => {
         balance -= (c.amount || 0);
     });
     
@@ -7269,7 +7269,7 @@ export default function App() {
                   jalaliDate: c.issueDate || c.dueDate || '-',
                   type: `چک صادره (${statusLabel})`,
                   desc: c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`,
-                  debit: isCashed ? 0 : (c.amount || 0),
+                  debit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
                   credit: 0,
                   rawItem: c,
                   entryType: 'issued_check'
@@ -7294,7 +7294,7 @@ export default function App() {
                   type: `چک دریافتی (${statusLabel})`,
                   desc: c.description || `برگه چک دریافتی شماره ${c.checkNumber} - بانک ${c.bankName} به سررسید ${c.dueDate}`,
                   debit: 0,
-                  credit: isCashed ? 0 : (c.amount || 0),
+                  credit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
                   rawItem: c,
                   entryType: 'received_check'
                 };
@@ -7625,7 +7625,7 @@ export default function App() {
           })()}
         </motion.div>
             ) : activeTab === 'checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement showNotification={showNotification} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement showNotification={showNotification} onUpdate={fetchData} /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
             ) : activeTab === 'invoice_allocation' ? (
@@ -11000,7 +11000,7 @@ export default function App() {
                   jalaliDate: c.issueDate || c.dueDate || '-',
                   type: `چک صادره (${statusLabel})`,
                   desc: c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`,
-                  debit: isCashed ? 0 : (c.amount || 0),
+                  debit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
                   credit: 0,
                   rawItem: c,
                   entryType: 'issued_check'
@@ -11025,7 +11025,7 @@ export default function App() {
                   type: `چک دریافتی (${statusLabel})`,
                   desc: c.description || `برگه چک دریافتی شماره ${c.checkNumber} - بانک ${c.bankName} به سررسید ${c.dueDate}`,
                   debit: 0,
-                  credit: isCashed ? 0 : (c.amount || 0),
+                  credit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
                   rawItem: c,
                   entryType: 'received_check'
                 };
