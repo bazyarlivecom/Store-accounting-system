@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Search, Calendar, FileText, ArrowDownToLine, ArrowUpFromLine, RefreshCw, Box } from 'lucide-react';
 import { motion } from 'motion/react';
-import DatePicker from "react-multi-date-picker";
+import DatePickerModule from "react-multi-date-picker";
+const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { getProducts, getInvoices, getWarehouses, getStoreSettings } from '../../services/dataService';
