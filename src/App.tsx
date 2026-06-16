@@ -2220,7 +2220,7 @@ export default function App() {
       return;
     }
     
-    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service' && !i.warehouseId)) {
       customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
       setSubmitting(false);
       return;
@@ -2401,7 +2401,7 @@ export default function App() {
       customAlert('لطفاً انبار را مشخص کنید.');
       return;
     }
-    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service' && !i.warehouseId)) {
       customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
       return;
     }
@@ -2419,7 +2419,7 @@ export default function App() {
       return;
     }
     
-    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => !i.warehouseId)) {
+    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service' && !i.warehouseId)) {
       customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
       return;
     }
