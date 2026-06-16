@@ -2220,8 +2220,8 @@ export default function App() {
       return;
     }
     
-    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service' && !i.warehouseId)) {
-      customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
+    if (storeSettings.requireWarehouse && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service') && !invoiceWarehouseId) {
+      customAlert('لطفاً برای فاکتور فروش/خریدِ شامل کالا، انبار را انتخاب کنید.');
       setSubmitting(false);
       return;
     }
@@ -2246,7 +2246,7 @@ export default function App() {
       sourceInvoiceId,
       items: cleanItems.map(item => ({
         ...item,
-        warehouseId: activeTab.includes('warehouse') && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId
+        warehouseId: (storeSettings.requireWarehouse || activeTab.includes('warehouse')) && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId
       })),
       overallDiscountPercent,
       totalAmount: calculateFinalTotal(),
@@ -2260,6 +2260,8 @@ export default function App() {
       
       for (const item of payload.items) {
          if (!item.productId) continue;
+         const productObj = products.find(p => p.id === item.productId);
+         if (productObj?.type === 'service') continue;
          const q = (Number(item.quantity) || 0) * (item.isSecondaryUnit && item.unitRatio ? Number(item.unitRatio) : 1);
          const key = item.productId + "_" + (item.warehouseId || 'global');
          requiredQty[key] = (requiredQty[key] || 0) + q;
@@ -2401,8 +2403,8 @@ export default function App() {
       customAlert('لطفاً انبار را مشخص کنید.');
       return;
     }
-    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service' && !i.warehouseId)) {
-      customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
+    if (storeSettings.requireWarehouse && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service') && !invoiceWarehouseId) {
+      customAlert('لطفاً برای فاکتور فروش/خریدِ شامل کالا، انبار را انتخاب کنید.');
       return;
     }
     await saveInvoiceData();
@@ -2419,8 +2421,8 @@ export default function App() {
       return;
     }
     
-    if (activeTab !== 'create_purchase' && invoiceType !== 'purchase' && (activeTab === 'create_sale' || invoiceType === 'sale' || storeSettings.requireWarehouse) && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service' && !i.warehouseId)) {
-      customAlert('لطفاً برای تمامی اقلام انبار مبدا/مقصد را مشخص کنید.');
+    if (storeSettings.requireWarehouse && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service') && !invoiceWarehouseId) {
+      customAlert('لطفاً برای فاکتور فروش/خریدِ شامل کالا، انبار را انتخاب کنید.');
       return;
     }
 
@@ -2445,7 +2447,7 @@ export default function App() {
         const prod = products.find(p => p.id.toString() === String(item.productId));
         return {
           ...item,
-          warehouseId: activeTab.includes('warehouse') && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId,
+          warehouseId: (storeSettings.requireWarehouse || activeTab.includes('warehouse')) && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId,
           productName: prod ? prod.name : item.productName || 'کالای سفارشی'
         };
       }),
@@ -3405,6 +3407,17 @@ export default function App() {
                        </div>
                     </div>
                   </div>
+                  {storeSettings.requireWarehouse && (
+                    <div className="lg:col-span-1">
+                      <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Box className="w-4 h-4 text-emerald-500"/> انبار ورود کالا</label>
+                      <select value={invoiceWarehouseId} onChange={(e) => setInvoiceWarehouseId(e.target.value)} className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30 text-base font-bold text-emerald-900 outline-none">
+                         <option value="">-- لطفاً انبار را انتخاب کنید --</option>
+                         {warehouses.filter(w => w.isActive !== false).map((v) => (
+                           <option key={v.id} value={v.id}>{v.name}</option>
+                         ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3739,6 +3752,17 @@ export default function App() {
                       placeholder="توضیحات و یادداشت..." 
                     />
                   </div>
+                  {storeSettings.requireWarehouse && (
+                    <div className="lg:col-span-1">
+                      <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Box className="w-4 h-4 text-indigo-500"/> انبار خروج کالا</label>
+                      <select value={invoiceWarehouseId} onChange={(e) => setInvoiceWarehouseId(e.target.value)} className="w-full p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30 text-base font-bold text-indigo-900 outline-none">
+                         <option value="">-- لطفاً انبار را انتخاب کنید --</option>
+                         {warehouses.filter(w => w.isActive !== false).map((v) => (
+                           <option key={v.id} value={v.id}>{v.name}</option>
+                         ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 
