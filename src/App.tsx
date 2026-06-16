@@ -1824,9 +1824,9 @@ export default function App() {
       document.title = storeSettings.storeName;
     }
     if (storeSettings?.fontFamily) {
-      document.documentElement.style.setProperty('--app-font', storeSettings.fontFamily);
+      document.documentElement.style.setProperty('--app-font', `"${storeSettings.fontFamily}"`);
     } else {
-      document.documentElement.style.setProperty('--app-font', 'Vazirmatn');
+      document.documentElement.style.setProperty('--app-font', '"Vazirmatn"');
     }
   }, [storeSettings?.storeName, storeSettings?.fontFamily]);
 
@@ -2603,6 +2603,12 @@ export default function App() {
     return new Intl.NumberFormat('fa-IR').format(amount);
   };
 
+  const toPersianDigits = (str: string | number | undefined | null) => {
+    if (str === null || str === undefined) return '';
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return str.toString().replace(/\d/g, x => persianDigits[parseInt(x, 10)]);
+  };
+
   const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase' || activeTab === 'create_warehouse_doc') ? invoiceCurrency : storeSettings.currency;
 
   const formatNumber = (num: number) => {
@@ -3195,7 +3201,7 @@ export default function App() {
                                   </td>
                                   <td className="p-4">
                                       <div className="flex flex-col gap-1.5">
-                                        <CurrencyInput hideWords value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-bold text-indigo-900" />
+                                        <CurrencyInput hideWords value={toPersianDigits(item.quantity)} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-bold text-indigo-900" />
                                         {isReceipt && typeof item.maxQuantity !== 'undefined' && item.maxQuantity > 0 && (
                                            <span className="text-[10px] text-gray-500 text-center font-bold mt-1">
                                               حداکثر סقף مجاز: {item.maxQuantity}
@@ -3465,7 +3471,7 @@ export default function App() {
                               </td>
                               <td className="p-5">
                                   <div className="flex flex-col gap-1.5">
-                                    <CurrencyInput hideWords value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-sans text-center font-black text-slate-800 outline-none" />
+                                    <CurrencyInput hideWords value={toPersianDigits(item.quantity)} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-sans text-center font-black text-slate-800 outline-none" />
                                   </div>
                               </td>
                               <td className="p-5">
@@ -3774,7 +3780,7 @@ export default function App() {
                               </td>
                               <td className="p-5">
                                   <div className="flex flex-col gap-1.5">
-                                    <CurrencyInput hideWords value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-black text-slate-800 outline-none" />
+                                    <CurrencyInput hideWords value={toPersianDigits(item.quantity)} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-black text-slate-800 outline-none" />
                                   </div>
                               </td>
                               <td className="p-5">
@@ -3968,7 +3974,7 @@ export default function App() {
                             return pName.includes(term) || invNum.includes(term);
                          }).map(inv => (
                            <tr key={inv.id} className="hover:bg-gray-50">
-                             <td className="p-4 font-mono text-left font-bold text-gray-700 w-24" dir="ltr">#{inv.invoiceNumber}</td>
+                             <td className="p-4 font-mono text-left font-bold text-gray-700 w-24" dir="ltr">#{toPersianDigits(inv.invoiceNumber)}</td>
                              {activeTab === 'list_purchase' && (
                                <td className="p-4 font-bold text-slate-800 text-xs">
                                   {inv.title || 'فاکتور خرید'}
@@ -3987,7 +3993,7 @@ export default function App() {
                              <td className="p-4">
                                 <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
                                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                                  <span className="font-mono font-bold tracking-tight">{inv.jalaliDate}</span>
+                                  <span className="font-mono font-bold tracking-tight">{toPersianDigits(inv.jalaliDate)}</span>
                                 </div>
                               </td>
                              {activeTab.includes('warehouse') ? (
@@ -4277,8 +4283,8 @@ export default function App() {
                                       const currentAllocated = receiptLinkedInvoices[inv.id] || 0;
                                       return (
                                         <tr key={inv.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                                          <td className="p-3 font-mono text-xs font-bold text-slate-600">{inv.invoiceNumber || `#${inv.id}`}</td>
-                                          <td className="p-3 font-mono text-xs">{inv.jalaliDate}</td>
+                                          <td className="p-3 font-mono text-xs font-bold text-slate-600">{toPersianDigits(inv.invoiceNumber) || `#${toPersianDigits(inv.id)}`}</td>
+                                          <td className="p-3 font-mono text-xs">{toPersianDigits(inv.jalaliDate)}</td>
                                           <td className="p-3 font-mono text-xs font-bold text-slate-700">{formatCurrency(total)}</td>
                                           <td className="p-3 font-mono text-xs font-bold text-rose-600">{formatCurrency(remainder)}</td>
                                           <td className="p-3">
@@ -4401,9 +4407,9 @@ export default function App() {
                            : `صندوق: ${cashboxes.find(cb => cb.id.toString() === tx.resourceId?.toString())?.name || 'نامشخص'}`;
                          return (
                            <tr key={tx.id} className={`${themeRowHover} transition-colors`}>
-                             <td className={`p-4 font-mono font-bold ${themeHighlightTxt}`}>{tx.receiptNumber || `#${tx.id}`}</td>
+                             <td className={`p-4 font-mono font-bold ${themeHighlightTxt}`}>{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
                              <td className="p-4 font-bold text-slate-800">{renderPersonLink(person?.id, person?.name)}</td>
-                             <td className="p-4 font-mono text-slate-500 font-bold" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</td>
+                             <td className="p-4 font-mono text-slate-500 font-bold" dir="ltr">{toPersianDigits(tx.jalaliDate || tx.date?.split("T")[0])}</td>
                              <td className="p-4 text-xs font-black text-slate-600 text-right">{resourceLabel}</td>
                              <td className="p-4 text-right">
                                 <div className={`font-mono font-black ${themeNum} text-sm`} dir="ltr">
@@ -4659,10 +4665,10 @@ export default function App() {
                          const isDirectPay = tx.resourceType !== 'none';
                          return (
                            <tr key={tx.id} className="hover:bg-gray-50 transition-colors">
-                             <td className="p-4 font-mono font-bold text-indigo-600">#{tx.id}</td>
+                             <td className="p-4 font-mono font-bold text-indigo-600">#{toPersianDigits(tx.id)}</td>
                              <td className="p-4 font-bold text-gray-800">{renderPersonLink(person?.id, person?.name)}</td>
                              <td className="p-4 text-gray-500 text-right">
-                               <div className="font-mono text-sm mb-1" dir="ltr">{tx.jalaliDate || tx.date?.split('T')[0]}</div>
+                               <div className="font-mono text-sm mb-1" dir="ltr">{toPersianDigits(tx.jalaliDate || tx.date?.split("T")[0])}</div>
                                {(() => {
                                  try {
                                    const parsed = typeof tx.description === 'string' && tx.description.includes('isPayslip') ? JSON.parse(tx.description) : null;
@@ -7158,7 +7164,7 @@ export default function App() {
                         <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getRoleBadgeClasses(selectedPerson.role)}`}>
                           {getRoleName(selectedPerson.role)}
                         </span>
-                        <span className="text-xs text-gray-400 font-medium font-mono text-left">کد شخص: #{selectedPerson.personCode ? selectedPerson.personCode : selectedPerson.id}</span>
+                        <span className="text-xs text-gray-400 font-medium font-mono text-left">کد شخص: #{toPersianDigits(selectedPerson.personCode ? selectedPerson.personCode : selectedPerson.id)}</span>
                       </div>
                       <h2 className="text-lg font-extrabold text-gray-900 mb-3">{selectedPerson.name}</h2>
                       
@@ -7987,13 +7993,13 @@ export default function App() {
                 {/* Official Slip Header */}
                 <div className="border-4 border-double border-gray-300 p-5 rounded-2xl bg-gray-50/20 shadow-inner flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-right space-y-1">
-                    <span className="text-xs text-indigo-600 font-bold tracking-wider">سند مالی شماره #{viewingPayslip.id}</span>
+                    <span className="text-xs text-indigo-600 font-bold tracking-wider">سند مالی شماره #{toPersianDigits(viewingPayslip.id)}</span>
                     <h2 className="text-xl font-black text-gray-950">{storeSettings.storeName || 'مجموعه تجاری و مالی صبا'}</h2>
                     <p className="text-xs text-gray-500 font-medium">{viewingPayslip.parsed?.userNote || 'فیش رسمی حقوق و دستمزد کارمند'}</p>
                   </div>
                   <div className="text-center bg-white border border-gray-200 py-2.5 px-4 rounded-xl min-w-[150px] shadow-sm">
                     <span className="text-xs text-gray-400 font-semibold block m-0">تاریخ صدور سند</span>
-                    <span className="text-sm font-extrabold text-gray-900 font-sans mt-0.5 block">{viewingPayslip.jalaliDate || viewingPayslip.date}</span>
+                    <span className="text-sm font-extrabold text-gray-900 font-sans mt-0.5 block">{toPersianDigits(viewingPayslip.jalaliDate || viewingPayslip.date)}</span>
                   </div>
                 </div>
 
@@ -10416,7 +10422,7 @@ export default function App() {
                            <div className="space-y-4">
                                <div className="flex items-center gap-4">
                                   <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">فاکتور خرید</h1>
-                                  <span className="bg-emerald-900 text-white font-sans px-3 py-1 text-sm rounded">#{viewingInvoice.invoiceNumber}</span>
+                                  <span className="bg-emerald-900 text-white font-sans px-3 py-1 text-sm rounded">#{toPersianDigits(viewingInvoice.invoiceNumber)}</span>
                                </div>
                                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-emerald-900 font-bold">
                                   <div>تاریخ خرید: <span className="font-sans text-emerald-700">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}</span></div>
@@ -10450,7 +10456,7 @@ export default function App() {
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans" dir="rtl">{formatNumber(item.quantity)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
                                    </td>
                                    <td className="p-3 border-l border-emerald-200 text-left font-sans font-bold text-emerald-950" dir="rtl">{formatCurrency(item.unitPrice)}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans" dir="rtl">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans" dir="rtl">{toPersianDigits(item.discountPercent || 0)}٪</td>
                                    <td className="p-3 text-left font-black font-sans text-emerald-950" dir="rtl">{formatCurrency(item.totalPrice)}</td>
                                  </tr>
                                ))}
@@ -10474,7 +10480,7 @@ export default function App() {
                              </div>
                              {viewingInvoice.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
-                                 <span>تخفیف کلی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
+                                 <span>تخفیف کلی فاکتور ({toPersianDigits(viewingInvoice.overallDiscountPercent)}٪):</span>
                                  <span className="font-sans text-left" dir="rtl">{formatCurrency((viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100))}</span>
                                </div>
                              )}
@@ -10504,7 +10510,7 @@ export default function App() {
                                   <tbody className="divide-y divide-emerald-100">
                                     {allocatedTxs.map(tx => (
                                       <tr key={tx.id} className="hover:bg-emerald-50/50">
-                                        <td className="p-3 border-l border-emerald-100 font-mono text-emerald-700">{tx.receiptNumber || `#${tx.id}`}</td>
+                                        <td className="p-3 border-l border-emerald-100 font-mono text-emerald-700">{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
                                         <td className="p-3 border-l border-emerald-100 font-mono">{tx.jalaliDate}</td>
                                         <td className="p-3 border-l border-emerald-100">{accounts.find(a => a.id.toString() === tx.accountId?.toString())?.title || cashboxes.find(c => c.id.toString() === tx.cashboxId?.toString())?.name || 'نامشخص'}</td>
                                         <td className="p-3 text-left font-mono font-black" dir="ltr">{formatCurrency(tx.linkedInvoices![viewingInvoice.id])} <span className="text-[9px] text-emerald-600">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
@@ -10541,7 +10547,7 @@ export default function App() {
                                 <div className="space-y-1 font-bold font-sans text-xs">
                                     <div className="flex items-center justify-between pb-1 text-gray-500">
                                       <span>شماره فاکتور:</span>
-                                      <span className="text-indigo-900 font-black text-sm">#{viewingInvoice.invoiceNumber}</span>
+                                      <span className="text-indigo-900 font-black text-sm">#{toPersianDigits(viewingInvoice.invoiceNumber)}</span>
                                     </div>
                                     <div className="flex items-center justify-between pb-1 text-gray-500">
                                       <span>تاریخ:</span>
@@ -10644,7 +10650,7 @@ export default function App() {
                                   {!viewingInvoice.type.includes('warehouse') && (
                                     <>
                                       <td className="p-4 text-left text-gray-800 font-mono font-bold" dir="ltr">{formatCurrency(item.unitPrice)}</td>
-                                      <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{item.discountPercent || 0}٪</td>
+                                      <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{toPersianDigits(item.discountPercent || 0)}٪</td>
                                       <td className="p-4 text-left text-indigo-700 font-black font-mono bg-indigo-50/30" dir="ltr">{formatCurrency(item.totalPrice)}</td>
                                     </>
                                   )}
@@ -10676,7 +10682,7 @@ export default function App() {
                             </div>
                             {viewingInvoice.overallDiscountPercent > 0 && (
                               <div className="flex justify-between items-center text-red-600">
-                                <span>تخفیف روی فاکتور ({viewingInvoice.overallDiscountPercent}٪):</span>
+                                <span>تخفیف روی فاکتور ({toPersianDigits(viewingInvoice.overallDiscountPercent)}٪):</span>
                                 <span className="font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                   (viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100)
                                 )}</span>
@@ -10713,7 +10719,7 @@ export default function App() {
                                   <tbody className="divide-y divide-gray-50 bg-white">
                                     {allocatedTxs.map(tx => (
                                       <tr key={tx.id} className="hover:bg-gray-50">
-                                        <td className="p-3 font-mono text-gray-500">{tx.receiptNumber || `#${tx.id}`}</td>
+                                        <td className="p-3 font-mono text-gray-500">{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
                                         <td className="p-3 font-mono">{tx.jalaliDate}</td>
                                         <td className="p-3">{accounts.find(a => a.id.toString() === tx.accountId?.toString())?.title || cashboxes.find(c => c.id.toString() === tx.cashboxId?.toString())?.name || 'نامشخص'}</td>
                                         <td className="p-3 text-left font-mono font-black text-indigo-700" dir="ltr">{formatCurrency(tx.linkedInvoices![viewingInvoice.id])} <span className="text-[9px] text-indigo-400">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
@@ -11278,10 +11284,10 @@ export default function App() {
                            <div className="space-y-4">
                                <div className="flex items-center gap-4">
                                   <h1 className="text-3xl font-black text-emerald-950 tracking-tighter">فاکتور خرید <span className="text-sm font-normal text-amber-600 bg-amber-100 px-2 py-0.5 ml-2">(پیش‌نویس)</span></h1>
-                                  <span className="bg-emerald-900 text-white font-sans px-3 py-1 text-sm rounded">#{previewInvoiceData.invoiceNumber}</span>
+                                  <span className="bg-emerald-900 text-white font-sans px-3 py-1 text-sm rounded">#{toPersianDigits(previewInvoiceData.invoiceNumber)}</span>
                                </div>
                                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-emerald-900 font-bold">
-                                  <div>تاریخ خرید: <span className="font-sans text-emerald-700">{previewInvoiceData.jalaliDate}</span></div>
+                                  <div>تاریخ خرید: <span className="font-sans text-emerald-700">{toPersianDigits(previewInvoiceData.jalaliDate)}</span></div>
                                   <div>ارز پایه: <span className="font-sans text-emerald-700 bg-emerald-200 px-1 py-0.5 inline-block">{showInvoiceCurrency(previewInvoiceData.currency)}</span></div>
                                </div>
                            </div>
@@ -11312,7 +11318,7 @@ export default function App() {
                                    <td className="p-3 border-l border-emerald-200 text-center font-sans" dir="rtl">{formatNumber(item.quantity || 1)} <span className="text-[10px] text-emerald-600 font-sans">{item.selectedUnit || '-'}</span>
                                    </td>
                                    <td className="p-3 border-l border-emerald-200 text-left font-sans font-bold text-emerald-950" dir="rtl">{formatCurrency(item.unitPrice || 0)}</td>
-                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans" dir="rtl">{item.discountPercent || 0}٪</td>
+                                   <td className="p-3 border-l border-emerald-200 text-center text-red-600 font-sans" dir="rtl">{toPersianDigits(item.discountPercent || 0)}٪</td>
                                    <td className="p-3 text-left font-black font-sans text-emerald-950" dir="rtl">{formatCurrency(item.totalPrice || 0)}</td>
                                  </tr>
                                ))}
@@ -11336,7 +11342,7 @@ export default function App() {
                              </div>
                              {previewInvoiceData.overallDiscountPercent > 0 && (
                                <div className="flex justify-between p-3 border-b border-emerald-200 text-red-700 bg-red-50">
-                                 <span>تخفیف کلی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
+                                 <span>تخفیف کلی فاکتور ({toPersianDigits(previewInvoiceData.overallDiscountPercent)}٪):</span>
                                  <span className="font-sans text-left" dir="rtl">{formatCurrency((previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100))}</span>
                                </div>
                              )}
@@ -11360,11 +11366,11 @@ export default function App() {
                                 <div className="space-y-1 font-bold font-sans text-xs">
                                     <div className="flex items-center justify-between pb-1 text-gray-500">
                                       <span>شماره فاکتور:</span>
-                                      <span className="text-amber-900 font-black text-sm">#{previewInvoiceData.invoiceNumber}</span>
+                                      <span className="text-amber-900 font-black text-sm">#{toPersianDigits(previewInvoiceData.invoiceNumber)}</span>
                                     </div>
                                     <div className="flex items-center justify-between pb-1 text-gray-500">
                                       <span>تاریخ:</span>
-                                      <span className="text-gray-900">{previewInvoiceData.jalaliDate}</span>
+                                      <span className="text-gray-900">{toPersianDigits(previewInvoiceData.jalaliDate)}</span>
                                     </div>
                                     <div className="flex items-center justify-between text-gray-500">
                                       <span>ارز:</span>
@@ -11448,7 +11454,7 @@ export default function App() {
                                   {(!activeTab.includes('warehouse')) && (
                                     <>
                                   <td className="p-4 text-left text-gray-800 font-mono font-bold" dir="ltr">{formatCurrency(item.unitPrice || 0)}</td>
-                                  <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{item.discountPercent || 0}٪</td>
+                                  <td className="p-4 text-center text-red-500 font-mono font-bold" dir="ltr">{toPersianDigits(item.discountPercent || 0)}٪</td>
                                   <td className="p-4 text-left text-amber-900 font-black font-mono bg-amber-50/30" dir="ltr">{formatCurrency(item.totalPrice || 0)}</td>
                                     </>
                                   )}
@@ -11480,7 +11486,7 @@ export default function App() {
                             </div>
                             {previewInvoiceData.overallDiscountPercent > 0 && (
                               <div className="flex justify-between items-center text-red-600">
-                                <span>تخفیف روی فاکتور ({previewInvoiceData.overallDiscountPercent}٪):</span>
+                                <span>تخفیف روی فاکتور ({toPersianDigits(previewInvoiceData.overallDiscountPercent)}٪):</span>
                                 <span className="font-mono text-left font-bold" dir="ltr">{formatCurrency(
                                   (previewInvoiceData.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (previewInvoiceData.overallDiscountPercent / 100)
                                 )}</span>
@@ -11677,7 +11683,7 @@ export default function App() {
                     <div className="flex flex-col items-end w-1/3 gap-2">
                       <div className="bg-gray-50 rounded-lg border border-gray-200 p-2 md:p-3 min-w-[120px] md:min-w-[140px]">
                         <span className="block text-[9px] md:text-[10px] text-gray-500 font-bold mb-1">شماره رسید</span>
-                        <span className="font-mono text-sm md:text-base font-bold text-gray-900">{printingTransaction.receiptNumber || `#${printingTransaction.id}`}</span>
+                        <span className="font-mono text-sm md:text-base font-bold text-gray-900">{toPersianDigits(printingTransaction.receiptNumber) || `#${toPersianDigits(printingTransaction.id)}`}</span>
                       </div>
                       <div className="bg-gray-50 rounded-lg border border-gray-200 p-2 md:p-3 min-w-[120px] md:min-w-[140px]">
                         <span className="block text-[9px] md:text-[10px] text-gray-500 font-bold mb-1">تاریخ عملیات</span>
