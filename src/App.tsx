@@ -477,6 +477,7 @@ export default function App() {
          exchangeRateInput,
          invoiceType,
          invoiceTitle,
+         invoiceDescription,
          activeTab,
        };
        if (items.length > 0 || customerId) {
@@ -487,11 +488,11 @@ export default function App() {
          setHasDraft(false);
        }
     }
-  }, [items, customerId, invoiceNumber, sourceInvoiceId, overallDiscountPercent, invoiceCurrency, exchangeRate, invoiceMode, invoiceType, invoiceTitle, activeTab]);
+  }, [items, customerId, invoiceNumber, sourceInvoiceId, overallDiscountPercent, invoiceCurrency, exchangeRate, invoiceMode, invoiceType, invoiceTitle, invoiceDescription, activeTab]);
   
   useEffect(() => {
     if (localStorage.getItem('invoice_draft')) {
-      setHasDraft(true);
+       setHasDraft(true);
     }
   }, []);
   
@@ -510,6 +511,7 @@ export default function App() {
         setInvoiceCurrency(parsed.invoiceCurrency || 'تومان');
         setExchangeRate(parsed.exchangeRate || 1);
         setExchangeRateInput(parsed.exchangeRateInput || '1');
+        setInvoiceDescription(parsed.invoiceDescription || '');
         
         // Timeout to let activeTab's effect finish, then override
         setTimeout(() => {
@@ -1851,7 +1853,8 @@ export default function App() {
         fetchCashboxes(),
         fetchWarehouses(),
         fetchSettings(),
-        fetchTransactions()
+        fetchTransactions(),
+        fetchChecks()
       ]);
       await fetchInvoices();
     } catch (error) {
@@ -2588,6 +2591,16 @@ export default function App() {
         if (t.type === 'receive') balance -= (t.amount || 0);
         else if (t.type === 'pay') balance += (t.amount || 0);
         else if (t.type === 'salary') balance -= (t.amount || 0);
+    });
+
+    // Active/Pending Issued Checks
+    issuedChecks.filter(c => c.payeeId?.toString() === personId.toString() && (c.status === 'issued' || c.status === 'bounced' || !c.status)).forEach(c => {
+        balance += (c.amount || 0);
+    });
+
+    // Active/Pending Received Checks
+    receivedChecks.filter(c => c.payerId?.toString() === personId.toString() && (c.status === 'received' || c.status === 'deposited' || c.status === 'bounced' || !c.status)).forEach(c => {
+        balance -= (c.amount || 0);
     });
     
     if (balance > 0) return { amount: balance, status: 'بدهکار', color: 'text-rose-600', bg: 'bg-rose-50' };
@@ -3657,7 +3670,7 @@ export default function App() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2">شماره فاکتور فروش</label>
                     <div className="flex gap-2">
@@ -3669,6 +3682,10 @@ export default function App() {
                           <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-slate-800 outline-none bg-indigo-50/20" dir="ltr" placeholder="شماره دلخواه......" />
                         )}
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-indigo-500"/> عنوان فاکتور</label>
+                    <input type="text" value={invoiceTitle} onChange={(e) => setInvoiceTitle(e.target.value)} className="w-full p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 outline-none bg-indigo-50/20" placeholder="عنوانی برای فاکتور وارد کنید..." />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500"/> تاریخ صدور فاکتور</label>
@@ -3687,7 +3704,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  <div>
+                  <div className="lg:col-span-2">
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><User className="w-4 h-4 text-indigo-500"/> مشتری (طرف حساب)</label>
                     <div className="border border-indigo-100 rounded-xl bg-indigo-50/30 focus-within:ring-2 focus-within:ring-indigo-500 transition-colors">
                       <SearchableSelect 
@@ -3711,6 +3728,16 @@ export default function App() {
                          </span>
                       </div>
                     )}
+                  </div>
+                  <div className="lg:col-span-1">
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-indigo-500"/> توضیحات</label>
+                    <input 
+                      type="text" 
+                      value={invoiceDescription || ''} 
+                      onChange={(e) => setInvoiceDescription(e.target.value)} 
+                      className="w-full p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 outline-none bg-indigo-50/20" 
+                      placeholder="توضیحات و یادداشت..." 
+                    />
                   </div>
                 </div>
               </div>
@@ -7201,9 +7228,77 @@ export default function App() {
                 };
               });
 
+            // Issued Checks
+            const issuedCheckEntries = issuedChecks
+              .filter(c => c.payeeId?.toString() === ledgerPersonId.toString() && c.status !== 'blank' && c.status !== 'cancelled')
+              .map(c => {
+                const isCashed = c.status === 'cashed';
+                const statusLabel = 
+                  c.status === 'cashed' ? 'پاس شده' :
+                  c.status === 'bounced' ? 'برگشت خورده' : 'صادر شده';
+                
+                return {
+                  id: `ic-${c.id}`,
+                  refId: c.checkNumber || `چک صادره #${c.id}`,
+                  date: c.issueDate || c.dueDate || new Date().toISOString(),
+                  jalaliDate: c.issueDate || c.dueDate || '-',
+                  type: `چک صادره (${statusLabel})`,
+                  desc: c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`,
+                  debit: isCashed ? 0 : (c.amount || 0),
+                  credit: 0,
+                  rawItem: c,
+                  entryType: 'issued_check'
+                };
+              });
+
+            // Received Checks
+            const receivedCheckEntries = receivedChecks
+              .filter(c => c.payerId?.toString() === ledgerPersonId.toString() && c.status !== 'returned')
+              .map(c => {
+                const isCashed = c.status === 'cashed';
+                const statusLabel = 
+                  c.status === 'cashed' ? 'وصول شده' :
+                  c.status === 'bounced' ? 'برگشت خورده' :
+                  c.status === 'deposited' ? 'واگذار شده به بانک' : 'دریافت شده';
+                
+                return {
+                  id: `rc-${c.id}`,
+                  refId: c.checkNumber || `چک دریافتی #${c.id}`,
+                  date: c.receiveDate || c.dueDate || new Date().toISOString(),
+                  jalaliDate: c.receiveDate || c.dueDate || '-',
+                  type: `چک دریافتی (${statusLabel})`,
+                  desc: c.description || `برگه چک دریافتی شماره ${c.checkNumber} - بانک ${c.bankName} به سررسید ${c.dueDate}`,
+                  debit: 0,
+                  credit: isCashed ? 0 : (c.amount || 0),
+                  rawItem: c,
+                  entryType: 'received_check'
+                };
+              });
+
+            const safeGetTime = (dateStr: any) => {
+              if (!dateStr) return 0;
+              if (typeof dateStr === 'number') return dateStr;
+              
+              if (typeof dateStr === 'string' && (dateStr.includes('/') || dateStr.match(/^\d{4}\/\d{2}\/\d{2}/))) {
+                const normalized = dateStr.replace(/[۰-۹]/g, (d: string) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+                const parts = normalized.split('/');
+                if (parts.length === 3) {
+                  const gYear = parseInt(parts[0]) + 621;
+                  const gMonth = parseInt(parts[1]);
+                  const gDay = parseInt(parts[2]);
+                  const testDate = new Date(gYear, gMonth - 1, gDay);
+                  if (!isNaN(testDate.getTime())) {
+                    return testDate.getTime();
+                  }
+                }
+              }
+              const t = new Date(dateStr).getTime();
+              return isNaN(t) ? 0 : t;
+            };
+
             // Combine and sort chronologically
-            let allEntries = [...invoiceEntries, ...transactionEntries].sort((a, b) => {
-              const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+            let allEntries = [...invoiceEntries, ...transactionEntries, ...issuedCheckEntries, ...receivedCheckEntries].sort((a, b) => {
+              const dateDiff = safeGetTime(a.date) - safeGetTime(b.date);
               if (dateDiff === 0) {
                 return (a.rawItem?.createdAt || 0) - (b.rawItem?.createdAt || 0);
               }
@@ -7401,6 +7496,7 @@ export default function App() {
                             const isPurchase = entry.type.includes('خرید');
                             const isReceive = entry.type.includes('دریافت');
                             const isPay = entry.type.includes('پرداخت');
+                            const isCheck = entry.entryType === 'issued_check' || entry.entryType === 'received_check';
                             
                             const badgeColor = isSale 
                               ? 'bg-sky-50 text-sky-700 border-sky-200'
@@ -7408,7 +7504,11 @@ export default function App() {
                                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                                 : isReceive
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : 'bg-rose-50 text-rose-700 border-rose-200';
+                                  : isPay
+                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                    : isCheck
+                                      ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                      : 'bg-slate-50 text-slate-700 border-slate-200';
 
                             return (
                               <tr key={entry.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => {
@@ -7425,6 +7525,8 @@ export default function App() {
                                     } catch (e) {}
                                   }
                                   setPreviewReceiptData({ ...entry.rawItem, jalaliDate: entry.jalaliDate, personId: selectedPerson.id, _isReadOnly: true });
+                                } else if (isCheck) {
+                                  setActiveTab('checks');
                                 }
                               }}>
                                 <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6">
@@ -11006,8 +11108,76 @@ export default function App() {
                 };
               });
 
-            let allEntries = [...invoiceEntries, ...transactionEntries].sort((a, b) => {
-              const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+            // Issued Checks
+            const issuedCheckEntries = issuedChecks
+              .filter(c => c.payeeId?.toString() === drawerPersonId.toString() && c.status !== 'blank' && c.status !== 'cancelled')
+              .map(c => {
+                const isCashed = c.status === 'cashed';
+                const statusLabel = 
+                  c.status === 'cashed' ? 'پاس شده' :
+                  c.status === 'bounced' ? 'برگشت خورده' : 'صادر شده';
+                
+                return {
+                  id: `ic-${c.id}`,
+                  refId: c.checkNumber || `چک صادره #${c.id}`,
+                  date: c.issueDate || c.dueDate || new Date().toISOString(),
+                  jalaliDate: c.issueDate || c.dueDate || '-',
+                  type: `چک صادره (${statusLabel})`,
+                  desc: c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`,
+                  debit: isCashed ? 0 : (c.amount || 0),
+                  credit: 0,
+                  rawItem: c,
+                  entryType: 'issued_check'
+                };
+              });
+
+            // Received Checks
+            const receivedCheckEntries = receivedChecks
+              .filter(c => c.payerId?.toString() === drawerPersonId.toString() && c.status !== 'returned')
+              .map(c => {
+                const isCashed = c.status === 'cashed';
+                const statusLabel = 
+                  c.status === 'cashed' ? 'وصول شده' :
+                  c.status === 'bounced' ? 'برگشت خورده' :
+                  c.status === 'deposited' ? 'واگذار شده به بانک' : 'دریافت شده';
+                
+                return {
+                  id: `rc-${c.id}`,
+                  refId: c.checkNumber || `چک دریافتی #${c.id}`,
+                  date: c.receiveDate || c.dueDate || new Date().toISOString(),
+                  jalaliDate: c.receiveDate || c.dueDate || '-',
+                  type: `چک دریافتی (${statusLabel})`,
+                  desc: c.description || `برگه چک دریافتی شماره ${c.checkNumber} - بانک ${c.bankName} به سررسید ${c.dueDate}`,
+                  debit: 0,
+                  credit: isCashed ? 0 : (c.amount || 0),
+                  rawItem: c,
+                  entryType: 'received_check'
+                };
+              });
+
+            const safeGetTimeDef = (dateStr: any) => {
+              if (!dateStr) return 0;
+              if (typeof dateStr === 'number') return dateStr;
+              
+              if (typeof dateStr === 'string' && (dateStr.includes('/') || dateStr.match(/^\d{4}\/\d{2}\/\d{2}/))) {
+                const normalized = dateStr.replace(/[۰-۹]/g, (d: string) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+                const parts = normalized.split('/');
+                if (parts.length === 3) {
+                  const gYear = parseInt(parts[0]) + 621;
+                  const gMonth = parseInt(parts[1]);
+                  const gDay = parseInt(parts[2]);
+                  const testDate = new Date(gYear, gMonth - 1, gDay);
+                  if (!isNaN(testDate.getTime())) {
+                    return testDate.getTime();
+                  }
+                }
+              }
+              const t = new Date(dateStr).getTime();
+              return isNaN(t) ? 0 : t;
+            };
+
+            let allEntries = [...invoiceEntries, ...transactionEntries, ...issuedCheckEntries, ...receivedCheckEntries].sort((a, b) => {
+              const dateDiff = safeGetTimeDef(a.date) - safeGetTimeDef(b.date);
               if (dateDiff === 0) {
                 return (a.rawItem?.createdAt || 0) - (b.rawItem?.createdAt || 0);
               }
@@ -11150,6 +11320,9 @@ export default function App() {
                                         } catch (e) {}
                                       }
                                       setPreviewReceiptData({ ...entry.rawItem, jalaliDate: entry.jalaliDate, personId: selectedPerson.id, _isReadOnly: true });
+                                    } else if (entry.entryType === 'issued_check' || entry.entryType === 'received_check') {
+                                      setDrawerPersonId('');
+                                      setActiveTab('checks');
                                     }
                                   }}>
                                     <td className="py-3 px-4">
