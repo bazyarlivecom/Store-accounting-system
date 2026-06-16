@@ -438,6 +438,7 @@ export default function App() {
   // Form State
   const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance' | 'proforma'>('sale');
   const [listFilter, setListFilter] = useState<any>('all');
+  const [purchaseFilter, setPurchaseFilter] = useState<'all' | 'received' | 'pending'>('all');
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceTitle, setInvoiceTitle] = useState('فاکتور فروش کالا');
   const [warehouseWizardStep, setWarehouseWizardStep] = useState(1);
@@ -3932,9 +3933,46 @@ export default function App() {
             </motion.div>
            );
         case 'list_sale':
-        case 'list_purchase':
-        case 'list_warehouse_docs':
-           return (
+         case 'list_purchase':
+         case 'list_warehouse_docs': {
+            const activePurchases = invoices.filter(i => i.type === 'purchase').filter(inv => {
+               if (!invoiceSearchQuery) return true;
+               const term = invoiceSearchQuery.toLowerCase();
+               const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
+               const invNum = (inv.invoiceNumber || '').toLowerCase();
+               return pName.includes(term) || invNum.includes(term);
+            });
+
+            const totalPurchasesCount = activePurchases.length;
+            const receivedPurchasesCount = activePurchases.filter(inv => 
+               invoices.some(wh => wh.type === 'warehouse_receipt' && wh.sourceInvoiceId?.toString() === inv.id.toString())
+            ).length;
+            const pendingPurchasesCount = Math.max(0, totalPurchasesCount - receivedPurchasesCount);
+
+            const filteredInvoicesList = invoices.filter(i => {
+              if (activeTab === 'list_sale') {
+                return i.type === 'sale' || i.type === 'proforma';
+              } else if (activeTab === 'list_purchase') {
+                if (i.type !== 'purchase') return false;
+                const isReceived = invoices.some(wh => wh.type === 'warehouse_receipt' && wh.sourceInvoiceId?.toString() === i.id.toString());
+                if (purchaseFilter === 'received') return isReceived;
+                if (purchaseFilter === 'pending') return !isReceived;
+                return true;
+              } else if (activeTab === 'list_warehouse_docs') {
+                return typeof listFilter !== 'undefined' && listFilter === 'receipt' ? i.type === 'warehouse_receipt' :
+                  typeof listFilter !== 'undefined' && listFilter === 'remittance' ? i.type === 'warehouse_remittance' :
+                  (i.type === 'warehouse_receipt' || i.type === 'warehouse_remittance');
+              }
+              return false;
+            }).filter(inv => {
+               if (!invoiceSearchQuery) return true;
+               const term = invoiceSearchQuery.toLowerCase();
+               const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
+               const invNum = (inv.invoiceNumber || '').toLowerCase();
+               return pName.includes(term) || invNum.includes(term);
+            });
+
+            return (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-between gap-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
@@ -3962,6 +4000,25 @@ export default function App() {
                         <button onClick={() => setListFilter('remittance')} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${listFilter === 'remittance' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>حواله‌های خروج</button>
                       </div>
                   )}
+                  {activeTab === 'list_purchase' && (
+                      <div className="flex bg-slate-100 rounded-xl p-1 w-full max-w-md ml-auto mr-auto md:mr-0 md:ml-auto border border-slate-250/20 shadow-xs">
+                        <button onClick={() => setPurchaseFilter('all')} className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none ${purchaseFilter === 'all' ? 'bg-white text-indigo-750 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                          <span>همه خریدها</span>
+                          <span className={`px-1.5 py-0.5 text-[9px] font-sans font-bold rounded-full ${purchaseFilter === 'all' ? 'bg-indigo-100 text-indigo-805' : 'bg-slate-200 text-slate-600'}`}>{toPersianDigits(totalPurchasesCount)}</span>
+                        </button>
+                        <button onClick={() => setPurchaseFilter('received')} className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none ${purchaseFilter === 'received' ? 'bg-white text-emerald-750 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>رسید شده</span>
+                          <span className={`px-1.5 py-0.5 text-[9px] font-sans font-bold rounded-full ${purchaseFilter === 'received' ? 'bg-emerald-100 text-emerald-805' : 'bg-slate-200 text-slate-600'}`}>{toPersianDigits(receivedPurchasesCount)}</span>
+                        </button>
+                        <button onClick={() => setPurchaseFilter('pending')} className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none ${purchaseFilter === 'pending' ? 'bg-white text-amber-755 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                          <span>رسید نشده</span>
+                          <span className={`px-1.5 py-0.5 text-[9px] font-sans font-bold rounded-full ${purchaseFilter === 'pending' ? 'bg-amber-100 text-amber-805' : 'bg-slate-200 text-slate-600'}`}>{toPersianDigits(pendingPurchasesCount)}</span>
+                        </button>
+                      </div>
+                  )}
+
                 </div>
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="overflow-x-auto">
@@ -3992,21 +4049,21 @@ export default function App() {
                          </tr>
                        </thead>
                        <tbody className="divide-y divide-gray-50">
-                         {invoices.filter(i => 
-                           activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
-                           activeTab === 'list_purchase' ? i.type === 'purchase' :
-                           activeTab === 'list_warehouse_docs' ? (
-                               typeof listFilter !== 'undefined' && listFilter === 'receipt' ? i.type === 'warehouse_receipt' :
-                               typeof listFilter !== 'undefined' && listFilter === 'remittance' ? i.type === 'warehouse_remittance' :
-                               (i.type === 'warehouse_receipt' || i.type === 'warehouse_remittance')
-                           ) : false
-                         ).filter(inv => {
-                            if (!invoiceSearchQuery) return true;
-                            const term = invoiceSearchQuery.toLowerCase();
-                            const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
-                            const invNum = (inv.invoiceNumber || '').toLowerCase();
-                            return pName.includes(term) || invNum.includes(term);
-                         }).map(inv => (
+                          {filteredInvoicesList.map(inv => (
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                            <tr key={inv.id} className="hover:bg-gray-50">
                              <td className="p-4 font-mono text-left font-bold text-gray-700 w-24" dir="ltr">#{toPersianDigits(inv.invoiceNumber)}</td>
                              {activeTab === 'list_purchase' && (
@@ -4080,21 +4137,21 @@ export default function App() {
                              </td>
                            </tr>
                          ))}
-                         {invoices.filter(i => 
-                           activeTab === 'list_sale' ? (i.type === 'sale' || i.type === 'proforma') : 
-                           activeTab === 'list_purchase' ? i.type === 'purchase' :
-                           activeTab === 'list_warehouse_docs' ? (
-                               typeof listFilter !== 'undefined' && listFilter === 'receipt' ? i.type === 'warehouse_receipt' :
-                               typeof listFilter !== 'undefined' && listFilter === 'remittance' ? i.type === 'warehouse_remittance' :
-                               (i.type === 'warehouse_receipt' || i.type === 'warehouse_remittance')
-                           ) : false
-                         ).filter(inv => {
-                            if (!invoiceSearchQuery) return true;
-                            const term = invoiceSearchQuery.toLowerCase();
-                            const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
-                            const invNum = (inv.invoiceNumber || '').toLowerCase();
-                            return pName.includes(term) || invNum.includes(term);
-                         }).length === 0 && (
+                          {filteredInvoicesList.length === 0 && (
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                            <tr>
                              <td colSpan={10} className="p-8 text-center text-gray-400">هیچ سندی یافت نشد.</td>
                            </tr>
@@ -4105,8 +4162,9 @@ export default function App() {
                 </div>
              </motion.div>
            );
-        
-        case 'create_receive_receipt':
+         }
+         
+         case 'create_receive_receipt':
         case 'create_pay_receipt': {
            const isReceive = activeTab === 'create_receive_receipt';
            
