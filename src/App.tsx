@@ -4053,7 +4053,7 @@ export default function App() {
                        <thead>
                          <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
                            <th className="p-4 font-bold">شماره</th>
-                           {activeTab === 'list_purchase' && <th className="p-4 font-bold">عنوان فاکتور</th>}
+                           {(activeTab === 'list_purchase' || activeTab === 'list_sale') && <th className="p-4 font-bold relative group">عنوان فاکتور {activeTab === 'list_sale' && <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-emerald-500 hidden group-hover:block blur-lg opacity-50"></span>}</th>}
                            {activeTab.includes('warehouse') && <th className="p-4 font-bold">نوع سند</th>}
                            <th className="p-4 font-bold">
                              {activeTab.includes('warehouse') ? 'تحویل دهنده / گیرنده' : (activeTab === 'list_purchase' ? 'تامین کننده' : 'مشتری')}
@@ -4093,9 +4093,9 @@ export default function App() {
 
                            <tr key={inv.id} className="hover:bg-gray-50">
                              <td className="p-4 font-mono text-left font-bold text-gray-700 w-24" dir="ltr">#{toPersianDigits(inv.invoiceNumber)}</td>
-                             {activeTab === 'list_purchase' && (
-                               <td className="p-4 font-bold text-slate-800 text-xs">
-                                  {inv.title || 'فاکتور خرید'}
+                             {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
+                               <td className="p-4 font-bold text-slate-800 text-xs truncate max-w-[150px]" title={inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}>
+                                  {inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}
                                </td>
                              )}
                              {activeTab.includes('warehouse') && (
@@ -10769,7 +10769,7 @@ export default function App() {
                                <div className="text-center font-black text-3xl tracking-tighter text-indigo-900 z-10">
                                  {viewingInvoice.type === 'warehouse_receipt' ? 'رسید انبار (ورود کالا)' :
                                   viewingInvoice.type === 'warehouse_remittance' ? 'حواله انبار (خروج کالا)' :
-                                  'فاکتور فروش'}
+                                  (viewingInvoice.title || 'فاکتور فروش')}
                                </div>
                             </div>
                             <div className="col-span-1 text-left flex flex-col justify-center h-full text-gray-600 gap-1 z-10">
@@ -11691,7 +11691,7 @@ export default function App() {
                                  <div className="text-center font-black text-3xl tracking-tighter text-amber-900 z-10">
                                    {previewInvoiceData.type === 'warehouse_receipt' ? 'رسید ورود کالا' :
                                     previewInvoiceData.type === 'warehouse_remittance' ? 'حواله خروج کالا' :
-                                    'فاکتور فروش'}
+                                    (previewInvoiceData.title || 'فاکتور فروش')}
                                  </div>
                                  <span className="text-xs font-bold text-amber-600 mt-1 bg-amber-100 rounded px-2">پیش‌نمایش موقت</span>
                                </div>
