@@ -400,9 +400,11 @@ export default function App() {
   const [latestCommits, setLatestCommits] = useState<any[]>([]);
   const [latestGithubSha, setLatestGithubSha] = useState<string | null>(null);
   const [checkingUpdateVersion, setCheckingUpdateVersion] = useState(false);
+  const [hasPromptedUpdate, setHasPromptedUpdate] = useState(false);
+  const [didConfirmUpdate, setDidConfirmUpdate] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'update' && !latestVersion && !checkingUpdateVersion) {
+    if (!checkingUpdateVersion && !hasPromptedUpdate) {
       const fetchLatestVersion = async () => {
         setCheckingUpdateVersion(true);
         try {
@@ -410,9 +412,11 @@ export default function App() {
             fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/releases/latest'),
             fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/commits?per_page=10')
           ]);
+          let fetchedVer = 'Build 2.9.0';
           if (resVer.ok) {
             const data = await resVer.json();
-            setLatestVersion(data.tag_name || data.name || 'Build 2.9.0');
+            fetchedVer = data.tag_name || data.name || 'Build 2.9.0';
+            setLatestVersion(fetchedVer);
           } else {
             setLatestVersion('Build 2.9.0');
           }
@@ -437,11 +441,27 @@ export default function App() {
           setLatestVersion('Build 2.9.0');
         } finally {
           setCheckingUpdateVersion(false);
+          setHasPromptedUpdate(true);
         }
       };
       fetchLatestVersion();
     }
-  }, [activeTab, latestVersion, checkingUpdateVersion]);
+  }, [checkingUpdateVersion, hasPromptedUpdate]);
+
+  useEffect(() => {
+     if (latestCommits.length > 0 && hasPromptedUpdate && !didConfirmUpdate) {
+       setDidConfirmUpdate(true);
+       setTimeout(() => {
+         confirmAction('نسخه جدید سیستم (آپدیت جدید) در دسترس است! آیا مایلید سیستم اکنون به طور خودکار بروزرسانی‌ها را نصب نماید؟', () => {
+            setActiveTab('update');
+            setTimeout(() => {
+               const btn = document.getElementById('auto-update-btn');
+               if (btn) btn.click();
+            }, 500);
+         });
+       }, 2000);
+     }
+  }, [latestCommits, hasPromptedUpdate, didConfirmUpdate]);
 
   // Form State
   const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance' | 'proforma'>('sale');
@@ -2797,6 +2817,9 @@ export default function App() {
         if (latestGithubSha) {
           localStorage.setItem('localCommitSha', latestGithubSha);
           setLatestCommits([]);
+        }
+        if (latestVersion) {
+           localStorage.setItem('localAppVersion', latestVersion);
         }
 
         setUpdateLog(`نسخه اصلی نرم‌افزار حسابداری و فاکتور با موفقیت به آخرین بیلد سیستم ارتقا یافت.\nتغییرات نرم‌افزاری جدید با موفقیت همگام‌سازی شدند.\n\nسیستم تا لحظاتی دیگر به صورت خودکار مجدداً راه‌اندازی و بارگذاری می‌شود...`);
@@ -5508,24 +5531,24 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Confirm Action Modal */}      {confirmState.isOpen && (        <div className="fixed inset-0 bg-slate-900/40 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">          <motion.div             initial={{ opacity: 0, scale: 0.95 }}            animate={{ opacity: 1, scale: 1 }}            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col items-center border border-gray-100"             dir="rtl"          >            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">               <AlertTriangle className="w-6 h-6" />            </div>            <h3 className="font-extrabold text-lg mb-2">تایید عملیات</h3>            <p className="text-gray-500 text-sm text-center mb-6">{confirmState.message}</p>            <div className="flex gap-3 w-full">               <button onClick={() => { confirmState.onConfirm(); setConfirmState({...confirmState, isOpen: false}) }} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">بله، تایید</button>               <button onClick={() => setConfirmState({...confirmState, isOpen: false})} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">انصراف</button>            </div>          </motion.div>        </div>      )}<div className={`flex ${menuLayout === 'horizontal' ? 'flex-col h-screen' : 'h-screen'} overflow-hidden bg-gray-50/50 text-gray-800 font-sans`} dir="rtl">
+      {/* Confirm Action Modal */}      {confirmState.isOpen && (        <div className="fixed inset-0 bg-slate-900/40 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">          <motion.div             initial={{ opacity: 0, scale: 0.95 }}            animate={{ opacity: 1, scale: 1 }}            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col items-center border border-gray-100"             dir="rtl"          >            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">               <AlertTriangle className="w-6 h-6" />            </div>            <h3 className="font-extrabold text-lg mb-2">تایید عملیات</h3>            <p className="text-gray-500 text-sm text-center mb-6">{confirmState.message}</p>            <div className="flex gap-3 w-full">               <button onClick={() => { confirmState.onConfirm(); setConfirmState({...confirmState, isOpen: false}) }} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">بله، تایید</button>               <button onClick={() => setConfirmState({...confirmState, isOpen: false})} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">انصراف</button>            </div>          </motion.div>        </div>      )}<div className={`flex ${menuLayout === 'horizontal' ? 'flex-col h-screen' : 'h-screen'} overflow-hidden bg-gray-50/50 text-gray-800 font-sans print:h-auto print:block print:overflow-visible`} dir="rtl">
       {/* Sidebar Mobile Overlay */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] md:hidden transition-opacity"
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] md:hidden transition-opacity print:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Desktop Sidebar */}
       {menuLayout === 'vertical' && (
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 shadow-2xl z-40 text-slate-300 flex-shrink-0 transition-all duration-300 overflow-y-auto" dir="rtl">
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900 shadow-2xl z-40 text-slate-300 flex-shrink-0 transition-all duration-300 overflow-y-auto print:hidden" dir="rtl">
         <div className="p-5 border-b border-slate-800 flex flex-col justify-center">
           <div className="flex items-center gap-3">
              {storeSettings.logoUrl ? <img src={storeSettings.logoUrl} className="w-8 h-8 rounded" alt="logo"/> : <Receipt className="w-8 h-8 text-indigo-500" />}
              <div>
                <h1 className="font-extrabold text-white text-lg">{storeSettings.storeName || 'سیستم مدیریت'}</h1>
-               <div className="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">V1.0.0 PRO</div>
+               <div className="text-xs text-slate-400 font-mono mt-0.5" dir="ltr">{localStorage.getItem('localAppVersion') || 'Build 2.9.0'}</div>
              </div>
           </div>
         </div>
@@ -5542,7 +5565,7 @@ export default function App() {
       )}
 
       {/* Mobile Drawer Menu */}
-      <div className={`fixed inset-y-0 right-0 w-72 bg-slate-900 text-slate-300 shadow-2xl z-40 transform transition-transform duration-300 md:hidden flex flex-col ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed inset-y-0 right-0 w-72 bg-slate-900 text-slate-300 shadow-2xl z-40 transform transition-transform duration-300 md:hidden flex flex-col print:hidden ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-white">
             <Shield className="w-5 h-5 text-indigo-500"/>
@@ -5564,13 +5587,13 @@ export default function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col w-full min-w-0 min-h-0 transition-all duration-300 overflow-hidden">
+      <div className="flex-1 flex flex-col w-full min-w-0 min-h-0 transition-all duration-300 overflow-hidden print:overflow-visible print:bg-white print:h-auto">
 
         
 
 
         {/* Top Header */}
-        <div className="flex flex-col bg-white border-b border-gray-100 sticky top-0 z-[60] shadow-sm">
+        <div className="flex flex-col bg-white border-b border-gray-100 sticky top-0 z-[60] shadow-sm print:hidden">
           <div className="flex flex-row items-center justify-between p-4 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 shadow-xs" dir="rtl">
           <div className="flex items-center gap-3">
             <button 
@@ -5626,8 +5649,8 @@ export default function App() {
         
           {menuLayout === 'horizontal' && renderHorizontalMenu()}
           </div>
-          <main className="flex-1 overflow-y-auto min-h-0 p-4 md:p-8 bg-slate-50/50">
-          <div className={`mx-auto transition-all duration-300 ${isFullWidth ? 'max-w-full xl:px-14' : 'max-w-6xl'}`}>
+          <main className="flex-1 overflow-y-auto min-h-0 p-4 md:p-8 bg-slate-50/50 print:overflow-visible print:bg-white print:p-0">
+          <div className={`mx-auto transition-all duration-300 print:max-w-none print:w-full print:px-0 ${isFullWidth ? 'max-w-full xl:px-14' : 'max-w-6xl'}`}>
 
           {activeTab === 'products' ? (
              <motion.div 
@@ -7229,7 +7252,7 @@ export default function App() {
           dir="rtl"
         >
           {/* Header */}
-          <div className="bg-gradient-to-l from-indigo-50 to-white rounded-2xl shadow-sm border border-gray-100 px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-gradient-to-l from-indigo-50 to-white rounded-2xl shadow-sm border border-gray-100 px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
             <div>
               <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
                 <User className="w-6 h-6 text-violet-600 font-bold" />
@@ -7240,24 +7263,39 @@ export default function App() {
               </p>
             </div>
             
-            {/* Quick Refresh */}
-            <button
-              onClick={async () => {
-                await Promise.all([
-                  fetchInvoices(),
-                  fetchTransactions(),
-                  fetchPersons()
-                ]);
-              }}
-              className="px-4 py-2 bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-violet-100 shadow-sm"
-            >
-              <RefreshCw className="w-4 h-4 animate-spin-slow" />
-              بروزرسانی اطلاعات
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-indigo-100 shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                چاپ حساب
+              </button>
+              {/* Quick Refresh */}
+              <button
+                onClick={async () => {
+                  await Promise.all([
+                    fetchInvoices(),
+                    fetchTransactions(),
+                    fetchPersons()
+                  ]);
+                }}
+                className="px-4 py-2 bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-violet-100 shadow-sm"
+              >
+                <RefreshCw className="w-4 h-4 animate-spin-slow" />
+                بروزرسانی اطلاعات
+              </button>
+            </div>
+          </div>
+
+          {/* Print Header */}
+          <div className="hidden print:block text-center mt-4 mb-8">
+             <h1 className="text-2xl font-black">{storeSettings.storeName || 'سیستم مدیریت'}</h1>
+             <h2 className="text-xl font-bold mt-2">دفتر معین اشخاص</h2>
           </div>
 
           {/* Selector Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 print:hidden">
             <div className="max-w-xl">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                 <User className="w-4 h-4 text-violet-500" />
@@ -7628,7 +7666,7 @@ export default function App() {
                 </div>
 
                 {/* Ledger Detail Table */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden print:overflow-visible">
                   <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="font-extrabold text-gray-800 flex items-center gap-2">
                       <List className="w-5 h-5 text-violet-500" />
@@ -7636,14 +7674,14 @@ export default function App() {
                     </h3>
                   </div>
 
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto print:overflow-visible">
                     {ledgerEntries.length === 0 ? (
                       <div className="p-12 text-center text-gray-400">
                         <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                         هیچ گردش مالی یا سندی برای این شخص ثبت نشده است.
                       </div>
                     ) : (
-                      <table className="w-full text-right min-w-[950px] text-sm">
+                      <table className="w-full text-right min-w-[950px] print:min-w-full text-sm">
                         <thead>
                           <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider">
                             <th className="py-5 px-4 text-center w-10">ردیف</th>
@@ -8257,8 +8295,9 @@ export default function App() {
                </div>
              )}
 
-             {latestCommits.length > 0 || checkingUpdateVersion || updatingStr ? (
+              {latestCommits.length > 0 || checkingUpdateVersion || updatingStr ? (
                <button
+                 id="auto-update-btn"
                  onClick={handleSystemUpdate}
                  disabled={updatingStr || checkingUpdateVersion}
                  className="px-10 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-xl font-bold transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-w-[240px] cursor-pointer"
