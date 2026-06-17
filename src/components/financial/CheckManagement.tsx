@@ -16,8 +16,12 @@ import {
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void }) {
-  const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks'>('checkbooks');
+export default function CheckManagement({ showNotification, activeTab = 'checkbooks' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' }) {
+  const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks'>(activeTab);
+  
+  useEffect(() => {
+    setActiveSubTab(activeTab);
+  }, [activeTab]);
   const [checkbooks, setCheckbooks] = useState<Checkbook[]>([]);
   const [issuedChecks, setIssuedChecks] = useState<IssuedCheck[]>([]);
   const [receivedChecks, setReceivedChecks] = useState<ReceivedCheck[]>([]);
@@ -308,38 +312,13 @@ export default function CheckManagement({ showNotification }: { showNotification
       <div className="px-8 py-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-l from-indigo-50/40 to-white">
          <div>
            <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-             <CreditCard className="w-6 h-6 text-indigo-600" /> مدیریت جامع چک‌ها و تعهدات مالی
+             <CreditCard className="w-6 h-6 text-indigo-600" /> 
+             {activeSubTab === 'checkbooks' ? 'مدیریت و لیست دسته چک‌ها' : activeSubTab === 'issued_checks' ? 'مدیریت چک‌های صادره (پرداختی)' : 'مدیریت چک‌های دریافتی (وصولی)'}
            </h1>
-           <p className="text-xs text-gray-500 mt-1">مدیریت دسته چک‌های بانکی، نظارت بر وضعیت چک‌های پرداختنی صادر شده و چک‌های دریافتنی از مشتریان</p>
+           <p className="text-xs text-gray-500 mt-1">
+             {activeSubTab === 'checkbooks' ? 'تعریف و نظارت بر دسته‌چک‌های بانکی اختصاصی' : activeSubTab === 'issued_checks' ? 'نظارت بر وضعیت برگه‌های چک پرداخت شده به حساب مشتریان و تامین‌کنندگان' : 'مدیریت وضعیت وصول و اقلام چک‌های دریافت شده از اشخاص'}
+           </p>
          </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-gray-100 px-8 gap-6 pt-4 bg-white overflow-x-auto whitespace-nowrap">
-        <button 
-          onClick={() => setActiveSubTab('checkbooks')} 
-          className={`pb-3 px-2 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-            activeSubTab === 'checkbooks' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <Building2 className="w-4 h-4" /> لیست دسته چک‌ها
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('issued_checks')} 
-          className={`pb-3 px-2 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-            activeSubTab === 'issued_checks' ? 'border-rose-600 text-rose-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <ArrowUpRight className="w-4 h-4 text-rose-500" /> چک‌های صادره (پرداختی)
-        </button>
-        <button 
-          onClick={() => setActiveSubTab('received_checks')} 
-          className={`pb-3 px-2 font-bold text-sm border-b-2 transition-all flex items-center gap-2 ${
-            activeSubTab === 'received_checks' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-          }`}
-        >
-          <ArrowDownLeft className="w-4 h-4 text-emerald-500" /> چک‌های دریافتی (وصولی)
-        </button>
       </div>
 
       <div className="p-8">

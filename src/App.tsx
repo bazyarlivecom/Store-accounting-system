@@ -99,7 +99,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checks' | 'transfer' | 'invoice_allocation'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'transfer' | 'invoice_allocation'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -191,7 +191,7 @@ export default function App() {
         { id: 'accounts', label: 'حساب‌های بانکی', roles: ['admin', 'accountant'] },
         { id: 'cashboxes', label: 'صندوق‌ها', roles: ['admin', 'accountant', 'cashier'] },
         { id: 'transfer', label: 'انتقال بین حساب‌ها', roles: ['admin', 'accountant'] },
-        { id: 'checks', label: 'چک‌ها', roles: ['admin', 'accountant'] },
+        { id: 'checkbooks', label: 'دسته چک‌ها', roles: ['admin', 'accountant'] },
       ]
     },
     {
@@ -201,8 +201,10 @@ export default function App() {
       items: [
         { id: 'create_receive_receipt', label: 'ثبت رسید دریافت', roles: ['admin', 'accountant', 'cashier'] },
         { id: 'list_receive_receipt', label: 'لیست رسید دریافت', roles: ['admin', 'accountant'] },
+        { id: 'received_checks', label: 'چک‌های دریافتی', roles: ['admin', 'accountant'] },
         { id: 'create_pay_receipt', label: 'ثبت رسید پرداخت', roles: ['admin', 'accountant'] },
         { id: 'list_pay_receipt', label: 'لیست رسید پرداخت', roles: ['admin', 'accountant'] },
+        { id: 'issued_checks', label: 'چک‌های پرداختی', roles: ['admin', 'accountant'] },
         { id: 'invoice_allocation', label: 'تخصیص اسناد به فاکتور', roles: ['admin', 'accountant'] },
       ]
     },
@@ -7690,8 +7692,10 @@ export default function App() {
                                     } catch (e) {}
                                   }
                                   setPreviewReceiptData({ ...entry.rawItem, jalaliDate: entry.jalaliDate, personId: selectedPerson.id, _isReadOnly: true });
-                                } else if (isCheck) {
-                                  setActiveTab('checks');
+                                } else if (entry.entryType === 'issued_check') {
+                                  setActiveTab('issued_checks');
+                                } else if (entry.entryType === 'received_check') {
+                                  setActiveTab('received_checks');
                                 }
                               }}>
                                 <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6">
@@ -7764,8 +7768,12 @@ export default function App() {
             );
           })()}
         </motion.div>
-            ) : activeTab === 'checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement showNotification={showNotification} /></motion.div>
+      ) : activeTab === 'checkbooks' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="checkbooks" showNotification={showNotification} /></motion.div>
+      ) : activeTab === 'issued_checks' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="issued_checks" showNotification={showNotification} /></motion.div>
+      ) : activeTab === 'received_checks' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="received_checks" showNotification={showNotification} /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
             ) : activeTab === 'invoice_allocation' ? (
@@ -11336,9 +11344,12 @@ export default function App() {
                                         } catch (e) {}
                                       }
                                       setPreviewReceiptData({ ...entry.rawItem, jalaliDate: entry.jalaliDate, personId: selectedPerson.id, _isReadOnly: true });
-                                    } else if (entry.entryType === 'issued_check' || entry.entryType === 'received_check') {
+                                    } else if (entry.entryType === 'issued_check') {
                                       setDrawerPersonId('');
-                                      setActiveTab('checks');
+                                      setActiveTab('issued_checks');
+                                    } else if (entry.entryType === 'received_check') {
+                                      setDrawerPersonId('');
+                                      setActiveTab('received_checks');
                                     }
                                   }}>
                                     <td className="py-3 px-4">
