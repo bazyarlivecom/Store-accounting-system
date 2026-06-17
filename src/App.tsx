@@ -7288,12 +7288,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Print Header */}
-          <div className="hidden print:block text-center mt-4 mb-8">
-             <h1 className="text-2xl font-black">{storeSettings.storeName || 'سیستم مدیریت'}</h1>
-             <h2 className="text-xl font-bold mt-2">دفتر معین اشخاص</h2>
-          </div>
-
           {/* Selector Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 print:hidden">
             <div className="max-w-xl">
@@ -7543,12 +7537,51 @@ export default function App() {
             const totalDebits = allEntries.reduce((sum, entry) => sum + entry.debit, 0);
             const totalCredits = allEntries.reduce((sum, entry) => sum + entry.credit, 0);
             const finalBalance = totalDebits - totalCredits;
+            
+            const isOwed = finalBalance > 0;
+            const isClr = finalBalance === 0;
 
             return (
               <div className="space-y-6">
+              
+                {/* Enhanced Print Header (Only visible when printing) */}
+                <div className="hidden print:block border-2 border-gray-900 p-6 rounded-2xl mb-8 shadow-sm">
+                   <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
+                     <div className="text-right">
+                       <h1 className="text-2xl font-black text-gray-900">{storeSettings.storeName || 'سیستم مدیریت'}</h1>
+                       <h2 className="text-lg font-bold text-gray-600 mt-1">کارت حساب (دفتر معین) ویژه اشخاص</h2>
+                     </div>
+                     <div className="text-left select-none text-sm font-semibold text-gray-500">
+                       تاریخ چاپ: {toPersianDigits(new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}
+                     </div>
+                   </div>
+                   
+                   <div className="grid grid-cols-2 gap-8 text-sm">
+                     <div className="space-y-3 font-medium">
+                       <p><span className="text-gray-500 w-24 inline-block font-bold">نام طرف حساب:</span> <span className="font-extrabold text-lg text-gray-900">{selectedPerson.name}</span></p>
+                       <p><span className="text-gray-500 w-24 inline-block font-bold">تلفن تماس:</span> <span className="text-gray-900">{toPersianDigits(selectedPerson.phone ? selectedPerson.phone : '---')}</span></p>
+                       <p><span className="text-gray-500 w-24 inline-block font-bold">آدرس:</span> <span className="text-gray-900">{selectedPerson.address || '---'}</span></p>
+                     </div>
+                     
+                     <div className="space-y-3 font-medium">
+                        <p><span className="text-gray-500 inline-block font-bold">جمع مبالغ بدهکار:</span> <span className="text-gray-900 font-extrabold text-base">{toPersianDigits(formatNumber(totalDebits))} {storeSettings.currency}</span></p>
+                        <p><span className="text-gray-500 inline-block font-bold">جمع مبالغ بستانکار:</span> <span className="text-gray-900 font-extrabold text-base">{toPersianDigits(formatNumber(totalCredits))} {storeSettings.currency}</span></p>
+                        <p className="pt-2 border-t border-gray-200">
+                           <span className="text-gray-600 inline-block font-bold text-lg">مانده نهایی حساب:</span>{' '}
+                           <span className={`text-lg font-black tracking-tight ${isClr ? 'text-gray-800' : isOwed ? 'text-rose-700' : 'text-emerald-700'}`}>
+                             {isClr ? 'تسویه کامل' : (
+                               <>
+                                 {toPersianDigits(formatNumber(Math.abs(finalBalance)))} {storeSettings.currency} <span className="text-xs mr-2 font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700">{isOwed ? 'بدهکار به ما' : 'بستانکار از ما'}</span>
+                               </>
+                             )}
+                           </span>
+                        </p>
+                     </div>
+                   </div>
+                </div>
                 
                 {/* Person Summary KPI Panel */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
                   
                   {/* Persona Info Card */}
                   <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
@@ -7739,18 +7772,18 @@ export default function App() {
                               }}>
                                 <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6">
                                   <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors">
-                                    {index + 1}
+                                    {toPersianDigits(index + 1)}
                                   </div>
                                 </td>
                                 <td className="py-5 px-4 align-top pt-5">
-                                  <div className="flex flex-col gap-2.5">
-                                    <span className="text-gray-700 font-mono font-bold flex items-center gap-2">
+                                  <div className="flex flex-col gap-2.5 text-right relative">
+                                    <span className="text-gray-700 font-bold flex items-center justify-end gap-2 text-sm max-w-fit pr-0" dir="ltr">
+                                      <span className="mt-0.5 whitespace-nowrap">{toPersianDigits(entry.jalaliDate)}</span>
                                       <Calendar className="w-4 h-4 text-indigo-500/70" />
-                                      <span className="mt-0.5">{entry.jalaliDate}</span>
                                     </span>
-                                    <span className="text-xs font-mono text-gray-600 bg-white border border-gray-200 px-2.5 py-1 rounded-lg inline-flex w-max items-center gap-1.5 shadow-sm">
-                                      <Tag className="w-3.5 h-3.5 text-gray-400" />
-                                      {entry.refId}
+                                    <span className="text-xs text-gray-600 bg-white border border-gray-200 px-2.5 py-1 rounded-lg inline-flex w-max items-center gap-1.5 shadow-sm">
+                                      <Tag className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                      {toPersianDigits(entry.refId)}
                                     </span>
                                   </div>
                                 </td>
@@ -7760,21 +7793,21 @@ export default function App() {
                                       {entry.type}
                                     </span>
                                     <p className="text-gray-700 text-[13px] whitespace-normal leading-loose font-medium break-words text-justify">
-                                      {entry.desc}
+                                      {toPersianDigits(entry.desc)}
                                     </p>
                                   </div>
                                 </td>
-                                <td className="py-5 px-4 text-left font-mono align-top pt-6" dir="ltr">
+                                <td className="py-5 px-4 text-left align-top pt-6">
                                   <span className={`font-black text-[15px] ${entry.debit > 0 ? 'text-indigo-600' : 'text-gray-300 font-medium'}`}>
-                                    {entry.debit > 0 ? formatNumber(entry.debit) : '---'}
+                                    {entry.debit > 0 ? toPersianDigits(formatNumber(entry.debit)) : '---'}
                                   </span>
                                 </td>
-                                <td className="py-5 px-4 text-left font-mono align-top pt-6" dir="ltr">
+                                <td className="py-5 px-4 text-left align-top pt-6">
                                   <span className={`font-black text-[15px] ${entry.credit > 0 ? 'text-emerald-600' : 'text-gray-300 font-medium'}`}>
-                                    {entry.credit > 0 ? formatNumber(entry.credit) : '---'}
+                                    {entry.credit > 0 ? toPersianDigits(formatNumber(entry.credit)) : '---'}
                                   </span>
                                 </td>
-                                <td className="py-5 px-6 text-left font-mono align-top pt-5" dir="ltr">
+                                <td className="py-5 px-6 text-left align-top pt-5">
                                   <div className={`flex flex-col items-end gap-1.5 font-extrabold ${
                                     isBalZero 
                                       ? 'text-slate-600' 
@@ -7786,7 +7819,7 @@ export default function App() {
                                       <span className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm mt-0.5 text-slate-700">صفر (تسویه)</span>
                                     ) : (
                                       <>
-                                        <span className="text-[17px] tracking-tight">{formatNumber(Math.abs(entry.runningBalance))}</span>
+                                        <span className="text-[17px] tracking-tight">{toPersianDigits(formatNumber(Math.abs(entry.runningBalance)))}</span>
                                         <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border shadow-sm ${isDeb ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
                                           {isDeb ? 'بدهکار به ما' : 'بستانکار (طلبکار)'}
                                         </span>
