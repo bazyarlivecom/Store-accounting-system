@@ -3291,7 +3291,7 @@ export default function App() {
                                   </td>
                                   <td className="p-4">
                                       <div className="flex flex-col gap-1.5">
-                                        <CurrencyInput hideWords value={toPersianDigits(item.quantity)} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-bold text-indigo-900" />
+                                        <input type="number" min="0" step="any" value={item.quantity} onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-bold text-indigo-900 outline-none" dir="ltr" />
                                         {isReceipt && typeof item.maxQuantity !== 'undefined' && item.maxQuantity > 0 && (
                                            <span className="text-[10px] text-gray-500 text-center font-bold mt-1">
                                               حداکثر סقף مجاز: {item.maxQuantity}
@@ -3572,7 +3572,7 @@ export default function App() {
                               </td>
                               <td className="p-5">
                                   <div className="flex flex-col gap-1.5">
-                                    <CurrencyInput hideWords value={toPersianDigits(item.quantity)} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-sans text-center font-black text-slate-800 outline-none" />
+                                    <input type="number" min="0" step="any" value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-sans text-center font-black text-slate-800 outline-none" dir="ltr" />
                                   </div>
                               </td>
                               <td className="p-5">
@@ -3917,7 +3917,7 @@ export default function App() {
                               </td>
                               <td className="p-5">
                                   <div className="flex flex-col gap-1.5">
-                                    <CurrencyInput hideWords value={toPersianDigits(item.quantity)} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-black text-slate-800 outline-none" />
+                                    <input type="number" min="0" step="any" value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-black text-slate-800 outline-none" dir="ltr" />
                                   </div>
                               </td>
                               <td className="p-5">
