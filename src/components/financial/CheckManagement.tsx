@@ -16,7 +16,7 @@ import {
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification, onUpdate }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, onUpdate?: () => void }) {
+export default function CheckManagement({ showNotification }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void }) {
   const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks'>('checkbooks');
   const [checkbooks, setCheckbooks] = useState<Checkbook[]>([]);
   const [issuedChecks, setIssuedChecks] = useState<IssuedCheck[]>([]);
@@ -76,7 +76,6 @@ export default function CheckManagement({ showNotification, onUpdate }: { showNo
     setReceivedChecks(await getReceivedChecks());
     setAccounts(await getAccounts());
     setPersons(await getPersons());
-    onUpdate?.();
   };
 
   const handleSaveCheckbook = async (e: React.FormEvent) => {
@@ -464,12 +463,6 @@ export default function CheckManagement({ showNotification, onUpdate }: { showNo
 
               <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                 <span className="text-xs font-bold text-gray-550">تعداد یافت شده: {filteredIssuedChecks.length}</span>
-                <button 
-                  onClick={() => setIsIssuedModalOpen(true)} 
-                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-colors"
-                >
-                  <Plus className="w-4 h-4" /> صدور چک جدید (پرداختی)
-                </button>
               </div>
             </div>
 
@@ -610,12 +603,6 @@ export default function CheckManagement({ showNotification, onUpdate }: { showNo
 
               <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                 <span className="text-xs font-bold text-gray-550">تعداد یافت شده: {filteredReceivedChecks.length}</span>
-                <button 
-                  onClick={() => setIsReceivedModalOpen(true)} 
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-colors"
-                >
-                  <Plus className="w-4 h-4" /> دریافت چک جدید (وصولی)
-                </button>
               </div>
             </div>
 

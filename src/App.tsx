@@ -343,6 +343,11 @@ export default function App() {
   const [receiptDate, setReceiptDate] = useState<Date | any>(new Date());
   const [receiptAmount, setReceiptAmount] = useState<string>('');
   const [receiptResourceType, setReceiptResourceType] = useState<'bank' | 'cashbox'>('bank');
+  const [receiptMethod, setReceiptMethod] = useState<'cash' | 'check'>('cash');
+  const [receiptCheckNumber, setReceiptCheckNumber] = useState('');
+  const [receiptCheckDueDate, setReceiptCheckDueDate] = useState<Date | any>(new Date());
+  const [receiptCheckBankName, setReceiptCheckBankName] = useState('');
+  const [receiptCheckbookId, setReceiptCheckbookId] = useState<string | number | ''>('');
   const [receiptResourceId, setReceiptResourceId] = useState<string | number | ''>('');
   const [receiptDescription, setReceiptDescription] = useState<string>('');
   const [receiptLinkedInvoices, setReceiptLinkedInvoices] = useState<Record<string, number>>({});
@@ -1162,9 +1167,16 @@ export default function App() {
 
   const handleSubmitReceipt = (type: 'receive' | 'pay', e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiptPersonId || !receiptAmount || !receiptResourceType || !receiptResourceId) {
-      customAlert('لطفا تمام اطلاعات الزامی فرم را وارد کنید.');
-      return;
+    if (receiptMethod === 'cash') {
+      if (!receiptPersonId || !receiptAmount || !receiptResourceType || !receiptResourceId) {
+        customAlert('لطفا تمام اطلاعات الزامی فرم را وارد کنید.');
+        return;
+      }
+    } else {
+      if (!receiptPersonId || !receiptAmount || !receiptCheckNumber || !receiptCheckDueDate || (type === 'receive' && !receiptCheckBankName) || (type === 'pay' && !receiptCheckbookId)) {
+        customAlert('لطفا تمام اطلاعات الزامی فرم چک را وارد کنید.');
+        return;
+      }
     }
     
     // Validate allocated amounts
@@ -1208,19 +1220,31 @@ export default function App() {
     const formattedNum = String(nextNum).padStart(numLength, '0');
     const receiptNumber = `${receiptPrefix}${formattedNum}`;
     
-    const payload = {
+    const basePayload: any = {
         type,
+        method: receiptMethod,
         personId: receiptPersonId,
         amount: Number(receiptAmount),
         date: typeof receiptDate.toDate === 'function' ? receiptDate.toDate().toISOString() : new Date(receiptDate).toISOString(),
         jalaliDate: typeof receiptDate.toDate === 'function' ? new Date(receiptDate.toDate().toISOString()).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR') : new Date(receiptDate).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
-        resourceType: receiptResourceType,
-        resourceId: receiptResourceId,
         description: receiptDescription,
         receiptNumber: receiptNumber
     };
+
+    if (receiptMethod === 'cash') {
+      basePayload.resourceType = receiptResourceType;
+      basePayload.resourceId = receiptResourceId;
+    } else {
+      basePayload.checkNumber = receiptCheckNumber;
+      basePayload.checkDueDate = typeof receiptCheckDueDate.toDate === 'function' ? new Date(receiptCheckDueDate.toDate().toISOString()).toLocaleDateString('fa-IR') : new Date(receiptCheckDueDate).toLocaleDateString('fa-IR');
+      if (type === 'receive') {
+        basePayload.checkBankName = receiptCheckBankName;
+      } else {
+        basePayload.checkbookId = receiptCheckbookId;
+      }
+    }
     
-    setPreviewReceiptData(payload);
+    setPreviewReceiptData(basePayload);
   };
   
   const confirmReceiptSubmit = async () => {
@@ -1228,7 +1252,34 @@ export default function App() {
     setSubmittingReceipt(true);
     try {
       const txPayload = { ...previewReceiptData, linkedInvoices: receiptLinkedInvoices };
-      const txId = await addTransaction(txPayload as any);
+      if (previewReceiptData.method === 'check') {
+         if (previewReceiptData.type === 'receive') {
+           await addReceivedCheck({
+             checkNumber: previewReceiptData.checkNumber,
+             bankName: previewReceiptData.checkBankName,
+             branchName: '',
+             amount: previewReceiptData.amount,
+             payerId: previewReceiptData.personId,
+             receiveDate: previewReceiptData.jalaliDate,
+             dueDate: previewReceiptData.checkDueDate,
+             status: 'received',
+             description: previewReceiptData.description || `چک دریافتی بابت رسید ${previewReceiptData.receiptNumber}`
+           });
+         } else {
+           await addIssuedCheck({
+             checkbookId: previewReceiptData.checkbookId,
+             checkNumber: previewReceiptData.checkNumber,
+             amount: previewReceiptData.amount,
+             payeeId: previewReceiptData.personId,
+             issueDate: previewReceiptData.jalaliDate,
+             dueDate: previewReceiptData.checkDueDate,
+             status: 'issued',
+             description: previewReceiptData.description || `چک صادره بابت رسید ${previewReceiptData.receiptNumber}`
+           });
+         }
+      } else {
+         await addTransaction(txPayload as any);
+      }
       
       // Update actual invoices payment status and paid amount out of linkedInvoices
       for (const [invId, amount] of Object.entries(receiptLinkedInvoices)) {
@@ -1244,11 +1295,17 @@ export default function App() {
       setReceiptAmount('');
       setReceiptResourceType('bank');
       setReceiptResourceId('');
+      setReceiptCheckNumber('');
+      setReceiptCheckBankName('');
+      setReceiptCheckbookId('');
+      setReceiptCheckDueDate(new Date());
+      setReceiptMethod('cash');
       setReceiptDescription('');
       setReceiptDate(new Date());
       setReceiptLinkedInvoices({});
       setPreviewReceiptData(null);
       setReceiptPersonSearchText('');
+
       
       await Promise.all([
         fetchTransactions(),
@@ -2596,13 +2653,15 @@ export default function App() {
         else if (t.type === 'salary') balance -= (t.amount || 0);
     });
 
-    // Active/Pending Issued Checks
-    issuedChecks.filter(c => c.payeeId?.toString() === personId.toString() && (c.status === 'issued' || !c.status)).forEach(c => {
+    // Active/Pending Issued Checks (Supplier paid by check -> their balance goes UP because we owe them less)
+    // Exclude 'cashed' because cashed checks auto-generate a 'pay' transaction that is already counted above
+    issuedChecks.filter(c => c.payeeId?.toString() === personId.toString() && c.status !== 'cancelled' && c.status !== 'bounced' && c.status !== 'cashed').forEach(c => {
         balance += (c.amount || 0);
     });
 
-    // Active/Pending Received Checks
-    receivedChecks.filter(c => c.payerId?.toString() === personId.toString() && (c.status === 'received' || c.status === 'deposited' || !c.status)).forEach(c => {
+    // Active/Pending Received Checks (Customer pays by check -> their balance goes DOWN because they owe us less)
+    // Exclude 'cashed' because cashed checks auto-generate a 'receive' transaction that is already counted above
+    receivedChecks.filter(c => c.payerId?.toString() === personId.toString() && c.status !== 'returned' && c.status !== 'bounced' && c.status !== 'cashed').forEach(c => {
         balance -= (c.amount || 0);
     });
     
@@ -4244,6 +4303,25 @@ export default function App() {
                    {isReceive ? 'ثبت سند رسید دریافت رسمی' : 'ثبت سند رسید پرداخت رسمی'}
                  </h2>
 
+                 <div className="flex gap-2 max-w-[400px] mb-6 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setReceiptMethod('cash')}
+                      className={`flex-1 flex gap-2 justify-center items-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all duration-300 ${receiptMethod === 'cash' ? (isReceive ? 'bg-white text-emerald-700 shadow-[0_2px_4px_rgba(16,185,129,0.1)] border-emerald-200' : 'bg-white text-rose-700 shadow-[0_2px_4px_rgba(244,63,94,0.1)] border-rose-200') : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 block border border-transparent'}`}
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      نقدی / فیش بانکی / حواله
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReceiptMethod('check')}
+                      className={`flex-1 flex gap-2 justify-center items-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all duration-300 ${receiptMethod === 'check' ? (isReceive ? 'bg-white text-emerald-700 shadow-[0_2px_4px_rgba(16,185,129,0.1)] border-emerald-200' : 'bg-white text-rose-700 shadow-[0_2px_4px_rgba(244,63,94,0.1)] border-rose-200') : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 block border border-transparent'}`}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      {isReceive ? 'ثبت چک دریافتی' : 'صدور چک'}
+                    </button>
+                  </div>
+
                  <form onSubmit={(e) => handleSubmitReceipt(isReceive ? 'receive' : 'pay', e)} className="space-y-6">
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             <div>
@@ -4344,51 +4422,113 @@ export default function App() {
                         )}
                       </div>
 
-                      <div>
-                       <label className="block text-sm font-bold text-slate-700 mb-1">نوع منبع مالی</label>
-                       <select 
-                         value={receiptResourceType} 
-                         onChange={(e) => {
-                           setReceiptResourceType(e.target.value as 'bank' | 'cashbox');
-                           setReceiptResourceId('');
-                         }} 
-                         className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
-                       >
-                         <option value="bank">حساب بانکی</option>
-                         <option value="cashbox">صندوق فروشگاهی</option>
-                       </select>
-                     </div>
+                      {receiptMethod === 'cash' ? (
+                        <>
+                          <div>
+                           <label className="block text-sm font-bold text-slate-700 mb-1">نوع منبع مالی</label>
+                           <select 
+                             value={receiptResourceType} 
+                             onChange={(e) => {
+                               setReceiptResourceType(e.target.value as 'bank' | 'cashbox');
+                               setReceiptResourceId('');
+                             }} 
+                             className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
+                           >
+                             <option value="bank">حساب بانکی</option>
+                             <option value="cashbox">صندوق فروشگاهی</option>
+                           </select>
+                         </div>
 
-                     <div>
-                       <label className="block text-sm font-bold text-slate-700 mb-1">
-                         {receiptResourceType === 'bank' ? 'بانک مقصد' : 'صندوق مقصد'}
-                       </label>
-                       {receiptResourceType === 'bank' ? (
-                         <select 
-                           value={receiptResourceId} 
-                           onChange={(e) => setReceiptResourceId(e.target.value)} 
-                           className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
-                           required
-                         >
-                           <option value="">-- انتخاب بانک --</option>
-                           {accounts.map(acc => (
-                             <option key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountNumber}</option>
-                           ))}
-                         </select>
-                       ) : (
-                         <select 
-                           value={receiptResourceId} 
-                           onChange={(e) => setReceiptResourceId(e.target.value)} 
-                           className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
-                           required
-                         >
-                           <option value="">-- انتخاب صندوق --</option>
-                           {cashboxes.map(cb => (
-                             <option key={cb.id} value={cb.id}>{cb.name}</option>
-                           ))}
-                         </select>
-                       )}
-                     </div>
+                         <div>
+                           <label className="block text-sm font-bold text-slate-700 mb-1">
+                             {receiptResourceType === 'bank' ? 'بانک مقصد' : 'صندوق مقصد'}
+                           </label>
+                           {receiptResourceType === 'bank' ? (
+                             <select 
+                               value={receiptResourceId} 
+                               onChange={(e) => setReceiptResourceId(e.target.value)} 
+                               className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
+                               required
+                             >
+                               <option value="">-- انتخاب بانک --</option>
+                               {accounts.map(acc => (
+                                 <option key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountNumber}</option>
+                               ))}
+                             </select>
+                           ) : (
+                             <select 
+                               value={receiptResourceId} 
+                               onChange={(e) => setReceiptResourceId(e.target.value)} 
+                               className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
+                               required
+                             >
+                               <option value="">-- انتخاب صندوق --</option>
+                               {cashboxes.map(cb => (
+                                 <option key={cb.id} value={cb.id}>{cb.name}</option>
+                               ))}
+                             </select>
+                           )}
+                         </div>
+                       </>
+                      ) : (
+                        <>
+                          <div>
+                           <label className="block text-sm font-bold text-slate-700 mb-1">شماره چک *</label>
+                           <input 
+                             type="text" 
+                             required
+                             value={receiptCheckNumber} 
+                             onChange={(e) => setReceiptCheckNumber(e.target.value)} 
+                             className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} text-center font-bold text-sm text-slate-800 outline-none transition-shadow`}
+                           />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                              <Calendar className={`w-4 h-4 ${themeIcon}`}/> تاریخ سررسید *
+                            </label>
+                            <div className="relative">
+                              <DatePicker
+                                value={receiptCheckDueDate}
+                                onChange={setReceiptCheckDueDate}
+                                calendar={persian}
+                                locale={persian_fa}
+                                calendarPosition="bottom-right"
+                                inputClass={`w-full px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 ${themeRing} outline-none font-sans font-black text-slate-900 text-center transition-all cursor-pointer shadow-sm text-sm`}
+                                containerClassName="w-full"
+                              />
+                            </div>
+                         </div>
+                         {isReceive ? (
+                            <div>
+                             <label className="block text-sm font-bold text-slate-700 mb-1">نام بانک صادرکننده چک *</label>
+                             <input 
+                               type="text" 
+                               required
+                               value={receiptCheckBankName} 
+                               onChange={(e) => setReceiptCheckBankName(e.target.value)} 
+                               placeholder="예: ملت، ملی ..."
+                               className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
+                             />
+                           </div>
+                         ) : (
+                            <div>
+                             <label className="block text-sm font-bold text-slate-700 mb-1">انتخاب دسته چک (بانک شما) *</label>
+                             <select 
+                               value={receiptCheckbookId} 
+                               onChange={(e) => setReceiptCheckbookId(e.target.value)} 
+                               className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
+                               required
+                             >
+                               <option value="">-- انتخاب دسته چک --</option>
+                               {checkbooks.map(cb => {
+                                 const bankAccount = accounts.find(a => a.id === cb.accountId);
+                                 return <option key={cb.id} value={cb.id}>{bankAccount?.bankName} ({cb.startNumber} تا {cb.endNumber})</option>
+                               })}
+                             </select>
+                           </div>
+                         )}
+                        </>
+                      )}
 
                      <div className="md:col-span-2 lg:col-span-3">
                        <label className="block text-sm font-bold text-slate-700 mb-1">توضیحات و بابت</label>
@@ -7625,7 +7765,7 @@ export default function App() {
           })()}
         </motion.div>
             ) : activeTab === 'checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement showNotification={showNotification} onUpdate={fetchData} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement showNotification={showNotification} /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
             ) : activeTab === 'invoice_allocation' ? (
@@ -11267,12 +11407,14 @@ export default function App() {
           const receiptTitle = isReceive ? 'پیش‌نمایش رسید دریافت وجه' : 'پیش‌نمایش رسید پرداخت وجه';
 
           let resourceName = 'نامشخص';
-          if(previewReceiptData.resourceType === 'bank'){
-            const bank = accounts.find(a => a.id.toString() === previewReceiptData.resourceId?.toString());
-            if(bank) resourceName = bank.bankName + ' - ' + bank.accountNumber;
-          } else {
-            const box = cashboxes.find(c => c.id.toString() === previewReceiptData.resourceId?.toString());
-            if(box) resourceName = box.name;
+          if (previewReceiptData.method === 'cash') {
+            if(previewReceiptData.resourceType === 'bank'){
+              const bank = accounts.find(a => a.id.toString() === previewReceiptData.resourceId?.toString());
+              if(bank) resourceName = bank.bankName + ' - ' + bank.accountNumber;
+            } else {
+              const box = cashboxes.find(c => c.id.toString() === previewReceiptData.resourceId?.toString());
+              if(box) resourceName = box.name;
+            }
           }
 
           return (
@@ -11317,24 +11459,54 @@ export default function App() {
                   <table className="w-full text-right text-sm">
                     <tbody className="divide-y divide-gray-100">
                       <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">شماره رسید</td>
+                        <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">شماره رسید کل</td>
                         <td className="p-4 font-black text-gray-900 font-mono">{previewReceiptData.receiptNumber || '---'}</td>
                       </tr>
                       <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">مبلغ تراکنش</td>
+                        <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">مبلغ پرداختی/دریافتی</td>
                         <td className="p-4 font-black flex items-center gap-2 text-lg">
                            <span className={`${themeText} font-mono`}>{formatCurrency(previewReceiptData.amount)}</span>
                            <span className="text-xs text-gray-500">{storeSettings.currency}</span>
                         </td>
                       </tr>
                       <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold">تاریخ</td>
+                        <td className="p-4 bg-gray-50 text-gray-600 font-bold">تاریخ ایجاد سند</td>
                         <td className="p-4 font-bold text-gray-900 font-mono">{previewReceiptData.jalaliDate}</td>
                       </tr>
-                      <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold">حساب/صندوق</td>
-                        <td className="p-4 font-bold text-gray-900">{resourceName}</td>
-                      </tr>
+                      
+                      {previewReceiptData.method === 'cash' ? (
+                        <tr>
+                          <td className="p-4 bg-gray-50 text-gray-600 font-bold">حساب/صندوق</td>
+                          <td className="p-4 font-bold text-gray-900">{resourceName}</td>
+                        </tr>
+                      ) : (
+                        <>
+                          <tr>
+                            <td className="p-4 bg-amber-50 text-amber-700 font-bold">شماره چک</td>
+                            <td className="p-4 font-bold text-gray-900 font-mono">{previewReceiptData.checkNumber}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-4 bg-amber-50 text-amber-700 font-bold">تاریخ سررسید چک</td>
+                            <td className="p-4 font-bold text-gray-900 font-mono">{previewReceiptData.checkDueDate}</td>
+                          </tr>
+                          {previewReceiptData.type === 'receive' ? (
+                             <tr>
+                               <td className="p-4 bg-amber-50 text-amber-700 font-bold">بانک صادرکننده چک</td>
+                               <td className="p-4 font-bold text-gray-900">{previewReceiptData.checkBankName}</td>
+                             </tr>
+                          ) : (() => {
+                             const checkbook = checkbooks.find(cb => cb.id === previewReceiptData.checkbookId);
+                             const bankAccount = accounts.find(a => a.id === checkbook?.accountId);
+                             return (
+                               <tr>
+                                 <td className="p-4 bg-amber-50 text-amber-700 font-bold">از دسته چک</td>
+                                 <td className="p-4 font-bold text-gray-900">{bankAccount?.bankName} ({checkbook?.startNumber} - {checkbook?.endNumber})</td>
+                               </tr>
+                             );
+                          })()}
+                        </>
+                      )}
+
                       {previewReceiptData.description && (
                       <tr>
                         <td className="p-4 bg-gray-50 text-gray-600 font-bold">توضیحات بابت</td>
