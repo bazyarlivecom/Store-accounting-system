@@ -4179,7 +4179,7 @@ export default function App() {
 
 
                            <tr key={inv.id} className="hover:bg-gray-50">
-                             <td className="p-4 font-mono text-left font-bold text-gray-700 w-24" dir="ltr">#{toPersianDigits(inv.invoiceNumber)}</td>
+                             <td className="p-4 font-sans text-right font-black text-slate-705 text-sm whitespace-nowrap">#{toPersianDigits(inv.invoiceNumber)}</td>
                              {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
                                <td className="p-4 font-bold text-slate-800 text-xs truncate max-w-[150px]" title={inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}>
                                   {inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}
@@ -4198,7 +4198,7 @@ export default function App() {
                              <td className="p-4">
                                 <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
                                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                                  <span className="font-mono font-bold tracking-tight">{toPersianDigits(inv.jalaliDate)}</span>
+                                  <span className="font-sans font-black text-xs text-slate-700">{toPersianDigits(inv.jalaliDate)}</span>
                                 </div>
                               </td>
                              {activeTab.includes('warehouse') ? (
@@ -4207,21 +4207,21 @@ export default function App() {
                                </td>
                              ) : (
                                <td className="p-4 text-left">
-                                  <span className="font-mono font-black text-sm text-indigo-950 bg-indigo-50/50 hover:bg-indigo-100/50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-xs" dir="ltr">
-                                    {formatCurrency(inv.totalAmount || 0)} <span className="text-[10px] text-indigo-600 font-extrabold mr-1">{inv.currency || storeSettings.currency}</span>
+                                  <span className="font-sans font-black text-sm text-indigo-950 bg-indigo-50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-2xs">
+                                    {toPersianDigits(formatCurrency(inv.totalAmount || 0))} <span className="text-[10px] text-indigo-605 font-extrabold mr-1">{inv.currency || storeSettings.currency}</span>
                                   </span>
                                 </td>
                              )}
                              {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
                                <>
                                  <td className="p-4 text-left">
-                                  <span className="font-mono font-bold text-xs text-emerald-700 bg-emerald-50 px-2 py-1 flex items-center gap-1 w-max ml-0 mr-auto rounded-lg" dir="ltr">
-                                    {formatCurrency(inv.paidAmount || 0)} <span className="text-[9px] text-emerald-600">{inv.currency || storeSettings.currency}</span>
+                                  <span className="font-sans font-extrabold text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 flex items-center gap-1 w-max ml-0 mr-auto rounded-lg">
+                                    {toPersianDigits(formatCurrency(inv.paidAmount || 0))} <span className="text-[9px] text-emerald-700">{inv.currency || storeSettings.currency}</span>
                                   </span>
                                  </td>
                                  <td className="p-4 text-left">
-                                  <span className="font-mono font-bold text-xs text-rose-700 bg-rose-50 px-2 py-1 flex items-center gap-1 w-max ml-0 mr-auto rounded-lg" dir="ltr">
-                                    {formatCurrency(Math.max((inv.totalAmount || 0) - (inv.paidAmount || 0), 0))} <span className="text-[9px] text-rose-600">{inv.currency || storeSettings.currency}</span>
+                                  <span className="font-sans font-extrabold text-xs text-rose-700 bg-rose-50 px-2.5 py-1.5 flex items-center gap-1 w-max ml-0 mr-auto rounded-lg">
+                                    {toPersianDigits(formatCurrency(Math.max((inv.totalAmount || 0) - (inv.paidAmount || 0), 0)))} <span className="text-[9px] text-rose-705">{inv.currency || storeSettings.currency}</span>
                                   </span>
                                  </td>
                                  <td className="p-4 text-center">
@@ -4694,13 +4694,13 @@ export default function App() {
                            : `صندوق: ${cashboxes.find(cb => cb.id.toString() === tx.resourceId?.toString())?.name || 'نامشخص'}`;
                          return (
                            <tr key={tx.id} className={`${themeRowHover} transition-colors`}>
-                             <td className={`p-4 font-mono font-bold ${themeHighlightTxt}`}>{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
+                             <td className={`p-4 font-sans font-bold text-sm ${themeHighlightTxt}`}>{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
                              <td className="p-4 font-bold text-slate-800">{renderPersonLink(person?.id, person?.name)}</td>
-                             <td className="p-4 font-mono text-slate-500 font-bold" dir="ltr">{toPersianDigits(tx.jalaliDate || tx.date?.split("T")[0])}</td>
+                             <td className="p-4 font-sans text-slate-600 font-bold text-xs">{toPersianDigits(tx.jalaliDate || tx.date?.split("T")[0])}</td>
                              <td className="p-4 text-xs font-black text-slate-600 text-right">{resourceLabel}</td>
                              <td className="p-4 text-right">
-                                <div className={`font-mono font-black ${themeNum} text-sm`} dir="ltr">
-                                  {formatNumber(tx.amount)} {storeSettings.currency}
+                                <div className={`font-sans font-black ${themeNum} text-sm`}>
+                                  {toPersianDigits(formatNumber(tx.amount))} {storeSettings.currency}
                                 </div>
                                 <div className="text-[10px] text-slate-400 font-bold mt-0.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
                                   {numToPersianWords(tx.amount)} {storeSettings.currency}
@@ -6090,12 +6090,12 @@ export default function App() {
                           className="hover:bg-gray-50 transition-colors cursor-pointer group"
                           onClick={() => setDrawerPersonId(p.id)}
                         >
-                          <td className="py-4 px-6 text-gray-500 w-16 text-center font-mono text-xs">
+                          <td className="py-4 px-6 text-gray-500 w-16 text-center font-sans font-bold text-xs">
                             {((safeCurrentPage - 1) * personPageSize + index + 1).toLocaleString('fa-IR')}
                           </td>
                           <td className="py-4 px-6 text-center">
                             {p.personCode ? (
-                              <span className="font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded text-xs">{p.personCode}</span>
+                              <span className="font-sans font-black bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-xl text-xs">{toPersianDigits(p.personCode)}</span>
                             ) : (
                               <span className="text-gray-300">-</span>
                             )}
@@ -6138,26 +6138,26 @@ export default function App() {
                           <td className="py-4 px-6 text-gray-600 text-sm">
                             {p.personType === 'legal' ? 'حقوقی' : 'حقیقی'}
                           </td>
-                          <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
-                            {p.nationalId || '-'}
+                          <td className="py-4 px-6 text-slate-700 font-sans font-bold text-xs">
+                            {p.nationalId ? toPersianDigits(p.nationalId) : '-'}
                           </td>
                           <td className="py-4 px-6 text-gray-600 text-sm">
                             <span className={`px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 font-bold text-xs ${getRoleBadgeClasses(p.role)}`}>
                               {getRoleName(p.role)}
                             </span>
                           </td>
-                          <td className="py-4 px-6 text-gray-600 font-mono text-sm" dir="ltr">
-                            {p.phone || '-'}
+                          <td className="py-4 px-6 text-slate-700 font-sans font-bold text-xs">
+                            {p.phone ? toPersianDigits(p.phone) : '-'}
                           </td>
                           <td className="py-4 px-6 text-sm" dir="rtl">
                             {(() => {
                               const bal = paginatedPersonBalances[p.id.toString()] || 0;
                               if (bal === 0) {
-                                return <span className="text-gray-400 font-bold">تسویه (۰)</span>;
+                                return <span className="text-slate-400 font-sans font-black text-xs bg-slate-50 border border-slate-100 px-2 py-1 rounded-xl">تسویه (۰)</span>;
                               } else if (bal > 0) {
-                                return <span className="text-rose-600 font-bold tracking-tight inline-flex items-center gap-1"><span className="font-mono text-xs">{formatNumber(bal)}</span> <span className="text-[9px]">بدهکار</span></span>;
+                                return <span className="text-rose-600 font-black tracking-tight inline-flex items-center gap-1 bg-rose-50 border border-rose-100/40 px-2 py-1 rounded-xl"><span className="font-sans text-xs">{toPersianDigits(formatNumber(bal))}</span> <span className="text-[9px] text-rose-500 font-bold">بدهکار</span></span>;
                               } else {
-                                return <span className="text-emerald-600 font-bold tracking-tight inline-flex items-center gap-1"><span className="font-mono text-xs">{formatNumber(Math.abs(bal))}</span> <span className="text-[9px]">بستانکار</span></span>;
+                                return <span className="text-emerald-600 font-black tracking-tight inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100/40 px-2 py-1 rounded-xl"><span className="font-sans text-xs">{toPersianDigits(formatNumber(Math.abs(bal)))}</span> <span className="text-[9px] text-emerald-500 font-bold">بستانکار</span></span>;
                               }
                             })()}
                           </td>
