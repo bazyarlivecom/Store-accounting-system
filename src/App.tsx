@@ -7248,7 +7248,7 @@ export default function App() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6 text-right"
+          className="space-y-6 text-right print-section print:p-8 print:bg-white print:min-h-screen"
           dir="rtl"
         >
           {/* Header */}
@@ -7714,15 +7714,15 @@ export default function App() {
                         هیچ گردش مالی یا سندی برای این شخص ثبت نشده است.
                       </div>
                     ) : (
-                      <table className="w-full text-right min-w-[950px] print:min-w-full text-sm">
+                      <table className="w-full text-right min-w-[950px] print:min-w-[0px] print:text-[12px] text-sm">
                         <thead>
-                          <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider">
-                            <th className="py-5 px-4 text-center w-10">ردیف</th>
-                            <th className="py-5 px-4 text-right w-36">تاریخ و ارجاع</th>
-                            <th className="py-5 px-6 text-right">عنوان و شرح جزئیات رویداد مالی</th>
-                            <th className="py-5 px-4 text-left w-36">بدهکار (افزایش بدهی)</th>
-                            <th className="py-5 px-4 text-left w-36">بستانکار (کاهش بدهی)</th>
-                            <th className="py-5 px-6 text-left w-44">مانده نهایی حساب</th>
+                          <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider print:text-[10px]">
+                            <th className="py-5 px-4 text-center w-10 print:w-8 print:px-2">ردیف</th>
+                            <th className="py-5 px-4 text-right w-36 print:w-28 print:px-2">تاریخ و ارجاع</th>
+                            <th className="py-5 px-6 text-right print:px-2">عنوان و شرح جزئیات رویداد مالی</th>
+                            <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">بدهکار (افزایش بدهی)</th>
+                            <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">بستانکار (کاهش بدهی)</th>
+                            <th className="py-5 px-6 text-left w-44 print:w-32 print:px-2">مانده نهایی حساب</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 font-medium">
@@ -7770,14 +7770,14 @@ export default function App() {
                                   setActiveTab('received_checks');
                                 }
                               }}>
-                                <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6">
-                                  <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors">
+                                <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6 print:py-3 print:px-2 print:pt-4">
+                                  <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors shrink-0">
                                     {toPersianDigits(index + 1)}
                                   </div>
                                 </td>
-                                <td className="py-5 px-4 align-top pt-5">
+                                <td className="py-5 px-4 align-top pt-5 print:py-3 print:px-2 print:pt-4">
                                   <div className="flex flex-col gap-2.5 text-right relative">
-                                    <span className="text-gray-700 font-bold flex items-center justify-end gap-2 text-sm max-w-fit pr-0" dir="ltr">
+                                    <span className="text-gray-700 font-bold flex items-center justify-end gap-2 text-sm max-w-fit pr-0 print:text-xs" dir="ltr">
                                       <span className="mt-0.5 whitespace-nowrap">{toPersianDigits(entry.jalaliDate)}</span>
                                       <Calendar className="w-4 h-4 text-indigo-500/70" />
                                     </span>
@@ -7787,27 +7787,27 @@ export default function App() {
                                     </span>
                                   </div>
                                 </td>
-                                <td className="py-5 px-6 align-top pt-5 max-w-sm">
+                                <td className="py-5 px-6 align-top pt-5 max-w-sm print:py-3 print:px-2 print:pt-4">
                                   <div className="flex flex-col items-start gap-2.5">
                                     <span className={`w-max px-3 py-1 rounded-lg text-xs font-extrabold border shadow-sm ${badgeColor}`}>
                                       {entry.type}
                                     </span>
-                                    <p className="text-gray-700 text-[13px] whitespace-normal leading-loose font-medium break-words text-justify">
+                                    <p className="text-gray-700 text-[13px] print:text-xs whitespace-normal leading-loose font-medium break-words text-justify">
                                       {toPersianDigits(entry.desc)}
                                     </p>
                                   </div>
                                 </td>
-                                <td className="py-5 px-4 text-left align-top pt-6">
-                                  <span className={`font-black text-[15px] ${entry.debit > 0 ? 'text-indigo-600' : 'text-gray-300 font-medium'}`}>
+                                <td className="py-5 px-4 text-left align-top pt-6 print:py-3 print:px-2 print:pt-4">
+                                  <span className={`font-black text-[15px] print:text-[13px] ${entry.debit > 0 ? 'text-indigo-600' : 'text-gray-300 font-medium'}`}>
                                     {entry.debit > 0 ? toPersianDigits(formatNumber(entry.debit)) : '---'}
                                   </span>
                                 </td>
-                                <td className="py-5 px-4 text-left align-top pt-6">
-                                  <span className={`font-black text-[15px] ${entry.credit > 0 ? 'text-emerald-600' : 'text-gray-300 font-medium'}`}>
+                                <td className="py-5 px-4 text-left align-top pt-6 print:py-3 print:px-2 print:pt-4">
+                                  <span className={`font-black text-[15px] print:text-[13px] ${entry.credit > 0 ? 'text-emerald-600' : 'text-gray-300 font-medium'}`}>
                                     {entry.credit > 0 ? toPersianDigits(formatNumber(entry.credit)) : '---'}
                                   </span>
                                 </td>
-                                <td className="py-5 px-6 text-left align-top pt-5">
+                                <td className="py-5 px-6 text-left align-top pt-5 print:py-3 print:px-2 print:pt-4">
                                   <div className={`flex flex-col items-end gap-1.5 font-extrabold ${
                                     isBalZero 
                                       ? 'text-slate-600' 
@@ -7819,7 +7819,7 @@ export default function App() {
                                       <span className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm mt-0.5 text-slate-700">صفر (تسویه)</span>
                                     ) : (
                                       <>
-                                        <span className="text-[17px] tracking-tight">{toPersianDigits(formatNumber(Math.abs(entry.runningBalance)))}</span>
+                                        <span className="text-[17px] print:text-[14px] tracking-tight">{toPersianDigits(formatNumber(Math.abs(entry.runningBalance)))}</span>
                                         <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border shadow-sm ${isDeb ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
                                           {isDeb ? 'بدهکار به ما' : 'بستانکار (طلبکار)'}
                                         </span>
