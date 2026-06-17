@@ -7442,30 +7442,31 @@ export default function App() {
                 };
               });
 
-            const safeGetTime = (dateStr: any) => {
-              if (!dateStr) return 0;
-              if (typeof dateStr === 'number') return dateStr;
-              
-              if (typeof dateStr === 'string' && (dateStr.includes('/') || dateStr.match(/^\d{4}\/\d{2}\/\d{2}/))) {
-                const normalized = dateStr.replace(/[۰-۹]/g, (d: string) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
-                const parts = normalized.split('/');
-                if (parts.length === 3) {
-                  const gYear = parseInt(parts[0]) + 621;
-                  const gMonth = parseInt(parts[1]);
-                  const gDay = parseInt(parts[2]);
-                  const testDate = new Date(gYear, gMonth - 1, gDay);
-                  if (!isNaN(testDate.getTime())) {
-                    return testDate.getTime();
-                  }
-                }
+            const getJalaliSortValue = (jalaliStr: string) => {
+              if (!jalaliStr || jalaliStr === '-') return 0;
+              const normalized = jalaliStr.replace(/[۰-۹]/g, (d: string) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+              const parts = normalized.split('/');
+              if (parts.length === 3) {
+                 const y = parts[0];
+                 const m = parts[1].padStart(2, '0');
+                 const d = parts[2].split(' ')[0].padStart(2, '0');
+                 return parseInt(y + m + d, 10);
               }
-              const t = new Date(dateStr).getTime();
-              return isNaN(t) ? 0 : t;
+              return 0;
             };
 
             // Combine and sort chronologically
             let allEntries = [...invoiceEntries, ...transactionEntries, ...issuedCheckEntries, ...receivedCheckEntries].sort((a, b) => {
-              const dateDiff = safeGetTime(a.date) - safeGetTime(b.date);
+              const jA = getJalaliSortValue(a.jalaliDate);
+              const jB = getJalaliSortValue(b.jalaliDate);
+              if (jA !== jB && jA !== 0 && jB !== 0) {
+                 return jA - jB;
+              }
+              
+              const tA = new Date(a.date).getTime();
+              const tB = new Date(b.date).getTime();
+              const dateDiff = (isNaN(tA) ? 0 : tA) - (isNaN(tB) ? 0 : tB);
+              
               if (dateDiff === 0) {
                 return (a.rawItem?.createdAt || 0) - (b.rawItem?.createdAt || 0);
               }
@@ -11179,29 +11180,30 @@ export default function App() {
                 };
               });
 
-            const safeGetTimeDef = (dateStr: any) => {
-              if (!dateStr) return 0;
-              if (typeof dateStr === 'number') return dateStr;
-              
-              if (typeof dateStr === 'string' && (dateStr.includes('/') || dateStr.match(/^\d{4}\/\d{2}\/\d{2}/))) {
-                const normalized = dateStr.replace(/[۰-۹]/g, (d: string) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
-                const parts = normalized.split('/');
-                if (parts.length === 3) {
-                  const gYear = parseInt(parts[0]) + 621;
-                  const gMonth = parseInt(parts[1]);
-                  const gDay = parseInt(parts[2]);
-                  const testDate = new Date(gYear, gMonth - 1, gDay);
-                  if (!isNaN(testDate.getTime())) {
-                    return testDate.getTime();
-                  }
-                }
+            const getJalaliSortValueDef = (jalaliStr: string) => {
+              if (!jalaliStr || jalaliStr === '-') return 0;
+              const normalized = jalaliStr.replace(/[۰-۹]/g, (d: string) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+              const parts = normalized.split('/');
+              if (parts.length === 3) {
+                 const y = parts[0];
+                 const m = parts[1].padStart(2, '0');
+                 const d = parts[2].split(' ')[0].padStart(2, '0');
+                 return parseInt(y + m + d, 10);
               }
-              const t = new Date(dateStr).getTime();
-              return isNaN(t) ? 0 : t;
+              return 0;
             };
 
             let allEntries = [...invoiceEntries, ...transactionEntries, ...issuedCheckEntries, ...receivedCheckEntries].sort((a, b) => {
-              const dateDiff = safeGetTimeDef(a.date) - safeGetTimeDef(b.date);
+              const jA = getJalaliSortValueDef(a.jalaliDate);
+              const jB = getJalaliSortValueDef(b.jalaliDate);
+              if (jA !== jB && jA !== 0 && jB !== 0) {
+                 return jA - jB;
+              }
+              
+              const tA = new Date(a.date).getTime();
+              const tB = new Date(b.date).getTime();
+              const dateDiff = (isNaN(tA) ? 0 : tA) - (isNaN(tB) ? 0 : tB);
+              
               if (dateDiff === 0) {
                 return (a.rawItem?.createdAt || 0) - (b.rawItem?.createdAt || 0);
               }
