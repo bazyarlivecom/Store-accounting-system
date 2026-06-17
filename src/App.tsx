@@ -375,6 +375,7 @@ export default function App() {
   const salarySuccessMsg = false;
   const [submittingSalary, setSubmittingSalary] = useState<boolean>(false);
   const [viewingPayslip, setViewingPayslip] = useState<any | null>(null);
+  const [printingPersonLedger, setPrintingPersonLedger] = useState<any | null>(null);
   const [printingBarcodeProduct, setPrintingBarcodeProduct] = useState<any | null>(null);
 
   // Person Ledger state
@@ -7248,7 +7249,7 @@ export default function App() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-6 text-right print-section print:p-8 print:bg-white print:min-h-screen"
+          className="space-y-6 text-right print:p-0 print:bg-white print:min-h-screen"
           dir="rtl"
         >
           {/* Header */}
@@ -7265,7 +7266,13 @@ export default function App() {
             
             <div className="flex gap-2">
               <button
-                onClick={() => window.print()}
+                onClick={() => {
+                   setPrintingPersonLedger(true);
+                   setTimeout(() => {
+                      window.print();
+                      setTimeout(() => setPrintingPersonLedger(false), 500);
+                   }, 300);
+                }}
                 className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-indigo-100 shadow-sm"
               >
                 <Printer className="w-4 h-4" />
@@ -7349,13 +7356,17 @@ export default function App() {
                 const isSale = inv.type === 'sale';
                   const isProforma = inv.type === 'proforma';
                   const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+                  const itemsSummary = inv.items && inv.items.length > 0
+                    ? ` (شامل: ${inv.items.map((it: any) => it.name).join('، ')})`
+                    : '';
+                  const baseDesc = inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور'));
                 return {
                   id: `inv-${inv.id}`,
                   refId: inv.invoiceNumber || `#${inv.id}`,
                   date: inv.date,
                   jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
                   type: inv.type === 'proforma' ? 'پیش‌فاکتور' : (inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا'),
-                  desc: inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور')),
+                  desc: `${baseDesc}${itemsSummary}`,
                   debit: (isSale && !isProforma) ? amount : 0,  // Sale increases how much they owe us
                   credit: (!isSale && !isProforma) ? amount : 0, // Purchase decreases how much they owe us
                   rawItem: inv,
@@ -7544,41 +7555,119 @@ export default function App() {
             return (
               <div className="space-y-6">
               
-                {/* Enhanced Print Header (Only visible when printing) */}
-                <div className="hidden print:block border-2 border-gray-900 p-6 rounded-2xl mb-8 shadow-sm">
-                   <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
-                     <div className="text-right">
-                       <h1 className="text-2xl font-black text-gray-900">{storeSettings.storeName || 'سیستم مدیریت'}</h1>
-                       <h2 className="text-lg font-bold text-gray-600 mt-1">کارت حساب (دفتر معین) ویژه اشخاص</h2>
-                     </div>
-                     <div className="text-left select-none text-sm font-semibold text-gray-500">
-                       تاریخ چاپ: {toPersianDigits(new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}
-                     </div>
-                   </div>
-                   
-                   <div className="grid grid-cols-2 gap-8 text-sm">
-                     <div className="space-y-3 font-medium">
-                       <p><span className="text-gray-500 w-24 inline-block font-bold">نام طرف حساب:</span> <span className="font-extrabold text-lg text-gray-900">{selectedPerson.name}</span></p>
-                       <p><span className="text-gray-500 w-24 inline-block font-bold">تلفن تماس:</span> <span className="text-gray-900">{toPersianDigits(selectedPerson.phone ? selectedPerson.phone : '---')}</span></p>
-                       <p><span className="text-gray-500 w-24 inline-block font-bold">آدرس:</span> <span className="text-gray-900">{selectedPerson.address || '---'}</span></p>
-                     </div>
-                     
-                     <div className="space-y-3 font-medium">
-                        <p><span className="text-gray-500 inline-block font-bold">جمع مبالغ بدهکار:</span> <span className="text-gray-900 font-extrabold text-base">{toPersianDigits(formatNumber(totalDebits))} {storeSettings.currency}</span></p>
-                        <p><span className="text-gray-500 inline-block font-bold">جمع مبالغ بستانکار:</span> <span className="text-gray-900 font-extrabold text-base">{toPersianDigits(formatNumber(totalCredits))} {storeSettings.currency}</span></p>
-                        <p className="pt-2 border-t border-gray-200">
-                           <span className="text-gray-600 inline-block font-bold text-lg">مانده نهایی حساب:</span>{' '}
-                           <span className={`text-lg font-black tracking-tight ${isClr ? 'text-gray-800' : isOwed ? 'text-rose-700' : 'text-emerald-700'}`}>
-                             {isClr ? 'تسویه کامل' : (
-                               <>
-                                 {toPersianDigits(formatNumber(Math.abs(finalBalance)))} {storeSettings.currency} <span className="text-xs mr-2 font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700">{isOwed ? 'بدهکار به ما' : 'بستانکار از ما'}</span>
-                               </>
-                             )}
-                           </span>
-                        </p>
-                     </div>
-                   </div>
-                </div>
+                {printingPersonLedger && (
+                  <div className="fixed inset-0 z-[9999] bg-white text-black p-8 print-section overflow-visible flex flex-col font-sans" dir="rtl">
+                    <div className="border-2 border-gray-900 p-6 rounded-2xl mb-8 shadow-sm print:shadow-none">
+                       <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
+                         <div className="text-right">
+                           <h1 className="text-2xl font-black text-gray-900">{storeSettings.storeName || 'سیستم مدیریت'}</h1>
+                           <h2 className="text-lg font-bold text-gray-600 mt-1">کارت حساب (دفتر معین) ویژه اشخاص</h2>
+                         </div>
+                         <div className="text-left select-none text-sm font-semibold text-gray-500">
+                           تاریخ چاپ: {toPersianDigits(new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}
+                         </div>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 gap-8 text-sm">
+                         <div className="space-y-3 font-medium">
+                           <p><span className="text-gray-500 w-24 inline-block font-bold">نام طرف حساب:</span> <span className="font-extrabold text-lg text-gray-900">{selectedPerson.name}</span></p>
+                           <p><span className="text-gray-500 w-24 inline-block font-bold">تلفن تماس:</span> <span className="text-gray-900">{toPersianDigits(selectedPerson.phone ? selectedPerson.phone : '---')}</span></p>
+                           <p><span className="text-gray-500 w-24 inline-block font-bold">آدرس:</span> <span className="text-gray-900">{selectedPerson.address || '---'}</span></p>
+                         </div>
+                         
+                         <div className="space-y-3 font-medium">
+                            <p><span className="text-gray-500 inline-block font-bold">جمع مبالغ بدهکار:</span> <span className="text-gray-900 font-extrabold text-base">{toPersianDigits(formatNumber(totalDebits))} {storeSettings.currency}</span></p>
+                            <p><span className="text-gray-500 inline-block font-bold">جمع مبالغ بستانکار:</span> <span className="text-gray-900 font-extrabold text-base">{toPersianDigits(formatNumber(totalCredits))} {storeSettings.currency}</span></p>
+                            <p className="pt-2 border-t border-gray-200">
+                               <span className="text-gray-600 inline-block font-bold text-lg">مانده نهایی حساب:</span>{' '}
+                               <span className={`text-lg font-black tracking-tight ${isClr ? 'text-gray-800' : isOwed ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                 {isClr ? 'تسویه کامل' : (
+                                   <>
+                                     {toPersianDigits(formatNumber(Math.abs(finalBalance)))} {storeSettings.currency} <span className="text-xs mr-2 font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700">{isOwed ? 'بدهکار به ما' : 'بستانکار از ما'}</span>
+                                   </>
+                                 )}
+                               </span>
+                            </p>
+                         </div>
+                       </div>
+                    </div>
+                    
+                    <div className="overflow-visible">
+                          <table className="w-full text-right min-w-[0px] text-[11px] print:text-[11px] mb-8">
+                            <thead>
+                              <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-400 font-bold text-[10px] uppercase tracking-wider print:bg-slate-100">
+                                <th className="py-3 px-2 text-center w-8 print:border-b-2 print:border-gray-500">ردیف</th>
+                                <th className="py-3 px-2 text-right w-24 print:border-b-2 print:border-gray-500">تاریخ و ارجاع</th>
+                                <th className="py-3 px-2 text-right print:border-b-2 print:border-gray-500">عنوان و شرح جزئیات رویداد مالی</th>
+                                <th className="py-3 px-2 text-left w-28 print:border-b-2 print:border-gray-500">بدهکار</th>
+                                <th className="py-3 px-2 text-left w-28 print:border-b-2 print:border-gray-500">بستانکار</th>
+                                <th className="py-3 px-2 text-left w-32 print:border-b-2 print:border-gray-500">مانده نهایی</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 font-medium font-sans">
+                              {ledgerEntries.map((entry, index) => {
+                                const isDeb = entry.runningBalance > 0;
+                                const isBalZero = entry.runningBalance === 0;
+                                return (
+                                  <tr key={index} className="break-inside-avoid border-b border-gray-100">
+                                    <td className="py-3 px-2 text-center align-top pt-4">
+                                      <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center mx-auto text-[9px] font-bold shrink-0">
+                                        {toPersianDigits(index + 1)}
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-2 align-top pt-3">
+                                      <div className="flex flex-col gap-1.5 text-right relative">
+                                        <span className="text-gray-800 font-bold flex items-center justify-end gap-1 text-xs pr-0" dir="ltr">
+                                          <span className="whitespace-nowrap">{toPersianDigits(entry.jalaliDate)}</span>
+                                        </span>
+                                        <span className="text-[10px] text-gray-600 border border-gray-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                          {toPersianDigits(entry.refId)}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-2 align-top pt-3 max-w-sm">
+                                      <div className="flex flex-col items-start gap-1">
+                                        <span className="font-extrabold text-[10px] bg-gray-100 px-2 py-0.5 rounded border border-gray-200">{entry.type}</span>
+                                        <p className="text-gray-800 text-[11px] whitespace-normal leading-relaxed break-words text-justify">
+                                          {toPersianDigits(entry.desc)}
+                                        </p>
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-2 text-left align-top pt-4">
+                                      <span className={`font-black text-[12px] ${entry.debit > 0 ? 'text-black' : 'text-gray-400 font-medium'}`}>
+                                        {entry.debit > 0 ? toPersianDigits(formatNumber(entry.debit)) : '---'}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-2 text-left align-top pt-4">
+                                      <span className={`font-black text-[12px] ${entry.credit > 0 ? 'text-black' : 'text-gray-400 font-medium'}`}>
+                                        {entry.credit > 0 ? toPersianDigits(formatNumber(entry.credit)) : '---'}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-2 text-left align-top pt-3">
+                                      <div className={`flex flex-col items-end gap-1 font-extrabold ${isBalZero ? 'text-gray-600' : 'text-black'}`}>
+                                        {isBalZero ? (
+                                          <span className="border border-gray-300 px-2 py-1 rounded text-xs mt-0.5">صفر (تسویه)</span>
+                                        ) : (
+                                          <>
+                                            <span className="text-[13px] tracking-tight">{toPersianDigits(formatNumber(Math.abs(entry.runningBalance)))}</span>
+                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${isDeb ? 'border-gray-400 text-gray-700' : 'border-gray-400 text-gray-700'}`}>
+                                              {isDeb ? 'بدهکار' : 'بستانکار'}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                          <div className="mt-8 text-center text-xs text-gray-500 border-t border-gray-200 pt-4">
+                             امضاء و مهر (صرفاً جهت اطلاع)
+                          </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Person Summary KPI Panel */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
@@ -11127,13 +11216,17 @@ export default function App() {
                 const isSale = inv.type === 'sale';
                 const isProforma = inv.type === 'proforma';
                 const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
+                const itemsSummary = inv.items && inv.items.length > 0
+                  ? ` (شامل: ${inv.items.map((it: any) => it.name).join('، ')})`
+                  : '';
+                const baseDesc = inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور'));
                 return {
                   id: `inv-${inv.id}`,
                   refId: inv.invoiceNumber || `#${inv.id}`,
                   date: inv.date,
                   jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
                   type: inv.type === 'proforma' ? 'پیش‌فاکتور' : (inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا'),
-                  desc: inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور')),
+                  desc: `${baseDesc}${itemsSummary}`,
                   debit: (isSale && !isProforma) ? amount : 0,
                   credit: (!isSale && !isProforma) ? amount : 0,
                   rawItem: inv,
