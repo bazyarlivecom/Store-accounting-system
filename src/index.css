@@ -57,12 +57,12 @@
 }
 
 @theme {
-  --font-sans: var(--app-font, "Vazirmatn"), "IRANYekanXFaNum", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IRANYekanXFaNum", var(--app-font, "Vazirmatn"), ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IRANYekanXFaNum", var(--app-font, "Vazirmatn"), ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
-  font-family: var(--app-font, "Vazirmatn"), sans-serif;
+  font-family: "IRANYekanXFaNum", var(--app-font, "Vazirmatn"), sans-serif;
   direction: rtl;
   background-color: #f3f4f6;
 }
