@@ -12356,15 +12356,15 @@ export default function App() {
     })()}
 
       {pricingWizardInvoice && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:block">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:block overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl ring-1 ring-slate-900/5 print:shadow-none print:ring-0 print:max-w-none print:max-h-none print:h-auto h-full md:h-auto print:overflow-visible"
+            className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl ring-1 ring-slate-900/5 print:shadow-none print:ring-0 print:max-w-none print:max-h-none print:h-auto h-full md:h-auto print:overflow-visible m-auto print-section"
             dir="rtl"
           >
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 print:hidden">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 print:hidden no-print">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner">
                   <Tag className="w-5 h-5" />
@@ -12387,14 +12387,15 @@ export default function App() {
                <h2 className="text-2xl font-black text-slate-900 mb-2">لیست قیمت فروش کالاها</h2>
                <div className="flex gap-6 text-sm font-bold text-slate-600">
                   <span>مرجع: فاکتور خرید {toPersianDigits(pricingWizardInvoice.invoiceNumber)}</span>
-                  <span>تاریخ: {toPersianDigits(pricingWizardInvoice.jalaliDate)}</span>
+                  <span>تاریخ ثبت خرید: {toPersianDigits(pricingWizardInvoice.jalaliDate)}</span>
+                  <span>تاریخ قیمت‌گذاری: {new Date().toLocaleDateString('fa-IR')}</span>
                </div>
             </div>
 
             <div className="p-6 overflow-y-auto flex-1 custom-scrollbar print:overflow-visible print:px-0 space-y-4">
               {/* Bulk Update */}
               {pricingWizardItems.length > 0 && (
-                 <div className="flex flex-col md:flex-row items-center justify-between bg-indigo-50 p-4 border border-indigo-100 rounded-2xl print:hidden gap-3">
+                 <div className="flex flex-col md:flex-row items-center justify-between bg-indigo-50 p-4 border border-indigo-100 rounded-2xl no-print gap-3">
                     <span className="text-sm font-bold text-indigo-900 flex items-center gap-2">
                        <Percent className="w-4 h-4 text-indigo-500" />
                        اعمال حاشیه سود گروهی روی تمام اقلام کالاها
@@ -12435,8 +12436,8 @@ export default function App() {
                     <tr>
                       <th className="p-4 font-extrabold text-slate-700 w-12 text-center">ردیف</th>
                       <th className="p-4 font-extrabold text-slate-700">نام کالا / خدمات</th>
-                      <th className="p-4 font-extrabold text-slate-700 w-32 border-r border-slate-100 text-center">قیمت خرید ({storeSettings.currency})</th>
-                      <th className="p-4 font-extrabold text-slate-700 w-32 border-r border-slate-100 text-center print:hidden">حاشیه سود (٪)</th>
+                      <th className="p-4 font-extrabold text-slate-700 w-32 border-r border-slate-100 text-center no-print">قیمت خرید ({storeSettings.currency})</th>
+                      <th className="p-4 font-extrabold text-slate-700 w-32 border-r border-slate-100 text-center no-print">حاشیه سود (٪)</th>
                       <th className="p-4 font-extrabold text-slate-700 w-44 border-r border-slate-100 text-center">قیمت فروش ({storeSettings.currency})</th>
                     </tr>
                   </thead>
@@ -12449,12 +12450,12 @@ export default function App() {
                         <td className="p-4 font-bold text-slate-800">
                           {item.productName}
                         </td>
-                        <td className="p-3 border-r border-slate-100 text-center align-middle">
-                           <div className="font-sans font-black text-slate-700 text-sm bg-slate-50 border border-slate-200/60 rounded-xl px-2 py-1.5 inline-block print:border-none print:bg-transparent">
+                        <td className="p-3 border-r border-slate-100 text-center align-middle no-print">
+                           <div className="font-sans font-black text-slate-700 text-sm bg-slate-50 border border-slate-200/60 rounded-xl px-2 py-1.5 inline-block">
                              {toPersianDigits(formatNumber(item.purchasePrice))}
                            </div>
                         </td>
-                        <td className="p-3 border-r border-slate-100 text-center align-middle print:hidden">
+                        <td className="p-3 border-r border-slate-100 text-center align-middle no-print">
                            <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-200/60 rounded-xl px-2 py-0.5 focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all max-w-[90px] mx-auto">
                            <input
                              type="number"
@@ -12476,7 +12477,7 @@ export default function App() {
                         <td className="p-3 border-r border-slate-100 text-center align-middle relative">
                            <input
                              type="text"
-                             className="w-[120px] text-center font-sans font-black text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all text-sm print:hidden"
+                             className="w-[120px] text-center font-sans font-black text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all text-sm no-print"
                              value={item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : ''}
                              onChange={(e) => {
                                const raw = Number(e.target.value.replace(/\D/g, ''));
@@ -12505,7 +12506,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between print:hidden">
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between no-print">
               <span className="text-xs font-bold text-slate-500">
                 با درج حاشیه سود یا تغییر مستقیم، قیمت فروش کالاها به‌روز می‌شود.
               </span>
