@@ -2156,7 +2156,7 @@ export default function App() {
         }}
         title="مشاهده کارت حساب"
       >
-         {defaultName}
+         {name}
       </span>
     );
   };
@@ -12624,16 +12624,16 @@ export default function App() {
                  {pricingWizardItems.map((item, idx) => {
                    const prod = products.find(p => p.id === item.productId);
                    return (
-                   <div key={idx} className="border-[6px] border-slate-900 p-4 rounded-3xl flex flex-col justify-between text-center w-[95mm] h-[65mm] break-inside-avoid relative overflow-hidden bg-white shadow-sm">
-                     <div className="w-full flex justify-between items-start px-2 mb-2">
-                        <span className="text-xs font-bold text-slate-400 font-mono tracking-wider">{prod?.barcode || ''}</span>
-                        <span className="text-xs font-bold text-slate-400 font-mono tracking-wider">{prod?.code || ''}</span>
+                   <div key={idx} className="border-[5px] border-slate-900 p-3 rounded-3xl flex flex-col justify-between text-center w-[95mm] h-[65mm] break-inside-avoid relative overflow-hidden bg-white shadow-sm">
+                     <div className="w-full flex justify-between items-start px-2 mb-1 shrink-0">
+                        <span className="text-xs font-bold text-slate-400 font-mono tracking-wider">بارکد: {prod?.barcode || '---'}</span>
+                        <span className="text-xs font-bold text-slate-400 font-mono tracking-wider">کد: {prod?.code || '---'}</span>
                      </div>
-                     <div className="flex flex-col items-center w-full flex-1 justify-center">
-                       <span className="text-lg font-extrabold text-slate-500 mb-2 truncate w-full px-2">{storeSettings?.storeName || 'پلتفرم فروشگاهی'}</span>
-                       <span className="text-xl md:text-2xl font-black text-slate-900 leading-tight px-2 w-full line-clamp-2">{item.productName}</span>
+                     <div className="flex flex-col items-center w-full min-h-0 flex-1 justify-center py-1">
+                       <span className="text-sm font-extrabold text-slate-500 mb-1 truncate w-full px-2">{storeSettings?.storeName || 'پلتفرم فروشگاهی'}</span>
+                       <span className="text-xl md:text-2xl font-black text-slate-900 leading-snug px-2 w-full overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{item.productName}</span>
                      </div>
-                     <div className="mt-auto pt-3 w-full flex flex-col items-center border-t-2 border-dashed border-slate-200">
+                     <div className="mt-auto pt-2 w-full flex flex-col items-center border-t-2 border-slate-200 shrink-0 bg-white">
                        <div className="flex items-end justify-center gap-2 mt-1">
                          <span className="text-[32px] md:text-[38px] font-black text-slate-900 tracking-tight leading-none" dir="ltr">
                            {item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : '---'}
