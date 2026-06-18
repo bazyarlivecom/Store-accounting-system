@@ -19,6 +19,7 @@ import InvoiceAllocation from './components/financial/InvoiceAllocation';
 import SearchableSelect from './components/ui/SearchableSelect';
 import BarcodeScannerModal from './components/modals/BarcodeScannerModal';
 import FinancialTransfer from './components/financial/FinancialTransfer';
+import QuickRefund from './components/financial/QuickRefund';
 import UserManager from './components/admin/UserManager';
 import InventoryReport from './components/reports/InventoryReport';
 import AnalyticalDashboard from './components/reports/AnalyticalDashboard';
@@ -78,7 +79,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -185,6 +186,7 @@ export default function App() {
         { id: 'received_checks', label: 'چک‌های دریافتی', roles: ['admin', 'accountant'] },
         { id: 'create_pay_receipt', label: 'ثبت رسید پرداخت', roles: ['admin', 'accountant'] },
         { id: 'list_pay_receipt', label: 'لیست رسید پرداخت', roles: ['admin', 'accountant'] },
+        { id: 'quick_refund', label: 'استرداد سریع متفرقه', roles: ['admin', 'accountant', 'cashier'] },
         { id: 'issued_checks', label: 'چک‌های پرداختی', roles: ['admin', 'accountant'] },
         { id: 'check_calendar', label: 'تقویم چک‌ها', roles: ['admin', 'accountant', 'manager'] },
         { id: 'invoice_allocation', label: 'تخصیص اسناد به فاکتور', roles: ['admin', 'accountant'] },
@@ -8106,6 +8108,16 @@ export default function App() {
             getDefaultExchangeRate={getDefaultExchangeRate} 
           />
         </motion.div>
+      ) : activeTab === 'quick_refund' ? (
+        <QuickRefund 
+          showNotification={showNotification} 
+          onComplete={() => {
+            fetchTransactions();
+            fetchPersons();
+            fetchAccounts();
+            fetchCashboxes();
+          }} 
+        />
       ) : activeTab === 'users_manager' ? (
         <UserManager />
       ) : activeTab === 'settings' ? (
@@ -8664,7 +8676,7 @@ export default function App() {
       ) : activeTab === 'checklist' ? (
         <SystemChecklist />
       ) : null}
-          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'transfer'].includes(activeTab)) && renderTabContent()}
+          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'transfer', 'quick_refund'].includes(activeTab)) && renderTabContent()}
           </div>
         </main>
 
