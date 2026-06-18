@@ -21,6 +21,7 @@ import BarcodeScannerModal from './components/modals/BarcodeScannerModal';
 import FinancialTransfer from './components/financial/FinancialTransfer';
 import UserManager from './components/admin/UserManager';
 import InventoryReport from './components/reports/InventoryReport';
+import DebtsCreditsReport from './components/reports/DebtsCreditsReport';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
 import appVersion from './version.json';
 
@@ -76,7 +77,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'transfer' | 'invoice_allocation'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'transfer' | 'invoice_allocation'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -126,6 +127,7 @@ export default function App() {
       items: [
         { id: 'financial_report', label: 'داشبورد مالی', roles: ['admin', 'accountant'] },
         { id: 'person_ledger', label: 'دفتر کل اشخاص', roles: ['admin', 'accountant', 'viewer'] },
+        { id: 'debts_credits', label: 'بدهکاران و بستانکاران', roles: ['admin', 'accountant', 'viewer'] },
         { id: 'inventory_report', label: 'کاردکس و موجودی کالا', roles: ['admin', 'accountant', 'viewer'] },
       ]
     },
@@ -7972,6 +7974,8 @@ export default function App() {
             );
           })()}
         </motion.div>
+      ) : activeTab === 'debts_credits' ? (
+        <DebtsCreditsReport showNotification={showNotification} />
       ) : activeTab === 'checkbooks' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="checkbooks" showNotification={showNotification} /></motion.div>
       ) : activeTab === 'issued_checks' ? (
@@ -12387,7 +12391,44 @@ export default function App() {
                </div>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar print:overflow-visible print:px-0">
+            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar print:overflow-visible print:px-0 space-y-4">
+              {/* Bulk Update */}
+              {pricingWizardItems.length > 0 && (
+                 <div className="flex flex-col md:flex-row items-center justify-between bg-indigo-50 p-4 border border-indigo-100 rounded-2xl print:hidden gap-3">
+                    <span className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                       <Percent className="w-4 h-4 text-indigo-500" />
+                       اعمال حاشیه سود گروهی روی تمام اقلام کالاها
+                    </span>
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                       <div className="flex items-center gap-2 w-full md:w-auto">
+                           <span className="text-xs font-bold text-indigo-700 whitespace-nowrap">درصد سود یکسان:</span>
+                           <div className="flex flex-1 md:flex-none items-center gap-1 bg-white border border-indigo-200 rounded-xl px-2 py-1.5 focus-within:ring-2 focus-within:ring-indigo-500/30 w-32 md:w-28">
+                              <input 
+                                  type="number" 
+                                  min="0"
+                                  placeholder="مثلا 15"
+                                  className="w-full text-center font-sans font-black text-indigo-700 bg-transparent focus:outline-none text-sm"
+                                  onChange={(e) => {
+                                     let value = e.target.value;
+                                     if (value === '') return;
+                                     const m = Number(value);
+                                     if (!isNaN(m)) {
+                                        const newItems = pricingWizardItems.map(item => ({
+                                           ...item,
+                                           marginPercent: m,
+                                           salePrice: item.purchasePrice * (1 + m / 100)
+                                        }));
+                                        setPricingWizardItems(newItems);
+                                     }
+                                  }} 
+                              />
+                              <span className="text-xs font-bold text-indigo-400">٪</span>
+                           </div>
+                       </div>
+                    </div>
+                 </div>
+              )}
+
               <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm print:border-none print:shadow-none print:overflow-visible">
                 <table className="w-full text-sm text-right">
                   <thead className="bg-slate-50 border-b border-slate-200 print:bg-slate-100/50">
