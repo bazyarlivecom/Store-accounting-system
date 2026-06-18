@@ -154,6 +154,7 @@ export type RefundRequest = {
   amount: number;
   personId?: string | number; // For selected existing person
   miscName?: string; // For miscellaneous distinct from person entity
+  miscGroupId?: string | number; // Group ID for new miscellaneous person
   cardNumber?: string;
   resourceType: 'bank' | 'cashbox';
   resourceId: string | number;

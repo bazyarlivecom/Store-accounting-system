@@ -4,8 +4,8 @@ import DatePickerModule from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { User, Wallet, FileText, CheckCircle, CreditCard, Banknote, List, Plus, Archive, ChevronDown, RefreshCw, X, TrendingUp, TrendingDown, DollarSign, Activity, PieChart as PieChartIcon } from 'lucide-react';
-import { getAccounts, getCashboxes, getPersons, addTransaction, addPerson, getRefundRequests, addRefundRequest, updateRefundRequest, getStoreSettings } from '../../services/dataService';
-import { Account, Cashbox, Person, RefundRequest } from '../../types';
+import { getAccounts, getCashboxes, getPersons, addTransaction, addPerson, getRefundRequests, addRefundRequest, updateRefundRequest, getStoreSettings, getPersonGroups } from '../../services/dataService';
+import { Account, Cashbox, Person, RefundRequest, PersonGroup } from '../../types';
 import { showInvoiceCurrency } from '../../utils/format';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -17,6 +17,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
+  const [personGroups, setPersonGroups] = useState<PersonGroup[]>([]);
   const [refundRequests, setRefundRequests] = useState<RefundRequest[]>([]);
   const [storeCur, setStoreCur] = useState('IRT');
   
@@ -32,6 +33,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
   const [personOption, setPersonOption] = useState<'select' | 'miscellaneous'>('miscellaneous');
   const [personId, setPersonId] = useState('');
   const [miscName, setMiscName] = useState('');
+  const [miscGroupId, setMiscGroupId] = useState('');
 
   const [date, setDate] = useState<string>(new Date().toLocaleDateString('fa-IR'));
   const [description, setDescription] = useState('');
@@ -42,16 +44,18 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
 
   const fetchData = async () => {
     try {
-      const [accs, cbs, pers, reqs, settings] = await Promise.all([
+      const [accs, cbs, pers, reqs, settings, groups] = await Promise.all([
         getAccounts(),
         getCashboxes(),
         getPersons(),
         getRefundRequests(),
-        getStoreSettings()
+        getStoreSettings(),
+        getPersonGroups()
       ]);
       setAccounts(accs as Account[]);
       setCashboxes(cbs as Cashbox[]);
       setPersons(pers as Person[]);
+      setPersonGroups(groups as PersonGroup[]);
       setRefundRequests(reqs as RefundRequest[]);
       const settingsTyped = settings as any;
       if (settingsTyped?.defaultCurrency) setStoreCur(settingsTyped.defaultCurrency);
@@ -80,6 +84,10 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
       showNotification?.('لطفاً نام شخص متفرقه را وارد کنید', 'error');
       return;
     }
+    if (personOption === 'miscellaneous' && !miscGroupId) {
+      showNotification?.('لطفاً گروه شخص متفرقه را مشخص کنید', 'error');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -88,6 +96,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
         amount: Number(amount),
         personId: personOption === 'select' ? personId : undefined,
         miscName: personOption === 'miscellaneous' ? miscName : undefined,
+        miscGroupId: personOption === 'miscellaneous' ? miscGroupId : undefined,
         cardNumber: cardNumber || undefined,
         resourceType,
         resourceId,
@@ -105,6 +114,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
       setResourceId('');
       setPersonOption('miscellaneous');
       setMiscName('');
+      setMiscGroupId('');
       setPersonId('');
       setCardNumber('');
       setDescription('');
@@ -135,6 +145,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
               name: req.miscName,
               personType: 'real',
               role: 'customer',
+              group: String(req.miscGroupId || ''),
               cardNumber: req.cardNumber || undefined,
               additionalNotes: 'تولید شده خودکار به عنوان متفرقه جهت استرداد وجه'
             };
@@ -373,9 +384,9 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
 
                     {personOption === 'miscellaneous' ? (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1.5">نام مشتری یا شخص <span className="text-rose-500">*</span></label>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5">نام مشتری متفرقه <span className="text-rose-500">*</span></label>
                             <input 
                               required
                               type="text" 
@@ -384,6 +395,20 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                               className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500" 
                               placeholder="مثلا: آقای احمدی (خرید خرد)"
                             />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">گروه شخص <span className="text-rose-500">*</span></label>
+                            <select 
+                              required
+                              value={miscGroupId}
+                              onChange={e => setMiscGroupId(e.target.value)}
+                              className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                            >
+                              <option value="">-- گروه مشتری متفرقه --</option>
+                              {personGroups.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                              ))}
+                            </select>
                           </div>
                           <div>
                             <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
