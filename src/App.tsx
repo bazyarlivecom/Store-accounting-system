@@ -12372,7 +12372,7 @@ export default function App() {
     })()}
 
       {pricingWizardInvoice && (
-        <div className="fixed inset-0 z-[999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:block overflow-y-auto">
+        <div className="fixed inset-0 z-[999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white print:block print:overflow-visible overflow-y-auto print-section">
           {/* Interactive UI */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -12546,7 +12546,7 @@ export default function App() {
           </motion.div>
 
           {/* Dedicated Print-Only Layout */}
-          <div className="hidden print:block print-section p-8 w-full max-w-4xl mx-auto bg-white font-sans text-slate-800" dir="rtl">
+          <div className="hidden print:block p-8 w-full max-w-4xl mx-auto bg-white font-sans text-slate-800" dir="rtl">
              <div className="flex flex-col items-center justify-center pb-6 border-b border-slate-200 mb-6">
                 <h2 className="text-2xl font-black text-slate-900 mb-3">لیست قیمت فروش کالاها</h2>
                 <div className="flex gap-8 text-sm font-bold text-slate-600">
