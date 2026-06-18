@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePickerModule from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
-import { User, Wallet, FileText, CheckCircle, CreditCard, Banknote, List, Plus, Archive, ChevronDown, RefreshCw } from 'lucide-react';
-import { getAccounts, getCashboxes, getPersons, addTransaction, addPerson, getRefundRequests, addRefundRequest, updateRefundRequest } from '../../services/dataService';
+import { User, Wallet, FileText, CheckCircle, CreditCard, Banknote, List, Plus, Archive, ChevronDown, RefreshCw, X, TrendingUp, TrendingDown, DollarSign, Activity, PieChart as PieChartIcon } from 'lucide-react';
+import { getAccounts, getCashboxes, getPersons, addTransaction, addPerson, getRefundRequests, addRefundRequest, updateRefundRequest, getStoreSettings } from '../../services/dataService';
 import { Account, Cashbox, Person, RefundRequest } from '../../types';
+import { showInvoiceCurrency } from '../../utils/format';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 
@@ -16,8 +18,9 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
   const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [refundRequests, setRefundRequests] = useState<RefundRequest[]>([]);
+  const [storeCur, setStoreCur] = useState('IRT');
   
-  const [activeTab, setActiveTab] = useState<'list' | 'add'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'add' | 'report'>('list');
 
   // Form State
   const [amount, setAmount] = useState('');
@@ -39,16 +42,19 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
 
   const fetchData = async () => {
     try {
-      const [accs, cbs, pers, reqs] = await Promise.all([
+      const [accs, cbs, pers, reqs, settings] = await Promise.all([
         getAccounts(),
         getCashboxes(),
         getPersons(),
-        getRefundRequests()
+        getRefundRequests(),
+        getStoreSettings()
       ]);
       setAccounts(accs as Account[]);
       setCashboxes(cbs as Cashbox[]);
       setPersons(pers as Person[]);
       setRefundRequests(reqs as RefundRequest[]);
+      const settingsTyped = settings as any;
+      if (settingsTyped?.defaultCurrency) setStoreCur(settingsTyped.defaultCurrency);
     } catch (error) {
       console.error(error);
     } finally {
@@ -171,6 +177,37 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
     }
   };
 
+  // Report Stats Calculation
+  const reportStats = useMemo(() => {
+    const totalRequests = refundRequests.length;
+    let totalAmountRegistered = 0;
+    let totalAmountPaid = 0;
+    let totalAmountCancelled = 0;
+    const dateMap: Record<string, { date: string; registered: number; paid: number; cancelled: number }> = {};
+
+    refundRequests.forEach(req => {
+      const amt = Number(req.amount) || 0;
+      if (req.status === 'registered') totalAmountRegistered += amt;
+      else if (req.status === 'paid') totalAmountPaid += amt;
+      else if (req.status === 'cancelled') totalAmountCancelled += amt;
+
+      if (!dateMap[req.date]) {
+        dateMap[req.date] = { date: req.date, registered: 0, paid: 0, cancelled: 0 };
+      }
+      dateMap[req.date][req.status] += amt;
+    });
+
+    const chartData = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
+
+    const pieData = [
+      { name: 'ثبت شده', value: totalAmountRegistered, color: '#f59e0b' },
+      { name: 'پرداخت شده', value: totalAmountPaid, color: '#10b981' },
+      { name: 'کنسل شده', value: totalAmountCancelled, color: '#f43f5e' }
+    ].filter(d => d.value > 0);
+
+    return { totalRequests, totalAmountRegistered, totalAmountPaid, totalAmountCancelled, chartData, pieData };
+  }, [refundRequests]);
+
   if (loading) {
     return <div className="text-center py-10">در حال بارگذاری اطلاعات...</div>;
   }
@@ -200,6 +237,12 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
            >
              <Plus className="w-4 h-4" /> ثبت استرداد جدید
            </button>
+           <button 
+             onClick={() => setActiveTab('report')}
+             className={`flex-1 sm:px-6 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'report' ? 'bg-white shadow-sm text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}
+           >
+             <PieChartIcon className="w-4 h-4" /> گزارشات مالی
+           </button>
         </div>
       </div>
 
@@ -213,7 +256,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                      <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500">
                        <th className="px-4 py-3 font-bold">شماره پیگیری</th>
                        <th className="px-4 py-3 font-bold">مشتری متفرقه / شخص</th>
-                       <th className="px-4 py-3 font-bold">مبلغ (تومان)</th>
+                       <th className="px-4 py-3 font-bold">مبلغ ({showInvoiceCurrency(storeCur)})</th>
                        <th className="px-4 py-3 font-bold">تاریخ درخواست</th>
                        <th className="px-4 py-3 font-bold">حساب/صندوق</th>
                        <th className="px-4 py-3 font-bold">توضیحات</th>
@@ -239,22 +282,31 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                            <td className="px-4 py-3 text-gray-600 text-xs">{sourceName || 'نامشخص'}</td>
                            <td className="px-4 py-3 text-gray-500 text-xs truncate max-w-[150px]">{req.description || '-'}</td>
                            <td className="px-4 py-3 text-center">
-                              <div className={`relative inline-block rounded-lg text-[10px] font-bold border ${
-                                req.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                req.status === 'cancelled' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                'bg-amber-50 text-amber-700 border-amber-200'
-                              }`}>
-                                <select
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => handleStatusChange(req, 'registered')}
+                                  title="ثبت شده"
                                   disabled={req.status === 'paid'}
-                                  value={req.status}
-                                  onChange={(e) => handleStatusChange(req, e.target.value as any)}
-                                  className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold disabled:cursor-not-allowed"
+                                  className={`p-1.5 rounded-lg transition-colors border ${req.status === 'registered' ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-xs' : 'text-gray-400 border-transparent hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50'}`}
                                 >
-                                  <option value="registered">ثبت شده</option>
-                                  <option value="paid">پرداخت شده</option>
-                                  <option value="cancelled">کنسل شده</option>
-                                </select>
-                                <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
+                                  <Archive className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleStatusChange(req, 'cancelled')}
+                                  title="کنسل شده"
+                                  disabled={req.status === 'paid'}
+                                  className={`p-1.5 rounded-lg transition-colors border ${req.status === 'cancelled' ? 'bg-rose-100 text-rose-700 border-rose-200 shadow-xs' : 'text-gray-400 border-transparent hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50'}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleStatusChange(req, 'paid')}
+                                  title="پرداخت شده"
+                                  disabled={req.status === 'paid'}
+                                  className={`p-1.5 rounded-lg transition-colors border ${req.status === 'paid' ? 'bg-emerald-100 text-emerald-700 border-emerald-200 shadow-xs' : 'text-gray-400 border-transparent hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50'}`}
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
                               </div>
                            </td>
                          </tr>
@@ -270,7 +322,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                </div>
              </div>
           </motion.div>
-        ) : (
+        ) : activeTab === 'add' ? (
           <motion.div key="add" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
             <div className="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden max-w-2xl mx-auto">
               <div className="bg-rose-50 text-rose-900 px-6 py-4 flex items-center gap-3 border-b border-rose-100">
@@ -288,7 +340,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                   
                   {/* Amount */}
                   <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 mb-2">مبلغ استردادی (تومان) <span className="text-rose-500">*</span></label>
+                    <label className="block text-xs font-bold text-gray-700 mb-2">مبلغ استردادی ({showInvoiceCurrency(storeCur)}) <span className="text-rose-500">*</span></label>
                     <div className="relative">
                       <input 
                         required
@@ -298,11 +350,11 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                           const val = e.target.value.replace(/,/g, '');
                           if (!isNaN(Number(val))) setAmount(val);
                         }}
-                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 pl-12 focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 font-sans text-xl font-black text-rose-700 transition-all text-left"
+                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 pl-16 focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 font-sans text-xl font-black text-rose-700 transition-all text-left"
                         dir="ltr"
                         placeholder="0"
                       />
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">تومان</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">{showInvoiceCurrency(storeCur)}</span>
                     </div>
                   </div>
 
@@ -379,7 +431,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                       <select required value={resourceId} onChange={e => setResourceId(e.target.value)} className="w-full border rounded-xl px-4 py-3 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-bold text-gray-800">
                         <option value="">-- انتخاب {resourceType === 'bank' ? 'حساب بانکی' : 'صندوق'} --</option>
                         {(resourceType === 'bank' ? accounts : cashboxes).map((item: any) => (
-                          <option key={item.id} value={item.id}>{item.bankName || item.name} (موجودی: {Number(item.balance).toLocaleString()} تومان)</option>
+                          <option key={item.id} value={item.id}>{item.bankName || item.name} (موجودی: {Number(item.balance).toLocaleString()} {showInvoiceCurrency(storeCur)})</option>
                         ))}
                       </select>
                   </div>
@@ -437,7 +489,117 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
               </form>
             </div>
           </motion.div>
-        )}
+        ) : activeTab === 'report' ? (
+          <motion.div key="report" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold mb-1">تعداد استردادها</p>
+                    <p className="text-xl font-black font-sans">{reportStats.totalRequests}</p>
+                  </div>
+               </div>
+               
+               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <Archive className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold mb-1">جمع ثبت شده</p>
+                    <p className="text-xl font-black font-sans text-amber-600">{Number(reportStats.totalAmountRegistered).toLocaleString()}</p>
+                  </div>
+               </div>
+
+               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold mb-1">جمع پرداخت شده</p>
+                    <p className="text-xl font-black font-sans text-emerald-600">{Number(reportStats.totalAmountPaid).toLocaleString()}</p>
+                  </div>
+               </div>
+
+               <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                    <X className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-bold mb-1">جمع کنسل شده</p>
+                    <p className="text-xl font-black font-sans text-rose-600">{Number(reportStats.totalAmountCancelled).toLocaleString()}</p>
+                  </div>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="text-sm font-bold text-gray-800 mb-6 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-indigo-500" /> روند استردادها (ریالی)
+                </h3>
+                <div className="h-64" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={reportStats.chartData}>
+                      <defs>
+                        <linearGradient id="colorReg" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorPaid" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="date" tick={{fontSize: 12, fill: '#64748b'}} axisLine={false} tickLine={false} />
+                      <YAxis tick={{fontSize: 12, fill: '#64748b'}} axisLine={false} tickLine={false} tickFormatter={val => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(val)} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Area type="monotone" name="ثبت شده" dataKey="registered" stroke="#f59e0b" fillOpacity={1} fill="url(#colorReg)" />
+                      <Area type="monotone" name="پرداخت شده" dataKey="paid" stroke="#10b981" fillOpacity={1} fill="url(#colorPaid)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
+                <h3 className="text-sm font-bold text-gray-800 mb-6 flex items-center gap-2">
+                  <PieChartIcon className="w-4 h-4 text-indigo-500" /> تفکیک مبالغ استردادی
+                </h3>
+                {reportStats.pieData.length > 0 ? (
+                  <div className="flex-1 flex flex-col justify-center min-h-[300px]" dir="ltr">
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie
+                          data={reportStats.pieData}
+                          innerRadius={60}
+                          outerRadius={90}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {reportStats.pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex justify-center flex-wrap gap-4 mt-6" dir="rtl">
+                      {reportStats.pieData.map(d => (
+                        <div key={d.name} className="flex items-center gap-2 text-xs font-bold text-gray-600">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></span>
+                          {d.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-400 text-sm font-medium">پراکنش دادهای یافت نشد</div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
       </AnimatePresence>
     </motion.div>
   );
