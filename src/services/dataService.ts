@@ -6,25 +6,35 @@ export interface CompanySettings {
   currency?: string;
 }
 
-const getLocalData = async <T>(key: string, defaultValue: T): Promise<T> => {
+const getLocalData = async <T>(key: string, defaultValue: T, retries = 3): Promise<T> => {
   try {
     const res = await fetch(`/api/data/${key}`);
+    if (!res.ok) throw new Error('Network response was not ok');
     const data = await res.json();
     return data !== null ? data : defaultValue;
   } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return getLocalData(key, defaultValue, retries - 1);
+    }
     console.error(`Error reading ${key} from API`, error);
     return defaultValue;
   }
 };
 
-const saveLocalData = async <T>(key: string, data: T): Promise<void> => {
+const saveLocalData = async <T>(key: string, data: T, retries = 3): Promise<void> => {
   try {
-    await fetch(`/api/data/${key}`, {
+    const res = await fetch(`/api/data/${key}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
+    if (!res.ok) throw new Error('Network response was not ok');
   } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return saveLocalData(key, data, retries - 1);
+    }
     console.error(`Error saving ${key} to API`, error);
   }
 };

@@ -21,6 +21,7 @@ import BarcodeScannerModal from './components/modals/BarcodeScannerModal';
 import FinancialTransfer from './components/financial/FinancialTransfer';
 import UserManager from './components/admin/UserManager';
 import InventoryReport from './components/reports/InventoryReport';
+import AnalyticalDashboard from './components/reports/AnalyticalDashboard';
 import DebtsCreditsReport from './components/reports/DebtsCreditsReport';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
 import appVersion from './version.json';
@@ -77,7 +78,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'transfer' | 'invoice_allocation'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'transfer' | 'invoice_allocation'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -126,6 +127,7 @@ export default function App() {
       icon: <BarChart3 className="w-5 h-5" />,
       items: [
         { id: 'financial_report', label: 'داشبورد مالی', roles: ['admin', 'accountant'] },
+        { id: 'analytical_dashboard', label: 'داشبورد تحلیلی', roles: ['admin', 'accountant', 'viewer'] },
         { id: 'person_ledger', label: 'دفتر کل اشخاص', roles: ['admin', 'accountant', 'viewer'] },
         { id: 'debts_credits', label: 'بدهکاران و بستانکاران', roles: ['admin', 'accountant', 'viewer'] },
         { id: 'inventory_report', label: 'کاردکس و موجودی کالا', roles: ['admin', 'accountant', 'viewer'] },
@@ -373,6 +375,7 @@ export default function App() {
   
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
+  const [showProductBarcodesList, setShowProductBarcodesList] = useState(false);
 
   // Update State
   const [updatingStr, setUpdatingStr] = useState(false);
@@ -5743,6 +5746,13 @@ export default function App() {
                      ایجاد دیتای نمونه
                    </button>
                    <button
+                     onClick={() => setShowProductBarcodesList(true)}
+                     className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold border border-slate-200"
+                   >
+                     <Printer className="w-4 h-4" />
+                     چاپ بارکد کالاها
+                   </button>
+                   <button
                      onClick={() => setIsGroupPriceModalOpen(true)}
                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
                    >
@@ -8336,6 +8346,8 @@ export default function App() {
         </motion.div>
       ) : activeTab === 'inventory_report' ? (
         <InventoryReport showNotification={showNotification} />
+      ) : activeTab === 'analytical_dashboard' ? (
+        <AnalyticalDashboard showNotification={showNotification} />
       ) : activeTab === 'database' ? (
         <DatabaseDashboard showNotification={showNotification} />
       ) : activeTab === 'update' ? (
@@ -8569,7 +8581,7 @@ export default function App() {
       ) : activeTab === 'checklist' ? (
         <SystemChecklist />
       ) : null}
-          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'transfer'].includes(activeTab)) && renderTabContent()}
+          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'transfer'].includes(activeTab)) && renderTabContent()}
           </div>
         </main>
 
@@ -8854,6 +8866,71 @@ export default function App() {
                 </button>
               </div>
             </motion.div>
+          </div>
+        )}
+
+        {showProductBarcodesList && (
+          <div className="fixed inset-0 z-[100] flex flex-col bg-white overflow-y-auto print:absolute print:z-auto print:block" dir="rtl">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 print:hidden sticky top-0 z-10 shadow-sm">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <Printer className="w-5 h-5 text-indigo-600" />
+                چاپ لیستی بارکد کالاها (A4)
+              </h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700"
+                >
+                  <Printer className="w-5 h-5" />
+                  چاپ
+                </button>
+                <button
+                  onClick={() => setShowProductBarcodesList(false)}
+                  className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl hover:bg-gray-100 text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-8 print:p-0">
+               <div className="bg-white print:shadow-none shadow-sm border border-gray-200 print:border-none mx-auto print:mx-0 w-[210mm] min-h-[297mm] p-[10mm] print:p-0 print:w-full print:h-auto">
+                 <h2 className="text-center font-black text-2xl mb-6 border-b-2 border-black/10 pb-4 text-gray-900">لیست بارکد کالاها - {storeSettings?.storeName || 'فروشگاه'}</h2>
+                 
+                 <table className="w-full text-sm border-collapse border border-gray-400 print:border-black">
+                   <thead>
+                     <tr className="bg-gray-100 print:bg-gray-200 uppercase font-black text-xs text-gray-800">
+                       <th className="border border-gray-400 print:border-black p-3 text-center w-12">ردیف</th>
+                       <th className="border border-gray-400 print:border-black p-3 text-right">نام کالا</th>
+                       <th className="border border-gray-400 print:border-black p-3 text-center w-32">کد کالا</th>
+                       <th className="border border-gray-400 print:border-black p-3 text-center w-40">قیمت فروش</th>
+                       <th className="border border-gray-400 print:border-black p-3 text-center w-44">بارکد</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {products.filter(p => p.type !== 'service').map((prod, idx) => (
+                       <tr key={prod.id} className="break-inside-avoid">
+                         <td className="border border-gray-400 print:border-black p-3 text-center font-bold text-gray-700">{toPersianDigits(idx + 1)}</td>
+                         <td className="border border-gray-400 print:border-black p-3 text-right"><span className="font-black text-base text-gray-900">{prod.name}</span></td>
+                         <td className="border border-gray-400 print:border-black p-3 text-center font-mono font-bold text-gray-600">{toPersianDigits(prod.code || '---')}</td>
+                         <td className="border border-gray-400 print:border-black p-3 text-center font-bold">
+                           {prod.price ? 
+                             <span><span className="text-lg tracking-wider font-extrabold text-gray-900" dir="ltr">{toPersianDigits(formatNumber(prod.price))}</span> <span className="text-xs text-gray-600">{storeSettings?.currency || 'تومان'}</span></span> 
+                             : <span className="text-gray-400 font-bold text-xs">---</span>}
+                         </td>
+                         <td className="border border-gray-400 print:border-black p-2 text-center align-middle">
+                           {prod.barcode ? (
+                             <div className="flex justify-center h-16 overflow-hidden">
+                               <Barcode value={prod.barcode} width={1.8} height={50} fontSize={12} margin={0} background="transparent" />
+                             </div>
+                           ) : <span className="text-gray-400 text-xs font-bold">---</span>}
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
           </div>
         )}
 
