@@ -6,7 +6,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import { 
   CreditCard, Plus, Edit2, Trash2, CheckCircle, Clock, X, Save, 
-  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart
+  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart, ChevronDown
 } from 'lucide-react';
 import { 
   getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, 
@@ -457,7 +457,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                   type="text" 
                   value={issuedSearchQuery} 
                   onChange={e => setIssuedSearchQuery(e.target.value)} 
-                  placeholder="جستجو بر اساس شماره چک، گیرنده، مبلغ..."
+                  placeholder="جستجو بر اساس شماره چک، نام شخص (گیرنده)، مبلغ..."
                   className="w-full pr-10 pl-4 py-2 border rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
@@ -510,37 +510,38 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                         <td className="px-4 py-3.5 font-sans font-black text-rose-600">{Number(c.amount).toLocaleString()}</td>
                         <td className="px-4 py-3.5 font-sans font-medium text-gray-700">{c.dueDate}</td>
                         <td className="px-4 py-3.5">
-                           <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block border ${
+                           <div className={`relative inline-block rounded-lg text-xs font-bold border ${
                              c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
                              c.status === 'bounced' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
                              c.status === 'cancelled' ? 'bg-gray-100 text-gray-600 border-gray-200 line-through' :
                              'bg-amber-50 text-amber-700 border-amber-100'
                            }`}>
-                               {c.status === 'cashed' ? 'پاس شده' : 
-                                c.status === 'bounced' ? 'برگشتی' : 
-                                c.status === 'cancelled' ? 'باطل شده' :
-                                'صادره (در جریان)'}
-                           </span>
+                             <select
+                               value={c.status || 'issued'}
+                               onChange={(e) => {
+                                 setUpdatingCheckType('issued');
+                                 setUpdatingCheckId(c.id);
+                                 setStatusVal(e.target.value);
+                                 setIsStatusModalOpen(true);
+                               }}
+                               className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold"
+                             >
+                               <option value="issued">در جریان (صادره)</option>
+                               <option value="cashed">پاس شده</option>
+                               <option value="bounced">برگشتی</option>
+                               <option value="cancelled">باطل شده</option>
+                             </select>
+                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
+                           </div>
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center justify-center gap-1.5">
                             <button 
                               onClick={() => { 
-                                setUpdatingCheckType('issued');
-                                setUpdatingCheckId(c.id); 
-                                setStatusVal(c.status || 'issued'); 
-                                setIsStatusModalOpen(true); 
-                              }} 
-                              className="px-3 py-1.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-bold transition-all"
-                            >
-                              تغییر وضعیت
-                            </button>
-                            <button 
-                              onClick={() => { 
                                 setEditingIssuedCheckId(c.id);
-                                setIcCheckbookId(c.checkbookId);
+                                setIcCheckbookId(String(c.checkbookId || ''));
                                 setIcCheckNumber(c.checkNumber);
-                                setIcPayeeId(c.payeeId);
+                                setIcPayeeId(String(c.payeeId || ''));
                                 setIcAmount(c.amount.toString());
                                 setIcIssueDate(c.issueDate);
                                 setIcDueDate(c.dueDate);
@@ -630,7 +631,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                   type="text" 
                   value={receivedSearchQuery} 
                   onChange={e => setReceivedSearchQuery(e.target.value)} 
-                  placeholder="جستجو بر اساس شماره چک، صادرکننده، بانک..."
+                  placeholder="جستجو بر اساس شماره چک، نام شخص (پرداخت‌کننده)، بانک..."
                   className="w-full pr-10 pl-4 py-2 border rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
@@ -685,40 +686,41 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                         <td className="px-4 py-3.5 font-sans font-medium text-gray-500 text-xs">{c.receiveDate}</td>
                         <td className="px-4 py-3.5 font-sans font-bold text-gray-700">{c.dueDate}</td>
                         <td className="px-4 py-3.5">
-                           <span className={`px-2.5 py-1 rounded-lg text-xs font-bold inline-block border ${
+                           <div className={`relative inline-block rounded-lg text-xs font-bold border ${
                              c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
                              c.status === 'deposited' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
                              c.status === 'bounced' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
                              c.status === 'returned' ? 'bg-gray-100 text-gray-600 border-gray-200' :
                              'bg-amber-50 text-amber-700 border-amber-100'
                            }`}>
-                              {c.status === 'cashed' ? 'وصول شده' : 
-                               c.status === 'deposited' ? 'خوابانده دفتری' : 
-                               c.status === 'bounced' ? 'برگشتی' : 
-                               c.status === 'returned' ? 'عودت داده شده' :
-                               'دریافت شده'}
-                           </span>
+                             <select
+                               value={c.status || 'received'}
+                               onChange={(e) => {
+                                 setUpdatingCheckType('received');
+                                 setUpdatingCheckId(c.id);
+                                 setStatusVal(e.target.value);
+                                 setIsStatusModalOpen(true);
+                               }}
+                               className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold"
+                             >
+                               <option value="received">دریافت شده</option>
+                               <option value="deposited">خوابانده دفتری</option>
+                               <option value="cashed">وصول شده</option>
+                               <option value="bounced">برگشتی</option>
+                               <option value="returned">عودت داده شده</option>
+                             </select>
+                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
+                           </div>
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center justify-center gap-1.5">
-                            <button 
-                              onClick={() => { 
-                                setUpdatingCheckType('received');
-                                setUpdatingCheckId(c.id); 
-                                setStatusVal(c.status || 'received'); 
-                                setIsStatusModalOpen(true); 
-                              }} 
-                              className="px-3 py-1.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-bold transition-all"
-                            >
-                              تغییر وضعیت
-                            </button>
                             <button 
                               onClick={() => { 
                                 setEditingReceivedCheckId(c.id);
                                 setRcCheckNumber(c.checkNumber);
                                 setRcBankName(c.bankName || '');
                                 setRcBranchName(c.branchName || '');
-                                setRcPayerId(c.payerId);
+                                setRcPayerId(String(c.payerId || ''));
                                 setRcAmount(c.amount.toString());
                                 setRcReceiveDate(c.receiveDate);
                                 setRcDueDate(c.dueDate);

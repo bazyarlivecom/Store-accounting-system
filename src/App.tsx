@@ -7171,7 +7171,7 @@ export default function App() {
           </div>
 
           {/* Top KPI Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Sales Card */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
               <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-indigo-500"></div>
@@ -7233,6 +7233,35 @@ export default function App() {
                     </span>
                     <span className={`text-xs font-bold mt-1 block ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {isPositive ? 'موازنه مثبت (سود تجاری ناخالص)' : 'موازنه منفی (زیان تجاری ناخالص)'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Due Checks Today Card */}
+            {(() => {
+              const todayStr = new Date().toLocaleDateString('fa-IR');
+              const dueIssued = issuedChecks.filter((c: any) => c.dueDate === todayStr).length;
+              const dueReceived = receivedChecks.filter((c: any) => c.dueDate === todayStr).length;
+              const totalDue = dueIssued + dueReceived;
+
+              return (
+                <div 
+                  onClick={() => setActiveTab('check_calendar')}
+                  className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all group"
+                >
+                  <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${totalDue > 0 ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
+                  <div className={`p-3.5 rounded-2xl transition-colors ${totalDue > 0 ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-100' : 'bg-gray-50 text-gray-400 group-hover:bg-gray-100'}`}>
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xs font-semibold text-gray-400">چک‌های سررسیده امروز</h3>
+                    <span className={`text-xl font-extrabold block mt-1 ${totalDue > 0 ? 'text-amber-700' : 'text-gray-700'}`}>
+                      {totalDue} <span className="text-sm font-medium text-gray-500">مورد</span>
+                    </span>
+                    <span className="text-xs font-bold mt-1 block text-gray-500">
+                      {dueIssued} پرداختی | {dueReceived} دریافتی
                     </span>
                   </div>
                 </div>
