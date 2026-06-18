@@ -660,6 +660,36 @@ export const deleteReceivedCheck = async (id: string) => {
 };
 
 // Warehouse Stocks Persistence & Recalculation
+export const getRefundRequests = async () => {
+  return await getLocalData<any[]>('refundRequests', []);
+};
+
+export const addRefundRequest = async (request: any) => {
+  const requests = await getLocalData<any[]>('refundRequests', []);
+  const now = Date.now();
+  const newRequest = { ...request, id: generateId(), createdAt: now, updatedAt: now };
+  requests.push(newRequest);
+  await saveLocalData('refundRequests', requests);
+  return newRequest;
+};
+
+export const updateRefundRequest = async (id: string, updated: any) => {
+  const requests = await getLocalData<any[]>('refundRequests', []);
+  const index = requests.findIndex(r => r.id === id);
+  if (index !== -1) {
+    requests[index] = { ...requests[index], ...updated, updatedAt: Date.now() };
+    await saveLocalData('refundRequests', requests);
+    return requests[index];
+  }
+  return null;
+};
+
+export const deleteRefundRequest = async (id: string) => {
+  const requests = await getLocalData<any[]>('refundRequests', []);
+  const filtered = requests.filter(r => r.id !== id);
+  await saveLocalData('refundRequests', filtered);
+};
+
 export const getWarehouseStocks = async () => {
   const data = await getLocalData<any[]>('warehouse_stocks', []);
   if (data.length === 0) {

@@ -148,6 +148,22 @@ export type InvoiceItem = {
 
 export type UserRole = 'admin' | 'accountant' | 'cashier' | 'viewer';
 
+export type RefundRequest = {
+  id?: string | number;
+  date: string; // YYYY/MM/DD
+  amount: number;
+  personId?: string | number; // For selected existing person
+  miscName?: string; // For miscellaneous distinct from person entity
+  cardNumber?: string;
+  resourceType: 'bank' | 'cashbox';
+  resourceId: string | number;
+  description?: string;
+  status: 'registered' | 'paid' | 'cancelled'; // ثبت شده، پرداخت شده، کنسل شده
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+
 export type User = {
   id: string | number;
   username: string;
