@@ -363,7 +363,10 @@ export default function App() {
       // For financial report
       const [reportDateRange, setReportDateRange] = useState<Date[]>([]);
       const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+      const [pricingWizardInvoice, setPricingWizardInvoice] = useState<any>(null);
+      const [pricingWizardItems, setPricingWizardItems] = useState<any[]>([]);
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
+  const [invoiceGroupMode, setInvoiceGroupMode] = useState<'none' | 'month' | 'season'>('none');
   
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
@@ -2402,6 +2405,27 @@ export default function App() {
       // Reset form after short delay
       clearDraft();
       setTimeout(() => {
+        if (payload.type === 'purchase') {
+          // Open pricing wizard with the added invoice items (excluding services if possible, or all items)
+          const newWizardItems = payload.items.filter((it: any) => {
+             const prod = products.find(p => p.id === it.productId);
+             return prod && prod.type !== 'service';
+          }).map((it: any) => {
+             const prod = products.find(p => p.id === it.productId);
+             return {
+               productId: it.productId,
+               productName: it.productName,
+               purchasePrice: Number(it.unitPrice) || 0,
+               marginPercent: 0,
+               salePrice: prod ? Number(prod.price) : 0,
+             };
+          });
+          if (newWizardItems.length > 0) {
+             setPricingWizardItems(newWizardItems);
+             setPricingWizardInvoice(payload);
+          }
+        }
+
         if (invoiceMode === 'manual') setInvoiceNumber('');
         setCustomerId('');
         setSourceInvoiceId('');
@@ -4081,10 +4105,37 @@ export default function App() {
             }).filter(inv => {
                if (!invoiceSearchQuery) return true;
                const term = invoiceSearchQuery.toLowerCase();
-               const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
+               const pName = (persons.find(p => p.id.toString() === inv.customerId?.toString())?.name || 'نامشخص').toLowerCase();
                const invNum = (inv.invoiceNumber || '').toLowerCase();
                return pName.includes(term) || invNum.includes(term);
             });
+
+            let groupedInvoices: { groupName: string, invoices: any[] }[] = [];
+            if (invoiceGroupMode === 'none') {
+               groupedInvoices = [{ groupName: 'همه', invoices: filteredInvoicesList }];
+            } else {
+               const groupMap = new Map<string, any[]>();
+               filteredInvoicesList.forEach(inv => {
+                  let gName = 'نامشخص';
+                  if (inv.jalaliDate) {
+                     const parts = inv.jalaliDate.split('/');
+                     if (parts.length === 3) {
+                        const m = parseInt(parts[1], 10);
+                        if (invoiceGroupMode === 'month') {
+                           const months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+                           gName = `${months[m - 1] || m} ${parts[0]}`;
+                        } else if (invoiceGroupMode === 'season') {
+                           const seasons = ['فصل بهار', 'فصل تابستان', 'فصل پاییز', 'فصل زمستان'];
+                           const sIdx = Math.floor((m - 1) / 3);
+                           gName = `${seasons[sIdx] || 'نامشخص'} ${parts[0]}`;
+                        }
+                     }
+                  }
+                  if (!groupMap.has(gName)) groupMap.set(gName, []);
+                  groupMap.get(gName)!.push(inv);
+               });
+               groupedInvoices = Array.from(groupMap.entries()).map(([k, v]) => ({ groupName: k, invoices: v }));
+            }
 
             return (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
@@ -4100,103 +4151,91 @@ export default function App() {
                         <Search className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2" />
                         <input 
                           type="text" 
-                          placeholder="جستجوی حرفه‌ای (شماره سند، نام شخص)..." 
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder-slate-400 font-bold"
-                          value={invoiceSearchQuery}
-                          onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                          placeholder="جستجوی حرفه‌ای (شماره، شخص)..." 
+                          value={invoiceSearchQuery} 
+                          onChange={e => setInvoiceSearchQuery(e.target.value)}
+                          className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm font-bold placeholder-gray-400 transition-all font-sans"
                         />
                       </div>
                   </div>
-                  {activeTab === 'list_warehouse_docs' && (
-                      <div className="flex bg-slate-100 rounded-xl p-1 w-full max-w-sm ml-auto mr-auto md:mr-0 md:ml-auto">
-                        <button onClick={() => setListFilter('all')} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${listFilter === 'all' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>همه اسناد</button>
-                        <button onClick={() => setListFilter('receipt')} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${listFilter === 'receipt' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>رسیدهای ورود</button>
-                        <button onClick={() => setListFilter('remittance')} className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${listFilter === 'remittance' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>حواله‌های خروج</button>
-                      </div>
-                  )}
-                  {activeTab === 'list_purchase' && (
-                      <div className="flex bg-slate-100 rounded-xl p-1 w-full max-w-md ml-auto mr-auto md:mr-0 md:ml-auto border border-slate-250/20 shadow-xs">
-                        <button onClick={() => setPurchaseFilter('all')} className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none ${purchaseFilter === 'all' ? 'bg-white text-indigo-750 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                          <span>همه خریدها</span>
-                          <span className={`px-1.5 py-0.5 text-[9px] font-sans font-bold rounded-full ${purchaseFilter === 'all' ? 'bg-indigo-100 text-indigo-805' : 'bg-slate-200 text-slate-600'}`}>{toPersianDigits(totalPurchasesCount)}</span>
-                        </button>
-                        <button onClick={() => setPurchaseFilter('received')} className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none ${purchaseFilter === 'received' ? 'bg-white text-emerald-750 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          <span>رسید شده</span>
-                          <span className={`px-1.5 py-0.5 text-[9px] font-sans font-bold rounded-full ${purchaseFilter === 'received' ? 'bg-emerald-100 text-emerald-805' : 'bg-slate-200 text-slate-600'}`}>{toPersianDigits(receivedPurchasesCount)}</span>
-                        </button>
-                        <button onClick={() => setPurchaseFilter('pending')} className={`flex-1 py-1.5 text-xs font-black rounded-lg transition-all flex items-center justify-center gap-1.5 focus:outline-none ${purchaseFilter === 'pending' ? 'bg-white text-amber-755 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                          <span>رسید نشده</span>
-                          <span className={`px-1.5 py-0.5 text-[9px] font-sans font-bold rounded-full ${purchaseFilter === 'pending' ? 'bg-amber-100 text-amber-805' : 'bg-slate-200 text-slate-600'}`}>{toPersianDigits(pendingPurchasesCount)}</span>
-                        </button>
-                      </div>
-                  )}
-
-                </div>
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                   <div className="overflow-x-auto">
-                     <table className="w-full text-right min-w-[1000px]">
-                       <thead>
-                         <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
-                           <th className="p-4 font-bold">شماره</th>
-                           {(activeTab === 'list_purchase' || activeTab === 'list_sale') && <th className="p-4 font-bold relative group">عنوان فاکتور {activeTab === 'list_sale' && <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-emerald-500 hidden group-hover:block blur-lg opacity-50"></span>}</th>}
-                           {activeTab.includes('warehouse') && <th className="p-4 font-bold">نوع سند</th>}
-                           <th className="p-4 font-bold">
-                             {activeTab.includes('warehouse') ? 'تحویل دهنده / گیرنده' : (activeTab === 'list_purchase' ? 'تامین کننده' : 'مشتری')}
-                           </th>
-                           <th className="p-4 font-bold">تاریخ</th>
-                           {activeTab.includes('warehouse') ? (
-                              <th className="p-4 font-bold text-center">انبار مبدا/مقصد</th>
-                            ) : (
-                              <th className="p-4 font-bold text-left">مبلغ فاکتور</th>
-                            )}
-                           {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
+                  
+                  <div className="w-full flex-wrap flex items-center justify-between gap-4 px-2 py-3 bg-slate-50/50 rounded-xl border border-slate-100/50 mt-2">
+                     {(activeTab === 'list_sale' || activeTab === 'list_purchase') && (
+                       <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                         <span className="text-xs font-bold text-slate-500 mr-2 ml-1">گروه‌بندی:</span>
+                         <button onClick={() => setInvoiceGroupMode('none')} className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${invoiceGroupMode === 'none' ? 'bg-indigo-100 text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>بدون گروه</button>
+                         <button onClick={() => setInvoiceGroupMode('month')} className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${invoiceGroupMode === 'month' ? 'bg-indigo-100 text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>براساس ماه</button>
+                         <button onClick={() => setInvoiceGroupMode('season')} className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${invoiceGroupMode === 'season' ? 'bg-indigo-100 text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>براساس فصل</button>
+                       </div>
+                     )}
+                  </div>
+                  
+                  <div className="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                      <table className="w-full text-sm text-right">
+                        <thead className="bg-slate-50 text-slate-600 border-b border-gray-200 uppercase font-black text-xs">
+                          <tr>
+                            <th className="p-4">شماره</th>
+                            {(activeTab === 'list_purchase' || activeTab === 'list_sale') && <th className="p-4">عنوان / شرح</th>}
+                            {activeTab.includes('warehouse') && <th className="p-4">نوع سند</th>}
+                            <th className="p-4">طرف حساب</th>
+                            <th className="p-4">تاریخ</th>
+                            {activeTab.includes('warehouse') ? <th className="p-4 text-center">انبار</th> : <th className="p-4 text-left">مبلغ کل</th>}
+                            {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
                                <>
-                                 <th className="p-4 font-bold text-left">{activeTab === 'list_sale' ? 'دریافتی' : 'پرداختی'}</th>
-                                 <th className="p-4 font-bold text-left">باقیمانده</th>
-                                 <th className="p-4 font-bold text-center">وضعیت تسویه</th>
-                                 <th className="p-4 font-bold text-center">{activeTab === 'list_sale' ? 'وضعیت حواله' : 'وضعیت رسید'}</th>
+                                 <th className="p-4 text-left">دریافتی/پرداختی</th>
+                                 <th className="p-4 text-left">مانده فاکتور</th>
+                                 <th className="p-4 text-center">وضعیت تسویه</th>
+                                 <th className="p-4 text-center">وضعیت انبار</th>
                                </>
-                           )}
-                           <th className="p-4 font-bold text-center">عملیات</th>
-                         </tr>
-                       </thead>
-                       <tbody className="divide-y divide-gray-50">
-                          {filteredInvoicesList.map(inv => (
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                           <tr key={inv.id} className="hover:bg-gray-50">
-                             <td className="p-4 font-sans text-right font-black text-slate-705 text-sm whitespace-nowrap">#{toPersianDigits(inv.invoiceNumber)}</td>
-                             {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
-                               <td className="p-4 font-bold text-slate-800 text-xs truncate max-w-[150px]" title={inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}>
-                                  {inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}
-                               </td>
-                             )}
-                             {activeTab.includes('warehouse') && (
-                               <td className="p-4">
-                                  {inv.type === 'warehouse_receipt' ? (
-                                     <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">رسید ورود</span>
-                                  ) : (
-                                     <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">حواله خروج</span>
-                                  )}
-                               </td>
-                             )}
-                             <td className="p-4">{renderPersonLink(inv.customerId, persons.find(p => p.id.toString() === inv.customerId?.toString())?.name)}</td>
-                             <td className="p-4">
-                                <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
+                            )}
+                            <th className="p-4 text-center">عملیات</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {groupedInvoices.map((group) => (
+                             <React.Fragment key={group.groupName}>
+                               {invoiceGroupMode !== 'none' && group.invoices.length > 0 && (
+                                 <tr className="bg-slate-100/60 border-y border-slate-200 shadow-sm relative z-10">
+                                   <td colSpan={10} className="p-3 text-right">
+                                      <div className="flex justify-between items-center px-2">
+                                        <div className="flex items-center gap-3">
+                                          <div className="bg-white text-indigo-600 p-1.5 rounded-lg shadow-sm border border-indigo-100">
+                                            {invoiceGroupMode === 'month' ? <Calendar className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                                          </div>
+                                          <span className="font-extrabold text-sm text-slate-800">{group.groupName}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="bg-white/80 text-slate-500 text-[11px] font-bold px-2 py-1 rounded shadow-sm border border-slate-200">
+                                              مجموع: <span className="text-slate-800 tabular-nums">{toPersianDigits(group.invoices.length)}</span>
+                                            </span>
+                                            <span className="bg-indigo-50 text-indigo-700 text-[11px] font-bold px-2 py-1 rounded shadow-sm border border-indigo-100">
+                                              مبلغ کل: <span className="tabular-nums">{toPersianDigits(formatCurrency(group.invoices.reduce((a, b) => a + (b.totalAmount || 0), 0)))}</span> تومان
+                                            </span>
+                                        </div>
+                                      </div>
+                                   </td>
+                                 </tr>
+                               )}
+                               {group.invoices.map(inv => (
+                                 <tr key={inv.id} className="hover:bg-gray-50/80 transition-colors">
+                                   <td className="p-4 font-sans text-right font-black text-slate-705 text-sm whitespace-nowrap">#{toPersianDigits(inv.invoiceNumber)}</td>
+                                   {(activeTab === 'list_purchase' || activeTab === 'list_sale') && (
+                                     <td className="p-4 font-bold text-slate-800 text-xs truncate max-w-[150px]" title={inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}>
+                                        {inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}
+                                     </td>
+                                   )}
+                                   {activeTab.includes('warehouse') && (
+                                     <td className="p-4">
+                                        {inv.type === 'warehouse_receipt' ? (
+                                           <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">رسید ورود</span>
+                                        ) : (
+                                           <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">حواله خروج</span>
+                                        )}
+                                     </td>
+                                   )}
+                                   <td className="p-4">{renderPersonLink(inv.customerId, persons.find(p => p.id.toString() === inv.customerId?.toString())?.name)}</td>
+                                   <td className="p-4">
+                                      <div className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650" dir="rtl">
                                   <Calendar className="w-3.5 h-3.5 text-indigo-500" />
                                   <span className="font-sans font-black text-xs text-slate-700">{toPersianDigits(inv.jalaliDate)}</span>
                                 </div>
@@ -4239,6 +4278,31 @@ export default function App() {
                                </>
                              )}
                              <td className="p-4 text-center flex items-center justify-center gap-2">
+                                {activeTab === 'list_purchase' && (
+                                   <button onClick={() => {
+                                      const newWizardItems = inv.items.filter((it: any) => {
+                                         const prod = products.find(p => p.id === it.productId);
+                                         return prod && prod.type !== 'service';
+                                      }).map((it: any) => {
+                                         const prod = products.find(p => p.id === it.productId);
+                                         return {
+                                           productId: it.productId,
+                                           productName: it.productName,
+                                           purchasePrice: Number(it.unitPrice) || 0,
+                                           marginPercent: 0,
+                                           salePrice: prod ? Number(prod.price) : 0,
+                                         };
+                                      });
+                                      if (newWizardItems.length > 0) {
+                                         setPricingWizardItems(newWizardItems);
+                                         setPricingWizardInvoice(inv);
+                                      } else {
+                                         setSuccessMsg('هیچ کالای قابل قیمت‌گذاری در این فاکتور وجود ندارد (یا همه خدمات هستند).');
+                                      }
+                                   }} className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg cursor-pointer bg-transparent border-none" title="ثبت و چاپ قیمت فروش">
+                                     <Tag className="w-4 h-4" />
+                                   </button>
+                                )}
                                 <button onClick={() => { setViewingInvoice(inv); }} className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none" title="مشاهده نهایی">
                                   <Eye className="w-4 h-4"/>
                                 </button>
@@ -4251,7 +4315,9 @@ export default function App() {
                              </td>
                            </tr>
                          ))}
-                          {filteredInvoicesList.length === 0 && (
+                       </React.Fragment>
+                     ))}
+                  {filteredInvoicesList.length === 0 && (
 
 
 
@@ -10916,243 +10982,253 @@ export default function App() {
               </div>
 
               {/* Printable Area */}
-              <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm print:overflow-visible print:p-0">
-                {/* Print Layout */}
-                <div className="border-2 border-gray-300 p-6 rounded-2xl bg-white shadow-xs space-y-6 print:border-none print:shadow-none print:p-0">
+              <div className="p-6 md:p-8 overflow-y-auto flex-1 text-gray-800 text-sm print:overflow-visible print:px-8 print:py-12 bg-gray-50/50 print:bg-white flex justify-center">
+                 {/* Print Layout */}
+                <div className="bg-white print:p-0 rounded-2xl print:rounded-none overflow-hidden text-slate-800 w-full max-w-[210mm] min-h-[297mm] shadow-sm border border-slate-200 print:shadow-none print:border-none p-8 md:p-12 relative flex flex-col font-sans">
                   
-                  {/* Visual Header */}
-                  {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
-
-                  <div className="bg-white print:p-0 p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800">
-                      {/* Top Accent Line */}
-                      <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 print:bg-gray-900"></div>
-                      
-                      {/* Elegant Header */}
-                      <div className="flex flex-col md:flex-row justify-between items-start pb-8 mb-8 border-b-2 border-gray-100 print:border-gray-300 mt-2">
-                        <div className="space-y-3">
-                          <h1 className="text-3xl md:text-4xl font-black text-gray-950 tracking-tighter">
-                            {viewingInvoice.type === 'purchase' ? 'فاکتور خرید' : viewingInvoice.type === 'sale' ? (viewingInvoice.title || 'فاکتور فروش') : viewingInvoice.type === 'warehouse_receipt' ? 'رسید انبار (ورود کالا)' : viewingInvoice.type === 'warehouse_remittance' ? 'حواله انبار (خروج کالا)' : 'سند'}
-                          </h1>
-                          <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-gray-600">
-                            <span className="bg-gray-50 print:bg-transparent border border-gray-200 print:border-gray-400 px-3 py-1.5 rounded-lg text-gray-900 font-mono text-base">شماره فاکتور: {toPersianDigits(viewingInvoice.invoiceNumber)}</span>
-                            <span className="px-2">تاريخ: {viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}</span>
-                            {false && <span className="bg-rose-50 text-rose-600 border border-rose-100 px-2 py-1 rounded text-xs">پیش‌نمایش چاپ</span>}
-                          </div>
-                        </div>
-                        <div className="text-right md:text-left flex flex-col md:items-end mt-6 md:mt-0">
-                           <h2 className="text-2xl font-black text-gray-900 tracking-tight">{storeSettings.storeName || 'نام مجموعه تجاری'}</h2>
-                           {storeSettings.phone && <p className="text-sm font-bold text-gray-500 mt-2">تلفن: <span dir="ltr">{storeSettings.phone}</span></p>}
-                           {storeSettings.address && <p className="text-xs font-bold text-gray-400 mt-1 max-w-[250px] truncate">{storeSettings.address}</p>}
-                        </div>
+                  {/* Elegant Header - Classic Invoice */}
+                  <div className="flex flex-col md:flex-row justify-between items-start pb-8 mb-8 border-b-2 border-slate-800">
+                    <div className="space-y-6">
+                      <div className="inline-block border-2 border-indigo-900 px-4 py-2 rounded-lg bg-indigo-50/30">
+                         <h1 className="text-2xl font-black text-indigo-900 tracking-tight text-center">
+                           {viewingInvoice.type === 'purchase' ? 'فاکتور خرید' : viewingInvoice.type === 'sale' ? (viewingInvoice.title || 'فاکتور فروش') : viewingInvoice.type === 'warehouse_receipt' ? 'رسید ورود کالا (انبار)' : viewingInvoice.type === 'warehouse_remittance' ? 'حواله خروج کالا (انبار)' : 'سند ساختگی'}
+                         </h1>
                       </div>
-
-                      {/* Info blocks */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        {/* Customer Info */}
-                        <div className="bg-gray-50/50 print:bg-transparent print:border-gray-300 p-5 rounded-2xl border border-gray-100">
-                          <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                            <User className="w-4 h-4" />
-                            {viewingInvoice.type === 'purchase' ? 'تامین کننده' : viewingInvoice.type === 'sale' ? 'خریدار' : 'طرف حساب'}
-                          </div>
-                          <h3 className="text-xl font-black text-gray-900 mb-2">{renderPersonLink(viewingInvoice.customerId, viewingInvoice.customerName)}</h3>
-                          {viewingInvoice.customerPhone && <p className="text-sm text-gray-600 font-bold">تلفن: <span dir="ltr" className="text-gray-900">{viewingInvoice.customerPhone}</span></p>}
-                          {(() => {
-                            const originalPerson = persons.find(p => p.name === viewingInvoice.customerName || p.id === viewingInvoice.customerId);
-                            if (originalPerson) {
-                              return (
-                                <div className="mt-3 space-y-1 text-xs text-gray-500 font-bold">
-                                  {originalPerson.nationalId && <p>شناسه ملی/کد اقتصادی: <span className="text-gray-800">{originalPerson.nationalId}</span></p>}
-                                  {originalPerson.address && <p className="truncate block" title={originalPerson.address}>نشانی فیزیکی: <span className="text-gray-800 whitespace-normal">{originalPerson.address}</span></p>}
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-
-                        {/* Payment/Warehouse Info */}
-                        <div className="bg-gray-50/50 print:bg-transparent print:border-gray-300 p-5 rounded-2xl border border-gray-100 flex flex-col justify-center">
-                          <div className="grid grid-cols-2 gap-4">
-                            {!viewingInvoice.type?.includes('warehouse') && (
-                               <div>
-                                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1">مبلغ نهایی معامله</span>
-                                  <div className="text-xl font-black text-gray-900" dir="ltr">
-                                    {formatCurrency(viewingInvoice.totalAmount)} <span className="text-xs font-bold text-gray-500">{showInvoiceCurrency(viewingInvoice.currency)}</span>
-                                  </div>
-                               </div>
-                            )}
-                            {viewingInvoice.type?.includes('warehouse') && (
-                                <div className="col-span-2">
-                                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1"><Box className="w-4 h-4 inline mr-1 text-gray-400"/> انبار انتسابی به این سند</span>
-                                  <div className="text-lg font-black text-gray-900">
-                                    {warehouses.find(w => w.id?.toString() === viewingInvoice.warehouseId?.toString() || w.id?.toString() === viewingInvoice.items?.[0]?.warehouseId?.toString())?.name || 'نامشخص'}
-                                  </div>
-                                </div>
-                            )}
-                            {viewingInvoice.description && (
-                               <div className="col-span-2 mt-2 pt-4 border-t border-gray-200 print:border-gray-100">
-                                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1">یادداشت سند</span>
-                                  <p className="text-sm text-gray-800 font-bold">{viewingInvoice.description}</p>
-                               </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Items table */}
-                      <div className="rounded-2xl overflow-hidden border border-gray-200 print:border-gray-600 print:rounded-none mb-8">
-                        <table className="w-full text-right text-sm border-collapse">
-                           <thead className="bg-gray-100 print:bg-gray-100 text-gray-900">
-                              <tr>
-                                 <th className="py-4 px-3 w-12 text-center font-black border-l border-gray-200 print:border-gray-400">ردیف</th>
-                                 <th className="py-4 px-4 font-black border-l border-gray-200 print:border-gray-400">شرح کالا یا خدمات</th>
-                                 <th className="py-4 px-3 w-28 text-center font-black border-l border-gray-200 print:border-gray-400">مقدار</th>
-                                 {!viewingInvoice.type?.includes('warehouse') && (
-                                    <>
-                                       <th className="py-4 px-3 text-left w-40 font-black border-l border-gray-200 print:border-gray-400">فی ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                                       <th className="py-4 px-3 text-center w-24 font-black border-l border-gray-200 print:border-gray-400">تخفیف</th>
-                                       <th className="py-4 px-3 text-left w-44 font-black">مبلغ کل ({showInvoiceCurrency(viewingInvoice.currency)})</th>
-                                    </>
-                                 )}
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-gray-200 print:divide-gray-400 text-gray-800 font-bold">
-                              {viewingInvoice.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
-                                <tr key={idx} className="hover:bg-gray-50 print:hover:bg-transparent">
-                                  <td className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 text-gray-500">{idx + 1}</td>
-                                  <td className="py-3 px-4 border-l border-gray-200 print:border-gray-400">
-                                     <div className="flex flex-col gap-1">
-                                        <span className="text-gray-900 font-extrabold">{item.productName || 'کالا/خدمات'}</span>
-                                        {item.warehouseId && (
-                                          <span className="text-[10px] text-gray-500 font-bold block">
-                                            انبار: {warehouses.find(w => w.id?.toString() === item.warehouseId?.toString())?.name || 'نامشخص'}
-                                          </span>
-                                        )}
-                                     </div>
-                                  </td>
-                                  <td className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 font-mono text-base" dir="rtl">{formatNumber(item.quantity || 1)} <span className="text-[10px] text-gray-500 font-sans">{item.selectedUnit || '-'}</span></td>
-                                  {!viewingInvoice.type?.includes('warehouse') && (
-                                     <>
-                                        <td className="py-3 px-3 text-left border-l border-gray-200 print:border-gray-400 font-mono" dir="ltr">{formatCurrency(item.unitPrice || 0)}</td>
-                                        <td className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 text-red-600 font-mono" dir="ltr">{toPersianDigits(item.discountPercent || 0)}٪</td>
-                                        <td className="py-3 px-3 text-left font-black font-mono text-gray-900 bg-gray-50/50 print:bg-transparent" dir="ltr">{formatCurrency(item.totalPrice || 0)}</td>
-                                     </>
-                                  )}
-                                </tr>
-                              ))}
-                           </tbody>
-                        </table>
-                      </div>
-
-                      {/* Summary Section */}
-                      {!viewingInvoice.type?.includes('warehouse') && (
-                         <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8">
-                            <div className="w-full md:w-1/2 mt-2">
-                               <div className="border border-gray-200 print:border-gray-400 rounded-xl p-4 bg-gray-50/50 print:bg-transparent">
-                                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-2">مبلغ فاکتور به حروف:</span>
-                                  <p className="text-gray-900 font-black text-[15px] leading-relaxed">
-                                     {numToPersianWords(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}
-                                  </p>
-                               </div>
-                               <p className="text-[11px] text-gray-400 font-bold leading-relaxed mt-4 text-justify">
-                                  این فاکتور بر اساس قوانین جاری صادر گردیده است. بررسی کامل اقلام توسط خریدار در زمان تحویل الزامی است. پس از تأیید و خروج کالا از محدوده فروشگاه هیچگونه مسئولیتی در قبال کسری یا آسیب دیدگی پذیرفته نخواهد بود.
-                               </p>
-                            </div>
-                            <div className="w-full md:w-5/12 ml-auto border border-gray-200 print:border-gray-400 rounded-2xl overflow-hidden text-sm font-bold text-gray-600">
-                               <div className="flex justify-between p-4 border-b border-gray-100 print:border-gray-200 bg-white">
-                                 <span>جمع خالص اقلام (بدون تخفیف):</span>
-                                 <span className="font-mono text-gray-900" dir="ltr">{formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0)}</span>
-                               </div>
-                               <div className="flex justify-between p-4 border-b border-gray-100 print:border-gray-200 bg-white text-rose-600">
-                                 <span>مجموع کل تخفیف‌ها روی خطوط:</span>
-                                 <span className="font-mono" dir="ltr">{formatCurrency(Math.max(0, (viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0) - viewingInvoice.totalAmount))}</span>
-                               </div>
-                               {viewingInvoice.overallDiscountPercent > 0 && (
-                               <div className="flex justify-between p-4 border-b border-gray-100 print:border-gray-200 bg-white text-rose-600">
-                                 <span>تخفیف کلی فاکتور ({toPersianDigits(viewingInvoice.overallDiscountPercent)}٪):</span>
-                                 <span className="font-mono" dir="ltr">{formatCurrency((viewingInvoice.items?.reduce((sum: number, it: any) => sum + (it.totalPrice || 0), 0) || 0) * (viewingInvoice.overallDiscountPercent / 100))}</span>
-                               </div>
-                               )}
-                               <div className="flex justify-between p-5 bg-gray-900 print:bg-gray-100 print:text-gray-900 text-white text-lg font-black items-center">
-                                 <span>مبلغ قابل پرداخت فاکتور:</span>
-                                 <div className="text-left" dir="ltr">
-                                    <span className="font-mono text-2xl px-1">{formatCurrency(viewingInvoice.totalAmount)}</span>
-                                    <span className="text-sm font-bold opacity-80">{showInvoiceCurrency(viewingInvoice.currency)}</span>
-                                 </div>
-                               </div>
-                            </div>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-xs text-slate-700">
+                         <div className="flex items-center gap-2">
+                            <span className="text-slate-400 font-bold whitespace-nowrap">تاریخ صدور:</span> 
+                            <span className="font-bold text-sm tracking-wide">{viewingInvoice.jalaliDate || (viewingInvoice.date && new Date(viewingInvoice.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}</span>
                          </div>
-                      )}
+                         <div className="flex items-center gap-2">
+                            <span className="text-slate-400 font-bold whitespace-nowrap">شماره سند:</span> 
+                            <span className="font-bold text-sm tracking-wide">#{toPersianDigits(viewingInvoice.invoiceNumber)}</span>
+                         </div>
+                      </div>
+                    </div>
+                    <div className="text-right md:text-left flex flex-col items-end mt-6 md:mt-0 text-slate-800">
+                       <h2 className="text-2xl font-black mb-3">{storeSettings.storeName || 'کسب و کار سیستم'}</h2>
+                       {storeSettings.phone && <div className="text-sm font-bold flex items-center justify-end gap-1.5"><span dir="ltr">{toPersianDigits(storeSettings.phone)}</span> <span className="text-slate-400 text-xs">تلفن</span></div>}
+                       {storeSettings.address && <div className="text-xs font-bold leading-relaxed max-w-[280px] text-right mt-1.5">{storeSettings.address}</div>}
+                    </div>
+                  </div>
 
-                      {/* Payment Allocation History (for viewing only) */}
-                      {!false && !viewingInvoice.type?.includes('warehouse') && (() => {
-                        const allocatedTxs = transactions.filter(t => t.linkedInvoices && t.linkedInvoices[viewingInvoice.id] > 0);
-                        if (allocatedTxs.length > 0) {
+                  {/* Info blocks */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                    {/* Customer Info */}
+                    <div className="border-t border-b border-slate-200 py-4 font-sans">
+                      <div className="text-xs font-bold text-indigo-600 mb-3 flex items-center gap-1.5">
+                         <User className="w-4 h-4" />
+                         {viewingInvoice.type === 'purchase' ? 'تامین کننده' : viewingInvoice.type === 'sale' ? 'خریدار' : 'طرف حساب'}
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mb-2">{renderPersonLink(viewingInvoice.customerId, viewingInvoice.customerName)}</h3>
+                      {viewingInvoice.customerPhone && <div className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><span className="text-slate-400 text-xs">تلفن:</span><span dir="ltr">{toPersianDigits(viewingInvoice.customerPhone)}</span></div>}
+                      {(() => {
+                        const originalPerson = persons.find(p => p.name === viewingInvoice.customerName || p.id === viewingInvoice.customerId);
+                        if (originalPerson) {
                           return (
-                            <div className="mt-8 mb-8 border border-gray-200 print:border-gray-300 rounded-xl overflow-hidden print:rounded-none">
-                              <div className="bg-gray-100 print:bg-gray-50 border-b border-gray-200 print:border-gray-300 p-3 flex justify-between items-center text-gray-800">
-                                <span className="font-black text-sm text-gray-700">تاریخچه پرداخت‌های مرتبط با این فاکتور</span>
-                              </div>
-                              <table className="w-full text-right text-xs font-bold text-gray-600">
-                                <thead>
-                                  <tr className="bg-white print:bg-white border-b border-gray-200 print:border-gray-300">
-                                    <th className="p-3 w-32 border-l border-gray-200 print:border-gray-300">شماره سند پرداختی</th>
-                                    <th className="p-3 w-32 border-l border-gray-200 print:border-gray-300">تاریخ پرداخت</th>
-                                    <th className="p-3 border-l border-gray-200 print:border-gray-300">حساب / صندوق مرتبط</th>
-                                    <th className="p-3 text-left w-64">مبلغ دریافتی/پرداختی مربوط به این فاکتور</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 print:divide-gray-200 bg-white">
-                                  {allocatedTxs.map(tx => (
-                                    <tr key={tx.id}>
-                                      <td className="p-3 font-mono text-gray-500 border-l border-gray-200 print:border-gray-300">{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
-                                      <td className="p-3 font-mono border-l border-gray-200 print:border-gray-300">{tx.jalaliDate}</td>
-                                      <td className="p-3 border-l border-gray-200 print:border-gray-300">{accounts.find(a => a.id.toString() === tx.accountId?.toString())?.title || cashboxes.find(c => c.id.toString() === tx.cashboxId?.toString())?.name || 'نامشخص'}</td>
-                                      <td className="p-3 text-left font-mono font-black text-gray-900" dir="ltr">{formatCurrency(tx.linkedInvoices![viewingInvoice.id])} <span className="text-[9px] text-gray-400">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                                <tfoot className="bg-gray-50 print:bg-white border-t-2 border-gray-300">
-                                  <tr>
-                                    <td colSpan={3} className="p-3 text-left font-black text-gray-900 border-l border-gray-200 print:border-gray-300">جمع کل دریافتی‌ها و پرداختی‌ها:</td>
-                                    <td className="p-3 text-left font-mono font-black text-gray-900" dir="ltr">{formatCurrency(viewingInvoice.paidAmount || 0)} <span className="text-[9px] text-gray-500">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
-                                  </tr>
-                                  <tr>
-                                    <td colSpan={3} className="p-3 text-left font-black text-rose-600 border-l border-gray-200 print:border-gray-300">باقیمانده حساب (بدهی فاکتور):</td>
-                                    <td className="p-3 text-left font-mono font-black text-rose-600" dir="ltr">{formatCurrency(Math.max((viewingInvoice.totalAmount || 0) - (viewingInvoice.paidAmount || 0), 0))} <span className="text-[9px] text-rose-400">{showInvoiceCurrency(viewingInvoice.currency)}</span></td>
-                                  </tr>
-                                </tfoot>
-                              </table>
+                            <div className="space-y-1.5 text-xs text-slate-600 font-bold mt-2">
+                              {originalPerson.nationalId && <div className="flex items-center gap-2"><span className="text-slate-400">کد ملی / اقتصادی:</span><span>{toPersianDigits(originalPerson.nationalId)}</span></div>}
+                              {originalPerson.address && <div className="flex items-start gap-2 whitespace-normal leading-relaxed mt-1"><span className="text-slate-400 whitespace-nowrap">نشانی:</span><span>{originalPerson.address}</span></div>}
                             </div>
                           );
                         }
                         return null;
                       })()}
+                    </div>
 
-                      {/* Footer Notes & Signature Block */}
-                      {storeSettings.print_footer_note && (
-                         <div className="mb-6 text-[11px] font-bold text-gray-500 text-center leading-relaxed max-w-2xl mx-auto border-t border-gray-200 pt-6 mt-6 print:border-gray-300">
-                            {storeSettings.print_footer_note}
-                         </div>
-                      )}
-                      
-                      <div className={`grid pt-12 pb-4 text-center text-sm font-black text-gray-600 ${storeSettings.print_signature_3 ? 'grid-cols-3 gap-8' : 'grid-cols-2 gap-16'} `}>
-                        <div className="pt-8 border-t-2 border-gray-300 print:border-gray-400 border-dashed flex flex-col justify-end items-center px-4 w-3/4 mx-auto">
-                          <span>{storeSettings.print_signature_1 || (viewingInvoice.type?.includes('warehouse') ? 'مهر و امضای تحویل دهنده' : 'مهر و امضای خریدار / مشتری')}</span>
-                        </div>
-                        {storeSettings.print_signature_3 && (
-                           <div className="pt-8 border-t-2 border-gray-300 print:border-gray-400 border-dashed flex flex-col justify-end items-center px-4 w-3/4 mx-auto">
-                              <span>{storeSettings.print_signature_3}</span>
+                    {/* Payment/Warehouse Info */}
+                    <div className="border-t border-b border-slate-200 py-4 flex flex-col font-sans">
+                        {!viewingInvoice.type?.includes('warehouse') ? (
+                           <div className="flex flex-col gap-2">
+                              <span className="text-xs text-indigo-600 font-bold flex items-center gap-1.5">
+                                 <DollarSign className="w-4 h-4" />
+                                 ارزش کل معامله
+                              </span>
+                              <div className="text-3xl font-black text-slate-900 inline-flex items-baseline gap-1 mt-2">
+                                {toPersianDigits(formatCurrency(viewingInvoice.totalAmount))} <span className="text-sm font-bold text-slate-500">{showInvoiceCurrency(viewingInvoice.currency)}</span>
+                              </div>
+                           </div>
+                        ) : (
+                           <div className="flex flex-col gap-2">
+                              <span className="text-xs text-indigo-600 font-bold flex items-center gap-1.5">
+                                <Box className="w-4 h-4"/> انبار ثبت سند
+                              </span>
+                              <div className="text-xl font-black text-slate-900 mt-2">
+                                {warehouses.find(w => w.id?.toString() === viewingInvoice.warehouseId?.toString() || w.id?.toString() === viewingInvoice.items?.[0]?.warehouseId?.toString())?.name || 'نامشخص'}
+                              </div>
                            </div>
                         )}
-                        <div className="pt-8 border-t-2 border-gray-300 print:border-gray-400 border-dashed flex flex-col justify-end items-center px-4 w-3/4 mx-auto">
-                          <span>{storeSettings.print_signature_2 || (viewingInvoice.type?.includes('warehouse') ? `تایید کننده (${storeSettings.storeName})` : `مهر و امضای (${storeSettings.storeName})`)}</span>
-                        </div>
-                      </div>
+                        {viewingInvoice.description && (
+                           <div className="mt-4 text-xs leading-relaxed text-slate-700 bg-slate-50 rounded-lg p-3 border border-slate-100">
+                              <span className="font-bold text-slate-400 inline-block ml-1">توضیحات:</span> 
+                              <span className="font-bold">{viewingInvoice.description}</span>
+                           </div>
+                        )}
+                    </div>
                   </div>
-  
-{/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING END --- */}
 
+                  {/* Items table */}
+                  <div className="border-2 border-slate-200 print:border-slate-800 rounded-xl overflow-hidden mb-8">
+                    <table className="w-full text-right text-sm border-collapse bg-white font-sans">
+                       <thead className="bg-slate-100 print:bg-slate-100 border-b-2 border-slate-200 print:border-slate-800">
+                          <tr>
+                             <th className="py-3 px-3 w-12 text-center font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">ردیف</th>
+                             <th className="py-3 px-4 font-bold text-slate-700 text-sm border-l border-slate-200 print:border-slate-400">شرح کالا یا خدمات</th>
+                             <th className="py-3 px-3 w-24 text-center font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">مقدار</th>
+                             {!viewingInvoice.type?.includes('warehouse') && (
+                                <>
+                                   <th className="py-3 px-3 text-center w-36 font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">فی ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                   <th className="py-3 px-3 text-center w-20 font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">تخفیف</th>
+                                   <th className="py-3 px-3 w-44 text-center font-bold text-slate-700 text-xs">مبلغ کل ({showInvoiceCurrency(viewingInvoice.currency)})</th>
+                                </>
+                             )}
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-100 print:divide-slate-300 text-slate-800 text-sm">
+                          {viewingInvoice.items?.filter((it: any) => it.productName || it.productId || (it.quantity > 0 && it.unitPrice > 0)).map((item: any, idx: number) => (
+                            <tr key={idx} className="group print:hover:bg-transparent">
+                              <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-slate-500">{toPersianDigits(idx + 1)}</td>
+                              <td className="py-3 px-4 border-l border-slate-100 print:border-slate-400">
+                                 <div className="flex flex-col gap-1">
+                                    <span className="text-slate-900 font-bold tracking-tight">{item.productName || 'تحریر نشده'}</span>
+                                    {item.warehouseId && (
+                                      <span className="text-[10px] text-slate-400 font-bold">
+                                        از انبار: {warehouses.find(w => w.id?.toString() === item.warehouseId?.toString())?.name || '-'}
+                                      </span>
+                                    )}
+                                 </div>
+                              </td>
+                              <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400">
+                                 <span className="font-bold text-slate-900 ml-1.5 text-base">{toPersianDigits(formatNumber(item.quantity || 1))}</span>
+                                 <span className="text-xs text-slate-500 font-bold hidden md:inline-block">{item.selectedUnit || ''}</span>
+                              </td>
+                              {!viewingInvoice.type?.includes('warehouse') && (
+                                 <>
+                                    <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-slate-700 text-base">{toPersianDigits(formatCurrency(item.unitPrice || 0))}</td>
+                                    <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-rose-600 text-base" dir="ltr">{item.discountPercent > 0 ? `${toPersianDigits(item.discountPercent)}٪` : '-'}</td>
+                                    <td className="py-3 px-3 text-center font-black text-slate-900 bg-slate-50/50 print:bg-transparent text-base">{toPersianDigits(formatCurrency(item.totalPrice || 0))}</td>
+                                 </>
+                              )}
+                            </tr>
+                          ))}
+                          {/* Empty spacer rows to fill page slightly if needed */}
+                          {viewingInvoice.items?.length < 3 && Array.from({length: 3 - (viewingInvoice.items?.length || 0)}).map((_, i) => (
+                             <tr key={`empty-${i}`} className="h-12 border-t border-slate-100 print:border-slate-300">
+                                <td className="border-l border-slate-100 print:border-slate-400"></td>
+                                <td className="border-l border-slate-100 print:border-slate-400"></td>
+                                <td className="border-l border-slate-100 print:border-slate-400"></td>
+                                {!viewingInvoice.type?.includes('warehouse') && (
+                                   <>
+                                      <td className="border-l border-slate-100 print:border-slate-400"></td>
+                                      <td className="border-l border-slate-100 print:border-slate-400"></td>
+                                      <td></td>
+                                   </>
+                                )}
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                  </div>
+
+                  {/* Summary Section */}
+                  {!viewingInvoice.type?.includes('warehouse') && (
+                     <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8 font-sans">
+                        <div className="w-full md:w-[50%] flex flex-col justify-between self-stretch">
+                           <div className="border border-slate-200 print:border-slate-300 rounded-xl p-5 bg-slate-50/50 print:bg-transparent">
+                              <span className="text-xs text-slate-500 font-bold block mb-2">جمع مبلغ به حروف (تومان)</span>
+                              <p className="text-slate-900 font-black text-base leading-loose">
+                                 {numToPersianWords(viewingInvoice.totalAmount)} {showInvoiceCurrency(viewingInvoice.currency)}
+                              </p>
+                           </div>
+                           <p className="text-[10px] text-slate-400 font-bold leading-loose text-justify mt-4 print:text-slate-500 border-t border-slate-100 print:border-slate-200 pt-4">
+                              مشتری گرامی، خواهشمند است اقلام را در زمان تحویل به دقت بررسی نمایید. پس از تحویل، مجموعه هیچگونه مسئولیتی در قبال کسری یا آسیب‌دیدگی ظاهری نمی‌پذیرد.
+                           </p>
+                        </div>
+                        <div className="w-full md:w-[45%] ml-auto border-2 border-slate-200 print:border-slate-800 rounded-xl overflow-hidden font-bold">
+                           <div className="flex justify-between px-5 py-3 border-b border-slate-200 print:border-slate-300 bg-white">
+                             <span className="text-sm text-slate-600">جمع کل (بدون تخفیف)</span>
+                             <span className="font-bold text-slate-900 text-base">{toPersianDigits(formatCurrency(viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0))}</span>
+                           </div>
+                           <div className="flex justify-between px-5 py-3 border-b border-slate-200 print:border-slate-300 bg-white">
+                             <span className="text-sm text-rose-600">مجموع تخفیف‌ها</span>
+                             <span className="font-bold text-rose-600 text-base">{toPersianDigits(formatCurrency(Math.max(0, (viewingInvoice.items?.reduce((sum: number, it: any) => sum + ((it.quantity || 0) * (it.unitPrice || 0)), 0) || 0) - viewingInvoice.totalAmount)))}</span>
+                           </div>
+                           <div className="flex justify-between p-5 bg-slate-100 print:bg-slate-100 text-slate-900 items-center">
+                             <span className="text-base font-black text-slate-800">مبلغ نهایی فاکتور</span>
+                             <div className="flex items-baseline gap-1.5" dir="ltr">
+                                <span className="text-2xl font-black text-indigo-900">{toPersianDigits(formatCurrency(viewingInvoice.totalAmount))}</span>
+                                <span className="text-xs font-bold text-slate-500">{showInvoiceCurrency(viewingInvoice.currency)}</span>
+                             </div>
+                           </div>
+                        </div>
+                     </div>
+                  )}
+
+                  {/* Payment Allocation History */}
+                  {!false && !viewingInvoice.type?.includes('warehouse') && (() => {
+                    const allocatedTxs = transactions.filter(t => t.linkedInvoices && t.linkedInvoices[viewingInvoice.id] > 0);
+                    if (allocatedTxs.length > 0) {
+                      return (
+                        <div className="mb-6 border border-slate-200 rounded-xl overflow-hidden">
+                          <div className="bg-slate-50 border-b border-slate-200 p-2.5">
+                            <span className="font-extrabold text-xs text-slate-600 mr-2">تاریخچه دریافت / پرداخت برای این سند</span>
+                          </div>
+                          <table className="w-full text-right text-xs font-bold text-slate-600 bg-white">
+                            <thead className="border-b border-slate-200 bg-slate-50/50">
+                              <tr>
+                                <th className="py-2 px-3 border-l border-slate-200 font-extrabold w-28">شماره پیگیری</th>
+                                <th className="py-2 px-3 border-l border-slate-200 font-extrabold w-28">تاریخ واریز</th>
+                                <th className="py-2 px-3 border-l border-slate-200 font-extrabold">جزئیات حساب/صندوق</th>
+                                <th className="py-2 px-3 text-center font-extrabold w-40">ارزش ثبت شده</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {allocatedTxs.map(tx => (
+                                <tr key={tx.id}>
+                                  <td className="py-2 px-3 font-sans font-bold text-slate-500 border-l border-slate-200">{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
+                                  <td className="py-2 px-3 font-sans font-bold border-l border-slate-200">{toPersianDigits(tx.jalaliDate)}</td>
+                                  <td className="py-2 px-3 border-l border-slate-200">{accounts.find(a => a.id.toString() === tx.accountId?.toString())?.title || cashboxes.find(c => c.id.toString() === tx.cashboxId?.toString())?.name || 'نامشخص'}</td>
+                                  <td className="py-2 px-3 text-center font-sans font-black text-slate-800">{toPersianDigits(formatCurrency(tx.linkedInvoices![viewingInvoice.id]))}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot className="bg-slate-50 border-t border-slate-200">
+                              <tr>
+                                <td colSpan={3} className="py-2.5 px-3 text-left font-black text-slate-700 border-l border-slate-200">مجموع پرداختی:</td>
+                                <td className="py-2.5 px-3 text-center font-sans font-black text-slate-800">{toPersianDigits(formatCurrency(viewingInvoice.paidAmount || 0))}</td>
+                              </tr>
+                              <tr>
+                                <td colSpan={3} className="py-2 px-3 text-left font-black text-rose-500 border-l border-slate-200">بدهی باقیمانده مانده (تراز):</td>
+                                <td className="py-2 px-3 text-center font-sans font-black text-rose-600">{toPersianDigits(formatCurrency(Math.max((viewingInvoice.totalAmount || 0) - (viewingInvoice.paidAmount || 0), 0)))}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Footer Notes & Signature Block */}
+                  {storeSettings.print_footer_note && (
+                     <div className="mb-6 text-[10px] font-bold text-slate-500 text-center leading-relaxed">
+                        {storeSettings.print_footer_note}
+                     </div>
+                  )}
+                  
+                  <div className={`grid pt-6 pb-2 text-center text-xs font-extrabold text-slate-400 ${storeSettings.print_signature_3 ? 'grid-cols-3 gap-8' : 'grid-cols-2 gap-16'} `}>
+                    <div className="pt-6 border-t border-slate-200 px-4 w-5/6 mx-auto">
+                      {storeSettings.print_signature_1 || (viewingInvoice.type?.includes('warehouse') ? 'تأیید تحویل‌گیرنده' : 'امضای مشتری')}
+                    </div>
+                    {storeSettings.print_signature_3 && (
+                       <div className="pt-6 border-t border-slate-200 px-4 w-5/6 mx-auto">
+                          {storeSettings.print_signature_3}
+                       </div>
+                    )}
+                    <div className="pt-6 border-t border-slate-200 px-4 w-5/6 mx-auto text-slate-700">
+                      {storeSettings.print_signature_2 || (viewingInvoice.type?.includes('warehouse') ? `تأیید حواله‌دهنده (${storeSettings.storeName})` : `مهر و اعتبار ${storeSettings.storeName}`)}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -12274,6 +12350,156 @@ export default function App() {
           </div>
         )
     })()}
+
+      {pricingWizardInvoice && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:block">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl ring-1 ring-slate-900/5 print:shadow-none print:ring-0 print:max-w-none print:max-h-none print:h-auto h-full md:h-auto print:overflow-visible"
+            dir="rtl"
+          >
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 print:hidden">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-lg">قیمت‌گذاری فروش کالاها</h3>
+                  <p className="text-xs font-bold text-slate-500 mt-0.5">ثبت قیمت فروش برای اقلام فاکتور خرید اخیر</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setPricingWizardInvoice(null); setPricingWizardItems([]); }}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-200/50 hover:bg-slate-200 text-slate-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Print Header */}
+            <div className="hidden print:flex flex-col items-center justify-center py-6 border-b border-slate-200 mb-4">
+               <h2 className="text-2xl font-black text-slate-900 mb-2">لیست قیمت فروش کالاها</h2>
+               <div className="flex gap-6 text-sm font-bold text-slate-600">
+                  <span>مرجع: فاکتور خرید {toPersianDigits(pricingWizardInvoice.invoiceNumber)}</span>
+                  <span>تاریخ: {toPersianDigits(pricingWizardInvoice.jalaliDate)}</span>
+               </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar print:overflow-visible print:px-0">
+              <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm print:border-none print:shadow-none print:overflow-visible">
+                <table className="w-full text-sm text-right">
+                  <thead className="bg-slate-50 border-b border-slate-200 print:bg-slate-100/50">
+                    <tr>
+                      <th className="p-4 font-extrabold text-slate-700 w-12 text-center">ردیف</th>
+                      <th className="p-4 font-extrabold text-slate-700">نام کالا / خدمات</th>
+                      <th className="p-4 font-extrabold text-slate-700 w-32 border-r border-slate-100 text-center">قیمت خرید ({storeSettings.currency})</th>
+                      <th className="p-4 font-extrabold text-slate-700 w-32 border-r border-slate-100 text-center print:hidden">حاشیه سود (٪)</th>
+                      <th className="p-4 font-extrabold text-slate-700 w-44 border-r border-slate-100 text-center">قیمت فروش ({storeSettings.currency})</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pricingWizardItems.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="p-4 text-center font-sans font-bold text-slate-500 text-xs text-center border-l border-slate-100/50">
+                          {toPersianDigits(idx + 1)}
+                        </td>
+                        <td className="p-4 font-bold text-slate-800">
+                          {item.productName}
+                        </td>
+                        <td className="p-3 border-r border-slate-100 text-center align-middle">
+                           <div className="font-sans font-black text-slate-700 text-sm bg-slate-50 border border-slate-200/60 rounded-xl px-2 py-1.5 inline-block print:border-none print:bg-transparent">
+                             {toPersianDigits(formatNumber(item.purchasePrice))}
+                           </div>
+                        </td>
+                        <td className="p-3 border-r border-slate-100 text-center align-middle print:hidden">
+                           <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-200/60 rounded-xl px-2 py-0.5 focus-within:ring-2 focus-within:ring-indigo-500/30 transition-all max-w-[90px] mx-auto">
+                           <input
+                             type="number"
+                             min="0"
+                             className="w-full text-center font-sans font-black text-indigo-700 bg-transparent focus:outline-none text-sm py-1"
+                             value={item.marginPercent || ''}
+                             onChange={(e) => {
+                               const m = Number(e.target.value);
+                               const newItems = [...pricingWizardItems];
+                               newItems[idx].marginPercent = m;
+                               newItems[idx].salePrice = item.purchasePrice * (1 + m / 100);
+                               setPricingWizardItems(newItems);
+                             }}
+                             placeholder="0"
+                           />
+                           <span className="text-[10px] font-bold text-indigo-400">٪</span>
+                           </div>
+                        </td>
+                        <td className="p-3 border-r border-slate-100 text-center align-middle relative">
+                           <input
+                             type="text"
+                             className="w-[120px] text-center font-sans font-black text-emerald-700 bg-emerald-50 border border-emerald-200/60 rounded-xl px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all text-sm print:hidden"
+                             value={item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : ''}
+                             onChange={(e) => {
+                               const raw = Number(e.target.value.replace(/\D/g, ''));
+                               const newItems = [...pricingWizardItems];
+                               newItems[idx].salePrice = raw;
+                               if (item.purchasePrice > 0) {
+                                  newItems[idx].marginPercent = Math.round(((raw - item.purchasePrice) / item.purchasePrice) * 100);
+                               }
+                               setPricingWizardItems(newItems);
+                             }}
+                             onFocus={(e) => e.target.select()}
+                           />
+                           <div className="hidden print:block font-sans font-black text-emerald-800 text-lg text-center">
+                             {toPersianDigits(formatNumber(item.salePrice))}
+                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {pricingWizardItems.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-slate-500 font-bold">هیچ کالایی برای تعیین قیمت وجود ندارد.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between print:hidden">
+              <span className="text-xs font-bold text-slate-500">
+                با درج حاشیه سود یا تغییر مستقیم، قیمت فروش کالاها به‌روز می‌شود.
+              </span>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setPricingWizardInvoice(null); setPricingWizardItems([]); }}
+                  className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-colors shadow-sm"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    // Update products with new sale and purchase prices
+                    for (const item of pricingWizardItems) {
+                       const p = products.find(prod => prod.id === item.productId);
+                       if (p) {
+                          await updateProduct(p.id.toString(), { ...p, price: item.salePrice, purchasePrice: item.purchasePrice });
+                       }
+                    }
+                    await fetchProducts();
+                    setSuccessMsg('قیمت‌های فروش با موفقیت بروزرسانی شد.');
+                    setTimeout(() => window.print(), 300);
+                  }}
+                  className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-sm transition-all shadow-indigo-600/20 hover:-translate-y-0.5"
+                >
+                  <Save className="w-5 h-5" />
+                  ثبت قیمت‌ها و چاپ
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   );
 }
