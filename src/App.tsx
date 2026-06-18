@@ -367,6 +367,7 @@ export default function App() {
       const [viewingInvoice, setViewingInvoice] = useState<any>(null);
       const [pricingWizardInvoice, setPricingWizardInvoice] = useState<any>(null);
       const [pricingWizardItems, setPricingWizardItems] = useState<any[]>([]);
+      const [pricingPrintMode, setPricingPrintMode] = useState<'list' | 'labels'>('list');
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
   const [invoiceGroupMode, setInvoiceGroupMode] = useState<'none' | 'month' | 'season'>('none');
   
@@ -12525,7 +12526,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={async () => {
-                    // Update products with new sale and purchase prices
+                    setPricingPrintMode('list');
                     for (const item of pricingWizardItems) {
                        const p = products.find(prod => prod.id === item.productId);
                        if (p) {
@@ -12538,44 +12539,84 @@ export default function App() {
                   }}
                   className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-sm transition-all shadow-indigo-600/20 hover:-translate-y-0.5"
                 >
-                  <Save className="w-5 h-5" />
-                  ثبت قیمت‌ها و چاپ
+                  <List className="w-5 h-5" />
+                  ثبت قیمت و چاپ لیست
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setPricingPrintMode('labels');
+                    for (const item of pricingWizardItems) {
+                       const p = products.find(prod => prod.id === item.productId);
+                       if (p) {
+                          await updateProduct(p.id.toString(), { ...p, price: item.salePrice, purchasePrice: item.purchasePrice });
+                       }
+                    }
+                    await fetchProducts();
+                    setSuccessMsg('قیمت‌های فروش با موفقیت بروزرسانی شد.');
+                    setTimeout(() => window.print(), 300);
+                  }}
+                  className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 flex items-center gap-2 shadow-sm transition-all shadow-emerald-600/20 hover:-translate-y-0.5"
+                >
+                  <Printer className="w-5 h-5" />
+                  ثبت قیمت و چاپ لیبل چسبی
                 </button>
               </div>
             </div>
           </motion.div>
 
           {/* Dedicated Print-Only Layout */}
-          <div className="hidden print:block p-8 w-full max-w-4xl mx-auto bg-white font-sans text-slate-800" dir="rtl">
-             <div className="flex flex-col items-center justify-center pb-6 border-b border-slate-200 mb-6">
-                <h2 className="text-2xl font-black text-slate-900 mb-3">لیست قیمت فروش کالاها</h2>
-                <div className="flex gap-8 text-sm font-bold text-slate-600">
-                   <span>مرجع: فاکتور خرید {toPersianDigits(pricingWizardInvoice.invoiceNumber)}</span>
-                   <span>تاریخ ثبت خرید: {toPersianDigits(pricingWizardInvoice.jalaliDate)}</span>
-                   <span>تاریخ قیمت‌گذاری: {new Date().toLocaleDateString('fa-IR')}</span>
-                </div>
-             </div>
-             
-             <table className="w-full text-sm text-right border-collapse border border-slate-200">
-               <thead className="bg-slate-50">
-                 <tr>
-                   <th className="p-3 border border-slate-200 font-extrabold w-16 text-center">ردیف</th>
-                   <th className="p-3 border border-slate-200 font-extrabold">نام کالا / خدمات</th>
-                   <th className="p-3 border border-slate-200 font-extrabold w-48 text-center bg-slate-100">قیمت فروش ({storeSettings.currency})</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-slate-200">
+          <div className="hidden print:block p-8 w-full mx-auto bg-white font-sans text-slate-800" dir="rtl">
+             {pricingPrintMode === 'list' && (
+               <>
+                 <div className="flex flex-col items-center justify-center pb-6 border-b border-slate-200 mb-6">
+                    <h2 className="text-3xl font-black text-slate-900 mb-3">{storeSettings?.storeName || 'لیست قیمت فروش کالاها'}</h2>
+                    <div className="flex gap-8 text-lg font-bold text-slate-600">
+                       <span>مرجع: فاکتور خرید {toPersianDigits(pricingWizardInvoice?.invoiceNumber || '')}</span>
+                       <span>تاریخ ثبت خرید: {toPersianDigits(pricingWizardInvoice?.jalaliDate || '')}</span>
+                       <span>تاریخ قیمت‌گذاری: {new Date().toLocaleDateString('fa-IR')}</span>
+                    </div>
+                 </div>
+                 
+                 <table className="w-full text-lg text-right border-collapse border border-slate-300">
+                   <thead className="bg-slate-100">
+                     <tr>
+                       <th className="p-4 border border-slate-300 font-extrabold w-20 text-center">ردیف</th>
+                       <th className="p-4 border border-slate-300 font-extrabold">نام کالا / خدمات</th>
+                       <th className="p-4 border border-slate-300 font-extrabold w-64 text-center bg-slate-200">قیمت فروش ({storeSettings?.currency || 'تومان'})</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-300">
+                     {pricingWizardItems.map((item, idx) => (
+                       <tr key={idx}>
+                         <td className="p-4 border border-slate-300 text-center font-bold">{toPersianDigits(idx + 1)}</td>
+                         <td className="p-4 border border-slate-300 font-bold text-xl">{item.productName}</td>
+                         <td className="p-4 border border-slate-300 text-center font-black text-2xl text-slate-900" dir="ltr">
+                           {item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : '---'}
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </>
+             )}
+
+             {pricingPrintMode === 'labels' && (
+               <div className="flex flex-wrap gap-4 items-start justify-start">
                  {pricingWizardItems.map((item, idx) => (
-                   <tr key={idx}>
-                     <td className="p-3 border border-slate-200 text-center font-bold">{toPersianDigits(idx + 1)}</td>
-                     <td className="p-3 border border-slate-200 font-bold text-base">{item.productName}</td>
-                     <td className="p-3 border border-slate-200 text-center font-black text-lg bg-emerald-50 text-emerald-900 placeholder-transparent" dir="ltr">
-                       {item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : '---'}
-                     </td>
-                   </tr>
+                   <div key={idx} className="border-4 border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center w-[60mm] h-[40mm] break-inside-avoid">
+                     <span className="text-sm font-extrabold text-slate-500 mb-1 truncate w-full px-2">{storeSettings?.storeName || 'پلتفرم فروشگاهی'}</span>
+                     <span className="text-base font-black text-slate-900 leading-snug mb-2 line-clamp-2 px-2">{item.productName}</span>
+                     <div className="mt-auto">
+                       <span className="text-2xl font-black text-slate-900 block" dir="ltr">
+                         {item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : '---'}
+                       </span>
+                       <span className="text-sm font-bold text-slate-600 block">{storeSettings?.currency || 'تومان'}</span>
+                     </div>
+                   </div>
                  ))}
-               </tbody>
-             </table>
+               </div>
+             )}
           </div>
         </div>
       )}
