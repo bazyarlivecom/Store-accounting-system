@@ -12604,14 +12604,14 @@ export default function App() {
              {pricingPrintMode === 'labels' && (
                <div className="flex flex-wrap gap-4 items-start justify-start">
                  {pricingWizardItems.map((item, idx) => (
-                   <div key={idx} className="border-4 border-slate-800 p-4 rounded-xl flex flex-col items-center justify-center text-center w-[60mm] h-[40mm] break-inside-avoid">
-                     <span className="text-sm font-extrabold text-slate-500 mb-1 truncate w-full px-2">{storeSettings?.storeName || 'پلتفرم فروشگاهی'}</span>
-                     <span className="text-base font-black text-slate-900 leading-snug mb-2 line-clamp-2 px-2">{item.productName}</span>
+                   <div key={idx} className="border-[5px] border-slate-900 p-5 rounded-2xl flex flex-col items-center justify-center text-center w-[85mm] h-[55mm] break-inside-avoid">
+                     <span className="text-base font-extrabold text-slate-500 mb-1.5 truncate w-full px-2">{storeSettings?.storeName || 'پلتفرم فروشگاهی'}</span>
+                     <span className="text-xl font-black text-slate-900 leading-snug mb-3 line-clamp-2 px-2">{item.productName}</span>
                      <div className="mt-auto">
-                       <span className="text-2xl font-black text-slate-900 block" dir="ltr">
+                       <span className="text-3xl font-black text-slate-900 block" dir="ltr">
                          {item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : '---'}
                        </span>
-                       <span className="text-sm font-bold text-slate-600 block">{storeSettings?.currency || 'تومان'}</span>
+                       <span className="text-base font-bold text-slate-600 block mt-1">{storeSettings?.currency || 'تومان'}</span>
                      </div>
                    </div>
                  ))}
