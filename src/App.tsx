@@ -1360,7 +1360,7 @@ export default function App() {
     setSubmittingSalary(true);
     try {
       const p = persons.find(item => item.id.toString() === salaryPersonId.toString());
-      const personName = p ? p.name : 'کارمند';
+      const personName = p ? getPersonDisplayName(p) : 'کارمند';
 
       // Build payslip breakdown to store in description as JSON string
       const payloadDescription = JSON.stringify({
@@ -2119,10 +2119,28 @@ export default function App() {
     );
   };
 
+  const getPersonDisplayName = (person: any) => {
+    if (!person) return 'نامشخص';
+    return person.alias || person.name || 'نامشخص';
+  };
+
+  const getPersonDisplayNameById = (personId: string | number | undefined) => {
+    if (!personId) return 'نامشخص';
+    const person = persons.find(p => p.id.toString() === personId.toString());
+    return getPersonDisplayName(person);
+  };
+
   // helper to render clickable person link
-  const renderPersonLink = (personId: string | number | undefined, name: string | undefined) => {
-    const defaultName = name || 'نامشخص';
-    if (!personId || defaultName === 'نامشخص') return <span>{defaultName}</span>;
+  const renderPersonLink = (personId: string | number | undefined, fallbackName: string | undefined = undefined) => {
+    let name = 'نامشخص';
+    if (personId) {
+      name = getPersonDisplayNameById(personId);
+    } 
+    if (name === 'نامشخص' && fallbackName) {
+      name = fallbackName;
+    }
+    
+    if (!personId || name === 'نامشخص') return <span>{name}</span>;
     return (
       <span 
         className="cursor-pointer text-indigo-600 hover:text-indigo-800 transition-colors font-bold border-b border-dashed border-indigo-300 hover:border-indigo-600 pb-[1px]"
@@ -7352,7 +7370,7 @@ export default function App() {
               </label>
               <Select
                 isRtl
-                value={ledgerPersonId ? { value: ledgerPersonId, label: persons.find(p => p.id.toString() === ledgerPersonId.toString())?.personCode ? '[' + persons.find(p => p.id.toString() === ledgerPersonId.toString())?.personCode + '] ' + persons.find(p => p.id.toString() === ledgerPersonId.toString())?.name : persons.find(p => p.id.toString() === ledgerPersonId.toString())?.name } : null}
+                value={ledgerPersonId ? (persons.find(p => p.id.toString() === ledgerPersonId.toString()) ? mapPersonToOption(persons.find(p => p.id.toString() === ledgerPersonId.toString())!) : null) : null}
                 onChange={(option: any) => setLedgerPersonId(option ? option.value : '')}
                 options={persons.map(mapPersonToOption) as any}
                 filterOption={customPersonFilter}
@@ -7618,7 +7636,7 @@ export default function App() {
                        
                        <div className="grid grid-cols-2 gap-8 text-sm">
                          <div className="space-y-3 font-medium">
-                           <p><span className="text-gray-500 w-24 inline-block font-bold">نام طرف حساب:</span> <span className="font-extrabold text-lg text-gray-900">{selectedPerson.name}</span></p>
+                           <p><span className="text-gray-500 w-24 inline-block font-bold">نام طرف حساب:</span> <span className="font-extrabold text-lg text-gray-900">{getPersonDisplayName(selectedPerson)} {selectedPerson.personCode ? `[${selectedPerson.personCode}]` : ''}</span></p>
                            <p><span className="text-gray-500 w-24 inline-block font-bold">تلفن تماس:</span> <span className="text-gray-900">{toPersianDigits(selectedPerson.phone ? selectedPerson.phone : '---')}</span></p>
                            <p><span className="text-gray-500 w-24 inline-block font-bold">آدرس:</span> <span className="text-gray-900">{selectedPerson.address || '---'}</span></p>
                          </div>
@@ -7729,7 +7747,7 @@ export default function App() {
                         </span>
                         <span className="text-xs text-gray-400 font-medium font-mono text-left">کد شخص: #{toPersianDigits(selectedPerson.personCode ? selectedPerson.personCode : selectedPerson.id)}</span>
                       </div>
-                      <h2 className="text-lg font-extrabold text-gray-900 mb-3">{selectedPerson.name}</h2>
+                      <h2 className="text-lg font-extrabold text-gray-900 mb-3">{getPersonDisplayName(selectedPerson)}</h2>
                       
                       <div className="space-y-2 text-sm text-gray-600">
                         {selectedPerson.phone && (
@@ -12603,18 +12621,28 @@ export default function App() {
 
              {pricingPrintMode === 'labels' && (
                <div className="flex flex-wrap gap-4 items-start justify-start">
-                 {pricingWizardItems.map((item, idx) => (
-                   <div key={idx} className="border-[5px] border-slate-900 p-5 rounded-2xl flex flex-col items-center justify-center text-center w-[85mm] h-[55mm] break-inside-avoid">
-                     <span className="text-base font-extrabold text-slate-500 mb-1.5 truncate w-full px-2">{storeSettings?.storeName || 'پلتفرم فروشگاهی'}</span>
-                     <span className="text-xl font-black text-slate-900 leading-snug mb-3 line-clamp-2 px-2">{item.productName}</span>
-                     <div className="mt-auto">
-                       <span className="text-3xl font-black text-slate-900 block" dir="ltr">
-                         {item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : '---'}
-                       </span>
-                       <span className="text-base font-bold text-slate-600 block mt-1">{storeSettings?.currency || 'تومان'}</span>
+                 {pricingWizardItems.map((item, idx) => {
+                   const prod = products.find(p => p.id === item.productId);
+                   return (
+                   <div key={idx} className="border-[6px] border-slate-900 p-4 rounded-3xl flex flex-col justify-between text-center w-[95mm] h-[65mm] break-inside-avoid relative overflow-hidden bg-white shadow-sm">
+                     <div className="w-full flex justify-between items-start px-2 mb-2">
+                        <span className="text-xs font-bold text-slate-400 font-mono tracking-wider">{prod?.barcode || ''}</span>
+                        <span className="text-xs font-bold text-slate-400 font-mono tracking-wider">{prod?.code || ''}</span>
+                     </div>
+                     <div className="flex flex-col items-center w-full flex-1 justify-center">
+                       <span className="text-lg font-extrabold text-slate-500 mb-2 truncate w-full px-2">{storeSettings?.storeName || 'پلتفرم فروشگاهی'}</span>
+                       <span className="text-xl md:text-2xl font-black text-slate-900 leading-tight px-2 w-full line-clamp-2">{item.productName}</span>
+                     </div>
+                     <div className="mt-auto pt-3 w-full flex flex-col items-center border-t-2 border-dashed border-slate-200">
+                       <div className="flex items-end justify-center gap-2 mt-1">
+                         <span className="text-[32px] md:text-[38px] font-black text-slate-900 tracking-tight leading-none" dir="ltr">
+                           {item.salePrice ? toPersianDigits(formatNumber(item.salePrice)) : '---'}
+                         </span>
+                         <span className="text-lg font-bold text-slate-600 mb-1">{storeSettings?.currency || 'تومان'}</span>
+                       </div>
                      </div>
                    </div>
-                 ))}
+                 )})}
                </div>
              )}
           </div>
