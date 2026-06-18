@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import DatePickerModule from "react-multi-date-picker";
+import DatePickerModule, { Calendar as RMCalendar } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
@@ -16,8 +16,8 @@ import {
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification, activeTab = 'checkbooks' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' }) {
-  const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks'>(activeTab);
+export default function CheckManagement({ showNotification, activeTab = 'checkbooks' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' }) {
+  const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar'>(activeTab);
   
   useEffect(() => {
     setActiveSubTab(activeTab);
@@ -32,6 +32,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const [issuedSearchQuery, setIssuedSearchQuery] = useState('');
   const [receivedSearchQuery, setReceivedSearchQuery] = useState('');
   const [depositAccountId, setDepositAccountId] = useState('');
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(new Date().toLocaleDateString('fa-IR'));
   
   // Modals state
   const [isCheckbookModalOpen, setIsCheckbookModalOpen] = useState(false);
@@ -45,6 +46,9 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const [cbEnd, setCbEnd] = useState('');
   const [cbIssued, setCbIssued] = useState('');
   const [editingCheckbookId, setEditingCheckbookId] = useState<string|number|null>(null);
+  
+  const [editingIssuedCheckId, setEditingIssuedCheckId] = useState<string|number|null>(null);
+  const [editingReceivedCheckId, setEditingReceivedCheckId] = useState<string|number|null>(null);
 
   // Issued Check form state
   const [icCheckbookId, setIcCheckbookId] = useState('');
@@ -118,14 +122,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
       payeeId: icPayeeId,
       issueDate: icIssueDate || new Date().toLocaleDateString('fa-IR'),
       dueDate: icDueDate,
-      status: 'issued',
+      status: 'issued', // Default
       description: icDescription
     };
 
-    await addIssuedCheck(payload);
+    if (editingIssuedCheckId) {
+      const existing = issuedChecks.find(c => c.id === editingIssuedCheckId);
+      if (existing) {
+        await updateIssuedCheck(editingIssuedCheckId.toString(), { ...existing, ...payload, status: existing.status || 'issued' } as any);
+      }
+    } else {
+      await addIssuedCheck(payload);
+    }
+    
     setIsIssuedModalOpen(false);
     
     // Clear inputs
+    setEditingIssuedCheckId(null);
     setIcCheckbookId('');
     setIcCheckNumber('');
     setIcPayeeId('');
@@ -152,14 +165,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
       payerId: rcPayerId,
       receiveDate: rcReceiveDate || new Date().toLocaleDateString('fa-IR'),
       dueDate: rcDueDate,
-      status: 'received',
+      status: 'received', // Default
       description: rcDescription
     };
 
-    await addReceivedCheck(payload);
+    if (editingReceivedCheckId) {
+      const existing = receivedChecks.find(c => c.id === editingReceivedCheckId);
+      if (existing) {
+         await updateReceivedCheck(editingReceivedCheckId.toString(), { ...existing, ...payload, status: existing.status || 'received' } as any);
+      }
+    } else {
+      await addReceivedCheck(payload);
+    }
+    
     setIsReceivedModalOpen(false);
 
     // Clear inputs
+    setEditingReceivedCheckId(null);
     setRcPayerId('');
     setRcBankName('');
     setRcBranchName('');
@@ -313,10 +335,10 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
          <div>
            <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
              <CreditCard className="w-6 h-6 text-indigo-600" /> 
-             {activeSubTab === 'checkbooks' ? 'مدیریت و لیست دسته چک‌ها' : activeSubTab === 'issued_checks' ? 'مدیریت چک‌های صادره (پرداختی)' : 'مدیریت چک‌های دریافتی (وصولی)'}
+             {activeSubTab === 'checkbooks' ? 'مدیریت و لیست دسته چک‌ها' : activeSubTab === 'issued_checks' ? 'مدیریت چک‌های صادره (پرداختی)' : activeSubTab === 'check_calendar' ? 'تقویم سررسید چک‌ها' : 'مدیریت چک‌های دریافتی (وصولی)'}
            </h1>
            <p className="text-xs text-gray-500 mt-1">
-             {activeSubTab === 'checkbooks' ? 'تعریف و نظارت بر دسته‌چک‌های بانکی اختصاصی' : activeSubTab === 'issued_checks' ? 'نظارت بر وضعیت برگه‌های چک پرداخت شده به حساب مشتریان و تامین‌کنندگان' : 'مدیریت وضعیت وصول و اقلام چک‌های دریافت شده از اشخاص'}
+             {activeSubTab === 'checkbooks' ? 'تعریف و نظارت بر دسته‌چک‌های بانکی اختصاصی' : activeSubTab === 'issued_checks' ? 'نظارت بر وضعیت برگه‌های چک پرداخت شده به حساب مشتریان و تامین‌کنندگان' : activeSubTab === 'check_calendar' ? 'نظارت تصویری بر تاریخ‌های سررسید چک‌ها بوسیله تقویم ماهانه' : 'مدیریت وضعیت وصول و اقلام چک‌های دریافت شده از اشخاص'}
            </p>
          </div>
       </div>
@@ -441,7 +463,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
 
               <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                <span className="text-xs font-bold text-gray-550">تعداد یافت شده: {filteredIssuedChecks.length}</span>
+                <button 
+                  onClick={() => {
+                    setEditingIssuedCheckId(null);
+                    setIcCheckbookId('');
+                    setIcCheckNumber('');
+                    setIcPayeeId('');
+                    setIcAmount('');
+                    setIcIssueDate('');
+                    setIcDueDate('');
+                    setIcDescription('');
+                    setIsIssuedModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> ثبت دستی چک صادره
+                </button>
+                <span className="text-xs font-bold text-gray-550 hidden sm:inline-block">تعداد یافت شده: {filteredIssuedChecks.length}</span>
               </div>
             </div>
 
@@ -498,6 +536,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                               تغییر وضعیت
                             </button>
                             <button 
+                              onClick={() => { 
+                                setEditingIssuedCheckId(c.id);
+                                setIcCheckbookId(c.checkbookId);
+                                setIcCheckNumber(c.checkNumber);
+                                setIcPayeeId(c.payeeId);
+                                setIcAmount(c.amount.toString());
+                                setIcIssueDate(c.issueDate);
+                                setIcDueDate(c.dueDate);
+                                setIcDescription(c.description || '');
+                                setIsIssuedModalOpen(true);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 inline-block"
+                              title="ویرایش چک"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
                               onClick={() => handleDeleteIssuedCheck(c.id)} 
                               className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 inline-block"
                               title="حذف چک"
@@ -521,7 +576,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </table>
             </div>
           </div>
-        ) : (
+        ) : activeSubTab === 'received_checks' ? (
           /* SUBTAB 3: RECEIVED CHECKS */
           <div>
             {/* KPI Stat Cards */}
@@ -581,7 +636,24 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
 
               <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                <span className="text-xs font-bold text-gray-550">تعداد یافت شده: {filteredReceivedChecks.length}</span>
+                <button 
+                  onClick={() => {
+                    setEditingReceivedCheckId(null);
+                    setRcPayerId('');
+                    setRcBankName('');
+                    setRcBranchName('');
+                    setRcCheckNumber('');
+                    setRcAmount('');
+                    setRcReceiveDate('');
+                    setRcDueDate('');
+                    setRcDescription('');
+                    setIsReceivedModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> ثبت دستی چک دریافتی
+                </button>
+                <span className="text-xs font-bold text-gray-550 hidden sm:inline-block">تعداد یافت شده: {filteredReceivedChecks.length}</span>
               </div>
             </div>
 
@@ -641,6 +713,24 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                               تغییر وضعیت
                             </button>
                             <button 
+                              onClick={() => { 
+                                setEditingReceivedCheckId(c.id);
+                                setRcCheckNumber(c.checkNumber);
+                                setRcBankName(c.bankName || '');
+                                setRcBranchName(c.branchName || '');
+                                setRcPayerId(c.payerId);
+                                setRcAmount(c.amount.toString());
+                                setRcReceiveDate(c.receiveDate);
+                                setRcDueDate(c.dueDate);
+                                setRcDescription(c.description || '');
+                                setIsReceivedModalOpen(true);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 inline-block"
+                              title="ویرایش چک"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
                               onClick={() => handleDeleteReceivedCheck(c.id)} 
                               className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 inline-block"
                               title="حذف چک"
@@ -662,6 +752,131 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        ) : (
+          /* SUBTAB 4: CHECK CALENDAR */
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="w-full lg:w-1/3 xl:w-1/4">
+              <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col items-center">
+                <RMCalendar
+                  calendar={persian}
+                  locale={persian_fa}
+                  value={selectedCalendarDate}
+                  onChange={(date: any) => setSelectedCalendarDate(date?.format?.('YYYY/MM/DD') || '')}
+                  className="w-full !shadow-none !border-0"
+                  mapDays={({ date }) => {
+                    const dateStr = date.format('YYYY/MM/DD');
+                    const hasIssued = issuedChecks.some(c => c.dueDate === dateStr);
+                    const hasReceived = receivedChecks.some(c => c.dueDate === dateStr);
+                    
+                    if (hasIssued && hasReceived) return { className: "bg-indigo-100 text-indigo-800 font-bold border border-indigo-300" };
+                    if (hasIssued) return { className: "bg-rose-50 text-rose-700 font-bold border border-rose-200" };
+                    if (hasReceived) return { className: "bg-emerald-50 text-emerald-700 font-bold border border-emerald-200" };
+                    return {};
+                  }}
+                />
+                
+                <div className="mt-6 w-full space-y-2 border-t pt-4">
+                  <h4 className="text-xs font-bold text-gray-400 mb-3 text-right">راهنمای رنگ‌ها</h4>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <span className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300 inline-block"></span>
+                    دارای چک دریافتی (وصولی)
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <span className="w-3 h-3 rounded-full bg-rose-100 border border-rose-300 inline-block"></span>
+                    دارای چک پرداختی (صادره)
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <span className="w-3 h-3 rounded-full bg-indigo-100 border border-indigo-300 inline-block"></span>
+                    دارای هر دو نوع چک
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="w-full lg:w-2/3 xl:w-3/4 flex flex-col gap-4">
+              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm font-black text-gray-800">
+                  <Calendar className="w-5 h-5 text-indigo-500" />
+                  برنامه‌ریزی چک‌ها برای تاریخ: <span className="font-mono text-indigo-700">{selectedCalendarDate || 'نامشخص'}</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {/* Received Checks for selected date */}
+                <div className="bg-white border text-right border-emerald-100 rounded-2xl overflow-hidden">
+                  <div className="bg-emerald-50 text-emerald-900 border-b border-emerald-100 px-4 py-3 font-bold text-sm flex items-center gap-2">
+                    <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
+                    چک‌های دریافتی روز
+                  </div>
+                  <div className="p-4 flex flex-col gap-3">
+                    {receivedChecks.filter(c => c.dueDate === selectedCalendarDate).map(c => (
+                      <div key={c.id} className="border border-gray-100 rounded-xl p-3 shadow-xs hover:border-emerald-200 transition-colors">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-mono text-sm font-black text-gray-900">{c.checkNumber}</span>
+                          <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${
+                            c.status === 'cashed' ? 'bg-emerald-100 text-emerald-700' : 
+                            c.status === 'bounced' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-700' 
+                          }`}>
+                             {c.status === 'cashed' ? 'وصول شده' : c.status === 'bounced' ? 'برگشتی' : 'در جریان وصول'}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-gray-700 mb-2 truncate">
+                           مشتری: {persons.find(p => p.id?.toString() === c.payerId?.toString())?.name || c.payerId}
+                        </div>
+                        <div className="text-xs text-gray-500 mb-3 truncate">
+                          بانک: {c.bankName}
+                        </div>
+                        <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
+                          <span className="text-xs text-emerald-600 font-bold">مبلغ :</span>
+                          <span className="font-sans text-rose-600 font-black text-sm">{Number(c.amount).toLocaleString()} <span className="text-[10px] text-gray-400">تومان</span></span>
+                        </div>
+                      </div>
+                    ))}
+                    {receivedChecks.filter(c => c.dueDate === selectedCalendarDate).length === 0 && (
+                      <div className="text-center py-8 text-gray-400 text-xs font-medium">هیچ چک دریافتی برای این روز ثبت نشده است.</div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Issued Checks for selected date */}
+                <div className="bg-white border text-right border-rose-100 rounded-2xl overflow-hidden">
+                  <div className="bg-rose-50 text-rose-900 border-b border-rose-100 px-4 py-3 font-bold text-sm flex items-center gap-2">
+                    <ArrowUpRight className="w-4 h-4 text-rose-600" />
+                    چک‌های پرداختی روز
+                  </div>
+                  <div className="p-4 flex flex-col gap-3">
+                    {issuedChecks.filter(c => c.dueDate === selectedCalendarDate).map(c => (
+                      <div key={c.id} className="border border-gray-100 rounded-xl p-3 shadow-xs hover:border-rose-200 transition-colors">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-mono text-sm font-black text-gray-900">{c.checkNumber}</span>
+                          <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${
+                            c.status === 'cashed' ? 'bg-emerald-100 text-emerald-700' : 
+                            c.status === 'bounced' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-700' 
+                          }`}>
+                            {c.status === 'cashed' ? 'پاس شده' : c.status === 'bounced' ? 'برگشتی' : 'در جریان پرداخت'}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-gray-700 mb-2 truncate">
+                           ذینفع: {persons.find(p => p.id?.toString() === c.payeeId?.toString())?.name || c.payeeId}
+                        </div>
+                        <div className="text-xs text-gray-500 mb-3 truncate">
+                          حساب: {accounts.find(a => a.id == checkbooks.find(x => x.id == c.checkbookId)?.accountId)?.bankName || 'نامشخص'}
+                        </div>
+                        <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
+                          <span className="text-xs text-rose-600 font-bold">مبلغ :</span>
+                          <span className="font-sans text-emerald-600 font-black text-sm">{Number(c.amount).toLocaleString()} <span className="text-[10px] text-gray-400">تومان</span></span>
+                        </div>
+                      </div>
+                    ))}
+                    {issuedChecks.filter(c => c.dueDate === selectedCalendarDate).length === 0 && (
+                      <div className="text-center py-8 text-gray-400 text-xs font-medium">هیچ چک پرداختی برای این روز ثبت نشده است.</div>
+                    )}
+                  </div>
+                </div>
+                
+              </div>
             </div>
           </div>
         )}
@@ -721,7 +936,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               <div className="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 className="text-base font-black text-rose-950 flex items-center gap-1.5">
                   <ArrowUpRight className="w-5 h-5 text-rose-600" />
-                  دستور صدور چک جدید (پرداختنی)
+                  {editingIssuedCheckId ? 'ویرایش صدور چک' : 'دستور صدور چک جدید (پرداختنی)'}
                 </h3>
                 <button onClick={() => setIsIssuedModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
               </div>
@@ -803,7 +1018,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
 
                 <div className="flex justify-end gap-2.5 pt-4 border-t">
                   <button type="button" onClick={() => setIsIssuedModalOpen(false)} className="px-4 py-2 border bg-white border-gray-200 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-50">انصراف</button>
-                  <button type="submit" className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold shadow-sm">تایید و صدور برگه چک</button>
+                  <button type="submit" className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold shadow-sm">{editingIssuedCheckId ? 'ذخیره تغییرات' : 'تایید و صدور برگه چک'}</button>
                 </div>
               </form>
             </motion.div>
@@ -817,7 +1032,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               <div className="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 className="text-base font-black text-emerald-950 flex items-center gap-1.5">
                   <ArrowDownLeft className="w-5 h-5 text-emerald-600" />
-                  ثبت و دریافت چک جدید (وصولی)
+                  {editingReceivedCheckId ? 'ویرایش دریافت چک' : 'ثبت و دریافت چک جدید (وصولی)'}
                 </h3>
                 <button onClick={() => setIsReceivedModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
               </div>
@@ -895,7 +1110,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
 
                 <div className="flex justify-end gap-2.5 pt-4 border-t">
                   <button type="button" onClick={() => setIsReceivedModalOpen(false)} className="px-4 py-2 border bg-white border-gray-200 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-50">انصراف</button>
-                  <button type="submit" className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm">ثبت و ذخیره چک</button>
+                  <button type="submit" className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm">{editingReceivedCheckId ? 'ذخیره تغییرات' : 'ثبت و ذخیره چک'}</button>
                 </div>
               </form>
             </motion.div>

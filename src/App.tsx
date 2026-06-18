@@ -78,7 +78,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'transfer' | 'invoice_allocation'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -186,6 +186,7 @@ export default function App() {
         { id: 'create_pay_receipt', label: 'ثبت رسید پرداخت', roles: ['admin', 'accountant'] },
         { id: 'list_pay_receipt', label: 'لیست رسید پرداخت', roles: ['admin', 'accountant'] },
         { id: 'issued_checks', label: 'چک‌های پرداختی', roles: ['admin', 'accountant'] },
+        { id: 'check_calendar', label: 'تقویم چک‌ها', roles: ['admin', 'accountant', 'manager'] },
         { id: 'invoice_allocation', label: 'تخصیص اسناد به فاکتور', roles: ['admin', 'accountant'] },
       ]
     },
@@ -223,6 +224,7 @@ export default function App() {
   ];
 
   useEffect(() => {
+    setLastCreatedReceipt(null);
     if (activeTab === 'create_sale') {
       setInvoiceType('sale');
       setInvoiceTitle('فاکتور فروش کالا');
@@ -375,6 +377,7 @@ export default function App() {
   
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
+  const [lastCreatedReceipt, setLastCreatedReceipt] = useState<any>(null);
   const [showProductBarcodesList, setShowProductBarcodesList] = useState(false);
 
   // Update State
@@ -1263,9 +1266,10 @@ export default function App() {
     setSubmittingReceipt(true);
     try {
       const txPayload = { ...previewReceiptData, linkedInvoices: receiptLinkedInvoices };
+      let createdReceiptObj: any = { ...previewReceiptData };
       if (previewReceiptData.method === 'check') {
          if (previewReceiptData.type === 'receive') {
-           await addReceivedCheck({
+           const savedCheck = await addReceivedCheck({
              checkNumber: previewReceiptData.checkNumber,
              bankName: previewReceiptData.checkBankName,
              branchName: '',
@@ -1276,8 +1280,9 @@ export default function App() {
              status: 'received',
              description: previewReceiptData.description || `چک دریافتی بابت رسید ${previewReceiptData.receiptNumber}`
            });
+           createdReceiptObj.id = savedCheck.id;
          } else {
-           await addIssuedCheck({
+           const savedCheck = await addIssuedCheck({
              checkbookId: previewReceiptData.checkbookId,
              checkNumber: previewReceiptData.checkNumber,
              amount: previewReceiptData.amount,
@@ -1287,9 +1292,11 @@ export default function App() {
              status: 'issued',
              description: previewReceiptData.description || `چک صادره بابت رسید ${previewReceiptData.receiptNumber}`
            });
+           createdReceiptObj.id = savedCheck.id;
          }
       } else {
-         await addTransaction(txPayload as any);
+         const savedTx = await addTransaction(txPayload as any);
+         createdReceiptObj = savedTx;
       }
       
       // Update actual invoices payment status and paid amount out of linkedInvoices
@@ -1301,6 +1308,8 @@ export default function App() {
             await updateInvoice(inv.id, { ...inv, paidAmount: newPaid, paymentStatus: newStatus });
          }
       }
+      
+      const typeTmp = previewReceiptData.type;
       
       setReceiptPersonId('');
       setReceiptAmount('');
@@ -1317,7 +1326,6 @@ export default function App() {
       setPreviewReceiptData(null);
       setReceiptPersonSearchText('');
 
-      
       await Promise.all([
         fetchTransactions(),
         fetchInvoices(),
@@ -1327,7 +1335,8 @@ export default function App() {
         fetchChecks()
       ]);
 
-      setReceiptSuccessMsg(previewReceiptData.type === 'receive' ? 'رسید دریافت با موفقیت صادر شد' : 'رسید پرداخت با موفقیت صادر شد');
+      setLastCreatedReceipt(createdReceiptObj);
+      setReceiptSuccessMsg(typeTmp === 'receive' ? 'رسید دریافت با موفقیت صادر شد' : 'رسید پرداخت با موفقیت صادر شد');
     } catch (err) {
       console.error(err);
       customAlert('خطا در ارتباط با سرور.');
@@ -4385,6 +4394,39 @@ export default function App() {
 
            return (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-right">
+               {lastCreatedReceipt && (
+                 <div className="bg-emerald-50 text-emerald-800 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-emerald-200 shadow-xs font-bold animate-fadeIn">
+                   <div className="flex items-center gap-3">
+                     <CheckCircle className="w-6 h-6 text-emerald-600 block shrink-0" />
+                     <div>
+                       <p className="text-sm font-extrabold text-emerald-950">
+                         {lastCreatedReceipt.type === 'receive' ? 'سند رسید دریافت رسمی صادر شد' : 'سند رسید پرداخت رسمی صادر شد'}
+                       </p>
+                       <p className="text-xs text-emerald-600 font-medium mt-1">
+                         شماره رسید: <span className="font-mono text-slate-800">{lastCreatedReceipt.receiptNumber || `#${lastCreatedReceipt.id}`}</span> | مبلغ: <span className="font-sans font-extrabold text-slate-800">{toPersianDigits(formatNumber(lastCreatedReceipt.amount))}</span> {storeSettings.currency || 'تومان'}
+                       </p>
+                     </div>
+                   </div>
+                   <div className="flex gap-2 shrink-0">
+                     <button
+                       type="button"
+                       onClick={() => setPrintingTransaction(lastCreatedReceipt)}
+                       className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all border-none shadow-sm cursor-pointer whitespace-nowrap"
+                     >
+                       <Printer className="w-4 h-4" />
+                       چاپ و پیش‌نمایش رسید
+                     </button>
+                     <button
+                       type="button"
+                       onClick={() => setLastCreatedReceipt(null)}
+                       className="p-2 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-xl transition-colors border-none bg-transparent cursor-pointer"
+                     >
+                       <X className="w-4 h-4" />
+                     </button>
+                   </div>
+                 </div>
+               )}
+
                {receiptSuccessMsg && (
                  <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100 font-bold shadow-sm">
                    <CheckCircle className="w-5 h-5" />
@@ -4798,11 +4840,21 @@ export default function App() {
                                   {numToPersianWords(tx.amount)} {storeSettings.currency}
                                 </div>
                               </td>
-                             <td className="p-4 text-center flex items-center justify-center gap-2">
-                               <button onClick={() => { if (tx.type === 'salary') openPayslip(tx); else setPrintingTransaction(tx); }} className={`p-2 text-slate-400 hover:bg-slate-100 hover:${themeText} rounded-lg cursor-pointer border-none bg-transparent transition-colors`}>
-                                 <Eye className="w-4 h-4"/>
+                             <td className="p-4 text-center flex items-center justify-center gap-1.5">
+                               <button
+                                 type="button"
+                                 onClick={() => { if (tx.type === 'salary') openPayslip(tx); else setPrintingTransaction(tx); }}
+                                 className={`px-3 py-2 ${isReceive ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700' : 'bg-rose-50 hover:bg-rose-100 text-rose-700'} rounded-lg text-xs font-black flex items-center gap-1.5 cursor-pointer border-none transition-colors`}
+                               >
+                                 <Printer className="w-3.5 h-3.5"/>
+                                 پیش‌نمایش و چاپ رسید
                                </button>
-                               <button onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent transition-colors">
+                               <button
+                                 type="button"
+                                 onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))}
+                                 className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent transition-colors"
+                                 title="حذف سند"
+                               >
                                  <Trash2 className="w-4 h-4"/>
                                </button>
                              </td>
@@ -8013,6 +8065,8 @@ export default function App() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="issued_checks" showNotification={showNotification} /></motion.div>
       ) : activeTab === 'received_checks' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="received_checks" showNotification={showNotification} /></motion.div>
+      ) : activeTab === 'check_calendar' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="check_calendar" showNotification={showNotification} /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
             ) : activeTab === 'invoice_allocation' ? (
@@ -8581,7 +8635,7 @@ export default function App() {
       ) : activeTab === 'checklist' ? (
         <SystemChecklist />
       ) : null}
-          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'transfer'].includes(activeTab)) && renderTabContent()}
+          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'transfer'].includes(activeTab)) && renderTabContent()}
           </div>
         </main>
 
