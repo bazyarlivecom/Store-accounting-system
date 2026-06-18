@@ -391,11 +391,13 @@ export default function App() {
       const fetchLatestVersion = async () => {
         setCheckingUpdateVersion(true);
         try {
+          const timestamp = new Date().getTime();
           const [resVer, resCom] = await Promise.all([
-            fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/releases/latest'),
-            fetch('https://api.github.com/repos/bazyarlivecom/Store-accounting-system/commits?per_page=10')
+            fetch(`https://api.github.com/repos/bazyarlivecom/Store-accounting-system/releases/latest?t=${timestamp}`, { cache: 'no-store' }),
+            fetch(`https://api.github.com/repos/bazyarlivecom/Store-accounting-system/commits?per_page=10&t=${timestamp}`, { cache: 'no-store' })
           ]);
           let fetchedVer = 'Build 2.9.0';
+
           if (resVer.ok) {
             const data = await resVer.json();
             fetchedVer = data.tag_name || data.name || 'Build 2.9.0';
@@ -8484,9 +8486,23 @@ export default function App() {
                  )}
                </button>
              ) : (
-               <div className="mt-4 p-5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800 text-sm font-bold flex items-center gap-3 w-full justify-center text-center">
-                  <CheckCircle className="w-6 h-6 text-emerald-600" />
-                  شما در حال استفاده از آخرین و جدیدترین نسخه سیستم هستید. نیازی به بروزرسانی نیست.
+               <div className="flex flex-col md:flex-row gap-4 items-center w-full justify-center mt-4">
+                 <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-800 text-sm font-bold flex items-center gap-3 justify-center text-center flex-1">
+                    <CheckCircle className="w-6 h-6 text-emerald-600" />
+                    شما در حال استفاده از آخرین و جدیدترین نسخه سیستم هستید. نیازی به بروزرسانی نیست.
+                 </div>
+                 <button
+                   onClick={() => {
+                     setCheckingUpdateVersion(false);
+                     setHasPromptedUpdate(false);
+                     setLatestCommits([]);
+                     localStorage.removeItem('localCommitSha');
+                   }}
+                   className="px-6 py-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                 >
+                   <RefreshCw className="w-5 h-5" />
+                   بررسی مجدد و اسکن مستقیم
+                 </button>
                </div>
              )}
           </div>
