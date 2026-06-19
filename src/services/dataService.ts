@@ -841,3 +841,8 @@ export const recalculateAllWarehouseStocks = async () => {
   return finalStocksList;
 };
 
+
+export const getLoans = async () => getLocalData<any[]>('loans', []);
+export const saveLoans = async (roles: any[]) => saveLocalData('loans', roles);
+export const getInstallments = async () => getLocalData<any[]>('installments', []);
+export const saveInstallments = async (groups: any[]) => saveLocalData('installments', groups);

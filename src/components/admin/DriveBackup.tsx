@@ -79,7 +79,7 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
 
-    const cleanDate = new Date().toLocaleDateString('fa-IR').replace(/\\//g, '-');
+    const cleanDate = new Date().toLocaleDateString('fa-IR').replace(/\/\//g, '-');
     const fileName = `Hesabdari-Backup-${cleanDate}.json`;
     const metadata = {
       name: fileName,

@@ -2,6 +2,11 @@ export type PersonGroup = {
   id: string;
   name: string;
   description?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  salePrice?: number;
+  discountPercent?: number;
+  minStockLevel?: number;
   color?: string; // e.g., 'indigo', 'emerald', 'amber', 'rose'
 };
 
@@ -62,6 +67,11 @@ export type IssuedCheck = {
   payeeId: string | number;
   status: 'blank' | 'issued' | 'cashed' | 'bounced' | 'cancelled';
   description?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  salePrice?: number;
+  discountPercent?: number;
+  minStockLevel?: number;
 };
 
 export type ReceivedCheck = {
@@ -101,6 +111,11 @@ export type Product = {
   category: string;
   categoryId?: string | number;
   warehouseId?: string | number;
+  imageUrl?: string;
+  isActive?: boolean;
+  salePrice?: number;
+  discountPercent?: number;
+  minStockLevel?: number;
   description?: string;
 };
 
@@ -113,6 +128,7 @@ export type Account = {
   shebaNumber?: string;
   balance: number;
   accountHolder?: string;
+  title?: string;
 };
 
 export type Cashbox = {
@@ -147,6 +163,23 @@ export type InvoiceItem = {
 
 export type UserRole = 'admin' | 'accountant' | 'cashier' | 'viewer';
 
+export type RefundRequest = {
+  id?: string | number;
+  date: string; // YYYY/MM/DD
+  amount: number;
+  personId?: string | number; // For selected existing person
+  miscName?: string; // For miscellaneous distinct from person entity
+  miscGroupId?: string | number; // Group ID for new miscellaneous person
+  cardNumber?: string;
+  resourceType: 'bank' | 'cashbox';
+  resourceId: string | number;
+  description?: string;
+  status: 'registered' | 'paid' | 'cancelled'; // ثبت شده، پرداخت شده، کنسل شده
+  createdAt?: number;
+  updatedAt?: number;
+};
+
+
 export type User = {
   id: string | number;
   username: string;
@@ -173,6 +206,10 @@ export type CompanySettings = {
   invoiceNotes: string;
   allowNegativeStock?: boolean;
   requireWarehouse?: boolean;
+  invoicePrefix?: string;
+  invoiceStartNumber?: string;
+  invoiceNumberLength?: number;
+  [key: string]: any; // Allow custom numbering properties
 };
 
 export interface WarehouseStock {
@@ -185,3 +222,7 @@ export interface WarehouseStock {
   lastUpdated: number;
 }
 
+
+export type Loan = { id: string | number; personId: string | number; amount: number; startDate: string; totalInstallments: number; installmentAmount: number; description?: string; status: 'active' | 'completed' | 'overdue'; type: 'given' | 'received'; };
+
+export type Installment = { id: string | number; loanId: string | number; dueDate: string; amount: number; status: 'pending' | 'paid' | 'overdue'; paidDate?: string; paidAmount?: number; description?: string; };

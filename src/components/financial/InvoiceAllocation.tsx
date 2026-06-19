@@ -55,7 +55,7 @@ export default function InvoiceAllocation({
   // Filter open invoices for the selected person
   const openInvoices = invoices.filter(inv => 
     inv.customerId?.toString() === selectedPersonId.toString() && 
-    (inv.type === 'sale' || inv.type === 'purchase') && 
+    (inv.type === 'sale' || inv.type === 'purchase' || inv.type === 'sale_return' || inv.type === 'purchase_return') && 
     (inv.paymentStatus !== 'paid' || 
       transactions.some(t => t.personId?.toString() === selectedPersonId.toString() && t.linkedInvoices?.[inv.id] > 0)
     )
@@ -214,7 +214,7 @@ export default function InvoiceAllocation({
               {openTransactions.map(tx => {
                  const isReceive = tx.type === 'receive';
                  const color = isReceive ? 'emerald' : 'rose';
-                 const eligibleInvoices = openInvoices.filter(inv => isReceive ? inv.type === 'sale' : inv.type === 'purchase');
+                 const eligibleInvoices = openInvoices.filter(inv => isReceive ? (inv.type === 'sale' || inv.type === 'purchase_return') : (inv.type === 'purchase' || inv.type === 'sale_return'));
                  
                  return (
                    <div key={tx.id} className={`border border-${color}-200 bg-${color}-50/30 rounded-xl overflow-hidden`}>

@@ -2,67 +2,92 @@
 @import "tailwindcss";
 
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 100;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Thin.woff2') format('woff2');		
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 100;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-Thin.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 200;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-UltraLight.woff2') format('woff2');	
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-UltraLight.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 300;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Light.woff2') format('woff2');		 
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-Light.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 500;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Medium.woff2') format('woff2');		 
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-Regular.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: normal;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Regular.woff2') format('woff2');	
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-Medium.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 600;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-DemiBold.woff2') format('woff2');	
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-DemiBold.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 700;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Bold.woff2') format('woff2');	
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-Bold.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 800;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-ExtraBold.woff2') format('woff2');	
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-ExtraBold.woff2') format('woff2');
 }
 @font-face {
-	font-family: 'IRANYekanXFaNum';
-	font-style: normal;
-	font-weight: 900;
-	src: url('/Webfonts/Woff2/IRANYekanXFaNum-Black.woff2') format('woff2');	
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-Black.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 950;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-ExtraBlack.woff2') format('woff2');
+}
+
+
+@font-face {
+  font-family: 'IRANYekanXFaNum';
+  font-style: normal;
+  font-weight: 1000;
+  font-display: swap;
+  src: url('/Webfonts/Woff2/IRANYekanXFaNum-Heavy.woff2') format('woff2');
 }
 
 @theme {
-  --font-sans: "IRANYekanXFaNum", var(--app-font, "Vazirmatn"), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IRANYekanXFaNum", var(--app-font, "Vazirmatn"), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "IRANYekanXFaNum", "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IRANYekanXFaNum", "Vazirmatn", ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
-  font-family: "IRANYekanXFaNum", var(--app-font, "Vazirmatn"), sans-serif;
+  font-family: "IRANYekanXFaNum", "Vazirmatn", sans-serif;
   direction: rtl;
   background-color: #f3f4f6;
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Barcode from 'react-barcode';
-import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box } from 'lucide-react';
+import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { addCommas, removeCommas, numberToWords, getBaseValueInToman, getDefaultExchangeRate, showInvoiceCurrency, numToPersianWords } from './utils/format';
 import DatePickerModule from "react-multi-date-picker";
@@ -25,6 +25,7 @@ import UserManager from './components/admin/UserManager';
 import InventoryReport from './components/reports/InventoryReport';
 import AnalyticalDashboard from './components/reports/AnalyticalDashboard';
 import DebtsCreditsReport from './components/reports/DebtsCreditsReport';
+import LoansManager from './components/loans/LoansManager';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
 import appVersion from './version.json';
 
@@ -80,7 +81,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -142,8 +143,12 @@ export default function App() {
       items: [
         { id: 'create_sale', label: 'ثبت فاکتور فروش', roles: ['admin', 'cashier', 'accountant'] },
         { id: 'create_purchase', label: 'ثبت فاکتور خرید', roles: ['admin', 'accountant'] },
+        { id: 'create_sale_return', label: 'برگشت از فروش', roles: ['admin', 'cashier', 'accountant'] },
+        { id: 'create_purchase_return', label: 'برگشت از خرید', roles: ['admin', 'accountant'] },
         { id: 'list_sale', label: 'لیست فاکتورهای فروش', roles: ['admin', 'cashier', 'accountant'] },
         { id: 'list_purchase', label: 'لیست فاکتورهای خرید', roles: ['admin', 'accountant'] },
+        { id: 'list_sale_return', label: 'لیست برگشتی‌های فروش', roles: ['admin', 'cashier', 'accountant'] },
+        { id: 'list_purchase_return', label: 'لیست برگشتی‌های خرید', roles: ['admin', 'accountant'] },
       ]
     },
     {
@@ -232,6 +237,12 @@ export default function App() {
     if (activeTab === 'create_sale') {
       setInvoiceType('sale');
       setInvoiceTitle('فاکتور فروش کالا');
+    } else if (activeTab === 'create_sale_return') {
+      setInvoiceType('sale_return');
+      setInvoiceTitle('فاکتور برگشت از فروش');
+    } else if (activeTab === 'create_purchase_return') {
+      setInvoiceType('purchase_return');
+      setInvoiceTitle('فاکتور برگشت از خرید');
     } else if (activeTab === 'create_purchase') {
       setInvoiceType('purchase');
       setInvoiceTitle('فاکتور خرید کالا');
@@ -252,6 +263,8 @@ export default function App() {
     const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStock[]>([]);
+  const [loans, setLoans] = useState<import('./types').Loan[]>([]);
+  const [installments, setInstallments] = useState<import('./types').Installment[]>([]);
   const [warehouseSubTab, setWarehouseSubTab] = useState<'list' | 'stocks'>('list');
   const [recalculating, setRecalculating] = useState(false);
   const [personSearchTerm, setPersonSearchTerm] = useState('');
@@ -460,7 +473,7 @@ export default function App() {
   }, [latestCommits, hasPromptedUpdate, didConfirmUpdate]);
 
   // Form State
-  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance' | 'proforma'>('sale');
+  const [invoiceType, setInvoiceType] = useState<'sale' | 'purchase' | 'warehouse_receipt' | 'warehouse_remittance' | 'proforma' | 'sale_return' | 'purchase_return'>('sale');
   const [listFilter, setListFilter] = useState<any>('all');
   const [purchaseFilter, setPurchaseFilter] = useState<'all' | 'received' | 'pending'>('all');
   const [invoiceMode, setInvoiceMode] = useState<'auto' | 'manual'>('auto');
@@ -488,7 +501,7 @@ export default function App() {
   
   // Auto-save effect
   useEffect(() => {
-    if (['create_sale', 'create_purchase', 'create_warehouse_doc'].includes(activeTab)) {
+    if ((['create_sale', 'create_purchase', 'create_warehouse_doc', 'create_sale_return', 'create_purchase_return'].includes(activeTab))) {
        const draft = {
          invoiceMode,
          invoiceNumber,
@@ -1332,6 +1345,7 @@ export default function App() {
 
       await Promise.all([
         fetchTransactions(),
+        import('./services/dataService').then(({ getLoans, getInstallments }) => Promise.all([getLoans().then(setLoans), getInstallments().then(setInstallments)])),
         fetchInvoices(),
         fetchPersons(),
         fetchAccounts(),
@@ -2234,7 +2248,7 @@ export default function App() {
     }
     
     setActiveTab(
-      inv.type === 'sale' ? 'create_sale' : 
+      inv.type === 'sale_return' ? 'create_sale_return' : inv.type === 'purchase_return' ? 'create_purchase_return' : inv.type === 'sale' ? 'create_sale' : 
       inv.type === 'purchase' ? 'create_purchase' : 
       'create_warehouse_doc'
     );
@@ -2489,6 +2503,16 @@ export default function App() {
           setInvoiceTitle('فاکتور فروش کالا');
           setInvoicePaymentStatus('unpaid');
           setInvoicePaidAmount(0);
+        } else if (activeTab === 'create_sale_return') {
+          setInvoiceType('sale_return');
+          setInvoiceTitle('فاکتور برگشت از فروش');
+          setInvoicePaymentStatus('unpaid');
+          setInvoicePaidAmount(0);
+        } else if (activeTab === 'create_purchase_return') {
+          setInvoiceType('purchase_return');
+          setInvoiceTitle('فاکتور برگشت از خرید');
+          setInvoicePaymentStatus('unpaid');
+          setInvoicePaidAmount(0);
         } else if (activeTab === 'create_purchase') {
           setInvoiceType('purchase');
           setInvoiceTitle('فاکتور خرید کالا');
@@ -2612,6 +2636,7 @@ export default function App() {
 
     const saleQtys: Record<string, number> = {};
     const remittedSaleQtys: Record<string, number> = {};
+    const saleReturnQtys: Record<string, number> = {};
 
     invoices.forEach(inv => {
       if (!inv.items) return;
@@ -2644,12 +2669,16 @@ export default function App() {
                }
            } else if (inv.type === 'sale') {
                saleQtys[whId] = (saleQtys[whId] || 0) + q;
+           } else if (inv.type === 'sale_return') {
+               saleReturnQtys[whId] = (saleReturnQtys[whId] || 0) + q;
            }
         }
       });
     });
 
-    const totalSale = Object.values(saleQtys).reduce((a, b) => a + b, 0);
+    const totalSaleRaw = Object.values(saleQtys).reduce((a, b) => a + b, 0);
+    const totalSaleReturn = Object.values(saleReturnQtys).reduce((a, b) => a + b, 0);
+    const totalSale = Math.max(0, totalSaleRaw - totalSaleReturn);
     const totalRemittedForSale = Object.values(remittedSaleQtys).reduce((a, b) => a + b, 0);
     const globalUnremitted = Math.max(0, totalSale - totalRemittedForSale);
 
@@ -2718,6 +2747,8 @@ export default function App() {
         const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
         if (inv.type === 'sale') balance += amount;
         else if (inv.type === 'purchase') balance -= amount;
+        else if (inv.type === 'sale_return') balance -= amount;
+        else if (inv.type === 'purchase_return') balance += amount;
     });
 
     transactions.filter(t => t.personId?.toString() === personId.toString()).forEach(t => {
@@ -2770,7 +2801,7 @@ export default function App() {
     return str.toString().replace(/\d/g, x => persianDigits[parseInt(x, 10)]);
   };
 
-  const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase' || activeTab === 'create_warehouse_doc') ? invoiceCurrency : storeSettings.currency;
+  const currencyLabel = (activeTab === 'create_sale' || activeTab === 'create_purchase' || activeTab === 'create_warehouse_doc' || activeTab === 'create_sale_return' || activeTab === 'create_purchase_return') ? invoiceCurrency : storeSettings.currency;
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fa-IR').format(num);
@@ -3422,6 +3453,355 @@ export default function App() {
               );
            }
         }
+        case 'create_purchase_return':
+           return (
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
+              {hasDraft && (
+                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center text-amber-800 shadow-sm col-span-full w-full">
+                    <span className="font-bold flex items-center gap-2.5 mb-3 md:mb-0"><History className="w-5 h-5 text-amber-500" /> یک فاکتور ناتمام و ثبت نشده بازیابی شد. مایلید از آن استفاده کنید یا فاکتور جدیدی آغاز کنید؟</span>
+                    <div className="flex gap-2">
+                       <button onClick={restoreDraft} className="px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-sm font-bold transition-colors">بازیابی فاکتور ناتمام</button>
+                       <button onClick={clearDraft} className="px-4 py-2.5 bg-white border border-amber-200 hover:bg-amber-50 rounded-xl text-sm font-bold transition-colors">پاک کردن و فاکتور جدید</button>
+                    </div>
+                 </div>
+              )}
+              {successMsg && (
+                <div className="bg-emerald-50 text-emerald-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-emerald-100 font-bold shadow-sm">
+                  <CheckCircle className="w-5 h-5" />
+                  {successMsg}
+                </div>
+              )}
+
+              {/* Header Info */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-emerald-50">
+                <h2 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                  <span className="bg-emerald-100/50 p-2.5 rounded-xl text-emerald-600">
+                     <Plus className="w-6 h-6" />
+                  </span>
+                  {invoiceTitle}
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2">شماره فاکتور برگشت از خرید</label>
+                    <div className="flex gap-2">
+                        <select value={invoiceMode} onChange={(e) => setInvoiceMode(e.target.value as 'auto' | 'manual')} className="p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30 text-sm font-bold text-emerald-900 outline-none">
+                          <option value="auto">تولید خودکار</option>
+                          <option value="manual">ورود دستی</option>
+                        </select>
+                        {invoiceMode === 'manual' && (
+                          <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-slate-800 outline-none bg-emerald-50/20" dir="ltr" placeholder="شماره فاکتور سیستم تامین..." />
+                        )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-emerald-500"/> عنوان فاکتور</label>
+                    <input type="text" value={invoiceTitle} onChange={(e) => setInvoiceTitle(e.target.value)} className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-slate-800 outline-none bg-emerald-50/20" placeholder="عنوانی برای فاکتور وارد کنید..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-emerald-500"/> تاریخ صدور فاکتور</label>
+                    <div className="relative">
+                      <DatePicker
+                          value={date}
+                          onChange={setDate}
+                          calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                          locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
+                          calendarPosition="bottom-right"
+                          inputClass="w-full pl-11 pr-4 p-3 bg-emerald-50/30 hover:bg-emerald-50 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white text-emerald-950 font-sans font-black text-center transition-all cursor-pointer outline-none text-sm"
+                          containerClassName="w-full"
+                      />
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-500">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><User className="w-4 h-4 text-emerald-500"/> تامین کننده (طرف حساب)</label>
+                    <div className="border border-emerald-100 rounded-xl bg-emerald-50/30 focus-within:ring-2 focus-within:ring-emerald-500 transition-colors">
+                      <SearchableSelect 
+                        options={persons.map(p => ({
+                          value: p.id,
+                          label: p.alias || p.name,
+                          subLabel: p.phone || undefined,
+                          badge: getRoleName(p.role)
+                        }))}
+                        value={customerId}
+                        onChange={val => setCustomerId(val)}
+                        placeholder="-- جستجوی تامین کننده --"
+                        searchPlaceholder="جستجوی شخص یا شرکت..."
+                      />
+                    </div>
+                    {customerId && (
+                      <div className="mt-2 text-xs font-bold w-full bg-emerald-50/50 border border-emerald-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
+                         <span>مانده حساب فعلی:</span>
+                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
+                         </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Wallet className="w-4 h-4 text-emerald-500"/> وضعیت پرداخت</label>
+                    <select value={invoicePaymentStatus} onChange={(e) => {
+                      const val = e.target.value as any;
+                      setInvoicePaymentStatus(val);
+                      if (val === 'paid') setInvoicePaidAmount(calculateFinalTotal());
+                      else if (val === 'unpaid') setInvoicePaidAmount(0);
+                    }} className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30 text-sm font-bold text-emerald-900 outline-none">
+                      <option value="unpaid">پرداخت نشده</option>
+                      <option value="partial">تسویه بخشی (علی‌الحساب)</option>
+                      <option value="paid">تسویه کامل</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><DollarSign className="w-4 h-4 text-emerald-500"/> مبلغ پرداختی</label>
+                    <div className="relative">
+                       <input type="number" 
+                         value={invoicePaidAmount} 
+                         onChange={(e) => {
+                             setInvoicePaidAmount(Number(e.target.value));
+                             if (Number(e.target.value) >= calculateFinalTotal()) setInvoicePaymentStatus('paid');
+                             else if (Number(e.target.value) > 0) setInvoicePaymentStatus('partial');
+                             else setInvoicePaymentStatus('unpaid');
+                         }} 
+                         disabled={invoicePaymentStatus === 'unpaid'}
+                         className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-slate-800 outline-none bg-emerald-50/20 disabled:opacity-50" 
+                         dir="ltr" 
+                         placeholder="0" 
+                       />
+                       <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 font-bold text-xs select-none">
+                         {invoiceCurrency}
+                       </div>
+                    </div>
+                  </div>
+                  {storeSettings.requireWarehouse && (
+                    <div className="lg:col-span-1">
+                      <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Box className="w-4 h-4 text-emerald-500"/> انبار ورود کالا</label>
+                      <select value={invoiceWarehouseId} onChange={(e) => setInvoiceWarehouseId(e.target.value)} className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-emerald-50/30 text-base font-bold text-emerald-900 outline-none">
+                         <option value="">-- لطفاً انبار را انتخاب کنید --</option>
+                         {warehouses.filter(w => w.isActive !== false).map((v) => (
+                           <option key={v.id} value={v.id}>{v.name}</option>
+                         ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+                <div className="p-5 bg-emerald-50/30 border-b border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام خریداری شده</h3>
+                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
+                      <div className="flex-1 relative z-10">
+                        <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
+                          <SearchableSelect 
+                            options={products.map(p => ({
+                              value: p.id,
+                              label: p.name,
+                              subLabel: (p.code || p.barcode) ? `کد: ${p.code || '-'} | بارکد: ${p.barcode || '-'}` : undefined,
+                              badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                              searchStr: `${p.code || ''} ${p.barcode || ''}`
+                            }))}
+                            value=""
+                            onChange={(val) => handleFastAddProduct(String(val))}
+                            placeholder="جستجو و افزودن سریع کالا به لیست خرید (نام، کد، بارکد)..."
+                            searchPlaceholder="جستجوی کالای خریداری شده..."
+                          />
+                        </div>
+                      </div>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 transition-colors focus:ring-2 focus:ring-emerald-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-6 h-6"/>
+                      </button>
+                    </div>
+                    <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-emerald-200 text-emerald-700 shadow-sm rounded-xl font-bold hover:bg-emerald-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-emerald-500">
+                      <Plus className="w-4 h-4" /> تعریف کالا / خدمات جدید
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right min-w-[1000px]">
+                      <thead>
+                        <tr className="bg-white text-xs font-black text-slate-400 border-b border-emerald-50">
+                          <th className="p-5 w-12 text-center">ردیف</th>
+                          <th className="p-5 min-w-[200px] w-[30%] text-right">شرح کالا / خدمات</th>
+                          <th className="p-5 w-32 text-center border-r border-emerald-50/50">تعداد</th>
+                          <th className="p-5 w-32 text-center border-r border-emerald-50/50">واحد</th>
+                          <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">فی ({invoiceCurrency})</th>
+                          <th className="p-5 w-28 text-center border-r border-emerald-50/50">تخفیف %</th>
+                          <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-5 w-12 text-center border-r border-emerald-50/50">عملیات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-emerald-50/50">
+                        {items.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-emerald-400 font-bold text-sm bg-emerald-50/30">
+                              <div className="flex flex-col items-center justify-center space-y-2">
+                                <Box className="w-8 h-8 text-emerald-200" />
+                                <span>هیچ کالا یا خدماتی به این سند اضافه نشده است. لطفاً جستجو کرده یا محصول جدیدی تعریف کنید.</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {items.map((item, index) => (
+                            <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors">
+                              <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
+                              <td className="p-5">
+                                  {item.productId ? (
+                                    <div className="font-black text-slate-800 flex flex-col gap-1">
+                                      <span>{item.productName}</span>
+                                      {(() => {
+                                         const p = products.find(prod => prod.id === item.productId);
+                                         return (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 self-start px-2 py-0.5 rounded-md">کالای سیستمی</span>
+                                                {(p?.code || p?.barcode) && (
+                                                    <span className="text-[10px] text-emerald-500 font-mono flex gap-2">
+                                                        {p.code ? <span>کد: {p.code}</span> : null}
+                                                        {p.barcode ? <span>بارکد: {p.barcode}</span> : null}
+                                                    </span>
+                                                )}
+                                            </div>
+                                         );
+                                      })()}
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      placeholder="شرح دلخواه وارد کنید..."
+                                      value={item.productName}
+                                      onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-slate-800 outline-none"
+                                    />
+                                  )}
+                              </td>
+                              <td className="p-5">
+                                  <div className="flex flex-col gap-1.5">
+                                    <input type="number" min="0" step="any" value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-sans text-center font-black text-slate-800 outline-none" dir="ltr" />
+                                  </div>
+                              </td>
+                              <td className="p-5">
+                                  {(() => {
+                                    const product = item.productId ? products.find((p) => p.id.toString() === String(item.productId)) : null;
+                                    const hasSecondary = product?.secondaryUnit;
+                                    return (
+                                      <div className="flex flex-col gap-1.5">
+                                        {hasSecondary ? (
+                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-2 text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-emerald-400">
+                                            <option value="false">{product.unit} (اصلی)</option>
+                                            <option value="true">{product.secondaryUnit} (فرعی)</option>
+                                          </select>
+                                        ) : product ? (
+                                          <div className="w-full p-2 text-center text-emerald-700 font-bold bg-emerald-50/50 border border-emerald-100 rounded-xl text-sm shadow-sm">
+                                            {product.unit || '-'}
+                                          </div>
+                                        ) : (
+                                          <input
+                                            type="text"
+                                            value={item.selectedUnit || ''}
+                                            onChange={(e) => handleItemChange(item.id, 'selectedUnit', e.target.value)}
+                                            placeholder="واحد..."
+                                            className="w-full p-2 text-center text-emerald-800 font-bold bg-white border border-emerald-200/50 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                              </td>
+                              <td className="p-5">
+                                  <CurrencyInput currencyLabel={storeSettings?.currency}
+                                    value={item.unitPrice} 
+                                    onChange={(e: any) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
+                                    className="w-full p-2.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-sans text-left font-black text-emerald-900 text-sm outline-none" 
+                                  />
+                              </td>
+                              <td className="p-5">
+                                  <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2.5 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-center text-rose-600 font-black outline-none" dir="ltr" />
+                              </td>
+                              <td className="p-5 font-black text-left font-sans text-emerald-950" dir="ltr">
+                                  {formatCurrency(item.totalPrice)}
+                              </td>
+                              <td className="p-5 text-center">
+                                  <button onClick={() => handleRemoveItem(item.id)} className="p-2.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-colors outline-none focus:ring-2 focus:ring-rose-500">
+                                    <Trash2 className="w-5 h-5"/>
+                                  </button>
+                              </td>
+                            </tr>
+                        ))}
+                        {items.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="p-16 text-center">
+                                <div className="flex flex-col items-center justify-center gap-4 text-emerald-600/50">
+                                  <div className="bg-emerald-50 p-6 rounded-full border-2 border-emerald-100/50">
+                                    <Package className="w-12 h-12" />
+                                  </div>
+                                  <p className="font-extrabold text-lg text-slate-700">سبد خرید خالی است</p>
+                                  <p className="text-sm font-bold text-slate-400">یک کالا از نوار جستجو انتخاب کنید یا سطر جدید بسازید.</p>
+                                </div>
+                              </td>
+                            </tr>
+                        )}
+                      </tbody>
+                    </table>
+                </div>
+              </div>
+
+              {/* Totals & Submit */}
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+                <div className="p-8">
+                  <div className="flex flex-col lg:flex-row justify-between gap-10">
+                      <div className="flex-1 space-y-4">
+                        <div>
+                            <label className="block text-sm font-black text-slate-700 mb-3 ml-1">تخفیف روی کل فاکتور (%)</label>
+                            <input type="number" min="0" max="100" value={overallDiscountPercent} onChange={(e) => setOverallDiscountPercent(Number(e.target.value))} className="w-48 p-3.5 bg-emerald-50/30 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-rose-600 outline-none" dir="ltr" />
+                            <p className="mt-2 text-xs font-bold text-slate-400 font-sans">این تخفیف روی مبلغ نهایی پس از کسر تخفیف‌های سطری اعمال می‌شود.</p>
+                        </div>
+                      </div>
+                      <div className="w-full lg:w-[420px] space-y-1">
+                        <div className="bg-emerald-50/40 p-6 rounded-2xl border border-emerald-100/50 space-y-4">
+                          <div className="flex justify-between items-center text-slate-500 font-bold">
+                            <span>جمع مبالغ (بدون تخفیف):</span>
+                            <span className="font-sans font-black text-slate-700" dir="rtl">{formatCurrency(invoiceOriginalTotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          <div className="flex justify-between items-center text-rose-500 font-bold">
+                            <span>مجموع کل تخفیف‌ها:</span>
+                            <span className="font-sans font-black text-rose-600" dir="rtl">{formatCurrency(invoiceTotalDiscount())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          <div className="h-px bg-emerald-100/30 w-full my-2"></div>
+                          <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                            <span>ارزش پس از تخفیف سطری:</span>
+                            <span className="font-sans font-bold text-slate-600" dir="rtl">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          {overallDiscountPercent > 0 && (
+                            <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                              <span>تخفیف کلی فاکتور:</span>
+                              <span className="font-sans font-bold text-slate-600" dir="rtl">% {overallDiscountPercent}</span>
+                            </div>
+                          )}
+                          <div className="h-px bg-emerald-100/60 w-full my-4"></div>
+                          <div className="flex justify-between items-center text-xl font-black text-emerald-800">
+                            <span>مبلغ نهایی خرید:</span>
+                            <span className="font-sans text-2xl text-emerald-950" dir="rtl">{formatCurrency(calculateFinalTotal())} <span className="text-xs">{invoiceCurrency}</span></span>
+                          </div>
+                          {calculateFinalTotal() > 0 && (
+                            <div className="mt-4 pt-4 border-t border-dashed border-emerald-200 text-right leading-relaxed text-xs font-bold text-emerald-700">
+                              <span className="text-emerald-900 font-black">{numToPersianWords(calculateFinalTotal())} {invoiceCurrency}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                  </div>
+                </div>
+                <div className="p-6 bg-emerald-50/20 border-t border-emerald-100 flex justify-end gap-3">
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20">
+                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
+                      ثبت برگشت از خرید
+                    </button>
+                </div>
+              </div>
+            </motion.div>
+           );
+        
         case 'create_purchase':
            return (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
@@ -3770,6 +4150,342 @@ export default function App() {
               </div>
             </motion.div>
            );
+        case 'create_sale_return':
+           return (
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
+              {hasDraft && (
+                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center text-amber-800 shadow-sm col-span-full w-full">
+                    <span className="font-bold flex items-center gap-2.5 mb-3 md:mb-0"><History className="w-5 h-5 text-amber-500" /> یک فاکتور ناتمام و ثبت نشده بازیابی شد. مایلید از آن استفاده کنید یا فاکتور جدیدی آغاز کنید؟</span>
+                    <div className="flex gap-2">
+                       <button onClick={restoreDraft} className="px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-sm font-bold transition-colors">بازیابی فاکتور ناتمام</button>
+                       <button onClick={clearDraft} className="px-4 py-2.5 bg-white border border-amber-200 hover:bg-amber-50 rounded-xl text-sm font-bold transition-colors">پاک کردن و فاکتور جدید</button>
+                    </div>
+                 </div>
+              )}
+              {successMsg && (
+                <div className="bg-indigo-50 text-indigo-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-indigo-100 font-bold shadow-sm">
+                  <CheckCircle className="w-5 h-5" />
+                  {successMsg}
+                </div>
+              )}
+
+              {/* Header Info */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-indigo-50">
+                <div className="flex justify-between items-center mb-8 gap-4 border-b border-indigo-100 pb-5">
+                  <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                    <span className="bg-indigo-100/50 p-2.5 rounded-xl text-indigo-600">
+                       <CornerDownLeft className="w-6 h-6" />
+                    </span>
+                    {invoiceTitle}
+                  </h2>
+                  
+                  <div className="flex items-center gap-2">
+                     <span className="text-xs font-bold text-gray-500"></span>
+                     
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2">شماره فاکتور برگشت از فروش</label>
+                    <div className="flex gap-2">
+                        <select value={invoiceMode} onChange={(e) => setInvoiceMode(e.target.value as 'auto' | 'manual')} className="p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30 text-sm font-bold text-indigo-900 outline-none">
+                          <option value="auto">تولید خودکار</option>
+                          <option value="manual">ورود دستی</option>
+                        </select>
+                        {invoiceMode === 'manual' && (
+                          <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className="flex-1 p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-slate-800 outline-none bg-indigo-50/20" dir="ltr" placeholder="شماره دلخواه......" />
+                        )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-indigo-500"/> عنوان فاکتور</label>
+                    <input type="text" value={invoiceTitle} onChange={(e) => setInvoiceTitle(e.target.value)} className="w-full p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 outline-none bg-indigo-50/20" placeholder="عنوانی برای فاکتور وارد کنید..." />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-indigo-500"/> تاریخ صدور فاکتور</label>
+                    <div className="relative">
+                      <DatePicker
+                          value={date}
+                          onChange={setDate}
+                          calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+                          locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
+                          calendarPosition="bottom-right"
+                          inputClass="w-full pl-11 pr-4 p-3 bg-indigo-50/30 hover:bg-indigo-50 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white text-indigo-950 font-sans font-black text-center transition-all cursor-pointer outline-none text-sm"
+                          containerClassName="w-full"
+                      />
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-500">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="lg:col-span-2">
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><User className="w-4 h-4 text-indigo-500"/> مشتری (طرف حساب)</label>
+                    <div className="border border-indigo-100 rounded-xl bg-indigo-50/30 focus-within:ring-2 focus-within:ring-indigo-500 transition-colors">
+                      <SearchableSelect 
+                        options={persons.map(p => ({
+                          value: p.id,
+                          label: p.alias || p.name,
+                          subLabel: p.phone || undefined,
+                          badge: getRoleName(p.role)
+                        }))}
+                        value={customerId}
+                        onChange={val => setCustomerId(val)}
+                        placeholder="-- جستجوی مشتری --"
+                        searchPlaceholder="جستجوی شخص یا شرکت..."
+                      />
+                    </div>
+                    {customerId && (
+                      <div className="mt-2 text-xs font-bold w-full bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
+                         <span>مانده حساب فعلی:</span>
+                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
+                         </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="lg:col-span-1">
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-indigo-500"/> توضیحات</label>
+                    <input 
+                      type="text" 
+                      value={invoiceDescription || ''} 
+                      onChange={(e) => setInvoiceDescription(e.target.value)} 
+                      className="w-full p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 outline-none bg-indigo-50/20" 
+                      placeholder="توضیحات و یادداشت..." 
+                    />
+                  </div>
+                  {storeSettings.requireWarehouse && (
+                    <div className="lg:col-span-1">
+                      <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Box className="w-4 h-4 text-indigo-500"/> انبار خروج کالا</label>
+                      <select value={invoiceWarehouseId} onChange={(e) => setInvoiceWarehouseId(e.target.value)} className="w-full p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30 text-base font-bold text-indigo-900 outline-none">
+                         <option value="">-- لطفاً انبار را انتخاب کنید --</option>
+                         {warehouses.filter(w => w.isActive !== false).map((v) => (
+                           <option key={v.id} value={v.id}>{v.name}</option>
+                         ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
+                <div className="p-5 bg-indigo-50/30 border-b border-indigo-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> لیست اقلام آماده فروش</h3>
+                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
+                      <div className="flex-1 relative z-10">
+                        <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
+                          <SearchableSelect 
+                            options={products.filter(p => storeSettings.allowNegativeStock || p.type === 'service' || calculateProductCurrentStock(p.id) > 0).map(p => ({
+                              value: p.id,
+                              label: p.name,
+                              subLabel: formatProductStockDetails(p),
+                              badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                              searchStr: `${p.code || ''} ${p.barcode || ''}`
+                            }))}
+                            value=""
+                            onChange={(val) => handleFastAddProduct(String(val))}
+                            placeholder="جستجو و افزودن سریع کالا به لیست فروش (نام، کد، بارکد)..."
+                            searchPlaceholder="جستجوی کالای مورد نظر برای فروش..."
+                          />
+                        </div>
+                      </div>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-6 h-6"/>
+                      </button>
+                    </div>
+                    <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-indigo-200 text-indigo-700 shadow-sm rounded-xl font-bold hover:bg-indigo-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-indigo-500">
+                      <Plus className="w-4 h-4" /> تعریف کالا / خدمات جدید
+                    </button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right min-w-[1000px]">
+                      <thead>
+                        <tr className="bg-white text-xs font-black text-slate-400 border-b border-indigo-50">
+                          <th className="p-5 w-12 text-center">ردیف</th>
+                          <th className="p-5 min-w-[200px] w-[30%] text-right">شرح کالا / خدمات</th>
+                          <th className="p-5 w-32 text-center border-r border-indigo-50/50">تعداد</th>
+                          <th className="p-5 w-32 text-center border-r border-indigo-50/50">واحد</th>
+                          <th className="p-5 w-48 border-r border-indigo-50/50 text-left text-indigo-800">فی ({invoiceCurrency})</th>
+                          <th className="p-5 w-28 text-center border-r border-indigo-50/50">تخفیف %</th>
+                          <th className="p-5 w-48 border-r border-indigo-50/50 text-left text-indigo-800">مبلغ کل ({invoiceCurrency})</th>
+                          <th className="p-5 w-12 text-center border-r border-indigo-50/50">عملیات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-indigo-50/50">
+                        {items.length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="p-8 text-center text-indigo-400 font-bold text-sm bg-indigo-50/30">
+                              <div className="flex flex-col items-center justify-center space-y-2">
+                                <Box className="w-8 h-8 text-indigo-200" />
+                                <span>هیچ کالا یا خدماتی به این سند اضافه نشده است. لطفاً جستجو کرده یا محصول جدیدی تعریف کنید.</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        {items.map((item, index) => (
+                            <tr key={item.id} className="hover:bg-indigo-50/20 transition-colors">
+                              <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
+                              <td className="p-5">
+                                  {item.productId ? (
+                                    <div className="font-black text-slate-800 flex flex-col gap-1">
+                                      <span>{item.productName}</span>
+                                      {(() => {
+                                         const p = products.find(prod => prod.id === item.productId);
+                                         return (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 self-start px-2 py-0.5 rounded-md">کالای سیستمی</span>
+                                                {(p?.code || p?.barcode) && (
+                                                    <span className="text-[10px] text-indigo-500 font-mono flex gap-2">
+                                                        {p.code ? <span>کد: {p.code}</span> : null}
+                                                        {p.barcode ? <span>بارکد: {p.barcode}</span> : null}
+                                                    </span>
+                                                )}
+                                            </div>
+                                         );
+                                      })()}
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      placeholder="شرح دلخواه وارد کنید..."
+                                      value={item.productName}
+                                      onChange={(e) => handleItemChange(item.id, 'productName', e.target.value)}
+                                      className="w-full p-2.5 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-800 outline-none"
+                                    />
+                                  )}
+                              </td>
+                              <td className="p-5">
+                                  <div className="flex flex-col gap-1.5">
+                                    <input type="number" min="0" step="any" value={item.quantity} onChange={(e: any) => handleItemChange(item.id, 'quantity', e.target.value)} className="w-full p-2.5 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-black text-slate-800 outline-none" dir="ltr" />
+                                  </div>
+                              </td>
+                              <td className="p-5">
+                                  {(() => {
+                                    const product = item.productId ? products.find((p) => p.id.toString() === String(item.productId)) : null;
+                                    const hasSecondary = product?.secondaryUnit;
+                                    return (
+                                      <div className="flex flex-col gap-1.5">
+                                        {hasSecondary ? (
+                                          <select value={item.isSecondaryUnit ? "true" : "false"} onChange={(e) => handleItemChange(item.id, 'isSecondaryUnit', e.target.value === 'true')} className="w-full p-2 text-sm font-bold text-indigo-800 bg-indigo-50 border border-indigo-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-indigo-400">
+                                            <option value="false">{product.unit} (اصلی)</option>
+                                            <option value="true">{product.secondaryUnit} (فرعی)</option>
+                                          </select>
+                                        ) : product ? (
+                                          <div className="w-full p-2 text-center text-indigo-700 font-bold bg-indigo-50/50 border border-indigo-100 rounded-xl text-sm shadow-sm">
+                                            {product.unit || '-'}
+                                          </div>
+                                        ) : (
+                                          <input
+                                            type="text"
+                                            value={item.selectedUnit || ''}
+                                            onChange={(e) => handleItemChange(item.id, 'selectedUnit', e.target.value)}
+                                            placeholder="واحد..."
+                                            className="w-full p-2 text-center text-indigo-800 font-bold bg-white border border-indigo-200/50 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                              </td>
+                              <td className="p-5">
+                                  <CurrencyInput currencyLabel={storeSettings?.currency}
+                                    value={item.unitPrice} 
+                                    onChange={(e: any) => handleItemChange(item.id, 'unitPrice', e.target.value)} 
+                                    className="w-full p-2.5 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-left font-black text-indigo-900 text-sm outline-none" 
+                                  />
+                              </td>
+                              <td className="p-5">
+                                  <input type="number" min="0" max="100" step="any" value={item.discountPercent} onChange={(e) => handleItemChange(item.id, 'discountPercent', e.target.value)} className="w-full p-2.5 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center text-rose-600 font-black outline-none" dir="ltr" />
+                              </td>
+                              <td className="p-5 font-black text-left font-sans text-indigo-950" dir="ltr">
+                                  {formatCurrency(item.totalPrice)}
+                              </td>
+                              <td className="p-5 text-center">
+                                  <button onClick={() => handleRemoveItem(item.id)} className="p-2.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-colors outline-none focus:ring-2 focus:ring-rose-500">
+                                    <Trash2 className="w-5 h-5"/>
+                                  </button>
+                              </td>
+                            </tr>
+                        ))}
+                        {items.length === 0 && (
+                            <tr>
+                              <td colSpan={7} className="p-16 text-center">
+                                <div className="flex flex-col items-center justify-center gap-4 text-indigo-600/50">
+                                  <div className="bg-indigo-50 p-6 rounded-full border-2 border-indigo-100/50">
+                                    <Package className="w-12 h-12" />
+                                  </div>
+                                  <p className="font-extrabold text-lg text-slate-700">لیست کالاها خالی است</p>
+                                  <p className="text-sm font-bold text-slate-400">یک کالا از نوار جستجو انتخاب کنید یا سطر جدید بسازید.</p>
+                                </div>
+                              </td>
+                            </tr>
+                        )}
+                      </tbody>
+                    </table>
+                </div>
+              </div>
+
+              {/* Totals & Submit */}
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
+                <div className="p-8">
+                  <div className="flex flex-col lg:flex-row justify-between gap-10">
+                     {(!activeTab.includes('warehouse')) && (
+                        <div className="flex w-full flex-col lg:flex-row justify-between gap-10">
+                      <div className="flex-1 space-y-4">
+                        <div>
+                            <label className="block text-sm font-black text-slate-700 mb-3 ml-1">تخفیف روی کل فاکتور (%)</label>
+                            <input type="number" min="0" max="100" value={overallDiscountPercent} onChange={(e) => setOverallDiscountPercent(Number(e.target.value))} className="w-48 p-3.5 bg-indigo-50/30 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-rose-600 outline-none" dir="ltr" />
+                            <p className="mt-2 text-xs font-bold text-slate-400 font-sans">این تخفیف روی مبلغ نهایی پس از کسر تخفیف‌های سطری اعمال می‌شود.</p>
+                        </div>
+                      </div>
+                      <div className="w-full lg:w-[420px] space-y-1">
+                        <div className="bg-indigo-50/40 p-6 rounded-2xl border border-indigo-100/50 space-y-4">
+                          <div className="flex justify-between items-center text-slate-500 font-bold">
+                            <span>جمع مبالغ (بدون تخفیف):</span>
+                            <span className="font-sans font-black text-slate-700" dir="rtl">{formatCurrency(invoiceOriginalTotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          <div className="flex justify-between items-center text-rose-500 font-bold">
+                            <span>مجموع کل تخفیف‌ها:</span>
+                            <span className="font-sans font-black text-rose-600" dir="rtl">{formatCurrency(invoiceTotalDiscount())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          <div className="h-px bg-indigo-100/30 w-full my-2"></div>
+                          <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                            <span>ارزش پس از تخفیف سطری:</span>
+                            <span className="font-sans font-bold text-slate-600" dir="rtl">{formatCurrency(calculateSubtotal())} <span className="text-[10px]">{invoiceCurrency}</span></span>
+                          </div>
+                          {overallDiscountPercent > 0 && (
+                            <div className="flex justify-between items-center text-slate-400 font-bold text-xs">
+                              <span>تخفیف کلی فاکتور:</span>
+                              <span className="font-sans font-bold text-slate-600" dir="rtl">% {overallDiscountPercent}</span>
+                            </div>
+                          )}
+                          <div className="h-px bg-indigo-100/60 w-full my-4"></div>
+                          <div className="flex justify-between items-center text-xl font-black text-indigo-800">
+                            <span>مبلغ نهایی فاکتور:</span>
+                            <span className="font-sans text-2xl text-indigo-950" dir="rtl">{formatCurrency(calculateFinalTotal())} <span className="text-xs">{invoiceCurrency}</span></span>
+                          </div>
+                          {calculateFinalTotal() > 0 && (
+                            <div className="mt-4 pt-4 border-t border-dashed border-indigo-200 text-right leading-relaxed text-xs font-bold text-indigo-700">
+                              <span className="text-indigo-900 font-black">{numToPersianWords(calculateFinalTotal())} {invoiceCurrency}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                   )}
+                  </div>
+                </div>
+                <div className="p-6 bg-indigo-50/20 border-t border-indigo-100 flex justify-end gap-3">
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20">
+                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
+                      ثبت و بررسی فاکتور/سند
+                    </button>
+                </div>
+              </div>
+            </motion.div>
+           );
+        
         case 'create_sale':
            return (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-right font-sans">
@@ -4120,7 +4836,9 @@ export default function App() {
             </motion.div>
            );
         case 'list_sale':
+         case 'list_sale_return':
          case 'list_purchase':
+         case 'list_purchase_return':
          case 'list_warehouse_docs': {
             const activePurchases = invoices.filter(i => i.type === 'purchase').filter(inv => {
                if (!invoiceSearchQuery) return true;
@@ -4693,7 +5411,7 @@ export default function App() {
                      </div>
 
                      {receiptPersonId && (() => {
-                       const personInvoices = invoices.filter(inv => inv.customerId?.toString() === receiptPersonId.toString() && inv.paymentStatus !== 'paid' && ((isReceive && inv.type === 'sale') || (!isReceive && inv.type === 'purchase')));
+                       const personInvoices = invoices.filter(inv => inv.customerId?.toString() === receiptPersonId.toString() && inv.paymentStatus !== 'paid' && ((isReceive && (inv.type === 'sale' || inv.type === 'purchase_return')) || (!isReceive && (inv.type === 'purchase' || inv.type === 'sale_return'))));
                        if (personInvoices.length === 0) return null;
                        return (
                          <div className="md:col-span-2 lg:col-span-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm mt-2">
@@ -7196,7 +7914,7 @@ export default function App() {
                 <h3 className="text-xs font-semibold text-gray-400">مجموع کل فروش (فاکتورها)</h3>
                 <span className="text-xl font-extrabold text-gray-900 block mt-1">
                   {formatNumber(
-                    invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+                    invoices.filter(inv => (inv.type === 'sale' || inv.type === 'sale_return') && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.type === 'sale' ? (inv.totalAmount || 0) : -(inv.totalAmount || 0)) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
                   )}{' '}
                   <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
                 </span>
@@ -7216,7 +7934,7 @@ export default function App() {
                 <h3 className="text-xs font-semibold text-gray-400">مجموع کل خرید (فاکتورها)</h3>
                 <span className="text-xl font-extrabold text-gray-900 block mt-1">
                   {formatNumber(
-                    invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+                    invoices.filter(inv => (inv.type === 'purchase' || inv.type === 'purchase_return') && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.type === 'purchase' ? (inv.totalAmount || 0) : -(inv.totalAmount || 0)) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
                   )}{' '}
                   <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
                 </span>
@@ -7228,8 +7946,16 @@ export default function App() {
 
             {/* Net Difference Card */}
             {(() => {
-              const salesVal = invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
-              const purchasesVal = invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const salesValRaw = invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const salesReturnVal = invoices.filter(inv => inv.type === 'sale_return' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const salesVal = salesValRaw - salesReturnVal;
+              /* && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              */
+              const purchasesValRaw = invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const purchasesReturnVal = invoices.filter(inv => inv.type === 'purchase_return' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              const purchasesVal = purchasesValRaw - purchasesReturnVal;
+              /* && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+              */
               const netVal = salesVal - purchasesVal;
               const isPositive = netVal >= 0;
 
@@ -7530,13 +8256,13 @@ export default function App() {
                   const itemsSummary = inv.items && inv.items.length > 0
                     ? ` (شامل: ${inv.items.map((it: any) => it.name).join('، ')})`
                     : '';
-                  const baseDesc = inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : 'فروش طی فاکتور'));
+                  const baseDesc = inv.title || (inv.type === 'proforma' ? 'ثبت پیش‌فاکتور' : (inv.type === 'purchase' ? 'خرید طی فاکتور' : inv.type === 'purchase_return' ? 'برگشت از خرید' : inv.type === 'sale_return' ? 'برگشت از فروش' : 'فروش طی فاکتور'));
                 return {
                   id: `inv-${inv.id}`,
                   refId: inv.invoiceNumber || `#${inv.id}`,
                   date: inv.date,
                   jalaliDate: inv.jalaliDate || new Date(inv.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
-                  type: inv.type === 'proforma' ? 'پیش‌فاکتور' : (inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا'),
+                  type: inv.type === 'proforma' ? 'پیش‌فاکتور' : inv.type === 'purchase_return' ? 'برگشت از خرید' : inv.type === 'sale_return' ? 'برگشت از فروش' : (inv.type === 'purchase' ? 'فاکتور خرید کالا' : 'فاکتور فروش کالا'),
                   desc: `${baseDesc}${itemsSummary}`,
                   debit: (isSale && !isProforma) ? amount : 0,  // Sale increases how much they owe us
                   credit: (!isSale && !isProforma) ? amount : 0, // Purchase decreases how much they owe us
@@ -8130,6 +8856,8 @@ export default function App() {
             fetchCashboxes();
           }} 
         />
+      ) : activeTab === 'loans' ? (
+        <LoansManager loans={loans} setLoans={setLoans} installments={installments} setInstallments={setInstallments} persons={persons} accounts={accounts} setAccounts={setAccounts} transactions={transactions} setTransactions={setTransactions} />
       ) : activeTab === 'users_manager' ? (
         <UserManager />
       ) : activeTab === 'settings' ? (

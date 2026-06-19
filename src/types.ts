@@ -2,6 +2,11 @@ export type PersonGroup = {
   id: string;
   name: string;
   description?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  salePrice?: number;
+  discountPercent?: number;
+  minStockLevel?: number;
   color?: string; // e.g., 'indigo', 'emerald', 'amber', 'rose'
 };
 
@@ -62,6 +67,11 @@ export type IssuedCheck = {
   payeeId: string | number;
   status: 'blank' | 'issued' | 'cashed' | 'bounced' | 'cancelled';
   description?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  salePrice?: number;
+  discountPercent?: number;
+  minStockLevel?: number;
 };
 
 export type ReceivedCheck = {
@@ -101,6 +111,11 @@ export type Product = {
   category: string;
   categoryId?: string | number;
   warehouseId?: string | number;
+  imageUrl?: string;
+  isActive?: boolean;
+  salePrice?: number;
+  discountPercent?: number;
+  minStockLevel?: number;
   description?: string;
 };
 
@@ -206,4 +221,9 @@ export interface WarehouseStock {
   availableStock: number;
   lastUpdated: number;
 }
+
+
+export type Loan = { id: string | number; personId: string | number; amount: number; startDate: string; totalInstallments: number; installmentAmount: number; description?: string; status: 'active' | 'completed' | 'overdue'; type: 'given' | 'received'; };
+
+export type Installment = { id: string | number; loanId: string | number; dueDate: string; amount: number; status: 'pending' | 'paid' | 'overdue'; paidDate?: string; paidAmount?: number; description?: string; };
 
