@@ -32,7 +32,27 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const [issuedSearchQuery, setIssuedSearchQuery] = useState('');
   const [receivedSearchQuery, setReceivedSearchQuery] = useState('');
   const [depositAccountId, setDepositAccountId] = useState('');
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(new Date().toLocaleDateString('fa-IR'));
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<any[]>([new Date()]);
+
+  const normalizeDate = (dStr: string) => {
+    if (!dStr) return 0;
+    // Replace typical Persian numbers
+    const englishDStr = dStr.replace(/[۰-۹]/g, d => '0123456789'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)]);
+    const parts = englishDStr.split(/[/-]/).map(p => p.padStart(2, '0'));
+    if (parts.length === 3) return parseInt(parts[0] + parts[1] + parts[2], 10);
+    return 0;
+  };
+
+  const getSelectedRange = () => {
+    if (!selectedCalendarDate || selectedCalendarDate.length === 0) return { start: 0, end: 0 };
+    if (selectedCalendarDate.length === 1) {
+      const s = normalizeDate(selectedCalendarDate[0]?.format ? selectedCalendarDate[0].format('YYYY/MM/DD') : new Date(selectedCalendarDate[0]).toLocaleDateString('fa-IR'));
+      return { start: s, end: s };
+    }
+    const start = normalizeDate(selectedCalendarDate[0]?.format ? selectedCalendarDate[0].format('YYYY/MM/DD') : new Date(selectedCalendarDate[0]).toLocaleDateString('fa-IR'));
+    const end = normalizeDate(selectedCalendarDate[1]?.format ? selectedCalendarDate[1].format('YYYY/MM/DD') : new Date(selectedCalendarDate[1]).toLocaleDateString('fa-IR'));
+    return { start: Math.min(start, end), end: Math.max(start, end) };
+  };
   
   // Modals state
   const [isCheckbookModalOpen, setIsCheckbookModalOpen] = useState(false);
@@ -762,15 +782,16 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
             <div className="w-full lg:w-1/3 xl:w-1/4">
               <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col items-center">
                 <RMCalendar
+                  range
                   calendar={persian}
                   locale={persian_fa}
                   value={selectedCalendarDate}
-                  onChange={(date: any) => setSelectedCalendarDate(date?.format?.('YYYY/MM/DD') || '')}
+                  onChange={(dates: any) => setSelectedCalendarDate(dates || [])}
                   className="w-full !shadow-none !border-0"
                   mapDays={({ date }) => {
                     const dateStr = date.format('YYYY/MM/DD');
-                    const hasIssued = issuedChecks.some(c => c.dueDate === dateStr);
-                    const hasReceived = receivedChecks.some(c => c.dueDate === dateStr);
+                    const hasIssued = issuedChecks.some(c => normalizeDate(c.dueDate) === normalizeDate(dateStr));
+                    const hasReceived = receivedChecks.some(c => normalizeDate(c.dueDate) === normalizeDate(dateStr));
                     
                     if (hasIssued && hasReceived) return { className: "bg-indigo-100 text-indigo-800 font-bold border border-indigo-300" };
                     if (hasIssued) return { className: "bg-rose-50 text-rose-700 font-bold border border-rose-200" };
@@ -801,7 +822,15 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex justify-between items-center">
                 <div className="flex items-center gap-2 text-sm font-black text-gray-800">
                   <Calendar className="w-5 h-5 text-indigo-500" />
-                  برنامه‌ریزی چک‌ها برای تاریخ: <span className="font-mono text-indigo-700">{selectedCalendarDate || 'نامشخص'}</span>
+                  برنامه‌ریزی چک‌ها برای تاریخ: <span className="font-mono text-indigo-700">
+                    {(() => {
+                      const range = getSelectedRange();
+                      if (range.start === 0) return 'بازه انتخاب نشده';
+                      const startStr = String(range.start).replace(/(\d{4})(\d{2})(\d{2})/, '$1/$2/$3');
+                      const endStr = String(range.end).replace(/(\d{4})(\d{2})(\d{2})/, '$1/$2/$3');
+                      return startStr === endStr ? startStr : `از ${startStr} تا ${endStr}`;
+                    })()}
+                  </span>
                 </div>
               </div>
               
@@ -813,7 +842,12 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                     چک‌های دریافتی روز
                   </div>
                   <div className="p-4 flex flex-col gap-3">
-                    {receivedChecks.filter(c => c.dueDate === selectedCalendarDate).map(c => (
+                    {receivedChecks.filter(c => {
+                       const cDate = normalizeDate(c.dueDate);
+                       const range = getSelectedRange();
+                       if (range.start === 0) return false;
+                       return cDate >= range.start && cDate <= range.end;
+                    }).map(c => (
                       <div key={c.id} className="border border-gray-100 rounded-xl p-3 shadow-xs hover:border-emerald-200 transition-colors">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-mono text-sm font-black text-gray-900">{c.checkNumber}</span>
@@ -827,17 +861,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                         <div className="text-xs font-bold text-gray-700 mb-2 truncate">
                            مشتری: {persons.find(p => p.id?.toString() === c.payerId?.toString())?.name || c.payerId}
                         </div>
-                        <div className="text-xs text-gray-500 mb-3 truncate">
-                          بانک: {c.bankName}
+                        <div className="text-xs text-gray-500 mb-3 flex justify-between">
+                          <span className="truncate">بانک: {c.bankName}</span>
+                          <span className="font-mono text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded text-emerald-600">{c.dueDate}</span>
                         </div>
                         <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
                           <span className="text-xs text-emerald-600 font-bold">مبلغ :</span>
-                          <span className="font-sans text-rose-600 font-black text-sm">{Number(c.amount).toLocaleString()} <span className="text-[10px] text-gray-400">تومان</span></span>
+                          <span className="font-sans text-emerald-600 font-black text-sm">{Number(c.amount).toLocaleString()} <span className="text-[10px] text-gray-400">تومان</span></span>
                         </div>
                       </div>
                     ))}
-                    {receivedChecks.filter(c => c.dueDate === selectedCalendarDate).length === 0 && (
-                      <div className="text-center py-8 text-gray-400 text-xs font-medium">هیچ چک دریافتی برای این روز ثبت نشده است.</div>
+                    {receivedChecks.filter(c => {
+                       const cDate = normalizeDate(c.dueDate);
+                       const range = getSelectedRange();
+                       if (range.start === 0) return false;
+                       return cDate >= range.start && cDate <= range.end;
+                    }).length === 0 && (
+                      <div className="text-center py-8 text-gray-400 text-xs font-medium">هیچ چک دریافتی در این بازه ثبت نشده است.</div>
                     )}
                   </div>
                 </div>
@@ -849,7 +889,12 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                     چک‌های پرداختی روز
                   </div>
                   <div className="p-4 flex flex-col gap-3">
-                    {issuedChecks.filter(c => c.dueDate === selectedCalendarDate).map(c => (
+                    {issuedChecks.filter(c => {
+                       const cDate = normalizeDate(c.dueDate);
+                       const range = getSelectedRange();
+                       if (range.start === 0) return false;
+                       return cDate >= range.start && cDate <= range.end;
+                    }).map(c => (
                       <div key={c.id} className="border border-gray-100 rounded-xl p-3 shadow-xs hover:border-rose-200 transition-colors">
                         <div className="flex justify-between items-center mb-2">
                           <span className="font-mono text-sm font-black text-gray-900">{c.checkNumber}</span>
@@ -863,17 +908,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                         <div className="text-xs font-bold text-gray-700 mb-2 truncate">
                            ذینفع: {persons.find(p => p.id?.toString() === c.payeeId?.toString())?.name || c.payeeId}
                         </div>
-                        <div className="text-xs text-gray-500 mb-3 truncate">
-                          حساب: {accounts.find(a => a.id == checkbooks.find(x => x.id == c.checkbookId)?.accountId)?.bankName || 'نامشخص'}
+                        <div className="text-xs text-gray-500 mb-3 flex justify-between">
+                          <span className="truncate">حساب: {accounts.find(a => a.id == checkbooks.find(x => x.id == c.checkbookId)?.accountId)?.bankName || 'نامشخص'}</span>
+                          <span className="font-mono text-[10px] bg-rose-50 px-1.5 py-0.5 rounded text-rose-600">{c.dueDate}</span>
                         </div>
                         <div className="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
                           <span className="text-xs text-rose-600 font-bold">مبلغ :</span>
-                          <span className="font-sans text-emerald-600 font-black text-sm">{Number(c.amount).toLocaleString()} <span className="text-[10px] text-gray-400">تومان</span></span>
+                          <span className="font-sans text-rose-600 font-black text-sm">{Number(c.amount).toLocaleString()} <span className="text-[10px] text-gray-400">تومان</span></span>
                         </div>
                       </div>
                     ))}
-                    {issuedChecks.filter(c => c.dueDate === selectedCalendarDate).length === 0 && (
-                      <div className="text-center py-8 text-gray-400 text-xs font-medium">هیچ چک پرداختی برای این روز ثبت نشده است.</div>
+                    {issuedChecks.filter(c => {
+                       const cDate = normalizeDate(c.dueDate);
+                       const range = getSelectedRange();
+                       if (range.start === 0) return false;
+                       return cDate >= range.start && cDate <= range.end;
+                    }).length === 0 && (
+                      <div className="text-center py-8 text-gray-400 text-xs font-medium">هیچ چک پرداختی در این بازه ثبت نشده است.</div>
                     )}
                   </div>
                 </div>

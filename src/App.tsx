@@ -13,6 +13,7 @@ import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, a
 import DatabaseDashboard from './components/admin/DatabaseDashboard';
 import SystemChecklist from './components/admin/SystemChecklist';
 import ProductCardModal from './components/modals/ProductCardModal';
+import QuickPriceInquiry from './components/inventory/QuickPriceInquiry';
 import CheckManagement from './components/financial/CheckManagement';
 import InvoiceAllocation from './components/financial/InvoiceAllocation';
 
@@ -79,7 +80,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -151,6 +152,7 @@ export default function App() {
       icon: <Package className="w-5 h-5" />,
       items: [
         { id: 'products', label: 'مدیریت کالا و خدمات', roles: ['admin', 'accountant'] },
+        { id: 'quick_price_inquiry', label: 'استعلام سریع قیمت', roles: ['admin', 'accountant', 'cashier', 'viewer'] },
         { id: 'product_view', label: 'کارت کالا', roles: ['admin', 'accountant'] },
         { id: 'product_categories', label: 'گروه‌بندی کالاها', roles: ['admin', 'accountant'] },
       ]
@@ -8633,6 +8635,8 @@ export default function App() {
              )}
           </div>
         </motion.div>
+      ) : activeTab === 'quick_price_inquiry' ? (
+        <QuickPriceInquiry products={products} settings={storeSettings} />
       ) : activeTab === 'product_view' ? (
         viewingProduct ? (
           <ProductCardModal 
@@ -11860,125 +11864,133 @@ export default function App() {
           }
 
           return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm" dir="rtl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col font-sans"
             >
               <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                 <div>
-                  <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
+                  <h3 className="font-black text-gray-900 text-lg flex items-center gap-2">
                     <Wallet className={`w-5 h-5 ${themeText}`} />
                     {receiptTitle}
                   </h3>
-                  <p className="text-[10px] text-gray-400 font-extrabold mt-0.5">لطفاً موارد و مبالغ را بررسی کرده و سپس تایید کنید.</p>
+                  <p className="text-[10px] text-gray-400 font-extrabold mt-1 uppercase tracking-widest">رسید پیش نویس قبل از تایید نهایی</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setPreviewReceiptData(null)}
-                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors border border-gray-100"
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-xl transition-colors border border-gray-100 bg-white"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-                <div className={`p-4 rounded-xl border ${themeLightBg} mb-6`}>
-                   <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                         <span className="text-gray-500 font-bold block mb-1">طرف حساب:</span>
-                         <span className="font-black text-gray-900">{renderPersonLink(receiptPerson?.id, receiptPerson?.name)} {receiptPerson?.personCode ? `[${receiptPerson.personCode}]` : ''}</span>
-                      </div>
-                      <div>
-                         <span className="text-gray-500 font-bold block mb-1">شماره تماس:</span>
-                         <span className="font-bold text-gray-700 font-mono">{receiptPerson?.phone || 'ندارد'}</span>
-                      </div>
-                   </div>
-                </div>
+              <div className="p-6 md:p-8 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                {/* Beautiful Ticket Style Receipt */}
+                <div className="border-2 border-dashed border-gray-200 rounded-3xl p-6 bg-white shadow-sm relative overflow-hidden">
+                  
+                  {/* Decorative Ticket Edges */}
+                  <div className="absolute top-1/2 -left-3 w-6 h-6 bg-gray-50 rounded-full border-r-2 border-gray-200 -translate-y-1/2"></div>
+                  <div className="absolute top-1/2 -right-3 w-6 h-6 bg-gray-50 rounded-full border-l-2 border-gray-200 -translate-y-1/2"></div>
 
-                <div className="border border-gray-100 rounded-xl overflow-hidden mb-6">
-                  <table className="w-full text-right text-sm">
-                    <tbody className="divide-y divide-gray-100">
-                      <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">شماره رسید کل</td>
-                        <td className="p-4 font-black text-gray-900 font-mono">{previewReceiptData.receiptNumber || '---'}</td>
-                      </tr>
-                      <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold w-1/3">مبلغ پرداختی/دریافتی</td>
-                        <td className="p-4 font-black flex items-center gap-2 text-lg">
-                           <span className={`${themeText} font-mono`}>{formatCurrency(previewReceiptData.amount)}</span>
-                           <span className="text-xs text-gray-500">{storeSettings.currency}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold">تاریخ ایجاد سند</td>
-                        <td className="p-4 font-bold text-gray-900 font-mono">{previewReceiptData.jalaliDate}</td>
-                      </tr>
-                      
-                      {previewReceiptData.method === 'cash' ? (
-                        <tr>
-                          <td className="p-4 bg-gray-50 text-gray-600 font-bold">حساب/صندوق</td>
-                          <td className="p-4 font-bold text-gray-900">{resourceName}</td>
-                        </tr>
-                      ) : (
-                        <>
-                          <tr>
-                            <td className="p-4 bg-amber-50 text-amber-700 font-bold">شماره چک</td>
-                            <td className="p-4 font-bold text-gray-900 font-mono">{previewReceiptData.checkNumber}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-4 bg-amber-50 text-amber-700 font-bold">تاریخ سررسید چک</td>
-                            <td className="p-4 font-bold text-gray-900 font-mono">{previewReceiptData.checkDueDate}</td>
-                          </tr>
-                          {previewReceiptData.type === 'receive' ? (
-                             <tr>
-                               <td className="p-4 bg-amber-50 text-amber-700 font-bold">بانک صادرکننده چک</td>
-                               <td className="p-4 font-bold text-gray-900">{previewReceiptData.checkBankName}</td>
-                             </tr>
-                          ) : (() => {
-                             const checkbook = checkbooks.find(cb => cb.id === previewReceiptData.checkbookId);
-                             const bankAccount = accounts.find(a => a.id === checkbook?.accountId);
-                             return (
-                               <tr>
-                                 <td className="p-4 bg-amber-50 text-amber-700 font-bold">از دسته چک</td>
-                                 <td className="p-4 font-bold text-gray-900">{bankAccount?.bankName} ({checkbook?.startNumber} - {checkbook?.endNumber})</td>
-                               </tr>
-                             );
-                          })()}
-                        </>
-                      )}
+                  <div className="text-center mb-8">
+                     <span className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold mb-3 ${themeLightBg} ${themeText}`}>
+                        {isReceive ? 'دریافت از مشتری / طرف حساب' : 'پرداخت به مشتری / طرف حساب'}
+                     </span>
+                     <div className="text-4xl md:text-5xl font-black font-mono tracking-tighter text-gray-900 flex items-center justify-center gap-2 mb-2" dir="ltr">
+                        {formatCurrency(previewReceiptData.amount)}
+                     </div>
+                     <p className="text-sm font-bold text-gray-500">{numToPersianWords(previewReceiptData.amount)} {storeSettings.currency}</p>
+                  </div>
 
-                      {previewReceiptData.description && (
-                      <tr>
-                        <td className="p-4 bg-gray-50 text-gray-600 font-bold">توضیحات بابت</td>
-                        <td className="p-4 font-bold text-gray-900">{previewReceiptData.description}</td>
-                      </tr>
-                      )}
-                    </tbody>
-                  </table>
+                  {/* Horizontal Divider */}
+                  <div className="w-full border-t border-dashed border-gray-200 my-6"></div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
+                     <div>
+                        <span className="block text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-1">طرف حساب</span>
+                        <div className="text-base font-black text-gray-800">
+                          {renderPersonLink(receiptPerson?.id, receiptPerson?.name)} {receiptPerson?.personCode ? <span className="text-gray-400 font-mono text-sm ml-1">[{receiptPerson.personCode}]</span> : ''}
+                        </div>
+                     </div>
+                     <div>
+                        <span className="block text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-1">شماره سند / ثبت</span>
+                        <div className="text-base font-bold font-mono text-gray-800">
+                          {previewReceiptData.receiptNumber || 'ثبت نشده'}
+                        </div>
+                     </div>
+                     <div>
+                        <span className="block text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-1">تاریخ ایجاد سند</span>
+                        <div className="text-base font-bold text-gray-800 font-mono">
+                          {previewReceiptData.jalaliDate}
+                        </div>
+                     </div>
+                     <div>
+                        <span className="block text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-1">نوع تسویه / حساب</span>
+                        <div className="text-base font-bold text-gray-800">
+                           {previewReceiptData.method === 'cash' ? (
+                             <span className="flex items-center gap-1.5"><Banknote className="w-4 h-4 text-gray-400" /> نقدی - {resourceName}</span>
+                           ) : (
+                             <span className="flex items-center gap-1.5"><CreditCard className="w-4 h-4 text-gray-400" /> چک بانکی</span>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+
+                  {previewReceiptData.method === 'check' && (
+                     <div className="mt-6 bg-amber-50 rounded-2xl p-4 border border-amber-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                           <span className="block text-[10px] uppercase tracking-widest font-bold text-amber-600/70 mb-1">شماره چک</span>
+                           <div className="text-sm font-bold font-mono text-amber-900">{previewReceiptData.checkNumber}</div>
+                        </div>
+                        <div>
+                           <span className="block text-[10px] uppercase tracking-widest font-bold text-amber-600/70 mb-1">تاریخ سررسید چک</span>
+                           <div className="text-sm font-bold font-mono text-amber-900">{previewReceiptData.checkDueDate}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                           <span className="block text-[10px] uppercase tracking-widest font-bold text-amber-600/70 mb-1">{isReceive ? 'بانک صادرکننده' : 'از دسته چک'}</span>
+                           <div className="text-sm font-bold text-amber-900">
+                             {isReceive ? previewReceiptData.checkBankName : (() => {
+                               const checkbook = checkbooks.find(cb => cb.id === previewReceiptData.checkbookId);
+                               const bankAccount = accounts.find(a => a.id === checkbook?.accountId);
+                               return `${bankAccount?.bankName} (${checkbook?.startNumber} - ${checkbook?.endNumber})`;
+                             })()}
+                           </div>
+                        </div>
+                     </div>
+                  )}
+
+                  {previewReceiptData.description && (
+                     <div className="mt-6 pt-6 border-t border-gray-100">
+                        <span className="block text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">یادداشت سند</span>
+                        <p className="text-sm font-bold text-gray-700 bg-gray-50 p-4 rounded-xl leading-relaxed">{previewReceiptData.description}</p>
+                     </div>
+                  )}
                 </div>
 
                 {/* Linked Invoices Section */}
                 {Object.keys(previewReceiptData.linkedInvoices || receiptLinkedInvoices || {}).filter(k => (previewReceiptData.linkedInvoices || receiptLinkedInvoices)[k] > 0).length > 0 && (
-                  <div className="border border-gray-100 rounded-xl overflow-hidden mb-6">
-                    <div className="p-3 bg-indigo-50 border-b border-indigo-100 font-bold text-indigo-900 text-sm">
-                      فاکتورهای تخصیص یافته به این رسید
+                  <div className="mt-6 border-2 border-indigo-100 rounded-3xl overflow-hidden bg-white shadow-sm">
+                    <div className="p-4 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-indigo-500" />
+                      <span className="font-black text-indigo-900 text-sm">تخصیص یافته به فاکتورهای:</span>
                     </div>
                     <table className="w-full text-sm text-right bg-white">
-                       <thead className="bg-gray-50 border-b border-gray-100 text-gray-500">
+                       <thead className="bg-white border-b border-gray-100 text-gray-400">
                          <tr>
-                            <th className="p-3 font-bold">مربوط به فاکتور</th>
-                            <th className="p-3 font-bold text-center">مبلغ کسر شده</th>
+                            <th className="p-4 font-bold text-xs uppercase tracking-widest">شماره فاکتور</th>
+                            <th className="p-4 font-bold text-xs uppercase tracking-widest text-center">مبلغ تسویه شده</th>
                          </tr>
                        </thead>
                        <tbody className="divide-y divide-gray-50">
                          {Object.entries(previewReceiptData.linkedInvoices || receiptLinkedInvoices || {}).filter(([_, amt]) => (amt as number) > 0).map(([invId, amt]) => {
                             const inv = invoices.find(i => i.id.toString() === invId.toString());
                             return (
-                               <tr key={invId}>
-                                  <td className="p-3 font-bold text-gray-800">فاکتور {inv ? (inv.invoiceNumber || `#${inv.id}`) : `#${invId}`}</td>
-                                  <td className="p-3 font-mono font-bold text-indigo-700 text-center">{formatCurrency(amt as number)} {storeSettings.currency}</td>
+                               <tr key={invId} className="hover:bg-gray-50 transition-colors">
+                                  <td className="p-4 font-black text-gray-800">فاکتور {inv ? (inv.invoiceNumber || `#${inv.id}`) : `#${invId}`}</td>
+                                  <td className="p-4 font-mono font-black text-indigo-600 text-center text-base" dir="ltr">{formatCurrency(amt as number)} <span className="text-[10px] font-sans text-gray-400">{storeSettings.currency}</span></td>
                                </tr>
                             );
                          })}
@@ -11986,38 +11998,29 @@ export default function App() {
                     </table>
                   </div>
                 )}
-
               </div>
               
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 no-print">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-xs"
-                >
-                  <Printer className="w-4 h-4" />
-                  چاپ
-                </button>
+              <div className="px-6 py-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 no-print">
                 <button
                   type="button"
                   onClick={() => setPreviewReceiptData(null)}
-                  className="px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs transition-colors"
+                  className="px-6 py-3 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold text-sm transition-colors shadow-sm"
                 >
-                  {previewReceiptData._isReadOnly ? 'بستن پیش‌نمایش' : 'بازگشت و اصلاح'}
+                  {previewReceiptData._isReadOnly ? 'بستن پیش‌نمایش' : 'بازگشت'}
                 </button>
                 {!previewReceiptData._isReadOnly && (
                 <button
                   type="button"
                   disabled={submittingReceipt}
                   onClick={confirmReceiptSubmit}
-                  className={`px-8 py-2.5 text-white rounded-xl font-black text-xs flex items-center gap-2 transition-all shadow-md disabled:opacity-70 ${themeBg}`}
+                  className={`px-8 py-3 text-white rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-md hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 ${themeBg}`}
                 >
                   {submittingReceipt ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <RefreshCw className="w-5 h-5 animate-spin" />
                   ) : (
-                    <CheckCircle className="w-4 h-4" />
+                    <CheckCircle className="w-5 h-5" />
                   )}
-                  {isReceive ? 'تایید و صدور رسید دریافت' : 'تایید و صدور رسید پرداخت'}
+                  {isReceive ? 'تایید نهایی و صدور رسید دریافت' : 'تایید نهایی و صدور رسید پرداخت'}
                 </button>
                 )}
               </div>
@@ -12385,165 +12388,143 @@ export default function App() {
       const personCode = relatedPerson?.personCode ? `[${relatedPerson.personCode}] ` : '';
 
       return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-gray-900/50 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-[450px] max-h-full flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-[148mm] print:h-auto print:max-w-none print:max-h-none mx-auto"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-[500px] max-h-full flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-[148mm] print:h-auto print:max-w-none print:max-h-none mx-auto font-sans"
             >
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden relative z-10 shadow-sm shrink-0">
-                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 print:hidden relative z-10 shrink-0">
+                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
                   <Printer className="w-5 h-5 text-indigo-500" />
                   پیش‌نمایش چاپ رسید
                 </h3>
                 <button
                   onClick={() => setPrintingTransaction(null)}
-                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors bg-gray-50 border border-gray-200"
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-xl transition-colors bg-white border border-gray-100"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div id="print-area" className="p-6 md:p-8 print:p-2 bg-white relative overflow-y-auto overflow-x-hidden print:overflow-hidden flex-1 block">
-                {/* Background Watermark Pattern */}
-                <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none flex items-center justify-center overflow-hidden">
-                  <div className="grid grid-cols-4 gap-4 md:gap-8 transform rotate-12 scale-150">
-                    {Array(24).fill(0).map((_, i) => (
-                      <Store key={i} className="w-24 h-24 md:w-32 md:h-32" />
-                    ))}
-                  </div>
-                </div>
-
-                {storeSettings?.logoUrl && (
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-[0.03] pointer-events-none">
-                    <img src={storeSettings.logoUrl} alt="" className="w-72 h-72 md:w-96 md:h-96 object-contain grayscale" />
-                  </div>
-                )}
+              <div id="print-area" className="p-6 md:p-8 print:p-4 bg-white relative overflow-y-auto overflow-x-hidden print:overflow-hidden flex-1 block">
                 
-                <div className="relative z-10 border-2 border-gray-200 print:border-gray-800 rounded-xl p-5 md:p-8 bg-white/90 backdrop-blur-sm print:bg-white print:rounded-none print:border-none print:p-2">
-                  {/* Internal Stamp Effect */}
-                  <div className={`absolute top-12 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-4 ${themeStamp} rounded-lg px-6 py-2 text-2xl md:text-3xl font-black font-mono tracking-widest hidden print:block`}>
-                    {isReceive ? 'RECEIVED' : isSalary ? 'PAYROLL' : 'PAID'}
-                  </div>
-
+                <div className="relative z-10 print:border-none">
                   {/* Header */}
-                  <div className="flex justify-between items-start mb-4 md:mb-6 pb-4 md:pb-6 border-b-2 border-gray-100">
-                    <div className="flex flex-col gap-1 w-1/3">
+                  <div className="flex justify-between items-start mb-8 border-b-2 border-gray-900 pb-6 print:border-gray-900">
+                    <div className="flex flex-col gap-1 w-1/2">
                       {storeSettings?.logoUrl ? (
-                         <img src={storeSettings.logoUrl} alt="Logo" className="w-12 h-12 md:w-16 md:h-16 object-contain rounded-xl" />
+                         <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 object-contain rounded-xl print:grayscale" />
                       ) : (
-                         <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-50 rounded-xl flex items-center justify-center">
-                           <Store className="w-6 h-6 md:w-7 md:h-7 text-indigo-500" />
+                         <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center print:bg-gray-100 print:text-gray-900">
+                           <Store className="w-7 h-7 text-gray-400" />
                          </div>
                       )}
-                      <h2 className="text-sm md:text-lg font-black text-gray-900 mt-2 line-clamp-1">{storeSettings?.storeName || 'فروشگاه من'}</h2>
-                      <p className="text-[10px] md:text-xs text-gray-500 font-medium leading-relaxed max-w-[200px] mt-1 line-clamp-2">{storeSettings?.address}</p>
-                      {storeSettings?.phone && <p className="text-[10px] md:text-xs text-gray-500 font-mono mt-1 text-left" dir="ltr">{storeSettings.phone}</p>}
+                      <h2 className="text-lg font-black text-gray-900 mt-3 line-clamp-1">{storeSettings?.storeName || 'نام مجموعه تجاری'}</h2>
+                      <p className="text-[10px] text-gray-500 font-bold leading-relaxed max-w-[200px] line-clamp-2 mt-1">{storeSettings?.address}</p>
+                      {storeSettings?.phone && <p className="text-xs text-gray-800 font-mono font-bold mt-1 text-left" dir="ltr">{storeSettings.phone}</p>}
                     </div>
                     
-                    <div className="flex flex-col items-center justify-center text-center w-1/3">
-                      <div className={`px-3 py-1.5 md:px-4 md:py-1.5 rounded-full ${themeBg} border ${themeBorder} mb-2`}>
-                        <h1 className={`text-base md:text-lg font-black tracking-tight ${themeText} whitespace-nowrap`}>{receiptTitle}</h1>
-                      </div>
-                      <span className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded">Offical Receipt</span>
-                    </div>
-
-                    <div className="flex flex-col items-end w-1/3 gap-2">
-                      <div className="bg-gray-50 rounded-lg border border-gray-200 p-2 md:p-3 min-w-[120px] md:min-w-[140px]">
-                        <span className="block text-[9px] md:text-[10px] text-gray-500 font-bold mb-1">شماره رسید</span>
-                        <span className="font-mono text-sm md:text-base font-bold text-gray-900">{toPersianDigits(printingTransaction.receiptNumber) || `#${toPersianDigits(printingTransaction.id)}`}</span>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg border border-gray-200 p-2 md:p-3 min-w-[120px] md:min-w-[140px]">
-                        <span className="block text-[9px] md:text-[10px] text-gray-500 font-bold mb-1">تاریخ عملیات</span>
-                        <span className="text-xs md:text-sm font-bold text-gray-800">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                    <div className="flex flex-col items-end w-1/2">
+                      <h1 className={`text-xl md:text-2xl font-black tracking-tighter text-gray-900 mb-4 inline-block`}>{receiptTitle}</h1>
+                      <div className="flex flex-col gap-2 w-full max-w-[160px]">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 font-bold">شماره سریال</span>
+                          <span className="font-mono font-black text-gray-900">{toPersianDigits(printingTransaction.receiptNumber) || `#${toPersianDigits(printingTransaction.id)}`}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-500 font-bold">تاریخ عملیات</span>
+                          <span className="font-mono font-black text-gray-900">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                   
+                  {/* Amount Block */}
+                  <div className="mb-8 p-6 bg-gray-50/80 rounded-2xl border border-gray-100 print:bg-gray-50 print:border-gray-300 print:rounded-2xl flex flex-col items-center justify-center text-center">
+                     <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-3 ${themeBg}`}>مبلغ نهایی تراکنش</span>
+                     <div className="flex items-end gap-2 text-gray-900 overflow-hidden">
+                       <span className="text-4xl md:text-5xl font-black font-mono tracking-tighter" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
+                     </div>
+                     <p className="text-sm font-bold text-gray-600 mt-3 border-t border-gray-200 border-dashed pt-3 px-4">
+                        {numToPersianWords(printingTransaction.amount)} <span className="text-xs">{storeSettings?.currency || 'ریال'}</span>
+                     </p>
+                  </div>
+
                   {/* Body details */}
-                  <div className="mb-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-4 bg-gray-50/50 p-3 md:p-4 rounded-xl border border-gray-100">
-                      <div>
-                        <span className="block text-[10px] md:text-[11px] text-gray-500 font-bold mb-1 uppercase tracking-wide">در وجه / طرف حساب</span>
-                        <span className="text-sm md:text-base font-black text-gray-900">{personCode}{renderPersonLink(printingTransaction.personId, personName)}</span>
+                  <div className="mb-8 space-y-6">
+                    <div>
+                      <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">طرف حساب / در وجه</span>
+                      <div className="text-lg font-black text-gray-900 border-b border-gray-200 border-dashed pb-2">
+                        {personCode}{personName}
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
                       {!isSalary && (
                         <div>
-                          <span className="block text-[10px] md:text-[11px] text-gray-500 font-bold mb-1 uppercase tracking-wide">از طریق حساب عملیاتی</span>
-                          <span className="text-xs md:text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                          <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">از طریق / واریز به</span>
+                          <div className="text-sm font-bold text-gray-800 border-b border-gray-200 border-dashed pb-2 min-h-[30px] flex items-center gap-1.5">
                              {printingTransaction.resourceType === 'bank' 
-                               ? <><Wallet className="w-3.5 h-3.5 text-gray-400"/> بانک {(accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص')}</>
+                               ? <><Wallet className="w-4 h-4 text-gray-400"/> بانک {(accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص')}</>
                                : printingTransaction.resourceType === 'cashbox' 
-                                 ? <><Database className="w-3.5 h-3.5 text-gray-400"/> صندوق {(cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص')}</>
+                                 ? <><Database className="w-4 h-4 text-gray-400"/> صندوق {(cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص')}</>
                                  : 'نامشخص'}
-                          </span>
+                          </div>
                         </div>
                       )}
+                      <div className={isSalary ? 'col-span-2' : ''}>
+                          <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">نوع تسویه</span>
+                          <div className="text-sm font-bold text-gray-800 border-b border-gray-200 border-dashed pb-2 min-h-[30px] flex items-center">
+                             {printingTransaction.method === 'cash' ? 'نقدی / واریز بانکی' : 'چک بانکی'}
+                          </div>
+                      </div>
                     </div>
 
                     {printingTransaction.description && (
-                      <div className="px-2 pb-2">
-                        <span className="block text-[10px] md:text-[11px] text-gray-500 font-bold mb-1.5 uppercase tracking-wide">بابت / شرح سند</span>
-                        <span className="text-xs md:text-sm font-medium text-gray-800 leading-6 md:leading-8 relative inline-block w-full border-b border-dashed border-gray-300 pb-1">
+                      <div>
+                        <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">بابت / مشخصات سند</span>
+                        <div className="text-sm font-bold text-gray-900 border-b border-gray-200 border-dashed pb-2 leading-loose">
                           {printingTransaction.description}
-                        </span>
+                        </div>
                       </div>
                     )}
                   </div>
                   
-                  {/* Amount Block */}
-                  <div className="relative mb-6 md:mb-8">
-                    <div className="absolute inset-0 bg-gray-50 border-y border-dashed border-gray-300 blur-xs opacity-50"></div>
-                    <div className="relative py-4 md:py-6 flex flex-col justify-center items-center text-center">
-                       <span className="text-[10px] md:text-[11px] text-gray-500 font-bold mb-2 md:mb-3 uppercase tracking-widest bg-white px-3 md:px-4 border border-gray-200 rounded-full py-0.5 md:py-1">مبلغ عملیات</span>
-                       <div className="flex items-end gap-2 md:gap-3 text-gray-900">
-                         <span className="text-2xl md:text-3xl font-black font-mono tracking-tight" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
-                         <span className="text-sm md:text-base font-bold text-gray-500 mb-1">{storeSettings?.currency || 'تومان'}</span>
-                       </div>
-                       <div className="mt-3 md:mt-4 flex items-center gap-1.5 md:gap-2">
-                          <span className="text-[10px] md:text-xs font-bold text-gray-400">حروف:</span>
-                          <span className="text-xs md:text-sm font-extrabold text-gray-800 bg-gray-100 px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg border border-gray-200 shadow-sm">
-                            {numToPersianWords(printingTransaction.amount)} {storeSettings?.currency || 'تومان'}
-                          </span>
-                       </div>
-                    </div>
-                  </div>
-
                   {/* Signatures */}
-                  <div className="flex justify-between items-end px-4 md:px-6 mt-8 md:mt-12 pt-6 border-t-2 border-gray-100">
-                    <div className="text-center w-32 md:w-48">
-                      <span className="block w-full border-t border-gray-400 mb-2 md:mb-3 border-dashed"></span>
-                      <span className="block text-[10px] md:text-xs font-bold text-gray-600">
+                  <div className="flex justify-between items-end px-2 mt-16 pt-8 border-t-2 border-gray-900">
+                    <div className="text-center w-40">
+                      <span className="block w-full border-t-2 border-gray-300 border-dashed mb-3"></span>
+                      <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                         {storeSettings?.print_signature_1 || (isReceive ? 'مهر و امضای پرداخت کننده' : isSalary ? 'امضای کارمند' : 'مهر و امضای گیرنده وجه')}
                       </span>
                     </div>
-                    <div className="text-center w-32 md:w-48">
-                      <span className="block w-full border-t border-gray-400 mb-2 md:mb-3 border-dashed"></span>
-                      <span className="block text-[10px] md:text-xs font-bold text-gray-600">
+                    <div className="text-center w-40">
+                      <span className="block w-full border-t-2 border-gray-300 border-dashed mb-3"></span>
+                      <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                         {storeSettings?.print_signature_2 || 'مهر و امضای امور مالی / مدیریت'}
                       </span>
                     </div>
                   </div>
 
-                  {/* Footer Note */}
                   {storeSettings?.print_footer_note && (
-                    <div className="mt-6 md:mt-8 text-center text-[9px] md:text-[10px] text-gray-500 font-medium px-4 md:px-12 leading-relaxed">
+                    <div className="mt-8 text-center text-[10px] text-gray-400 font-bold leading-relaxed px-4">
                       {storeSettings.print_footer_note}
                     </div>
                   )}
 
-                  <div className="mt-4 md:mt-6 text-center text-[8px] md:text-[9px] text-gray-400 font-mono tracking-widest opacity-50 flex justify-between px-2 md:px-4 border-t border-gray-100 pt-2 md:pt-3">
-                     <span>DOC: {printingTransaction.receiptNumber || printingTransaction.id} - TYPE: {printingTransaction.type.toUpperCase()}</span>
+                  <div className="mt-8 text-center text-[8px] text-gray-400 font-mono uppercase opacity-60 flex justify-between px-2">
+                     <span>DOC: {printingTransaction.receiptNumber || printingTransaction.id}</span>
                      <span>PRINTED: {new Date().toLocaleString('en-US', { hour12: false })}</span>
                   </div>
                 </div>
               </div>
               
-              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden rounded-b-2xl relative z-10 shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)] shrink-0">
+              <div className="px-6 py-5 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden rounded-b-3xl relative z-10 shrink-0">
                 <button
                   onClick={() => setPrintingTransaction(null)}
-                  className="px-6 py-2 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all shadow-sm"
+                  className="px-6 py-3 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold transition-all shadow-sm text-sm"
                 >
                   انصراف
                 </button>
@@ -12551,7 +12532,7 @@ export default function App() {
                   onClick={() => {
                     setTimeout(() => window.print(), 100);
                   }}
-                  className="px-8 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 hover:shadow-indigo-200 hover:-translate-y-0.5"
+                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm transition-all shadow-md flex items-center justify-center gap-2 hover:-translate-y-0.5"
                 >
                   <Printer className="w-5 h-5" />
                   چاپ رسید
@@ -12823,6 +12804,3 @@ export default function App() {
     </>
   );
 }
-
-
-
