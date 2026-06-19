@@ -513,6 +513,8 @@ export default function DatabaseDashboard({ showNotification }: DatabaseDashboar
             </div>
           </div>
   
+          <DriveBackup showNotification={showNotification} />
+
           {/* Collections Breakdown Tables */}
           <div>
             <h3 className="text-gray-800 font-extrabold text-base mb-2 border-b border-gray-100 pb-2 flex items-center gap-2">

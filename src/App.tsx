@@ -1909,11 +1909,21 @@ export default function App() {
       document.title = storeSettings.storeName;
     }
     if (storeSettings?.fontFamily) {
-      document.documentElement.style.setProperty('--app-font', `"${storeSettings.fontFamily}"`);
+      document.documentElement.style.setProperty('--app-font', storeSettings.fontFamily);
     } else {
-      document.documentElement.style.setProperty('--app-font', '"Vazirmatn"');
+      document.documentElement.style.setProperty('--app-font', 'Vazirmatn');
     }
   }, [storeSettings?.storeName, storeSettings?.fontFamily]);
+
+  useEffect(() => {
+    if (activeTab === 'settings' && settingsForm?.fontFamily) {
+      document.documentElement.style.setProperty('--app-font', settingsForm.fontFamily);
+    } else if (storeSettings?.fontFamily) {
+      document.documentElement.style.setProperty('--app-font', storeSettings.fontFamily);
+    } else {
+      document.documentElement.style.setProperty('--app-font', 'Vazirmatn');
+    }
+  }, [settingsForm?.fontFamily, activeTab, storeSettings?.fontFamily]);
 
   const fetchChecks = async () => {
     try {

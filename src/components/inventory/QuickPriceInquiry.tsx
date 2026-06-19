@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Package, Barcode, HelpCircle, ArrowRight, Tag, Info, MonitorCheck, Percent, Layers, ShieldCheck } from 'lucide-react';
+import { Search, Package, Barcode, HelpCircle, ArrowRight, Tag, Info, MonitorCheck, Percent, Layers, ShieldCheck, RefreshCw } from 'lucide-react';
 import { addCommas } from '../../utils/format';
 import { Product } from '../../types';
 
