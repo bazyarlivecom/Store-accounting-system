@@ -86,6 +86,8 @@ export default function LoansManager({
     amount: number | '';
     startDate: string;
     totalInstallments: number | '';
+    interestRate: number | '';
+    intervalMonths: number | '';
     installmentAmount: number | '';
     description: string;
     type: 'given' | 'received';
@@ -95,11 +97,34 @@ export default function LoansManager({
     amount: '',
     startDate: new Date().toLocaleDateString('fa-IR').replace(/\//g, '-'),
     totalInstallments: '',
+    interestRate: 0,
+    intervalMonths: 1,
     installmentAmount: '',
     description: '',
     type: 'given',
     accountId: '',
   });
+
+  const addMonthsToJalali = (jalaliDateStr: string, monthsToAdd: number) => {
+    const parts = jalaliDateStr.split(/[-/]/);
+    if (parts.length !== 3) return jalaliDateStr;
+    let y = parseInt(parts[0], 10);
+    let m = parseInt(parts[1], 10);
+    let d = parseInt(parts[2], 10);
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return jalaliDateStr;
+
+    m += monthsToAdd;
+    while (m > 12) {
+      m -= 12;
+      y += 1;
+    }
+    if (d > 30 && m >= 7) d = 30;
+    if (d > 29 && m === 12) d = 29;
+
+    const mStr = m.toString().padStart(2, '0');
+    const dStr = d.toString().padStart(2, '0');
+    return `${y}-${mStr}-${dStr}`;
+  };
 
   const [useBalanceAsAmount, setUseBalanceAsAmount] = useState(false);
 
@@ -114,6 +139,17 @@ export default function LoansManager({
     accountId: '',
     paymentDate: new Date().toLocaleDateString('fa-IR').replace(/\//g, '-'),
   });
+
+  useEffect(() => {
+    if (formData.amount && formData.totalInstallments) {
+      const amt = Number(formData.amount);
+      const count = Number(formData.totalInstallments);
+      const rate = Number(formData.interestRate) || 0;
+      const totalAmountWithInterest = amt * (1 + rate / 100);
+      const instAmt = Math.round(totalAmountWithInterest / count);
+      setFormData(prev => ({ ...prev, installmentAmount: instAmt }));
+    }
+  }, [formData.amount, formData.totalInstallments, formData.interestRate]);
 
   const addCommas = (num: number | string) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -137,28 +173,33 @@ export default function LoansManager({
     const amountNum = Number(formData.amount);
     const instCount = Number(formData.totalInstallments);
     const instAmount = Number(formData.installmentAmount);
+    // Adjust total amount based on interest if we want to save it as principal.
+    // Or save amount as principal, and the installments sum will be higher.
+    const principalAmount = amountNum;
 
     const newLoan: Loan = {
       id: loanId,
       personId: formData.personId,
-      amount: amountNum,
+      amount: principalAmount,
       startDate: formData.startDate,
       totalInstallments: instCount,
       installmentAmount: instAmount,
-      description: formData.description + (useBalanceAsAmount ? ' (تبدیل مانده حساب به وام)' : ''),
+      description: formData.description + (useBalanceAsAmount ? ' (تبدیل مانده حساب به وام)' : '') + (formData.interestRate ? ` - سود: ${formData.interestRate}٪ - فاصله اقساط: ${formData.intervalMonths} ماه` : ''),
       status: 'active',
       type: formData.type,
     };
 
     const newInstallments: Installment[] = [];
     for (let i = 0; i < instCount; i++) {
-      newInstallments.push({
-        id: `inst-${loanId}-${i}`,
-        loanId: loanId,
-        dueDate: `قسط ${i+1}`,
-        amount: instAmount,
-        status: 'pending',
-      });
+       const monthsToAdd = (i + 1) * (Number(formData.intervalMonths) || 1);
+       const dueDateStr = addMonthsToJalali(formData.startDate, monthsToAdd);
+       newInstallments.push({
+         id: `inst-${loanId}-${i}`,
+         loanId: loanId,
+         dueDate: dueDateStr,
+         amount: instAmount,
+         status: 'pending',
+       });
     }
 
     const transactionId = `txn-loan-${loanId}`;
@@ -210,6 +251,8 @@ export default function LoansManager({
       amount: '',
       startDate: new Date().toLocaleDateString('fa-IR').replace(/\//g, '-'),
       totalInstallments: '',
+      interestRate: 0,
+      intervalMonths: 1,
       installmentAmount: '',
       description: '',
       type: 'given',
@@ -282,6 +325,20 @@ export default function LoansManager({
     });
     
     setPaymentForm({ installmentId: null, amount: '', accountId: '', paymentDate: new Date().toLocaleDateString('fa-IR').replace(/\//g, '-') });
+  };
+
+  const handleMarkOverdue = (installmentId: string | number) => {
+    const updatedInstallments = installments.map(i => {
+      if (i.id === installmentId) {
+        return { ...i, status: 'overdue' as 'overdue' };
+      }
+      return i;
+    });
+
+    setInstallments(updatedInstallments);
+    import('../../services/dataService').then(({ saveInstallments }) => {
+      saveInstallments(updatedInstallments);
+    });
   };
 
   const getPersonName = (pid: string | number) => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Loan, Installment, Person, Account } from '../../types';
-import { Plus, Edit2, Trash2, Search, CheckCircle, ChevronDown, ChevronUp, AlertCircle, RefreshCw, Layers, Calendar, DollarSign, Wallet, Users, Activity, List, ArrowLeftRight } from 'lucide-react';
+import { Plus, Percent, Edit2, Trash2, Search, CheckCircle, ChevronDown, ChevronUp, AlertCircle, RefreshCw, Layers, Calendar, DollarSign, Wallet, Users, Activity, List, ArrowLeftRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LoansManagerProps {
@@ -431,6 +431,44 @@ export default function LoansManager({
 
              <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                   <Percent className="w-4 h-4 text-gray-400" /> درصد سود بانکی
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={formData.interestRate}
+                    onChange={(e) => {
+                       const val = Number(e.target.value);
+                       setFormData({...formData, interestRate: e.target.value === '' ? '' : val});
+                    }}
+                    className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black font-mono text-left pr-10"
+                    dir="ltr"
+                    min="0"
+                    max="100"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold select-none text-sm pointer-events-none">%</div>
+                </div>
+             </div>
+
+             <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                   <Calendar className="w-4 h-4 text-gray-400" /> فاصله اقساط (ماه)
+                </label>
+                <input
+                  type="number"
+                  value={formData.intervalMonths}
+                  onChange={(e) => {
+                     const val = Number(e.target.value);
+                     setFormData({...formData, intervalMonths: val > 0 ? val : 1});
+                  }}
+                  className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black font-mono text-left"
+                  dir="ltr"
+                  min="1"
+                />
+             </div>
+
+             <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                    <Layers className="w-4 h-4 text-gray-400" /> تعداد اقساط
                 </label>
                 <input
@@ -438,14 +476,7 @@ export default function LoansManager({
                   value={formData.totalInstallments}
                   onChange={(e) => {
                      const val = Number(e.target.value);
-                     let instAmt = '' as any;
-                     if (val && formData.amount) {
-                        let r = formData.interestRate === '' ? 0 : Number(formData.interestRate);
-                        let amt = Number(formData.amount);
-                        let totalInterest = amt * (r / 100);
-                        instAmt = Math.round((amt + totalInterest) / val);
-                     }
-                     setFormData({...formData, totalInstallments: val || '', installmentAmount: instAmt});
+                     setFormData({...formData, totalInstallments: val || ''});
                   }}
                   className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black font-mono text-left"
                   dir="ltr"
@@ -570,44 +601,55 @@ export default function LoansManager({
                                    {loanInsts.map(inst => (
                                      <div key={inst.id} className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
                                         <div className="flex items-center gap-4">
-                                           <div className={`w-3 h-3 rounded-full ${inst.status === 'paid' ? 'bg-emerald-500' : 'bg-amber-400'}`}></div>
-                                           <div>
-                                             <div className="font-bold text-gray-800 text-sm mb-1">{inst.dueDate}</div>
-                                             {inst.status === 'paid' && <div className="text-xs font-bold text-gray-500">تاریخ پرداخت: {inst.paidDate}</div>}
-                                           </div>
-                                        </div>
+                                            <div className={`w-3 h-3 rounded-full ${inst.status === 'paid' ? 'bg-emerald-500' : inst.status === 'overdue' ? 'bg-rose-500' : 'bg-amber-400'}`}></div>
+                                            <div>
+                                              <div className="font-bold text-gray-800 text-sm mb-1">{inst.dueDate}</div>
+                                              {inst.status === 'paid' && <div className="text-xs font-bold text-gray-500">تاریخ پرداخت: {inst.paidDate}</div>}
+                                              {inst.status === 'overdue' && <div className="text-xs font-bold text-rose-500">معوقه</div>}
+                                            </div>
+                                         </div>
 
-                                        <div className="text-left font-black font-mono text-gray-800" dir="ltr">
-                                          {addCommas(inst.amount)} تومان
-                                        </div>
+                                         <div className="text-left font-black font-mono text-gray-800" dir="ltr">
+                                           {addCommas(inst.amount)} تومان
+                                         </div>
 
-                                        {inst.status === 'pending' && loan.status === 'active' && (
-                                           <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
-                                              <select
-                                                value={paymentForm.installmentId === inst.id ? paymentForm.accountId : ''}
-                                                onChange={(e) => setPaymentForm({installmentId: inst.id, amount: inst.amount, accountId: e.target.value, paymentDate: paymentForm.paymentDate})}
-                                                className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none w-full md:w-40 font-medium"
-                                              >
-                                                <option value="">انتخاب حساب</option>
-                                                {accounts.map(a => <option key={a.id} value={a.id}>{a.bankName}</option>)}
-                                              </select>
-                                              <button
-                                                onClick={() => {
-                                                   if(paymentForm.installmentId !== inst.id || !paymentForm.accountId) {
-                                                      alert('لطفا حساب پرداخت/دریافت را انتخاب کنید');
-                                                      setPaymentForm({...paymentForm, installmentId: inst.id, amount: inst.amount});
-                                                      return;
-                                                   }
-                                                   handlePayInstallment();
-                                                }}
-                                                className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap"
-                                              >
-                                                 ثبت پرداخت
-                                              </button>
-                                           </div>
-                                        )}
-                                        {inst.status === 'paid' && (
-                                           <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                                         {(inst.status === 'pending' || inst.status === 'overdue') && loan.status === 'active' && (
+                                            <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto mt-4 md:mt-0">
+                                               <select
+                                                 value={paymentForm.installmentId === inst.id ? paymentForm.accountId : ''}
+                                                 onChange={(e) => setPaymentForm({installmentId: inst.id, amount: inst.amount, accountId: e.target.value, paymentDate: paymentForm.paymentDate})}
+                                                 className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none w-full md:w-40 font-medium"
+                                               >
+                                                 <option value="">انتخاب حساب</option>
+                                                 {accounts.map(a => <option key={a.id} value={a.id}>{a.bankName}</option>)}
+                                               </select>
+                                               <div className="flex flex-wrap items-center gap-1 w-full md:w-auto">
+                                                 <button
+                                                   onClick={() => {
+                                                      if(paymentForm.installmentId !== inst.id || !paymentForm.accountId) {
+                                                         alert('لطفا حساب پرداخت/دریافت را انتخاب کنید');
+                                                         setPaymentForm({...paymentForm, installmentId: inst.id, amount: inst.amount});
+                                                         return;
+                                                      }
+                                                      handlePayInstallment();
+                                                   }}
+                                                   className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap"
+                                                 >
+                                                    ثبت پرداخت
+                                                 </button>
+                                                 {inst.status !== 'overdue' && (
+                                                   <button
+                                                     onClick={() => handleMarkOverdue(inst.id)}
+                                                     className="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap"
+                                                   >
+                                                      معوقه
+                                                   </button>
+                                                 )}
+                                               </div>
+                                            </div>
+                                         )}
+                                         {inst.status === 'paid' && (
+                                            <div className="bg-emerald-50 text-emerald-60/ px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
                                               <CheckCircle className="w-4 h-4"/> پرداخت شده
                                            </div>
                                         )}
