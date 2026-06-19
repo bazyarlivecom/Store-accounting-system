@@ -44,11 +44,10 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
     setAutoBackupEnabled(newVal);
     localStorage.setItem('auto_backup_drive', String(newVal));
     if (newVal) {
-      showNotification('تهیه نسخه پشتیبان خودکار (هر ۴ ساعت در گوگل درایو) فعال شد', 'success');
-      // maybe run it once on enable
+      showNotification('tehiye noskhe poshtiban khodkar faal shod', 'success');
       runBackup(true);
     } else {
-      showNotification('پشتیبان‌گیری خودکار غیرفعال شد', 'success');
+      showNotification('poshtibangiri khodkar gheirfaal shod', 'success');
     }
   };
 
@@ -59,11 +58,11 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
       if (result) {
         setNeedsAuth(false);
         setUser(result.user);
-        showNotification('ورود با موفقیت انجام شد', 'success');
+        showNotification('vorood ba movafaghiyat anjam shod', 'success');
       }
     } catch (err) {
       console.error('Login failed:', err);
-      showNotification('خطا در ورود به حساب گوگل', 'error');
+      showNotification('khata dar vorood', 'error');
     } finally {
       setIsLoggingIn(false);
     }
@@ -80,7 +79,8 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
 
-    const fileName = `Hesabdari-Backup-${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`;
+    const cleanDate = new Date().toLocaleDateString('fa-IR').replace(/\\//g, '-');
+    const fileName = `Hesabdari-Backup-${cleanDate}.json`;
     const metadata = {
       name: fileName,
       mimeType: 'application/json'
@@ -115,7 +115,7 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
     try {
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        if (!isSilent) showNotification('لطفاً دوباره وارد حساب گوگل شوید.', 'error');
+        if (!isSilent) showNotification(' (login mujaddad)', 'error');
         setNeedsAuth(true);
         return;
       }
@@ -124,10 +124,10 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
       const data = await fetchRes.json();
       
       await uploadToDrive(accessToken, JSON.stringify(data, null, 2));
-      if (!isSilent) showNotification('نسخه پشتیبان با موفقیت در گوگل درایو ذخیره شد.', 'success');
+      if (!isSilent) showNotification('backup ok8', 'success');
     } catch (err: any) {
       console.error(err);
-      if (!isSilent) showNotification('خطا در تهیه نسخه پشتیبان در گوگل درایو.', 'error');
+      if (!isSilent) showNotification('error backup', 'error');
     } finally {
       setIsBackingUp(false);
     }
@@ -136,8 +136,8 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
   if (needsAuth) {
     return (
       <div className="bg-slate-50 border border-indigo-100 rounded-2xl p-6 shadow-inner flex flex-col justify-center items-center text-center gap-4 col-span-1 md:col-span-2">
-         <h4 className="font-bold text-gray-700">پشتیبان‌گیری رمزنگاری‌شده در گوگل درایو</h4>
-         <p className="text-xs text-gray-500">تمامی اطلاعات سیستم را بر روی درایو شخصی خود ثبت نمایید.</p>
+         <h4 className="font-bold text-gray-700">Ѿشتیبان‌گیری رمدنگاری‌شده در گوگل درايو</h4>
+         <p className="text-xs text-gray-500">تمامٌ اطلاعات سیستe را بر روی درایو شخصی خود ب�ت نمایȯ.</p>
          <button
            onClick={handleLogin}
            disabled={isLoggingIn}
@@ -147,10 +147,10 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.9l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
               <path fill="none" d="M0 0h48v48H0z"></path>
            </svg>
-           {isLoggingIn ? 'درحال اتصال...' : 'ورود با حساب گوگل و فعال‌سازی'}
+           {isLoggingIn ? 'درحال اتصال...' : 'ورود با حساب گوگل و فعال‌ سازی'}
          </button>
       </div>
     );
@@ -163,7 +163,7 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
           <Cloud className="w-5 h-5 text-indigo-600" />
         </div>
         <div className="text-right flex-1">
-          <h4 className="font-bold text-gray-700 text-sm">متصل به فضای گوگل درایو</h4>
+          <h4 className="font-bold text-gray-700 text-sm">مҫصل به فضای گوگل درايو</h4>
           <p className="text-xs text-gray-500 font-mono mt-0.5">{user?.email}</p>
         </div>
         <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-rose-500 py-1 flex items-center gap-1 shrink-0">
@@ -178,17 +178,16 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
             <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${autoBackupEnabled ? '-translate-x-4' : 'translate-x-0'}`} />
           </div>
           <div className="text-right">
-            <h5 className="text-sm font-bold text-gray-700">پشتیبان‌گیری خودکار (هر ۴ ساعت)</h5>
-            <p className="text-[10px] text-gray-500">تمامی اطلاعات شما به صورت خودکار ایمن می‌گردد.</p>
+            <h5 className="text-sm font-bold text-gray-700">Ѿشتیبان‌گیری خودکار (هر ڔ ساعҩ)</h5>
+            <p className="text-[10px] text-gray-500">تمامٌ اطلاعات شما به صورت خودکار ایمن می‌�ردد.</p>
           </div>
         </div>
         <button
           onClick={() => runBackup(false)}
           disabled={isBackingUp}
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl transition-all shadow-sm text-xs disabled:opacity-75"
-        >
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl transition-all shadow-sm text-xs disabled:opacity-75">
           {isBackingUp ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Cloud className="w-3.5 h-3.5" />}
-          آپلود دستی
+          آھلود دستی
         </button>
       </div>
     </div>

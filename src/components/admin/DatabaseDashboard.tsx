@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import DriveBackup from './DriveBackup';
 import { 
   Database, Download, Upload, AlertCircle, RefreshCw, 
   Layers, Search, Trash2, Eye, X, Check, ChevronDown, 
@@ -511,10 +512,9 @@ export default function DatabaseDashboard({ showNotification }: DatabaseDashboar
                 </div>
               </div>
             </div>
+            <DriveBackup showNotification={showNotification} />
           </div>
   
-          <DriveBackup showNotification={showNotification} />
-
           {/* Collections Breakdown Tables */}
           <div>
             <h3 className="text-gray-800 font-extrabold text-base mb-2 border-b border-gray-100 pb-2 flex items-center gap-2">
