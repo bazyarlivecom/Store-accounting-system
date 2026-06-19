@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Loan, Installment, Person, Account } from '../../types';
-import { Plus, Edit2, Trash2, Search, CheckCircle, ChevronDown, ChevronUp, AlertCircle, RefreshCw, Layers, Calendar, DollarSign, Wallet, Users, Activity, List } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, CheckCircle, ChevronDown, ChevronUp, AlertCircle, RefreshCw, Layers, Calendar, DollarSign, Wallet, Users, Activity, List, ArrowLeftRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LoansManagerProps {
@@ -32,6 +32,7 @@ export default function LoansManager({
   const [formData, setFormData] = useState<{
     personId: string | number;
     amount: number | '';
+    interestRate: number | '';
     startDate: string;
     totalInstallments: number | '';
     installmentAmount: number | '';
@@ -41,6 +42,7 @@ export default function LoansManager({
   }>({
     personId: '',
     amount: '',
+    interestRate: '',
     startDate: new Date().toLocaleDateString('fa-IR').replace(/\//g, '-'),
     totalInstallments: '',
     installmentAmount: '',
@@ -48,6 +50,26 @@ export default function LoansManager({
     type: 'given',
     accountId: '',
   });
+
+
+  const [useBalanceAsAmount, setUseBalanceAsAmount] = useState(false);
+
+  const selectedPersonBalance = React.useMemo(() => {
+    if (!formData.personId) return null;
+    const personIdStr = formData.personId.toString();
+    const person = persons.find(p => p.id.toString() === personIdStr);
+    if (!person) return null;
+    
+    let balance = 0;
+    transactions.filter(t => t.personId?.toString() === personIdStr).forEach(t => {
+        if (t.type === 'receive') balance -= (t.amount || 0);
+        else if (t.type === 'pay') balance += (t.amount || 0);
+        else if (t.type === 'salary') balance -= (t.amount || 0);
+    });
+    if (balance > 0) return { amount: balance, status: 'بدهکار', value: balance, color: 'text-rose-600', bg: 'bg-rose-50' };
+    if (balance < 0) return { amount: Math.abs(balance), status: 'بستانکار', value: balance, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    return { amount: 0, status: 'بی‌حساب', value: 0, color: 'text-gray-500', bg: 'bg-gray-100' };
+  }, [formData.personId, persons, transactions]);
 
   const [paymentForm, setPaymentForm] = useState<{
     installmentId: string | number | null;
@@ -63,6 +85,16 @@ export default function LoansManager({
 
   const addCommas = (num: number | string) => {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+    const toEnglishNumbers = (str: string) => {
+    const persianNumbers = [/۰/g, /۱/g, /۲/g, /۳/g, /۴/g, /۵/g, /۶/g, /۷/g, /۸/g, /۹/g];
+    const arabicNumbers  = [/٠/g, /١/g, /٢/g, /٣/g, /٤/g, /٥/g, /٦/g, /٧/g, /٨/g, /٩/g];
+    let result = str;
+    for(let i=0; i<10; i++) {
+      result = result.replace(persianNumbers[i], i.toString()).replace(arabicNumbers[i], i.toString());
+    }
+    return result;
   };
 
   const removeCommas = (str: string) => {
@@ -92,12 +124,30 @@ export default function LoansManager({
       type: formData.type,
     };
 
+        
+    let [initY, initM, initD] = toEnglishNumbers(formData.startDate).replace(/\//g, '-').split('-').map(Number);
+    if (isNaN(initY) || isNaN(initM) || isNaN(initD)) {
+        initY = 1403; initM = 1; initD = 1; // fallback
+    }
+
     const newInstallments: Installment[] = [];
     for (let i = 0; i < instCount; i++) {
+      let instM = initM + i + 1; // each installment 1 month later
+      let instY = initY;
+      while (instM > 12) {
+        instM -= 12;
+        instY += 1;
+      }
+      let finalD = initD;
+      if (instM === 12 && finalD > 29) finalD = 29;
+      if (instM > 6 && finalD === 31) finalD = 30;
+
+      let dueDateStr = instY + '-' + instM.toString().padStart(2, '0') + '-' + finalD.toString().padStart(2, '0');
+
       newInstallments.push({
-        id: `inst-${loanId}-${i}`,
+        id: 'inst-' + loanId + '-' + i,
         loanId: loanId,
-        dueDate: `قسط ${i+1}`,
+        dueDate: dueDateStr,
         amount: instAmount,
         status: 'pending',
       });
@@ -124,6 +174,7 @@ export default function LoansManager({
     setFormData({
       personId: '',
       amount: '',
+      interestRate: '',
       startDate: new Date().toLocaleDateString('fa-IR').replace(/\//g, '-'),
       totalInstallments: '',
       installmentAmount: '',
@@ -269,7 +320,10 @@ export default function LoansManager({
                 </label>
                 <select
                   value={formData.personId}
-                  onChange={(e) => setFormData({...formData, personId: e.target.value})}
+                  onChange={(e) => {
+                    setFormData({...formData, personId: e.target.value});
+                    setUseBalanceAsAmount(false);
+                  }}
                   className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-medium"
                 >
                   <option value="">انتخاب شخص...</option>
@@ -277,6 +331,32 @@ export default function LoansManager({
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
+                {selectedPersonBalance && selectedPersonBalance.value !== 0 && (
+                   <motion.div initial={{opacity:0, y:-5}} animate={{opacity:1, y:0}} className="pt-2">
+                      <div className={`text-xs font-bold p-3 rounded-xl border ${selectedPersonBalance.bg} ${selectedPersonBalance.color} flex flex-col gap-2`}>
+                         <div className="flex items-center justify-between">
+                            <span>مانده این شخص: {addCommas(selectedPersonBalance.amount)} تومان ({selectedPersonBalance.status})</span>
+                         </div>
+                         <button 
+                            onClick={() => {
+                               const useBal = !useBalanceAsAmount;
+                               setUseBalanceAsAmount(useBal);
+                               if (useBal) {
+                                  setFormData({
+                                     ...formData,
+                                     amount: selectedPersonBalance.amount,
+                                     type: selectedPersonBalance.value > 0 ? 'given' : 'received'
+                                  });
+                               }
+                            }}
+                            className="bg-white/60 hover:bg-white px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 mt-1 border-current border border-white/40"
+                         >
+                            <ArrowLeftRight className="w-3 h-3" />
+                            {useBalanceAsAmount ? 'لغو استفاده از مانده' : 'تبدیل کل این مانده به وام'}
+                         </button>
+                      </div>
+                   </motion.div>
+                )}
              </div>
              <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
@@ -284,30 +364,69 @@ export default function LoansManager({
                 </label>
                 <input
                   type="text"
+                  disabled={useBalanceAsAmount}
                   value={formData.amount === '' ? '' : addCommas(formData.amount)}
                   onChange={(e) => {
                      let v = removeCommas(e.target.value);
                      if(v === '') { setFormData({...formData, amount: ''}); return; }
-                     if(!isNaN(Number(v))) setFormData({...formData, amount: Number(v)});
+                     if(!isNaN(Number(v))) {
+                        let amt = Number(v);
+                        let instAmt = formData.installmentAmount;
+                        if (formData.totalInstallments) {
+                           let r = formData.interestRate === '' ? 0 : Number(formData.interestRate);
+                           let instCount = Number(formData.totalInstallments);
+                           let totalInterest = amt * (r / 100);
+                           instAmt = Math.round((amt + totalInterest) / instCount) as any;
+                        }
+                        setFormData({...formData, amount: amt, installmentAmount: instAmt});
+                     }
                   }}
-                  className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black text-left font-mono"
+                  className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black text-left font-mono disabled:opacity-50"
                   dir="ltr"
                 />
              </div>
+             
+             {!useBalanceAsAmount && (
+               <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-gray-400" /> حساب بانکی / صندوق
+                  </label>
+                  <select
+                    value={formData.accountId}
+                    onChange={(e) => setFormData({...formData, accountId: e.target.value})}
+                    className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-medium"
+                  >
+                    <option value="">انتخاب حساب...</option>
+                    {accounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.bankName}</option>
+                    ))}
+                  </select>
+               </div>
+             )}
+
              <div className="space-y-2">
                 <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                   <Wallet className="w-4 h-4 text-gray-400" /> حساب بانکی / صندوق
+                   <span className="flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 font-bold text-[10px]">%</span> درصد کارمزد (سالیانه/کلی)
                 </label>
-                <select
-                  value={formData.accountId}
-                  onChange={(e) => setFormData({...formData, accountId: e.target.value})}
-                  className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-medium"
-                >
-                  <option value="">انتخاب حساب...</option>
-                  {accounts.map(a => (
-                    <option key={a.id} value={a.id}>{a.bankName}</option>
-                  ))}
-                </select>
+                <input
+                  type="number"
+                  disabled={useBalanceAsAmount}
+                  value={formData.interestRate}
+                  onChange={(e) => {
+                     let rate = (e.target.value === '' ? '' : Number(e.target.value)) as any;
+                     let instAmt = '' as any;
+                     if (formData.amount && formData.totalInstallments) {
+                        let r = rate === '' ? 0 : Number(rate);
+                        let amt = Number(formData.amount);
+                        let instCount = Number(formData.totalInstallments);
+                        let totalInterest = amt * (r / 100);
+                        instAmt = Math.round((amt + totalInterest) / instCount);
+                     }
+                     setFormData({...formData, interestRate: rate, installmentAmount: instAmt});
+                  }}
+                  className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black text-left font-mono disabled:opacity-50"
+                  dir="ltr"
+                />
              </div>
 
              <div className="space-y-2">
@@ -317,7 +436,17 @@ export default function LoansManager({
                 <input
                   type="number"
                   value={formData.totalInstallments}
-                  onChange={(e) => setFormData({...formData, totalInstallments: Number(e.target.value) || ''})}
+                  onChange={(e) => {
+                     const val = Number(e.target.value);
+                     let instAmt = '' as any;
+                     if (val && formData.amount) {
+                        let r = formData.interestRate === '' ? 0 : Number(formData.interestRate);
+                        let amt = Number(formData.amount);
+                        let totalInterest = amt * (r / 100);
+                        instAmt = Math.round((amt + totalInterest) / val);
+                     }
+                     setFormData({...formData, totalInstallments: val || '', installmentAmount: instAmt});
+                  }}
                   className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black font-mono text-left"
                   dir="ltr"
                 />

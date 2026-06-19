@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loan, Installment, Person, Account } from '../../types';
+// synced
 import { Plus, Edit2, Trash2, Search, CheckCircle, ChevronDown, ChevronUp, AlertCircle, RefreshCw, Layers, Calendar, DollarSign, Wallet, Users, Activity, List, ArrowLeftRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getInvoices, getIssuedChecks, getReceivedChecks, getStoreSettings, addTransaction } from '../../services/dataService';
