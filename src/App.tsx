@@ -197,6 +197,7 @@ export default function App() {
         { id: 'issued_checks', label: 'چک‌های پرداختی', roles: ['admin', 'accountant'] },
         { id: 'check_calendar', label: 'تقویم چک‌ها', roles: ['admin', 'accountant', 'manager'] },
         { id: 'invoice_allocation', label: 'تخصیص اسناد به فاکتور', roles: ['admin', 'accountant'] },
+        { id: 'loans', label: 'وام و اقساط', roles: ['admin', 'accountant'] },
       ]
     },
     {

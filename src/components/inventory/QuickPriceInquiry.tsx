@@ -30,12 +30,12 @@ export default function QuickPriceInquiry({ products, settings }: QuickPriceInqu
       
       if (exactMatch) {
         setSelectedProduct(exactMatch);
-        setSearchTerm(''); // Clear after found if needed
-      } else {
-        setSelectedProduct(null);
+        setSearchTerm('');
       }
     } else {
-      setSelectedProduct(null);
+      // Do not clear selectedProduct when searchTerm becomes empty,
+      // otherwise handleSelectProduct will undo itself!
+      // setSelectedProduct(null);
     }
   }, [searchTerm, products]);
 
