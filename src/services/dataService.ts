@@ -71,7 +71,7 @@ export const addUser = async (user: any) => {
 
 export const updateUser = async (id: string, user: any) => {
   const users = await getLocalData<any[]>('users', []);
-  const index = users.findIndex((p: any) => p.id === id);
+  const index = users.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     users[index] = { ...users[index], ...user, updatedAt: Date.now() };
     await saveLocalData('users', users);
@@ -82,7 +82,7 @@ export const updateUser = async (id: string, user: any) => {
 
 export const deleteUser = async (id: string) => {
   const users = await getLocalData<any[]>('users', []);
-  await saveLocalData('users', users.filter((p: any) => p.id !== id));
+  await saveLocalData('users', users.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Person Groups
@@ -102,7 +102,7 @@ export const addPersonGroup = async (group: any) => {
 
 export const updatePersonGroup = async (id: string, group: any) => {
   const groups = await getLocalData<any[]>('person_groups', []);
-  const index = groups.findIndex((p: any) => p.id === id);
+  const index = groups.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     groups[index] = { ...groups[index], ...group, updatedAt: Date.now() };
     await saveLocalData('person_groups', groups);
@@ -113,7 +113,7 @@ export const updatePersonGroup = async (id: string, group: any) => {
 
 export const deletePersonGroup = async (id: string) => {
   const groups = await getLocalData<any[]>('person_groups', []);
-  await saveLocalData('person_groups', groups.filter((p: any) => p.id !== id));
+  await saveLocalData('person_groups', groups.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Person Roles
@@ -143,7 +143,7 @@ export const addPersonRole = async (role: any) => {
 
 export const updatePersonRole = async (id: string, role: any) => {
   const roles = await getLocalData<any[]>('person_roles', []);
-  const index = roles.findIndex((p: any) => p.id === id);
+  const index = roles.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     roles[index] = { ...roles[index], ...role, updatedAt: Date.now() };
     await saveLocalData('person_roles', roles);
@@ -154,7 +154,7 @@ export const updatePersonRole = async (id: string, role: any) => {
 
 export const deletePersonRole = async (id: string) => {
   const roles = await getLocalData<any[]>('person_roles', []);
-  await saveLocalData('person_roles', roles.filter((p: any) => p.id !== id));
+  await saveLocalData('person_roles', roles.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Persons
@@ -202,7 +202,7 @@ export const addPerson = async (person: any) => {
 
 export const updatePerson = async (id: string, person: any) => {
   const persons = await getLocalData<any[]>('persons', []);
-  const index = persons.findIndex((p: any) => p.id === id);
+  const index = persons.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     persons[index] = { ...persons[index], ...person, updatedAt: Date.now() };
     await saveLocalData('persons', persons);
@@ -213,7 +213,7 @@ export const updatePerson = async (id: string, person: any) => {
 
 export const deletePerson = async (id: string) => {
   const persons = await getLocalData<any[]>('persons', []);
-  await saveLocalData('persons', persons.filter((p: any) => p.id !== id));
+  await saveLocalData('persons', persons.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Accounts
@@ -233,7 +233,7 @@ export const addAccount = async (account: any) => {
 
 export const updateAccount = async (id: string, account: any) => {
   const accounts = await getLocalData<any[]>('accounts', []);
-  const index = accounts.findIndex((p: any) => p.id === id);
+  const index = accounts.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     accounts[index] = { ...accounts[index], ...account, updatedAt: Date.now() };
     await saveLocalData('accounts', accounts);
@@ -244,7 +244,7 @@ export const updateAccount = async (id: string, account: any) => {
 
 export const deleteAccount = async (id: string) => {
   const accounts = await getLocalData<any[]>('accounts', []);
-  await saveLocalData('accounts', accounts.filter((p: any) => p.id !== id));
+  await saveLocalData('accounts', accounts.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Cashboxes
@@ -264,7 +264,7 @@ export const addCashbox = async (cashbox: any) => {
 
 export const updateCashbox = async (id: string, cashbox: any) => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
-  const index = cashboxes.findIndex((p: any) => p.id === id);
+  const index = cashboxes.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     cashboxes[index] = { ...cashboxes[index], ...cashbox, updatedAt: Date.now() };
     await saveLocalData('cashboxes', cashboxes);
@@ -275,7 +275,7 @@ export const updateCashbox = async (id: string, cashbox: any) => {
 
 export const deleteCashbox = async (id: string) => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
-  await saveLocalData('cashboxes', cashboxes.filter((p: any) => p.id !== id));
+  await saveLocalData('cashboxes', cashboxes.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Warehouses
@@ -295,7 +295,7 @@ export const addWarehouse = async (warehouse: any) => {
 
 export const updateWarehouse = async (id: string, warehouse: any) => {
   const warehouses = await getLocalData<any[]>('warehouses', []);
-  const index = warehouses.findIndex((p: any) => p.id === id);
+  const index = warehouses.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     warehouses[index] = { ...warehouses[index], ...warehouse, updatedAt: Date.now() };
     await saveLocalData('warehouses', warehouses);
@@ -306,7 +306,7 @@ export const updateWarehouse = async (id: string, warehouse: any) => {
 
 export const deleteWarehouse = async (id: string) => {
   const warehouses = await getLocalData<any[]>('warehouses', []);
-  await saveLocalData('warehouses', warehouses.filter((p: any) => p.id !== id));
+  await saveLocalData('warehouses', warehouses.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Product Categories
@@ -340,7 +340,7 @@ export const addProductCategory = async (category: any) => {
 
 export const updateProductCategory = async (id: string, category: any) => {
   const categories = await getLocalData<any[]>('product_categories', []);
-  const index = categories.findIndex((p: any) => p.id === id);
+  const index = categories.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     categories[index] = { ...categories[index], ...category, updatedAt: Date.now() };
     await saveLocalData('product_categories', categories);
@@ -351,7 +351,7 @@ export const updateProductCategory = async (id: string, category: any) => {
 
 export const deleteProductCategory = async (id: string) => {
   const categories = await getLocalData<any[]>('product_categories', []);
-  await saveLocalData('product_categories', categories.filter((p: any) => p.id !== id));
+  await saveLocalData('product_categories', categories.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Products
@@ -422,7 +422,7 @@ export const addProduct = async (product: any) => {
 
 export const updateProduct = async (id: string, product: any) => {
   const products = await getLocalData<any[]>('products', []);
-  const index = products.findIndex((p: any) => p.id === id);
+  const index = products.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     const oldProduct = products[index];
     const newProduct = { ...oldProduct, ...product, updatedAt: Date.now() };
@@ -450,7 +450,7 @@ export const updateProduct = async (id: string, product: any) => {
 
 export const deleteProduct = async (id: string) => {
   const products = await getLocalData<any[]>('products', []);
-  await saveLocalData('products', products.filter((p: any) => p.id !== id));
+  await saveLocalData('products', products.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Transactions
@@ -536,7 +536,7 @@ export const deleteTransaction = async (id: string) => {
       }
     }
   }
-  await saveLocalData('transactions', transactions.filter((p: any) => p.id !== id));
+  await saveLocalData('transactions', transactions.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Invoices
@@ -572,7 +572,7 @@ export const updateInvoice = async (id: string | number, updated: any) => {
 
 export const deleteInvoice = async (id: string) => {
   const invoices = await getLocalData<any[]>('invoices', []);
-  const invoiceToDelete = invoices.find((p: any) => p.id === id || p.id === Number(id) || p.id === String(id));
+  const invoiceToDelete = invoices.find((p: any) => String(p.id) === String(id) || p.id === Number(id) || p.id === String(id));
   
   const toDeleteIds = new Set([id, Number(id), String(id)]);
   
@@ -608,7 +608,7 @@ export const addCheckbook = async (record: any) => {
 
 export const updateCheckbook = async (id: string, record: any) => {
   const data = await getLocalData<any[]>('checkbooks', []);
-  const index = data.findIndex((p: any) => p.id === id);
+  const index = data.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     data[index] = { ...data[index], ...record, updatedAt: Date.now() };
     await saveLocalData('checkbooks', data);
@@ -619,7 +619,7 @@ export const updateCheckbook = async (id: string, record: any) => {
 
 export const deleteCheckbook = async (id: string) => {
   const data = await getLocalData<any[]>('checkbooks', []);
-  await saveLocalData('checkbooks', data.filter((p: any) => p.id !== id));
+  await saveLocalData('checkbooks', data.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Issued Checks
@@ -639,7 +639,7 @@ export const addIssuedCheck = async (record: any) => {
 
 export const updateIssuedCheck = async (id: string, record: any) => {
   const data = await getLocalData<any[]>('issued_checks', []);
-  const index = data.findIndex((p: any) => p.id === id);
+  const index = data.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     data[index] = { ...data[index], ...record, updatedAt: Date.now() };
     await saveLocalData('issued_checks', data);
@@ -650,7 +650,7 @@ export const updateIssuedCheck = async (id: string, record: any) => {
 
 export const deleteIssuedCheck = async (id: string) => {
   const data = await getLocalData<any[]>('issued_checks', []);
-  await saveLocalData('issued_checks', data.filter((p: any) => p.id !== id));
+  await saveLocalData('issued_checks', data.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Received Checks
@@ -670,7 +670,7 @@ export const addReceivedCheck = async (record: any) => {
 
 export const updateReceivedCheck = async (id: string, record: any) => {
   const data = await getLocalData<any[]>('received_checks', []);
-  const index = data.findIndex((p: any) => p.id === id);
+  const index = data.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     data[index] = { ...data[index], ...record, updatedAt: Date.now() };
     await saveLocalData('received_checks', data);
@@ -681,7 +681,7 @@ export const updateReceivedCheck = async (id: string, record: any) => {
 
 export const deleteReceivedCheck = async (id: string) => {
   const data = await getLocalData<any[]>('received_checks', []);
-  await saveLocalData('received_checks', data.filter((p: any) => p.id !== id));
+  await saveLocalData('received_checks', data.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Warehouse Stocks Persistence & Recalculation

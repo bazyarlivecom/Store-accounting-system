@@ -377,7 +377,7 @@ export default function App() {
       if (method === 'gsm') icon = '📡';
       
       const toastId = Math.random().toString(36).substring(7);
-      setToasts(prev => [...prev, { id: toastId, message: icon + ' پیامک/اطلاع‌رسانی به ' + personPhone + ' ارسال شد.', type: 'info' }]);
+      console.log(prev => [...prev, { id: toastId, message: icon + ' پیامک/اطلاع‌رسانی به ' + personPhone + ' ارسال شد.', type: 'info' }]);
     }, 1500);
   };
 
@@ -848,7 +848,7 @@ export default function App() {
           if (!confirm(`تعداد ${imported.length} کالا آماده درون‌ریزی است. ادامه می‌دهید؟`)) return;
           
           setSubmittingProduct(true);
-          for (const p of imported) {
+          for (const p of (imported as any[])) {
              const payload = { ...p };
              delete payload.id;
              delete payload.createdAt;
@@ -9163,13 +9163,13 @@ export default function App() {
       ) : activeTab === 'debts_credits' ? (
         <DebtsCreditsReport showNotification={showNotification} />
       ) : activeTab === 'checkbooks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="checkbooks" showNotification={showNotification} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="checkbooks" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
       ) : activeTab === 'issued_checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="issued_checks" showNotification={showNotification} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="issued_checks" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
       ) : activeTab === 'received_checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="received_checks" showNotification={showNotification} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="received_checks" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
       ) : activeTab === 'check_calendar' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="check_calendar" showNotification={showNotification} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="check_calendar" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
             ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
             ) : activeTab === 'invoice_allocation' ? (

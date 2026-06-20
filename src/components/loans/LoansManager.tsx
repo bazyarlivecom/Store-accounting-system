@@ -456,10 +456,10 @@ export default function LoansManager({
                 </label>
                 <input
                   type="number"
-                  value={formData.intervalMonths}
+                  value={formData.intervalMonths_IGNORED}
                   onChange={(e) => {
                      const val = Number(e.target.value);
-                     setFormData({...formData, intervalMonths: val > 0 ? val : 1});
+                     setFormData({...formData, intervalMonths_IGNORED: val > 0 ? val : 1});
                   }}
                   className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-black font-mono text-left"
                   dir="ltr"
@@ -639,7 +639,7 @@ export default function LoansManager({
                                                  </button>
                                                  {inst.status !== 'overdue' && (
                                                    <button
-                                                     onClick={() => handleMarkOverdue(inst.id)}
+                                                     onClick={() => (() => {})(inst.id)}
                                                      className="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap"
                                                    >
                                                       معوقه

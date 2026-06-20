@@ -101,7 +101,7 @@ export type Product = {
   barcode?: string;
   name: string;
   price: number;
-  purchasePrice?: number;
+  purchasePrice?: number; priceHistory?: any[];
   stock?: number;
   minStock?: number;
   unit?: string;

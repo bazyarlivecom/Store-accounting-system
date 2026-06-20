@@ -12,11 +12,11 @@ import {
   getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, 
   getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, 
   getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, 
-  getAccounts, getPersons, addTransaction
+  getAccounts, getPersons, addTransaction, getTransactions, deleteTransaction
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification, activeTab = 'checkbooks' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' }) {
+export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar', onDataChange?: () => void }) {
   const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar'>(activeTab);
   
   useEffect(() => {
@@ -99,6 +99,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   }, []);
 
   const fetchData = async () => {
+    if (onDataChange) onDataChange();
     setCheckbooks(await getCheckbooks());
     setIssuedChecks(await getIssuedChecks());
     setReceivedChecks(await getReceivedChecks());
@@ -214,6 +215,18 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
     fetchData();
   };
 
+  
+  const rollbackCashedTransaction = async (checkNumber, personId, type) => {
+    try {
+      const allTx = await getTransactions();
+      const txType = type === 'issued' ? 'pay' : 'receive';
+      const toDelete = allTx.find(tx => tx.type === txType && tx.personId === personId && tx.receiptNumber === checkNumber && tx.description && tx.description.includes(checkNumber));
+      if (toDelete) {
+        await deleteTransaction(toDelete.id);
+      }
+    } catch (err) { console.error('Error rolling back check transaction', err); }
+  };
+
   const handleUpdateStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!updatingCheckId) return;
@@ -254,6 +267,9 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
           } else {
             notify(`چک شماره ${existing.checkNumber} پاس شد، اما به دلیل عدم یافتن بانک مرجع، سند کاهنده خودکار درج نگردید.`, 'warning');
           }
+        } else if (wasAlreadyCashed && statusVal !== 'cashed') {
+          await rollbackCashedTransaction(existing.checkNumber, existing.payeeId, 'issued');
+          notify(`وضعیت چک صادره به ${statusVal} تغییر یافت و سند پرداختی متصل به آن حذف گردید.`, 'info');
         } else {
           notify(`وضعیت چک صادره با موفقیت تغییر یافت.`, 'info');
         }
@@ -282,6 +298,9 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
             description: `وصول و نقد شدن چک دریافتی شماره ${existing.checkNumber} - بانک ${existing.bankName || ''}`
           });
           notify(`چک شماره ${existing.checkNumber} وصول گردید. مبلغ ${Number(existing.amount).toLocaleString()} تومان به حساب بانک واریز و خانه معین شخص بستانکار شد.`, 'success');
+        } else if (wasAlreadyCashed && statusVal !== 'cashed') {
+          await rollbackCashedTransaction(existing.checkNumber, existing.payerId, 'received');
+          notify(`وضعیت چک دریافتی به ${statusVal} تغییر یافت و سند دریافتی متصل به آن حذف گردید.`, 'info');
         } else {
           notify(`وضعیت چک دریافتی به روزرسانی شد.`, 'info');
         }
@@ -300,14 +319,22 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   };
 
   const handleDeleteIssuedCheck = async (id: string|number) => {
-    if (window.confirm('آیا از حذف این چک صادره اطمینان دارید؟')) {
+    if (window.confirm('آیا از حذف این چک صادره اطمینان دارید؟ در صورتی که چک پاس شده باشد، سند پرداختی متصل نیز حذف خواهد شد.')) {
+      const existing = issuedChecks.find(c => c.id === id);
+      if (existing && existing.status === 'cashed') {
+        await rollbackCashedTransaction(existing.checkNumber, existing.payeeId, 'issued');
+      }
       await deleteIssuedCheck(id.toString());
       fetchData();
     }
   };
 
   const handleDeleteReceivedCheck = async (id: string|number) => {
-    if (window.confirm('آیا از حذف این چک دریافتی اطمینان دارید؟')) {
+    if (window.confirm('آیا از حذف این چک دریافتی اطمینان دارید؟ در صورتی که چک وصول شده باشد، سند دریافتی متصل نیز حذف خواهد شد.')) {
+      const existing = receivedChecks.find(c => c.id === id);
+      if (existing && existing.status === 'cashed') {
+        await rollbackCashedTransaction(existing.checkNumber, existing.payerId, 'received');
+      }
       await deleteReceivedCheck(id.toString());
       fetchData();
     }
