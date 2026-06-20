@@ -14,6 +14,8 @@ import { useAuth } from './context/AuthContext';
 import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, updateInvoice, deleteInvoice, getTransactions, addTransaction, updateTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
 import DatabaseDashboard from './components/admin/DatabaseDashboard';
 import SystemChecklist from './components/admin/SystemChecklist';
+import SystemLogs from './components/admin/SystemLogs';
+
 import ProductCardModal from './components/modals/ProductCardModal';
 import QuickPriceInquiry from './components/inventory/QuickPriceInquiry';
 import CheckManagement from './components/financial/CheckManagement';
@@ -83,7 +85,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans' | 'system_logs'>('financial_report');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -255,6 +257,7 @@ export default function App() {
       items: [
         { id: 'users_manager', label: 'کاربران سیستم', roles: ['admin'] },
         { id: 'settings', label: 'تنظیمات پایه‌ای', roles: ['admin'] },
+        { id: 'system_logs', label: 'لاگ سیستم', roles: ['admin'] },
         { id: 'database', label: 'پایگاه داده', roles: ['admin'] },
         { id: 'update', label: 'به‌روزرسانی نرم‌افزار', roles: ['admin'] },
         { id: 'checklist', label: 'چک‌لیست راه‌اندازی', roles: ['admin'] },
@@ -9643,6 +9646,8 @@ export default function App() {
         <InventoryReport showNotification={showNotification} />
       ) : activeTab === 'analytical_dashboard' ? (
         <AnalyticalDashboard showNotification={showNotification} />
+      ) : activeTab === 'system_logs' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><SystemLogs /></motion.div>
       ) : activeTab === 'database' ? (
         <DatabaseDashboard showNotification={showNotification} />
       ) : activeTab === 'update' ? (

@@ -228,3 +228,13 @@ export interface WarehouseStock {
 export type Loan = { id: string | number; personId: string | number; amount: number; startDate: string; totalInstallments: number; installmentAmount: number; description?: string; status: 'active' | 'completed' | 'overdue'; type: 'given' | 'received'; };
 
 export type Installment = { id: string | number; loanId: string | number; dueDate: string; amount: number; status: 'pending' | 'paid' | 'overdue'; paidDate?: string; paidAmount?: number; description?: string; };
+
+export type SystemLog = {
+  id: string | number;
+  action: string;
+  userId: string | number;
+  details: string;
+  entityType: string;
+  entityId: string | number;
+  timestamp: number;
+};

@@ -66,6 +66,11 @@ export const addUser = async (user: any) => {
   const newUser = { ...user, id: generateId(), createdAt: now, updatedAt: now };
   users.push(newUser);
   await saveLocalData('users', users);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'User'.toUpperCase(), 'ثبت رکورد جدید در users', 'User', newUser.id);
+  }
+
   return newUser;
 };
 
@@ -75,6 +80,11 @@ export const updateUser = async (id: string, user: any) => {
   if (index !== -1) {
     users[index] = { ...users[index], ...user, updatedAt: Date.now() };
     await saveLocalData('users', users);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'User'.toUpperCase(), 'ویرایش رکورد در users', 'User', users[index].id);
+  }
+
     return users[index];
   }
   return null;
@@ -97,6 +107,11 @@ export const addPersonGroup = async (group: any) => {
   const newGroup = { ...group, id: generateId(), createdAt: now, updatedAt: now };
   groups.push(newGroup);
   await saveLocalData('person_groups', groups);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'PersonGroup'.toUpperCase(), 'ثبت رکورد جدید در person_groups', 'PersonGroup', newGroup.id);
+  }
+
   return newGroup;
 };
 
@@ -106,6 +121,11 @@ export const updatePersonGroup = async (id: string, group: any) => {
   if (index !== -1) {
     groups[index] = { ...groups[index], ...group, updatedAt: Date.now() };
     await saveLocalData('person_groups', groups);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'PersonGroup'.toUpperCase(), 'ویرایش رکورد در person_groups', 'PersonGroup', groups[index].id);
+  }
+
     return groups[index];
   }
   return null;
@@ -138,6 +158,11 @@ export const addPersonRole = async (role: any) => {
   const newRole = { ...role, id: generateId(), createdAt: now, updatedAt: now };
   roles.push(newRole);
   await saveLocalData('person_roles', roles);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'PersonRole'.toUpperCase(), 'ثبت رکورد جدید در person_roles', 'PersonRole', newRole.id);
+  }
+
   return newRole;
 };
 
@@ -147,6 +172,11 @@ export const updatePersonRole = async (id: string, role: any) => {
   if (index !== -1) {
     roles[index] = { ...roles[index], ...role, updatedAt: Date.now() };
     await saveLocalData('person_roles', roles);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'PersonRole'.toUpperCase(), 'ویرایش رکورد در person_roles', 'PersonRole', roles[index].id);
+  }
+
     return roles[index];
   }
   return null;
@@ -197,6 +227,11 @@ export const addPerson = async (person: any) => {
   const newPerson = { ...person, personCode: finalPersonCode, id: generateId(), createdAt: now, updatedAt: now };
   persons.push(newPerson);
   await saveLocalData('persons', persons);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Person'.toUpperCase(), 'ثبت رکورد جدید در persons', 'Person', newPerson.id);
+  }
+
   return newPerson;
 };
 
@@ -206,6 +241,11 @@ export const updatePerson = async (id: string, person: any) => {
   if (index !== -1) {
     persons[index] = { ...persons[index], ...person, updatedAt: Date.now() };
     await saveLocalData('persons', persons);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Person'.toUpperCase(), 'ویرایش رکورد در persons', 'Person', persons[index].id);
+  }
+
     return persons[index];
   }
   return null;
@@ -228,6 +268,11 @@ export const addAccount = async (account: any) => {
   const newAccount = { ...account, id: generateId(), createdAt: now, updatedAt: now };
   accounts.push(newAccount);
   await saveLocalData('accounts', accounts);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Account'.toUpperCase(), 'ثبت رکورد جدید در accounts', 'Account', newAccount.id);
+  }
+
   return newAccount;
 };
 
@@ -237,6 +282,11 @@ export const updateAccount = async (id: string, account: any) => {
   if (index !== -1) {
     accounts[index] = { ...accounts[index], ...account, updatedAt: Date.now() };
     await saveLocalData('accounts', accounts);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Account'.toUpperCase(), 'ویرایش رکورد در accounts', 'Account', accounts[index].id);
+  }
+
     return accounts[index];
   }
   return null;
@@ -259,6 +309,11 @@ export const addCashbox = async (cashbox: any) => {
   const newCashbox = { ...cashbox, id: generateId(), createdAt: now, updatedAt: now };
   cashboxes.push(newCashbox);
   await saveLocalData('cashboxes', cashboxes);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Cashbox'.toUpperCase(), 'ثبت رکورد جدید در cashboxes', 'Cashbox', newCashbox.id);
+  }
+
   return newCashbox;
 };
 
@@ -268,6 +323,11 @@ export const updateCashbox = async (id: string, cashbox: any) => {
   if (index !== -1) {
     cashboxes[index] = { ...cashboxes[index], ...cashbox, updatedAt: Date.now() };
     await saveLocalData('cashboxes', cashboxes);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Cashbox'.toUpperCase(), 'ویرایش رکورد در cashboxes', 'Cashbox', cashboxes[index].id);
+  }
+
     return cashboxes[index];
   }
   return null;
@@ -290,6 +350,11 @@ export const addWarehouse = async (warehouse: any) => {
   const newWarehouse = { ...warehouse, id: generateId(), createdAt: now, updatedAt: now };
   warehouses.push(newWarehouse);
   await saveLocalData('warehouses', warehouses);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Warehouse'.toUpperCase(), 'ثبت رکورد جدید در warehouses', 'Warehouse', newWarehouse.id);
+  }
+
   return newWarehouse;
 };
 
@@ -299,6 +364,11 @@ export const updateWarehouse = async (id: string, warehouse: any) => {
   if (index !== -1) {
     warehouses[index] = { ...warehouses[index], ...warehouse, updatedAt: Date.now() };
     await saveLocalData('warehouses', warehouses);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Warehouse'.toUpperCase(), 'ویرایش رکورد در warehouses', 'Warehouse', warehouses[index].id);
+  }
+
     return warehouses[index];
   }
   return null;
@@ -335,6 +405,11 @@ export const addProductCategory = async (category: any) => {
   const newCategory = { ...category, code: catCode, id: generateId(), createdAt: now, updatedAt: now };
   categories.push(newCategory);
   await saveLocalData('product_categories', categories);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'ProductCategory'.toUpperCase(), 'ثبت رکورد جدید در product_categories', 'ProductCategory', newCategory.id);
+  }
+
   return newCategory;
 };
 
@@ -344,6 +419,11 @@ export const updateProductCategory = async (id: string, category: any) => {
   if (index !== -1) {
     categories[index] = { ...categories[index], ...category, updatedAt: Date.now() };
     await saveLocalData('product_categories', categories);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'ProductCategory'.toUpperCase(), 'ویرایش رکورد در product_categories', 'ProductCategory', categories[index].id);
+  }
+
     return categories[index];
   }
   return null;
@@ -417,6 +497,11 @@ export const addProduct = async (product: any) => {
   }
   products.push(newProduct);
   await saveLocalData('products', products);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Product'.toUpperCase(), 'ثبت رکورد جدید در products', 'Product', newProduct.id);
+  }
+
   return newProduct;
 };
 
@@ -443,6 +528,11 @@ export const updateProduct = async (id: string, product: any) => {
 
     products[index] = newProduct;
     await saveLocalData('products', products);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Product'.toUpperCase(), 'ویرایش رکورد در products', 'Product', products[index].id);
+  }
+
     return products[index];
   }
   return null;
@@ -476,6 +566,11 @@ export const addTransaction = async (transaction: any) => {
           accounts[index].balance -= amount;
         }
         await saveLocalData('accounts', accounts);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Transaction'.toUpperCase(), 'ثبت رکورد جدید در accounts', 'Transaction', newTransaction.id);
+  }
+
       }
     } else if (transaction.resourceType === 'cashbox') {
       const cashboxes = await getLocalData<any[]>('cashboxes', []);
@@ -502,6 +597,11 @@ export const updateTransaction = async (id: string | number, updated: any) => {
   if (idx !== -1) {
     transactions[idx] = { ...transactions[idx], ...updated, updatedAt: Date.now() };
     await saveLocalData('transactions', transactions);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Transaction'.toUpperCase(), 'ویرایش رکورد در transactions', 'Transaction', transactions[idx].id);
+  }
+
     return transactions[idx];
   }
   throw new Error('Transaction not found');
@@ -551,6 +651,11 @@ export const addInvoice = async (invoice: any) => {
   const newInvoice = { ...invoice, id: generateId(), createdAt: now, updatedAt: now };
   invoices.push(newInvoice);
   await saveLocalData('invoices', invoices);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Invoice'.toUpperCase(), 'ثبت رکورد جدید در invoices', 'Invoice', newInvoice.id);
+  }
+
 
   // Recalculate warehouse stocks automatically
   await recalculateAllWarehouseStocks();
@@ -564,6 +669,11 @@ export const updateInvoice = async (id: string | number, updated: any) => {
   if (idx !== -1) {
     invoices[idx] = { ...invoices[idx], ...updated, updatedAt: Date.now() };
     await saveLocalData('invoices', invoices);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Invoice'.toUpperCase(), 'ویرایش رکورد در invoices', 'Invoice', invoices[idx].id);
+  }
+
     await recalculateAllWarehouseStocks();
     return invoices[idx];
   }
@@ -603,6 +713,11 @@ export const addCheckbook = async (record: any) => {
   const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
   data.push(newItem);
   await saveLocalData('checkbooks', data);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'Checkbook'.toUpperCase(), 'ثبت رکورد جدید در checkbooks', 'Checkbook', newItem.id);
+  }
+
   return newItem;
 };
 
@@ -612,6 +727,11 @@ export const updateCheckbook = async (id: string, record: any) => {
   if (index !== -1) {
     data[index] = { ...data[index], ...record, updatedAt: Date.now() };
     await saveLocalData('checkbooks', data);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'Checkbook'.toUpperCase(), 'ویرایش رکورد در checkbooks', 'Checkbook', data[index].id);
+  }
+
     return data[index];
   }
   return null;
@@ -634,6 +754,11 @@ export const addIssuedCheck = async (record: any) => {
   const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
   data.push(newItem);
   await saveLocalData('issued_checks', data);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'IssuedCheck'.toUpperCase(), 'ثبت رکورد جدید در issued_checks', 'IssuedCheck', newItem.id);
+  }
+
   return newItem;
 };
 
@@ -643,6 +768,11 @@ export const updateIssuedCheck = async (id: string, record: any) => {
   if (index !== -1) {
     data[index] = { ...data[index], ...record, updatedAt: Date.now() };
     await saveLocalData('issued_checks', data);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'IssuedCheck'.toUpperCase(), 'ویرایش رکورد در issued_checks', 'IssuedCheck', data[index].id);
+  }
+
     return data[index];
   }
   return null;
@@ -665,6 +795,11 @@ export const addReceivedCheck = async (record: any) => {
   const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
   data.push(newItem);
   await saveLocalData('received_checks', data);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'ReceivedCheck'.toUpperCase(), 'ثبت رکورد جدید در received_checks', 'ReceivedCheck', newItem.id);
+  }
+
   return newItem;
 };
 
@@ -674,6 +809,11 @@ export const updateReceivedCheck = async (id: string, record: any) => {
   if (index !== -1) {
     data[index] = { ...data[index], ...record, updatedAt: Date.now() };
     await saveLocalData('received_checks', data);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'ReceivedCheck'.toUpperCase(), 'ویرایش رکورد در received_checks', 'ReceivedCheck', data[index].id);
+  }
+
     return data[index];
   }
   return null;
@@ -695,6 +835,11 @@ export const addRefundRequest = async (request: any) => {
   const newRequest = { ...request, id: generateId(), createdAt: now, updatedAt: now };
   requests.push(newRequest);
   await saveLocalData('refundRequests', requests);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_' + 'RefundRequest'.toUpperCase(), 'ثبت رکورد جدید در refundRequests', 'RefundRequest', newRequest.id);
+  }
+
   return newRequest;
 };
 
@@ -704,6 +849,11 @@ export const updateRefundRequest = async (id: string, updated: any) => {
   if (index !== -1) {
     requests[index] = { ...requests[index], ...updated, updatedAt: Date.now() };
     await saveLocalData('refundRequests', requests);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('UPDATE_' + 'RefundRequest'.toUpperCase(), 'ویرایش رکورد در refundRequests', 'RefundRequest', requests[index].id);
+  }
+
     return requests[index];
   }
   return null;
@@ -871,3 +1021,38 @@ export const getLoans = async () => getLocalData<any[]>('loans', []);
 export const saveLoans = async (roles: any[]) => saveLocalData('loans', roles);
 export const getInstallments = async () => getLocalData<any[]>('installments', []);
 export const saveInstallments = async (groups: any[]) => saveLocalData('installments', groups);
+
+export const getSystemLogs = async () => {
+  const logs = await getLocalData('system_logs', []);
+  return logs.sort((a, b) => b.timestamp - a.timestamp);
+};
+
+export const addSystemLog = async (action, details, entityType, entityId) => {
+  const logs = await getLocalData('system_logs', []);
+  
+  // Try to get current user from localStorage if we're in browser
+  let userId = 'system';
+  if (typeof window !== 'undefined') {
+     try {
+       const sessionStr = window.localStorage.getItem('auth_session');
+       if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          if (session.userId) userId = session.userId;
+       }
+     } catch(e) {}
+  }
+  
+  const newLog = {
+     id: generateId(),
+     action,
+     userId,
+     details: typeof details === 'string' ? details : JSON.stringify(details),
+     entityType,
+     entityId,
+     timestamp: Date.now()
+  };
+  
+  logs.push(newLog);
+  await saveLocalData('system_logs', logs);
+  return newLog;
+};

@@ -229,3 +229,13 @@ export type Loan = { id: string | number; personId: string | number; amount: num
 
 export type Installment = { id: string | number; loanId: string | number; dueDate: string; amount: number; status: 'pending' | 'paid' | 'overdue'; paidDate?: string; paidAmount?: number; description?: string; };
 
+
+export type SystemLog = {
+  id: string | number;
+  action: string;
+  userId: string | number;
+  details: string;
+  entityType: string;
+  entityId: string | number;
+  timestamp: number;
+};
