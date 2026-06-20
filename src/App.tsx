@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Barcode from 'react-barcode';
 import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Line, ComposedChart, Cell } from 'recharts';
 import { addCommas, removeCommas, numberToWords, getBaseValueInToman, getDefaultExchangeRate, showInvoiceCurrency, numToPersianWords } from './utils/format';
@@ -812,32 +813,36 @@ export default function App() {
   };
 
   const handleExportProductsData = () => {
-    const dataStr = JSON.stringify(products, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `products_export_${new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR').replace(/\//g, '-')}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    customAlert('خروجی کالاها با موفقیت دریافت شد.');
+    const worksheet = XLSX.utils.json_to_sheet(products.map(p => {
+       const mapped = { ...p };
+       delete mapped.priceHistory;
+       return mapped;
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+    const filename = `products_export_${new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR').replace(/\//g, '-')}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+    customAlert('خروجی اکسل کالاها با موفقیت دریافت شد.');
   };
 
   const handleImportProductsData = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.xlsx, .xls';
     input.onchange = (e: any) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async (event: any) => {
         try {
-          const imported = JSON.parse(event.target.result);
-          if (!Array.isArray(imported)) {
-            customAlert('فایل نامعتبر است. فرمت صحیح ذخیره شده کالاها را انتخاب کنید.');
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const imported = XLSX.utils.sheet_to_json(worksheet);
+          
+          if (!Array.isArray(imported) || imported.length === 0) {
+            customAlert('فایل نامعتبر یا خالی است.');
             return;
           }
           if (!confirm(`تعداد ${imported.length} کالا آماده درون‌ریزی است. ادامه می‌دهید؟`)) return;
@@ -855,11 +860,11 @@ export default function App() {
           customAlert('کالاها با موفقیت درون‌ریزی شدند.');
         } catch (err) {
           console.error(err);
-          customAlert('خطا در خواندن فایل!');
+          customAlert('خطا در خواندن فایل اکسل!');
           setSubmittingProduct(false);
         }
       };
-      reader.readAsText(file);
+      reader.readAsArrayBuffer(file);
     };
     input.click();
   };
@@ -6700,7 +6705,7 @@ export default function App() {
                      <button
                        onClick={handleExportProductsData}
                        className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
-                       title="خروجی پشتیبان کالاها (JSON)"
+                       title="خروجی کالاها به فایل اکسل"
                      >
                         <ArrowDownToLine className="w-4 h-4" />
                         صدور
@@ -6708,7 +6713,7 @@ export default function App() {
                      <button
                        onClick={handleImportProductsData}
                        className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
-                       title="ورود اطلاعات کالاها از فایل JSON"
+                       title="ورود اطلاعات کالاها از فایل اکسل"
                      >
                         <ArrowUpFromLine className="w-4 h-4" />
                         ورود
@@ -9399,6 +9404,44 @@ export default function App() {
                   <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
                     <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">تنظیمات چاپ فاکتور و رسید</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="w-full text-right md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">سایز کاغذ چاپ (A4, A5, فیش پرینتر)</label>
+                          <select
+                            value={settingsForm.print_paper_size || 'A4'}
+                            onChange={e => setSettingsForm({...settingsForm, print_paper_size: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                          >
+                            <option value="A4">A4 (استاندارد)</option>
+                            <option value="A5">A5 (نصف صفحه)</option>
+                            <option value="receipt80">فیش پرینتر عرض 80mm</option>
+                            <option value="receipt58">فیش پرینتر عرض 58mm</option>
+                          </select>
+                       </div>
+                       
+                       <div className="w-full text-right">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">نمایش لوگو در فاکتور</label>
+                          <select
+                            value={settingsForm.print_show_logo !== false ? 'true' : 'false'}
+                            onChange={e => setSettingsForm({...settingsForm, print_show_logo: e.target.value === 'true'})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                          >
+                            <option value="true">بله، نمایش داده شود</option>
+                            <option value="false">خیر، مخفی شود</option>
+                          </select>
+                       </div>
+
+                       <div className="w-full text-right">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">نمایش خلاصه مالی (دریافتی/باقیمانده)</label>
+                          <select
+                            value={settingsForm.print_show_financial !== false ? 'true' : 'false'}
+                            onChange={e => setSettingsForm({...settingsForm, print_show_financial: e.target.value === 'true'})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                          >
+                            <option value="true">بله، نمایش داده شود</option>
+                            <option value="false">خیر، مخفی شود</option>
+                          </select>
+                       </div>
+
                        <div className="w-full text-right md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-2">یادداشت ثابت انتهای فاکتورها (فوتر)</label>
                           <textarea
@@ -12336,7 +12379,7 @@ export default function App() {
               {/* Printable Area */}
               <div className="p-6 md:p-8 overflow-y-auto flex-1 text-gray-800 text-sm print:overflow-visible print:px-8 print:py-12 bg-gray-50/50 print:bg-white flex justify-center">
                  {/* Print Layout */}
-                <div className="bg-white print:p-0 rounded-2xl print:rounded-none overflow-hidden text-slate-800 w-full max-w-[210mm] min-h-[297mm] shadow-sm border border-slate-200 print:shadow-none print:border-none p-8 md:p-12 relative flex flex-col font-sans">
+                <div className={"bg-white print:p-0 rounded-2xl print:rounded-none overflow-hidden text-slate-800 w-full shadow-sm border border-slate-200 print:shadow-none print:border-none p-8 md:p-12 relative flex flex-col font-sans " + (storeSettings.print_paper_size === 'A5' ? 'max-w-[148mm] min-h-[210mm]' : storeSettings.print_paper_size === 'receipt80' ? 'max-w-[80mm] min-h-[100mm] print:text-xs' : storeSettings.print_paper_size === 'receipt58' ? 'max-w-[58mm] min-h-[100mm] print:text-[10px]' : 'max-w-[210mm] min-h-[297mm]')}>
                   
                   {/* Elegant Header - Classic Invoice */}
                   <div className="flex flex-col md:flex-row justify-between items-start pb-8 mb-8 border-b-2 border-slate-800">
@@ -12358,6 +12401,9 @@ export default function App() {
                       </div>
                     </div>
                     <div className="text-right md:text-left flex flex-col items-end mt-6 md:mt-0 text-slate-800">
+                       {storeSettings.print_show_logo !== false && storeSettings.logoUrl && (
+                           <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 object-contain mb-3 grayscale print:grayscale-0" />
+                       )}
                        <h2 className="text-2xl font-black mb-3">{storeSettings.storeName || 'کسب و کار سیستم'}</h2>
                        {storeSettings.phone && <div className="text-sm font-bold flex items-center justify-end gap-1.5"><span dir="ltr">{toPersianDigits(storeSettings.phone)}</span> <span className="text-slate-400 text-xs">تلفن</span></div>}
                        {storeSettings.address && <div className="text-xs font-bold leading-relaxed max-w-[280px] text-right mt-1.5">{storeSettings.address}</div>}
@@ -12517,7 +12563,7 @@ export default function App() {
                   )}
 
                   {/* Payment Allocation History */}
-                  {!false && !viewingInvoice.type?.includes('warehouse') && (() => {
+                  {storeSettings.print_show_financial !== false && !viewingInvoice.type?.includes('warehouse') && (() => {
                     const allocatedTxs = transactions.filter(t => t.linkedInvoices && t.linkedInvoices[viewingInvoice.id] > 0);
                     if (allocatedTxs.length > 0) {
                       return (
@@ -12848,6 +12894,35 @@ export default function App() {
                   </div>
 
                   <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                    {(() => {
+                        const personActiveLoans = loans.filter((l: any) => l.personId?.toString() === selectedPerson.id.toString() && l.status !== 'completed');
+                        if (personActiveLoans.length === 0) return null;
+                        const totalLoanAmount = personActiveLoans.reduce((sum: number, loan: any) => sum + (loan.amount || loan.totalAmount || 0), 0);
+                        const relatedInstallments = installments.filter((inst: any) => 
+                            (inst.status === 'pending' || inst.status === 'overdue') && 
+                            personActiveLoans.some((l: any) => l.id.toString() === inst.loanId.toString())
+                        );
+                        return (
+                            <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-amber-100/80 text-amber-600 rounded-xl"><Wallet className="w-5 h-5" /></div>
+                                    <div>
+                                       <span className="text-xs font-bold text-amber-700 block mb-0.5">وضعیت وام‌های فعال</span>
+                                       <span className="text-sm font-black text-amber-900 block">
+                                          مبلغ کل: {toPersianDigits(formatNumber(totalLoanAmount))} <span className="text-[10px] font-medium">{storeSettings.currency}</span>
+                                       </span>
+                                    </div>
+                                </div>
+                                <div className="text-right sm:text-left">
+                                   <span className="text-xs font-bold text-amber-700/80 block mb-0.5">اقساط باقیمانده</span>
+                                   <span className="text-lg font-black text-amber-900 block tracking-tight">
+                                      {toPersianDigits(relatedInstallments.length)} <span className="text-[10px] font-medium text-amber-700">قسط پرداخت نشده</span>
+                                   </span>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                    
                     {/* Status Card */}
                     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between relative overflow-hidden">
                       <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${isClear ? 'bg-slate-500' : (isOwedToUs ? 'bg-rose-500' : 'bg-emerald-500')}`}></div>
@@ -13205,7 +13280,7 @@ export default function App() {
                   {/* Header info */}
                   {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
 
-                  <div className="bg-white print:p-0 p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800">
+                  <div className={"bg-white print:p-0 p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " + (storeSettings.print_paper_size === 'A5' ? 'max-w-[148mm] min-h-[210mm] mx-auto' : storeSettings.print_paper_size === 'receipt80' ? 'max-w-[80mm] min-h-[100mm] mx-auto print:text-xs' : storeSettings.print_paper_size === 'receipt58' ? 'max-w-[58mm] min-h-[100mm] mx-auto print:text-[10px]' : '')}>
                       {/* Top Accent Line */}
                       <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 print:bg-gray-900"></div>
                       
@@ -13222,6 +13297,9 @@ export default function App() {
                           </div>
                         </div>
                         <div className="text-right md:text-left flex flex-col md:items-end mt-6 md:mt-0">
+                           {storeSettings.print_show_logo !== false && storeSettings.logoUrl && (
+                               <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 object-contain mb-3 grayscale print:grayscale-0" />
+                           )}
                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">{storeSettings.storeName || 'نام مجموعه تجاری'}</h2>
                            {storeSettings.phone && <p className="text-sm font-bold text-gray-500 mt-2">تلفن: <span dir="ltr">{storeSettings.phone}</span></p>}
                            {storeSettings.address && <p className="text-xs font-bold text-gray-400 mt-1 max-w-[250px] truncate">{storeSettings.address}</p>}
@@ -13367,7 +13445,7 @@ export default function App() {
                       )}
 
                       {/* Payment Allocation History (for viewing only) */}
-                      {!true && !previewInvoiceData.type?.includes('warehouse') && (() => {
+                      {storeSettings.print_show_financial !== false && !previewInvoiceData.type?.includes('warehouse') && (() => {
                         const allocatedTxs = transactions.filter(t => t.linkedInvoices && t.linkedInvoices[previewInvoiceData.id] > 0);
                         if (allocatedTxs.length > 0) {
                           return (
