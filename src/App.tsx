@@ -91,15 +91,21 @@ export default function App() {
   });
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>(() => {
     try { const saved = localStorage.getItem('app_expandedGroups'); return saved ? JSON.parse(saved) : {
-      sales_purchases: true,
-      treasury_finance: false,
+      sales_operations: true,
+      purchase_operations: false,
+      receipts_payments: false,
+      checks_management: false,
+      loans_management: false,
       base_info: false,
       reports: true,
       settings: false
     }; } catch {
       return {
-        sales_purchases: true,
-        treasury_finance: false,
+        sales_operations: true,
+        purchase_operations: false,
+        receipts_payments: false,
+        checks_management: false,
+        loans_management: false,
         base_info: false,
         reports: true,
         settings: false
@@ -191,20 +197,34 @@ export default function App() {
       ]
     },
     {
-      id: 'treasury_finance',
-      label: 'خزانه‌داری و مالی',
-      icon: <Wallet className="w-5 h-5" />,
+      id: 'receipts_payments',
+      label: 'دریافت و پرداخت',
+      icon: <ArrowRightLeft className="w-5 h-5" />,
       items: [
         { id: 'create_receive_receipt', label: 'ثبت رسید دریافت', roles: ['admin', 'accountant', 'cashier'] },
         { id: 'list_receive_receipt', label: 'لیست رسید دریافت', roles: ['admin', 'accountant'] },
-        { id: 'received_checks', label: 'چک‌های دریافتی', roles: ['admin', 'accountant'] },
         { id: 'create_pay_receipt', label: 'ثبت رسید پرداخت', roles: ['admin', 'accountant'] },
         { id: 'list_pay_receipt', label: 'لیست رسید پرداخت', roles: ['admin', 'accountant'] },
         { id: 'quick_refund', label: 'استرداد سریع متفرقه', roles: ['admin', 'accountant', 'cashier'] },
+        { id: 'invoice_allocation', label: 'تخصیص اسناد به فاکتور', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'checks_management',
+      label: 'چک و اسناد',
+      icon: <BookOpen className="w-5 h-5" />,
+      items: [
+        { id: 'received_checks', label: 'چک‌های دریافتی', roles: ['admin', 'accountant'] },
         { id: 'issued_checks', label: 'چک‌های پرداختی', roles: ['admin', 'accountant'] },
         { id: 'check_calendar', label: 'تقویم چک‌ها', roles: ['admin', 'accountant', 'manager'] },
-        { id: 'invoice_allocation', label: 'تخصیص اسناد به فاکتور', roles: ['admin', 'accountant'] },
-        { id: 'loans', label: 'وام و اقساط', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
+      id: 'loans_management',
+      label: 'وام و تسهیلات',
+      icon: <Percent className="w-5 h-5" />,
+      items: [
+        { id: 'loans', label: 'مدیریت وام و اقساط', roles: ['admin', 'accountant'] },
       ]
     },
     {
