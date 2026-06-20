@@ -1412,7 +1412,8 @@ export default function App() {
              receiveDate: previewReceiptData.jalaliDate,
              dueDate: previewReceiptData.checkDueDate,
              status: 'received',
-             description: previewReceiptData.description || `چک دریافتی شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`
+             description: previewReceiptData.description || `چک دریافتی شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`,
+             receiptNumber: previewReceiptData.receiptNumber
            });
            createdReceiptObj.id = savedCheck.id;
          } else {
@@ -1424,7 +1425,8 @@ export default function App() {
              issueDate: previewReceiptData.jalaliDate,
              dueDate: previewReceiptData.checkDueDate,
              status: 'issued',
-             description: previewReceiptData.description || `چک صادره شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`
+             description: previewReceiptData.description || `چک صادره شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`,
+             receiptNumber: previewReceiptData.receiptNumber
            });
          }
          const savedTx = await addTransaction(txPayload as any);

@@ -584,7 +584,10 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                     const payee = persons.find(p => p.id?.toString() === c.payeeId?.toString());
                     return (
                       <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3.5 font-mono font-black text-gray-900">{c.checkNumber}</td>
+                        <td className="px-4 py-3.5">
+                          <div className="font-mono font-black text-gray-900">{c.checkNumber}</div>
+                          <div className="text-[10px] text-gray-500 font-bold mt-1 max-w-[120px] truncate">{c.receiptNumber ? `رسید: ${c.receiptNumber}` : `بدون شناسه رسید`}</div>
+                        </td>
                         <td className="px-4 py-3.5 text-xs text-indigo-950 font-bold max-w-[150px] truncate">{bankName}</td>
                         <td className="px-4 py-3.5 font-bold text-gray-800">{payee?.name || c.payeeId || 'ناشناس'}</td>
                         <td className="px-4 py-3.5 font-sans font-black text-rose-600">{Number(c.amount).toLocaleString()}</td>
@@ -764,7 +767,10 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                     const payer = persons.find(p => p.id?.toString() === c.payerId?.toString());
                     return (
                       <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3.5 font-mono font-black text-gray-900">{c.checkNumber}</td>
+                        <td className="px-4 py-3.5">
+                          <div className="font-mono font-black text-gray-900">{c.checkNumber}</div>
+                          <div className="text-[10px] text-gray-500 font-bold mt-1 max-w-[120px] truncate">{c.receiptNumber ? `رسید: ${c.receiptNumber}` : `بدون شناسه رسید`}</div>
+                        </td>
                         <td className="px-4 py-3.5 text-xs text-indigo-950 font-bold max-w-[150px] truncate">
                           {c.bankName} {c.branchName ? `(شعبه: ${c.branchName})` : ''}
                         </td>

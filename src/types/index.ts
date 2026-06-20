@@ -66,6 +66,7 @@ export type IssuedCheck = {
   dueDate: string;
   payeeId: string | number;
   status: 'blank' | 'issued' | 'cashed' | 'bounced' | 'cancelled';
+  receiptNumber?: string;
   description?: string;
   imageUrl?: string;
   isActive?: boolean;
@@ -84,6 +85,7 @@ export type ReceivedCheck = {
   dueDate: string;
   payerId: string | number;
   status: 'received' | 'deposited' | 'cashed' | 'bounced' | 'returned';
+  receiptNumber?: string;
   description?: string;
 };
 
