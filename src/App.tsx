@@ -5511,7 +5511,7 @@ export default function App() {
                            )}
                          </div>
                        </>
-                      ) : (
+                      ) : isReceive ? (
                         <>
                           <div>
                            <label className="block text-sm font-bold text-slate-700 mb-1">شماره چک *</label>
@@ -5539,24 +5539,28 @@ export default function App() {
                               />
                             </div>
                          </div>
-                         {isReceive ? (
-                            <div>
+                         <div>
                              <label className="block text-sm font-bold text-slate-700 mb-1">نام بانک صادرکننده چک *</label>
                              <input 
                                type="text" 
                                required
                                value={receiptCheckBankName} 
                                onChange={(e) => setReceiptCheckBankName(e.target.value)} 
-                               placeholder="예: ملت، ملی ..."
+                               placeholder="مثال: ملت، ملی ..."
                                className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
                              />
-                           </div>
-                         ) : (
-                            <div>
+                         </div>
+                        </>
+                      ) : (
+                        <>
+                           <div>
                              <label className="block text-sm font-bold text-slate-700 mb-1">انتخاب دسته چک (بانک شما) *</label>
                              <select 
                                value={receiptCheckbookId} 
-                               onChange={(e) => setReceiptCheckbookId(e.target.value)} 
+                               onChange={(e) => {
+                                 setReceiptCheckbookId(e.target.value);
+                                 setReceiptCheckNumber('');
+                               }} 
                                className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
                                required
                              >
@@ -5567,7 +5571,57 @@ export default function App() {
                                })}
                              </select>
                            </div>
-                         )}
+                           <div>
+                             <label className="block text-sm font-bold text-slate-700 mb-1">شماره چک *</label>
+                             {receiptCheckbookId ? (
+                               <select
+                                 value={receiptCheckNumber}
+                                 onChange={(e) => setReceiptCheckNumber(e.target.value)}
+                                 className={`w-full p-2.5 border border-slate-200 bg-white rounded-xl focus:ring-2 ${themeRing} font-bold text-sm text-slate-800 outline-none transition-shadow`}
+                                 required
+                               >
+                                 <option value="">-- انتخاب از برگ‌های سفید --</option>
+                                 {(() => {
+                                    const cb = checkbooks.find(c => String(c.id) === String(receiptCheckbookId));
+                                    if (!cb) return null;
+                                    const start = Number(cb.startNumber);
+                                    const end = Number(cb.endNumber);
+                                    if (isNaN(start) || isNaN(end)) return null;
+                                    const allChecks = [];
+                                    const len = cb.startNumber.length;
+                                    for(let i=start; i<=end; i++){ allChecks.push(String(i).padStart(len, '0')); }
+                                    const used = issuedChecks
+                                      .filter((ic: any) => String(ic.checkbookId) === String(receiptCheckbookId) && ic.status !== 'cancelled')
+                                      .map((ic: any) => String(ic.checkNumber).padStart(len, '0'));
+                                    const available = allChecks.filter(c => !used.includes(c));
+                                    return available.map(c => <option key={c} value={c}>{c}</option>);
+                                 })()}
+                               </select>
+                             ) : (
+                               <input 
+                                 type="text" 
+                                 placeholder="ابتدا دسته چک را انتخاب کنید"
+                                 disabled
+                                 className={`w-full p-2.5 border border-slate-200 bg-slate-100 rounded-xl text-center font-bold text-sm text-slate-500 outline-none cursor-not-allowed`}
+                               />
+                             )}
+                           </div>
+                           <div>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                <Calendar className={`w-4 h-4 ${themeIcon}`}/> تاریخ سررسید *
+                              </label>
+                              <div className="relative">
+                                <DatePicker
+                                  value={receiptCheckDueDate}
+                                  onChange={setReceiptCheckDueDate}
+                                  calendar={persian}
+                                  locale={persian_fa}
+                                  calendarPosition="bottom-right"
+                                  inputClass={`w-full px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 ${themeRing} outline-none font-sans font-black text-slate-900 text-center transition-all cursor-pointer shadow-sm text-sm`}
+                                  containerClassName="w-full"
+                                />
+                              </div>
+                           </div>
                         </>
                       )}
 
