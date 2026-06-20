@@ -1426,8 +1426,9 @@ export default function App() {
              status: 'issued',
              description: previewReceiptData.description || `چک صادره شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`
            });
-           createdReceiptObj.id = savedCheck.id;
          }
+         const savedTx = await addTransaction(txPayload as any);
+         createdReceiptObj = savedTx;
       } else {
          const savedTx = await addTransaction(txPayload as any);
          createdReceiptObj = savedTx;
@@ -1613,11 +1614,23 @@ export default function App() {
   const handleDeleteTransaction = async (id: number | string) => {
     if (!confirm('آیا از حذف این سند اطمینان دارید؟ مانده حساب مربوطه اصلاح خواهد شد.')) return;
     try {
+      const tx = transactions.find(t => t.id.toString() === id.toString());
+      if (tx && tx.method === 'check' && tx.checkNumber) {
+         if (tx.type === 'receive') {
+             const rc = receivedChecks.find(c => c.checkNumber === tx.checkNumber && c.payerId === tx.personId);
+             if (rc) await deleteReceivedCheck(rc.id.toString());
+         } else {
+             const ic = issuedChecks.find(c => c.checkNumber === tx.checkNumber && c.payeeId === tx.personId);
+             if (ic) await deleteIssuedCheck(ic.id.toString());
+         }
+      }
+      
       await deleteTransaction(id.toString());
       await Promise.all([
         fetchTransactions(),
         fetchAccounts(),
-        fetchCashboxes()
+        fetchCashboxes(),
+        fetchChecks()
       ]);
     } catch (error) {
       console.error('Error deleting transaction', error);
@@ -2919,7 +2932,7 @@ export default function App() {
         else if (inv.type === 'purchase_return') balance += amount;
     });
 
-    transactions.filter(t => t.personId?.toString() === personId.toString()).forEach(t => {
+    transactions.filter(t => t.personId?.toString() === personId.toString() && t.method !== 'check').forEach(t => {
         if (t.type === 'receive') balance -= (t.amount || 0);
         else if (t.type === 'pay') balance += (t.amount || 0);
         else if (t.type === 'salary') balance -= (t.amount || 0);
@@ -5781,7 +5794,7 @@ export default function App() {
                          return personName.includes(term) || receiptNum.includes(term);
                        }).map(tx => {
                          const person = persons.find(p => p.id.toString() === tx.personId?.toString());
-                         const resourceLabel = tx.resourceType === 'bank' 
+                         const resourceLabel = tx.method === 'check' ? `چک (${toPersianDigits(tx.checkNumber || '')})` : tx.resourceType === 'bank' 
                            ? `حساب بانکی: ${accounts.find(a => a.id.toString() === tx.resourceId?.toString())?.bankName || 'نامشخص'}`
                            : `صندوق: ${cashboxes.find(cb => cb.id.toString() === tx.resourceId?.toString())?.name || 'نامشخص'}`;
                          return (
@@ -6989,24 +7002,15 @@ export default function App() {
           const paginatedPersonBalances: Record<string, number> = {};
           paginatedPersons.forEach(p => {
              const pid = p.id.toString();
-             let b = p.initialBalance || 0;
-             if (p.initialBalanceType === 'creditor') {
-               b = -Math.abs(b);
-             } else if (p.initialBalanceType === 'debtor') {
-               b = Math.abs(b);
+             const balResult = calculatePersonBalance(p.id);
+             let b = balResult.amount;
+             if (balResult.status === 'بستانکار') {
+                b = -Math.abs(b);
+             } else if (balResult.status === 'بدهکار') {
+                b = Math.abs(b);
+             } else {
+                b = 0;
              }
-             invoices.filter(i => i.customerId?.toString() === pid && i.type !== 'warehouse_receipt' && i.type !== 'warehouse_remittance' && i.type !== 'proforma').forEach(inv => {
-               const isSale = inv.type === 'sale';
-               const amt = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency);
-               b += isSale ? amt : -amt;
-             });
-             transactions.filter(t => t.personId?.toString() === pid).forEach(t => {
-               const amt = t.amount || 0;
-               // If we paid them (payment) -> they owe us (+amount)
-               // If they paid us (receive) -> they owe us less (-amount)
-               // If we pay them salary -> they owe us less (-amount)
-               b += (t.type === 'receive' || t.type === 'salary') ? -amt : (t.type === 'payment' ? amt : 0);
-             });
              paginatedPersonBalances[pid] = b;
           });
 
@@ -8607,7 +8611,7 @@ export default function App() {
 
             // Transactions
             const transactionEntries = transactions
-              .filter(t => t.personId?.toString() === ledgerPersonId.toString())
+              .filter(t => t.personId?.toString() === ledgerPersonId.toString() && t.method !== 'check')
               .map(t => {
                 const isReceive = t.type === 'receive';
                 const isSalary = t.type === 'salary';
@@ -12741,7 +12745,7 @@ export default function App() {
 
             // Transactions
             const transactionEntries = transactions
-              .filter(t => t.personId?.toString() === drawerPersonId.toString())
+              .filter(t => t.personId?.toString() === drawerPersonId.toString() && t.method !== 'check')
               .map(t => {
                 const isReceive = t.type === 'receive';
                 const isSalary = t.type === 'salary';
@@ -13736,7 +13740,12 @@ export default function App() {
                     {isReceive ? 'از جناب آقای / سرکار خانم / شرکت' : 'به جناب آقای / سرکار خانم / شرکت'} <span className="font-black text-2xl border-b-[3px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[300px] text-center">{personCode}{personName}</span> 
                     <br/>
                     به صورت <span className="font-black text-xl md:text-2xl border-b-[3px] border-dashed border-gray-800 px-6 mx-1 pb-1 inline-block min-w-[150px] text-center">{printingTransaction.method === 'cash' ? 'نقدی / واریز بانکی' : 'چک'}</span> 
-                    {!isSalary && (
+                    {printingTransaction.method === 'check' ? (
+                       <span className="font-black text-xl md:text-2xl border-b-[3px] border-dashed border-gray-800 px-6 mx-1 pb-1 inline-block min-w-[300px] text-center">
+                          {printingTransaction.checkBankName || (printingTransaction.checkbookId ? (checkbooks.find(cb => cb.id?.toString() === printingTransaction.checkbookId?.toString()) ? accounts.find(a => a.id?.toString() === checkbooks.find(cb => cb.id?.toString() === printingTransaction.checkbookId?.toString())?.accountId?.toString())?.bankName : 'نامشخص') : 'نامشخص')} / شماره: {toPersianDigits(printingTransaction.checkNumber || '')} / سررسید: {toPersianDigits(printingTransaction.checkDueDate || '')}
+                       </span>
+                    ) : null}
+                    {!isSalary && printingTransaction.method !== 'check' && (
                       <>
                         {" "}{isReceive ? "به" : "توسط"} <span className="font-black text-xl md:text-2xl border-b-[3px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[200px] text-center">
                            {printingTransaction.resourceType === "bank" 

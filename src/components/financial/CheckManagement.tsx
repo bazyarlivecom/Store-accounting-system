@@ -226,6 +226,17 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
       }
     } catch (err) { console.error('Error rolling back check transaction', err); }
   };
+  
+  const rollbackCreationTransaction = async (checkNumber, personId, type) => {
+    try {
+      const allTx = await getTransactions();
+      const txType = type === 'issued' ? 'pay' : 'receive';
+      const toDelete = allTx.find(tx => tx.type === txType && tx.personId === personId && tx.method === 'check' && tx.checkNumber === checkNumber);
+      if (toDelete) {
+        await deleteTransaction(toDelete.id);
+      }
+    } catch (err) { console.error('Error rolling back creation transaction', err); }
+  };
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -321,8 +332,11 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const handleDeleteIssuedCheck = async (id: string|number) => {
     if (window.confirm('آیا از حذف این چک صادره اطمینان دارید؟ در صورتی که چک پاس شده باشد، سند پرداختی متصل نیز حذف خواهد شد.')) {
       const existing = issuedChecks.find(c => c.id === id);
-      if (existing && existing.status === 'cashed') {
-        await rollbackCashedTransaction(existing.checkNumber, existing.payeeId, 'issued');
+      if (existing) {
+        if (existing.status === 'cashed') {
+          await rollbackCashedTransaction(existing.checkNumber, existing.payeeId, 'issued');
+        }
+        await rollbackCreationTransaction(existing.checkNumber, existing.payeeId, 'issued');
       }
       await deleteIssuedCheck(id.toString());
       fetchData();
@@ -332,8 +346,11 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const handleDeleteReceivedCheck = async (id: string|number) => {
     if (window.confirm('آیا از حذف این چک دریافتی اطمینان دارید؟ در صورتی که چک وصول شده باشد، سند دریافتی متصل نیز حذف خواهد شد.')) {
       const existing = receivedChecks.find(c => c.id === id);
-      if (existing && existing.status === 'cashed') {
-        await rollbackCashedTransaction(existing.checkNumber, existing.payerId, 'received');
+      if (existing) {
+        if (existing.status === 'cashed') {
+          await rollbackCashedTransaction(existing.checkNumber, existing.payerId, 'received');
+        }
+        await rollbackCreationTransaction(existing.checkNumber, existing.payerId, 'received');
       }
       await deleteReceivedCheck(id.toString());
       fetchData();
