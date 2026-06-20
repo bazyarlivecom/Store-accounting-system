@@ -1,175 +1,94 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, CheckCircle, RefreshCcw, LogOut, Settings2 } from 'lucide-react';
-import { initAuth, googleSignIn, logout, getAccessToken } from '../../lib/driveAuth';
+import { HardDrive, CheckCircle, RefreshCcw, Download, Clock } from 'lucide-react';
 
-interface DriveBackupProps {
+interface LocalBackupProps {
   showNotification: (msg: string, type: 'success' | 'error') => void;
 }
 
-export default function DriveBackup({ showNotification }: DriveBackupProps) {
-  const [needsAuth, setNeedsAuth] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+export default function DriveBackup({ showNotification }: LocalBackupProps) {
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [backups, setBackups] = useState<{file: string, size: number, time: number}[]>([]);
+  const [isLoadingBackups, setIsLoadingBackups] = useState(false);
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(
-    localStorage.getItem('auto_backup_drive') === 'true'
+    localStorage.getItem('auto_backup_local') !== 'false' // default true
   );
 
-  useEffect(() => {
-    const unsub = initAuth(
-      (user, token) => {
-        setUser(user);
-        setNeedsAuth(false);
-      },
-      () => {
-        setUser(null);
-        setNeedsAuth(true);
+  const fetchBackups = async () => {
+    setIsLoadingBackups(true);
+    try {
+      const res = await fetch('/api/db/backups');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setBackups(data);
       }
-    );
-    return () => unsub();
-  }, []);
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setIsLoadingBackups(false);
+    }
+  };
 
   useEffect(() => {
-    if (autoBackupEnabled && !needsAuth && user) {
-      // Auto backup every 4 hours while the app is open
-      const interval = setInterval(() => {
-        runBackup(true);
-      }, 4 * 60 * 60 * 1000);
-      return () => clearInterval(interval);
-    }
-  }, [autoBackupEnabled, needsAuth, user]);
+    fetchBackups();
+  }, []);
 
   const toggleAutoBackup = () => {
     const newVal = !autoBackupEnabled;
     setAutoBackupEnabled(newVal);
-    localStorage.setItem('auto_backup_drive', String(newVal));
+    localStorage.setItem('auto_backup_local', String(newVal));
     if (newVal) {
-      showNotification('تهیه نسخه پشتیبان خودکار (هر ۴ ساعت در گوگل درایو) فعال شد', 'success');
-      // maybe run it once on enable
-      runBackup(true);
+      showNotification('تهیه نسخه پشتیبان خودکار (سرور محلی) فعال شد', 'success');
     } else {
       showNotification('پشتیبان‌گیری خودکار غیرفعال شد', 'success');
     }
   };
 
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
+  const runBackup = async () => {
+    setIsBackingUp(true);
     try {
-      const result = await googleSignIn();
-      if (result) {
-        setNeedsAuth(false);
-        setUser(result.user);
-        showNotification('ورود با موفقیت انجام شد', 'success');
+      const res = await fetch('/api/db/backups/do', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('نسخه پشتیبان با موفقیت ایجاد شد.', 'success');
+        fetchBackups();
+      } else {
+        throw new Error(data.error);
       }
-    } catch (err) {
-      console.error('Login failed:', err);
-      showNotification('خطا در ورود به حساب گوگل', 'error');
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    setNeedsAuth(true);
-    setUser(null);
-  };
-
-  const uploadToDrive = async (accessToken: string, fileData: string) => {
-    const boundary = 'foo_bar_baz_' + Date.now();
-    const delimiter = "\r\n--" + boundary + "\r\n";
-    const close_delim = "\r\n--" + boundary + "--";
-
-    const fileName = `Hesabdari-Backup-${new Date().toLocaleDateString('fa-IR').replace(/\//g, '-')}.json`;
-    const metadata = {
-      name: fileName,
-      mimeType: 'application/json'
-    };
-
-    const multipartRequestBody =
-      delimiter +
-      'Content-Type: application/json\r\n\r\n' +
-      JSON.stringify(metadata) +
-      delimiter +
-      'Content-Type: application/json\r\n\r\n' +
-      fileData +
-      close_delim;
-
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-      },
-      body: multipartRequestBody
-    });
-    
-    if (!res.ok) {
-      throw new Error('Failed to upload file to Google Drive');
-    }
-    return res.json();
-  };
-
-  const runBackup = async (isSilent = false) => {
-    if (!isSilent) setIsBackingUp(true);
-    try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        if (!isSilent) showNotification('لطفاً دوباره وارد حساب گوگل شوید.', 'error');
-        setNeedsAuth(true);
-        return;
-      }
-      
-      const fetchRes = await fetch('/api/db/backup');
-      const data = await fetchRes.json();
-      
-      await uploadToDrive(accessToken, JSON.stringify(data, null, 2));
-      if (!isSilent) showNotification('نسخه پشتیبان با موفقیت در گوگل درایو ذخیره شد.', 'success');
     } catch (err: any) {
       console.error(err);
-      if (!isSilent) showNotification('خطا در تهیه نسخه پشتیبان در گوگل درایو.', 'error');
+      showNotification('خطا در تهیه نسخه پشتیبان.', 'error');
     } finally {
       setIsBackingUp(false);
     }
   };
 
-  if (needsAuth) {
-    return (
-      <div className="bg-slate-50 border border-indigo-100 rounded-2xl p-6 shadow-inner flex flex-col justify-center items-center text-center gap-4 col-span-1 md:col-span-2">
-         <h4 className="font-bold text-gray-700">پشتیبان‌گیری رمزنگاری‌شده در گوگل درایو</h4>
-         <p className="text-xs text-gray-500">تمامی اطلاعات سیستم را بر روی درایو شخصی خود ثبت نمایید.</p>
-         <button
-           onClick={handleLogin}
-           disabled={isLoggingIn}
-           className="mt-2 flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm"
-         >
-           <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-              <path fill="none" d="M0 0h48v48H0z"></path>
-           </svg>
-           {isLoggingIn ? 'درحال اتصال...' : 'ورود با حساب گوگل و فعال‌سازی'}
-         </button>
-      </div>
-    );
-  }
+  const handleRestore = async (file: string) => {
+    if (!window.confirm('آیا از بازنشانی این نسخه پشتیبان اطمینان دارید؟ اطلاعات فعلی شما ممکن است از دست برود.')) return;
+    try {
+      const res = await fetch(`/api/db/backups/restore/${file}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showNotification('اطلاعات با موفقیت بازنشانی شد. لطفاً سیستم را مجددا بارگذاری کنید.', 'success');
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      console.error(err);
+      showNotification('خطا در بازنشانی اطلاعات.', 'error');
+    }
+  };
 
   return (
-    <div className="bg-slate-50 border border-indigo-100 rounded-2xl p-6 shadow-inner flex flex-col justify-center gap-4 col-span-1 md:col-span-2">
+    <div className="bg-slate-50 border border-indigo-100 rounded-2xl p-6 shadow-inner flex flex-col gap-6 col-span-1 md:col-span-2">
       <div className="flex items-center gap-3 w-full">
         <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
-          <Cloud className="w-5 h-5 text-indigo-600" />
+          <HardDrive className="w-5 h-5 text-indigo-600" />
         </div>
         <div className="text-right flex-1">
-          <h4 className="font-bold text-gray-700 text-sm">متصل به فضای گوگل درایو</h4>
-          <p className="text-xs text-gray-500 font-mono mt-0.5">{user?.email}</p>
+          <h4 className="font-bold text-gray-700 text-sm">سیستم پشتیبان‌گیری محلی و زمان‌بندی‌شده</h4>
+          <p className="text-xs text-gray-500 font-mono mt-0.5">پشتیبان‌گیری روی سرور محلی انجام می‌شود</p>
         </div>
-        <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-rose-500 py-1 flex items-center gap-1 shrink-0">
-          <LogOut className="w-3 h-3" />
-          خروج
-        </button>
       </div>
       
       <div className="flex items-center justify-between bg-white border border-gray-150 p-4 rounded-xl">
@@ -179,18 +98,63 @@ export default function DriveBackup({ showNotification }: DriveBackupProps) {
           </div>
           <div className="text-right">
             <h5 className="text-sm font-bold text-gray-700">پشتیبان‌گیری خودکار (هر ۴ ساعت)</h5>
-            <p className="text-[10px] text-gray-500">تمامی اطلاعات شما به صورت خودکار ایمن می‌گردد.</p>
+            <p className="text-[10px] text-gray-500">تمامی اطلاعات به صورت خودکار ایمن و در سرور ذخیره می‌شود.</p>
           </div>
         </div>
         <button
-          onClick={() => runBackup(false)}
+          onClick={runBackup}
           disabled={isBackingUp}
           className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl transition-all shadow-sm text-xs disabled:opacity-75"
         >
-          {isBackingUp ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Cloud className="w-3.5 h-3.5" />}
-          آپلود دستی
+          {isBackingUp ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <HardDrive className="w-3.5 h-3.5" />}
+          تهیه پشتیبان فوری
         </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+         <div className="bg-gray-50 p-3 border-b border-gray-200">
+            <h5 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              تاریخچه نسخه‌های پشتیبان
+            </h5>
+         </div>
+         <div className="max-h-60 overflow-y-auto">
+            {isLoadingBackups ? (
+               <div className="p-6 text-center text-xs text-gray-500">در حال بارگذاری...</div>
+            ) : backups.length === 0 ? (
+               <div className="p-6 text-center text-xs text-gray-500">هیچ نسخه پشتیبانی یافت نشد.</div>
+            ) : (
+               <table className="w-full text-right text-xs">
+                  <thead className="bg-gray-50">
+                     <tr>
+                       <th className="p-3 font-bold text-gray-600">نام فایل</th>
+                       <th className="p-3 font-bold text-gray-600">حجم</th>
+                       <th className="p-3 font-bold text-gray-600">تاریخ ثبت</th>
+                       <th className="p-3 font-bold text-gray-600">عملیات</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                     {backups.map(b => (
+                       <tr key={b.file} className="hover:bg-slate-50">
+                          <td className="p-3 text-gray-600" dir="ltr">{b.file}</td>
+                          <td className="p-3 text-gray-500">{(b.size / 1024).toFixed(1)} KB</td>
+                          <td className="p-3 text-gray-500">{new Date(b.time).toLocaleString('fa-IR')}</td>
+                          <td className="p-3">
+                             <button
+                               onClick={() => handleRestore(b.file)}
+                               className="text-xs px-3 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors font-bold"
+                             >
+                               بازنشانی
+                             </button>
+                          </td>
+                       </tr>
+                     ))}
+                  </tbody>
+               </table>
+            )}
+         </div>
       </div>
     </div>
   );
 }
+

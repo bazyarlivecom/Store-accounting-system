@@ -47,6 +47,91 @@ async function startServer() {
   
   app.use(express.json({ limit: '50mb' }));
 
+  // --- Local Backups Logic ---
+  const BACKUPS_DIR = path.join(process.cwd(), 'backups');
+  if (!fsPromises.constants) {
+    // node types workaround
+  }
+  try {
+     await fsPromises.mkdir(BACKUPS_DIR, { recursive: true });
+  } catch(e) {}
+
+  // Auto-backup every 4 hours
+  setInterval(async () => {
+     try {
+        const rowsStmt = db.prepare('SELECT key, value FROM store');
+        const rows = rowsStmt.all();
+        const backupData: any = {};
+        for (const row of rows) {
+          backupData[row.key] = JSON.parse(row.value);
+        }
+        const fileName = `backup-${Date.now()}.json`;
+        await fsPromises.writeFile(path.join(BACKUPS_DIR, fileName), JSON.stringify(backupData));
+        
+        // keep only last 10 backups
+        const files = await fsPromises.readdir(BACKUPS_DIR);
+        const jsonFiles = files.filter(f => f.startsWith('backup-') && f.endsWith('.json')).sort();
+        if (jsonFiles.length > 10) {
+           for (let i = 0; i < jsonFiles.length - 10; i++) {
+              await fsPromises.unlink(path.join(BACKUPS_DIR, jsonFiles[i]));
+           }
+        }
+     } catch (err) {
+        console.error('Auto backup failed', err);
+     }
+  }, 4 * 60 * 60 * 1000);
+
+  app.get('/api/db/backups', async (req, res) => {
+     try {
+        await fsPromises.mkdir(BACKUPS_DIR, { recursive: true });
+        const files = await fsPromises.readdir(BACKUPS_DIR);
+        const jsonFiles = files.filter(f => f.startsWith('backup-') && f.endsWith('.json')).sort((a,b) => b.localeCompare(a));
+        const backupsList = [];
+        for (const file of jsonFiles) {
+           const stat = await fsPromises.stat(path.join(BACKUPS_DIR, file));
+           backupsList.push({ file, size: stat.size, time: stat.mtimeMs });
+        }
+        res.json(backupsList);
+     } catch (err) {
+        res.status(500).json({ error: err.message });
+     }
+  });
+
+  app.post('/api/db/backups/do', async (req, res) => {
+     try {
+        const rowsStmt = db.prepare('SELECT key, value FROM store');
+        const rows = rowsStmt.all();
+        const backupData = {};
+        for (const row of rows) {
+          backupData[row.key] = JSON.parse(row.value);
+        }
+        const fileName = `backup-${Date.now()}.json`;
+        await fsPromises.writeFile(path.join(BACKUPS_DIR, fileName), JSON.stringify(backupData));
+        res.json({ success: true, fileName });
+     } catch (err) {
+        res.status(500).json({ error: err.message });
+     }
+  });
+
+  app.post('/api/db/backups/restore/:filename', async (req, res) => {
+     try {
+        const { filename } = req.params;
+        const filePath = path.join(BACKUPS_DIR, filename);
+        const raw = await fsPromises.readFile(filePath, 'utf8');
+        const parsed = JSON.parse(raw);
+        const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+        for (const [key, value] of Object.entries(parsed)) {
+          insertOrUpdate.run(key, JSON.stringify(value));
+        }
+        res.json({ success: true });
+     } catch (err) {
+        res.status(500).json({ error: err.message });
+     }
+  });
+  // --- End Local Backups Logic ---
+
+
+
   app.get('/api/data/:key', async (req, res) => {
     const { key } = req.params;
     try {
