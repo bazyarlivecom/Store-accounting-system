@@ -13059,14 +13059,14 @@ export default function App() {
                                       <td className="p-3 font-mono text-gray-500 border-l border-gray-200 print:border-gray-300">{toPersianDigits(tx.receiptNumber) || `#${toPersianDigits(tx.id)}`}</td>
                                       <td className="p-3 font-mono border-l border-gray-200 print:border-gray-300">{tx.jalaliDate}</td>
                                       <td className="p-3 border-l border-gray-200 print:border-gray-300">{accounts.find(a => a.id.toString() === tx.accountId?.toString())?.title || cashboxes.find(c => c.id.toString() === tx.cashboxId?.toString())?.name || 'نامشخص'}</td>
-                                      <td className="p-3 text-left font-mono font-black text-gray-900" dir="ltr">{formatCurrency(tx.linkedInvoices![previewInvoiceData.id])} <span className="text-[9px] text-gray-400">{showInvoiceCurrency(previewInvoiceData.currency)}</span></td>
+                                      <td className="p-3 text-left font-sans font-black text-gray-900" dir="ltr">{formatCurrency(tx.linkedInvoices![previewInvoiceData.id])} <span className="text-[9px] text-gray-400">{showInvoiceCurrency(previewInvoiceData.currency)}</span></td>
                                     </tr>
                                   ))}
                                 </tbody>
                                 <tfoot className="bg-gray-50 print:bg-white border-t-2 border-gray-300">
                                   <tr>
                                     <td colSpan={3} className="p-3 text-left font-black text-gray-900 border-l border-gray-200 print:border-gray-300">جمع کل دریافتی‌ها و پرداختی‌ها:</td>
-                                    <td className="p-3 text-left font-mono font-black text-gray-900" dir="ltr">{formatCurrency(previewInvoiceData.paidAmount || 0)} <span className="text-[9px] text-gray-500">{showInvoiceCurrency(previewInvoiceData.currency)}</span></td>
+                                    <td className="p-3 text-left font-sans font-black text-gray-900" dir="ltr">{formatCurrency(previewInvoiceData.paidAmount || 0)} <span className="text-[9px] text-gray-500">{showInvoiceCurrency(previewInvoiceData.currency)}</span></td>
                                   </tr>
                                   <tr>
                                     <td colSpan={3} className="p-3 text-left font-black text-rose-600 border-l border-gray-200 print:border-gray-300">باقیمانده حساب (بدهی فاکتور):</td>
@@ -13199,7 +13199,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-[500px] max-h-full flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-[148mm] print:h-auto print:max-w-none print:max-h-none mx-auto font-sans"
+              className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-2xl max-h-full flex flex-col print-section print:shadow-none print:border-none print:rounded-none print:w-[210mm] print:h-[148mm] print:max-w-none print:max-h-none mx-auto font-sans"
             >
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 print:hidden relative z-10 shrink-0">
                 <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
@@ -13228,7 +13228,7 @@ export default function App() {
                       )}
                       <div>
                          <h2 className="text-xl font-black text-gray-900 leading-tight">{storeSettings?.storeName || 'نام مجموعه تجاری'}</h2>
-                         {storeSettings?.phone && <p className="text-sm text-gray-700 font-mono font-bold mt-1.5" dir="ltr">{storeSettings.phone}</p>}
+                         {storeSettings?.phone && <p className="text-sm text-gray-700 font-sans font-bold mt-1.5 text-base" dir="ltr">{storeSettings.phone}</p>}
                       </div>
                     </div>
                     
@@ -13241,15 +13241,15 @@ export default function App() {
                     <div className="w-[35%] flex flex-col items-end text-sm space-y-3 mt-2">
                        <div className="flex justify-between items-center w-full max-w-[170px]">
                          <span className="text-gray-800 font-bold">شماره:</span>
-                         <span className="font-mono font-black text-gray-900">{toPersianDigits(printingTransaction.receiptNumber) || `#${toPersianDigits(printingTransaction.id)}`}</span>
+                         <span className="font-sans font-black text-gray-900">{toPersianDigits(printingTransaction.receiptNumber) || `#${toPersianDigits(printingTransaction.id)}`}</span>
                        </div>
                        <div className="flex justify-between items-center w-full max-w-[170px]">
                          <span className="text-gray-800 font-bold">تاریخ:</span>
-                         <span className="font-mono font-black text-gray-900">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                         <span className="font-sans font-black text-gray-900">{toPersianDigits(printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0] || '')}</span>
                        </div>
                        <div className="flex justify-between items-center w-full max-w-[170px]">
                          <span className="text-gray-800 font-bold">پیوست:</span>
-                         <span className="font-mono font-bold text-gray-900">ندارد</span>
+                         <span className="font-sans font-bold text-gray-900">ندارد</span>
                        </div>
                     </div>
                   </div>
@@ -13260,32 +13260,32 @@ export default function App() {
                        <div className="bg-gray-100 border-l-[3px] border-gray-800 px-5 py-4 flex items-center justify-center">
                           <span className="text-base font-black text-gray-900 whitespace-nowrap">مبلغ ({storeSettings?.currency || 'ریال'})</span>
                        </div>
-                       <div className="flex-1 flex items-center justify-center p-4 text-3xl font-black font-mono tracking-wider bg-white relative">
-                          {typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}
+                       <div className="flex-1 flex items-center justify-center p-4 text-3xl font-black font-sans tracking-wide bg-white relative">
+                          {toPersianDigits(typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : String(printingTransaction.amount))}
                        </div>
                     </div>
                   </div>
 
                   {/* Body details */}
-                  <div className="mb-8 text-base md:text-[17px] font-bold text-gray-900 leading-[3rem] text-justify px-4">
-                    بدینوسیله گواهی می‌شود مبلغ <span className="border-b-[2px] border-dashed border-gray-800 px-6 font-black mx-1 pb-1 inline-block min-w-[100px] text-center">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount} {storeSettings?.currency || 'ریال'}</span> معادل ( <span className="border-b-[2px] border-dashed border-gray-800 px-6 font-black text-sm pb-1 inline-block min-w-[200px] text-center">{numToPersianWords(printingTransaction.amount)}</span> ) مشخصاً،
+                  <div className="mb-10 text-lg md:text-xl font-bold text-gray-900 leading-[3.8rem] md:leading-[4.5rem] text-justify px-4">
+                    بدینوسیله گواهی می‌شود مبلغ <span className="border-b-[3px] border-dashed border-gray-800 px-6 font-black mx-1 pb-1 inline-block min-w-[120px] text-center text-xl md:text-2xl">{toPersianDigits(typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : String(printingTransaction.amount))} {storeSettings?.currency || 'ریال'}</span> معادل ( <span className="border-b-[3px] border-dashed border-gray-800 px-6 font-black text-lg md:text-xl pb-1 inline-block min-w-[200px] text-center">{numToPersianWords(printingTransaction.amount)}</span> ) مشخصاً،
                     <br/>
-                    {isReceive ? 'از جناب آقای / سرکار خانم / شرکت' : 'به جناب آقای / سرکار خانم / شرکت'} <span className="font-black text-xl border-b-[2px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[250px] text-center">{personCode}{personName}</span> 
+                    {isReceive ? 'از جناب آقای / سرکار خانم / شرکت' : 'به جناب آقای / سرکار خانم / شرکت'} <span className="font-black text-2xl border-b-[3px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[300px] text-center">{personCode}{personName}</span> 
                     <br/>
-                    به صورت <span className="font-black border-b-[2px] border-dashed border-gray-800 px-6 mx-1 pb-1 inline-block min-w-[150px] text-center">{printingTransaction.method === 'cash' ? 'نقدی / واریز بانکی' : 'چک'}</span> 
+                    به صورت <span className="font-black text-xl md:text-2xl border-b-[3px] border-dashed border-gray-800 px-6 mx-1 pb-1 inline-block min-w-[150px] text-center">{printingTransaction.method === 'cash' ? 'نقدی / واریز بانکی' : 'چک'}</span> 
                     {!isSalary && (
                       <>
-                        {' '}{isReceive ? 'به' : 'توسط'} <span className="font-black border-b-[2px] border-dashed border-gray-800 px-6 mx-1 pb-1 inline-block min-w-[180px] text-center">
-                           {printingTransaction.resourceType === 'bank' 
-                             ? `حساب ${accounts.find(a => a.id === printingTransaction.resourceId || a.id?.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص'}`
-                             : printingTransaction.resourceType === 'cashbox' 
-                               ? `صندوق ${cashboxes.find(c => c.id === printingTransaction.resourceId || c.id?.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص'}`
-                               : 'نامشخص'}
+                        {" "}{isReceive ? "به" : "توسط"} <span className="font-black text-xl md:text-2xl border-b-[3px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[200px] text-center">
+                           {printingTransaction.resourceType === "bank" 
+                             ? `حساب ${accounts.find(a => a.id === printingTransaction.resourceId || a.id?.toString() === printingTransaction.resourceId?.toString())?.bankName || "نامشخص"}`
+                             : printingTransaction.resourceType === "cashbox" 
+                               ? `صندوق ${cashboxes.find(c => c.id === printingTransaction.resourceId || c.id?.toString() === printingTransaction.resourceId?.toString())?.name || "نامشخص"}`
+                               : "نامشخص"}
                         </span>
                       </>
                     )}
                     <br/>
-                    بابت <span className="font-black border-b-[2px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[300px] text-center">{printingTransaction.description || '‌'}</span>
+                    بابت <span className="font-black text-xl md:text-2xl border-b-[3px] border-dashed border-gray-800 px-10 mx-1 pb-1 inline-block min-w-[350px] text-center">{printingTransaction.description || '‌'}</span>
                     <br/>
                     {isReceive ? 'نقداً دریافت گردید.' : 'تمام و کمال پرداخت گردید.'}
                   </div>
@@ -13319,8 +13319,8 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="mt-6 text-center text-[10px] text-gray-500 font-mono opacity-80 flex justify-between px-4 pt-2">
-                     <span>SYS-ID: {printingTransaction.receiptNumber || printingTransaction.id}</span>
+                  <div className="mt-6 text-center text-xs text-gray-500 font-sans font-bold opacity-80 flex justify-between px-4 pt-2">
+                     <span>شناسه سیستمی: {toPersianDigits(printingTransaction.receiptNumber || printingTransaction.id || "")}</span>
                      <span>PRINTED: {new Date().toLocaleString('en-US', { hour12: false })}</span>
                   </div>
                 </div>
