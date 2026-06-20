@@ -6,7 +6,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import { 
   CreditCard, Plus, Edit2, Trash2, CheckCircle, Clock, X, Save, 
-  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart, ChevronDown
+  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart, ChevronDown, Printer
 } from 'lucide-react';
 import { 
   getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, 
@@ -350,7 +350,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
       (c.description || '').toLowerCase().includes(query) ||
       String(c.amount || '').includes(query)
     );
-  });
+  }).sort((a, b) => normalizeDate(a.dueDate) - normalizeDate(b.dueDate));
 
   const filteredReceivedChecks = receivedChecks.filter(c => {
     const payerName = String(persons.find(p => p.id?.toString() === c.payerId?.toString())?.name || c.payerId || '');
@@ -362,7 +362,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
       (c.description || '').toLowerCase().includes(query) ||
       String(c.amount || '').includes(query)
     );
-  });
+  }).sort((a, b) => normalizeDate(a.dueDate) - normalizeDate(b.dueDate));
 
   // KPI Calculations
   const totalIssuedAmount = issuedChecks.reduce((sum, c) => sum + Number(c.amount || 0), 0);
@@ -376,9 +376,9 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const inHandReceivedAmount = receivedChecks.filter(c => c.status === 'received' || c.status === 'deposited' || !c.status).reduce((sum, c) => sum + Number(c.amount || 0), 0);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden" dir="rtl">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden print:border-none print:shadow-none print:m-0 print:p-0" dir="rtl">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-l from-indigo-50/40 to-white">
+      <div className="px-8 py-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-l from-indigo-50/40 to-white print:hidden">
          <div>
            <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
              <CreditCard className="w-6 h-6 text-indigo-600" /> 
@@ -390,7 +390,16 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
          </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-8 print:p-0">
+        
+        {/* Print Only Header */}
+        <div className="hidden print:flex flex-col items-center justify-center mb-8 border-b-2 border-gray-800 pb-4">
+          <h2 className="text-2xl font-black text-black mb-2">
+             {activeSubTab === 'issued_checks' ? 'لیست چک‌های پرداختی (صادره)' : activeSubTab === 'received_checks' ? 'لیست چک‌های دریافتی (وصولی)' : 'لیست چک‌ها'}
+          </h2>
+          <p className="text-sm font-bold text-gray-700">تاریخ چاپ: {new Date().toLocaleDateString('fa-IR')} - ساعت: {new Date().toLocaleTimeString('fa-IR', {hour: '2-digit', minute: '2-digit'})}</p>
+        </div>
+
         {/* SUBTAB 1: CHECKBOOKS */}
         {activeSubTab === 'checkbooks' ? (
           <div>
@@ -454,7 +463,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
           /* SUBTAB 2: ISSUED CHECKS */
           <div>
             {/* KPI Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:hidden">
               <div className="bg-gradient-to-br from-indigo-50/40 to-white border border-indigo-100/60 p-4 rounded-xl flex items-center justify-between shadow-xs">
                 <div>
                   <span className="text-[10px] font-black text-indigo-900 block">کل چک‌های صادره</span>
@@ -497,7 +506,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
             </div>
 
             {/* Actions & Filters Panel */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-gray-50/40 border border-gray-100 p-4 rounded-xl">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-gray-50/40 border border-gray-100 p-4 rounded-xl print:hidden">
               <div className="relative w-full md:w-80">
                 <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
                 <input 
@@ -509,7 +518,14 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                 />
               </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <button 
+                  onClick={() => window.print()}
+                  className="p-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl transition-all shadow-sm"
+                  title="چاپ لیست"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
                 <button 
                   onClick={() => {
                     setEditingIssuedCheckId(null);
@@ -530,7 +546,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-gray-100 rounded-2xl shadow-xs bg-white">
+            <div className="overflow-x-auto print:overflow-visible border border-gray-100 print:border-none rounded-2xl print:rounded-none shadow-xs print:shadow-none bg-white">
               <table className="w-full text-right text-sm">
                 <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
                   <tr>
@@ -540,7 +556,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                     <th className="px-4 py-4 font-bold">مبلغ (تومان)</th>
                     <th className="px-4 py-4 font-bold">سررسید</th>
                     <th className="px-4 py-4 font-bold">وضعیت</th>
-                    <th className="px-4 py-4 font-bold text-center w-36">عملیات</th>
+                    <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 bg-white">
@@ -578,10 +594,10 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                                <option value="bounced">برگشتی</option>
                                <option value="cancelled">باطل شده</option>
                              </select>
-                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
+                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60 print:hidden" />
                            </div>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-4 py-3.5 print:hidden">
                           <div className="flex items-center justify-center gap-1.5">
                             <button 
                               onClick={() => { 
@@ -628,7 +644,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
           /* SUBTAB 3: RECEIVED CHECKS */
           <div>
             {/* KPI Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:hidden">
               <div className="bg-gradient-to-br from-indigo-50/40 to-white border border-indigo-100/60 p-4 rounded-xl flex items-center justify-between shadow-xs">
                 <div>
                   <span className="text-[10px] font-black text-indigo-900 block">مجموع چک‌های دریافتی</span>
@@ -671,7 +687,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
             </div>
 
             {/* Actions & Filters Panel */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-gray-50/40 border border-gray-100 p-4 rounded-xl">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-gray-50/40 border border-gray-100 p-4 rounded-xl print:hidden">
               <div className="relative w-full md:w-80">
                 <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
                 <input 
@@ -683,7 +699,14 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                 />
               </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <button 
+                  onClick={() => window.print()}
+                  className="p-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl transition-all shadow-sm"
+                  title="چاپ لیست"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
                 <button 
                   onClick={() => {
                     setEditingReceivedCheckId(null);
@@ -705,7 +728,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-gray-100 rounded-2xl shadow-xs bg-white">
+            <div className="overflow-x-auto print:overflow-visible border border-gray-100 print:border-none rounded-2xl print:rounded-none shadow-xs print:shadow-none bg-white">
               <table className="w-full text-right text-sm">
                 <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
                   <tr>
@@ -716,7 +739,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                     <th className="px-4 py-4 font-bold">دریافت</th>
                     <th className="px-4 py-4 font-bold">سررسید</th>
                     <th className="px-4 py-4 font-bold">وضعیت</th>
-                    <th className="px-4 py-4 font-bold text-center w-36">عملیات</th>
+                    <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 bg-white">
@@ -756,10 +779,10 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                                <option value="bounced">برگشتی</option>
                                <option value="returned">عودت داده شده</option>
                              </select>
-                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
+                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60 print:hidden" />
                            </div>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-4 py-3.5 print:hidden">
                           <div className="flex items-center justify-center gap-1.5">
                             <button 
                               onClick={() => { 

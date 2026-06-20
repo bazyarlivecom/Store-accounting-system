@@ -1412,7 +1412,7 @@ export default function App() {
              receiveDate: previewReceiptData.jalaliDate,
              dueDate: previewReceiptData.checkDueDate,
              status: 'received',
-             description: previewReceiptData.description || `چک دریافتی بابت رسید ${previewReceiptData.receiptNumber}`
+             description: previewReceiptData.description || `چک دریافتی شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`
            });
            createdReceiptObj.id = savedCheck.id;
          } else {
@@ -1424,7 +1424,7 @@ export default function App() {
              issueDate: previewReceiptData.jalaliDate,
              dueDate: previewReceiptData.checkDueDate,
              status: 'issued',
-             description: previewReceiptData.description || `چک صادره بابت رسید ${previewReceiptData.receiptNumber}`
+             description: previewReceiptData.description || `چک صادره شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`
            });
            createdReceiptObj.id = savedCheck.id;
          }
@@ -8684,7 +8684,7 @@ export default function App() {
                   date: c.issueDate || c.dueDate || new Date().toISOString(),
                   jalaliDate: c.issueDate || c.dueDate || '-',
                   type: `چک صادره (${statusLabel})`,
-                  desc: c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`,
+                  desc: (c.description && !c.description.includes(c.checkNumber)) ? `${c.description} (شماره چک: ${c.checkNumber})` : (c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`),
                   debit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
                   credit: 0,
                   rawItem: c,
@@ -12818,7 +12818,7 @@ export default function App() {
                   date: c.issueDate || c.dueDate || new Date().toISOString(),
                   jalaliDate: c.issueDate || c.dueDate || '-',
                   type: `چک صادره (${statusLabel})`,
-                  desc: c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`,
+                  desc: (c.description && !c.description.includes(c.checkNumber)) ? `${c.description} (شماره چک: ${c.checkNumber})` : (c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`),
                   debit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
                   credit: 0,
                   rawItem: c,
