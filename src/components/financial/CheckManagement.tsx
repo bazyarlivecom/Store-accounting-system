@@ -19,6 +19,12 @@ import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../ty
 export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar', onDataChange?: () => void }) {
   const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar'>(activeTab);
   
+  const toPersianDigits = (str: string | number | undefined | null) => {
+    if (str === null || str === undefined) return '';
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return str.toString().replace(/\d/g, x => persianDigits[parseInt(x, 10)]);
+  };
+  
   useEffect(() => {
     setActiveSubTab(activeTab);
   }, [activeTab]);
@@ -563,101 +569,113 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
             </div>
 
-            <div className="overflow-x-auto print:overflow-visible border border-gray-100 print:border-none rounded-2xl print:rounded-none shadow-xs print:shadow-none bg-white">
-              <table className="w-full text-right text-sm">
-                <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
-                  <tr>
-                    <th className="px-4 py-4 font-bold">شماره چک</th>
-                    <th className="px-4 py-4 font-bold">دسته چک / حساب</th>
-                    <th className="px-4 py-4 font-bold">بابت (گیرنده چک)</th>
-                    <th className="px-4 py-4 font-bold">مبلغ (تومان)</th>
-                    <th className="px-4 py-4 font-bold">سررسید</th>
-                    <th className="px-4 py-4 font-bold">وضعیت</th>
-                    <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 bg-white">
-                  {filteredIssuedChecks.map(c => {
-                    const cb = checkbooks.find(x => x.id == c.checkbookId);
-                    const acc = accounts.find(a => a.id == cb?.accountId);
-                    const bankName = acc?.bankName || 'پرداخت نقدی/مستقیم';
-                    const payee = persons.find(p => p.id?.toString() === c.payeeId?.toString());
-                    return (
-                      <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3.5">
-                          <div className="font-mono font-black text-gray-900">{c.checkNumber}</div>
-                          <div className="text-[10px] text-gray-500 font-bold mt-1 max-w-[120px] truncate">{c.receiptNumber ? `رسید: ${c.receiptNumber}` : `بدون شناسه رسید`}</div>
-                        </td>
-                        <td className="px-4 py-3.5 text-xs text-indigo-950 font-bold max-w-[150px] truncate">{bankName}</td>
-                        <td className="px-4 py-3.5 font-bold text-gray-800">{payee?.name || c.payeeId || 'ناشناس'}</td>
-                        <td className="px-4 py-3.5 font-sans font-black text-rose-600">{Number(c.amount).toLocaleString()}</td>
-                        <td className="px-4 py-3.5 font-sans font-medium text-gray-700">{c.dueDate}</td>
-                        <td className="px-4 py-3.5">
-                           <div className={`relative inline-block rounded-lg text-xs font-bold border ${
-                             c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                             c.status === 'bounced' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
-                             c.status === 'cancelled' ? 'bg-gray-100 text-gray-600 border-gray-200 line-through' :
-                             'bg-amber-50 text-amber-700 border-amber-100'
-                           }`}>
-                             <select
-                               value={c.status || 'issued'}
-                               onChange={(e) => {
-                                 setUpdatingCheckType('issued');
-                                 setUpdatingCheckId(c.id);
-                                 setStatusVal(e.target.value);
-                                 setIsStatusModalOpen(true);
-                               }}
-                               className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold"
-                             >
-                               <option value="issued">در جریان (صادره)</option>
-                               <option value="cashed">پاس شده</option>
-                               <option value="bounced">برگشتی</option>
-                               <option value="cancelled">باطل شده</option>
-                             </select>
-                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60 print:hidden" />
-                           </div>
-                        </td>
-                        <td className="px-4 py-3.5 print:hidden">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button 
-                              onClick={() => { 
-                                setEditingIssuedCheckId(c.id);
-                                setIcCheckbookId(String(c.checkbookId || ''));
-                                setIcCheckNumber(c.checkNumber);
-                                setIcPayeeId(String(c.payeeId || ''));
-                                setIcAmount(c.amount.toString());
-                                setIcIssueDate(c.issueDate);
-                                setIcDueDate(c.dueDate);
-                                setIcDescription(c.description || '');
-                                setIsIssuedModalOpen(true);
-                              }}
-                              className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 inline-block"
-                              title="ویرایش چک"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteIssuedCheck(c.id)} 
-                              className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 inline-block"
-                              title="حذف چک"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+            <div className="print-section w-full">
+              {/* Print Only Header */}
+              <div className="hidden print:block mb-6 border-b-2 border-slate-800 pb-4 text-center">
+                <h1 className="text-xl font-extrabold text-slate-900 font-sans">سامانه مدیریت مالی و حسابداری</h1>
+                <p className="text-sm text-gray-650 font-bold mt-1.5">گزارش و لیست چک‌های صادره (پرداختنی)</p>
+                <div className="flex justify-between items-center mt-5 text-xs text-slate-500 border-t border-slate-100 pt-3 font-bold">
+                  <span>تاریخ چاپ: {toPersianDigits(new Date().toLocaleDateString('fa-IR'))}</span>
+                  <span>تعداد کل اقلام: {toPersianDigits(filteredIssuedChecks.length)}</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto print:overflow-visible border border-gray-100 print:border-none rounded-2xl print:rounded-none shadow-xs print:shadow-none bg-white">
+                <table className="w-full text-right text-sm">
+                  <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-4 font-bold">شماره چک</th>
+                      <th className="px-4 py-4 font-bold">دسته چک / حساب</th>
+                      <th className="px-4 py-4 font-bold">بابت (گیرنده چک)</th>
+                      <th className="px-4 py-4 font-bold">مبلغ (تومان)</th>
+                      <th className="px-4 py-4 font-bold">سررسید</th>
+                      <th className="px-4 py-4 font-bold">وضعیت</th>
+                      <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 bg-white">
+                    {filteredIssuedChecks.map(c => {
+                      const cb = checkbooks.find(x => x.id == c.checkbookId);
+                      const acc = accounts.find(a => a.id == cb?.accountId);
+                      const bankName = acc?.bankName || 'پرداخت نقدی/مستقیم';
+                      const payee = persons.find(p => p.id?.toString() === c.payeeId?.toString());
+                      return (
+                        <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="font-mono font-black text-gray-900">{toPersianDigits(c.checkNumber)}</div>
+                            <div className="text-[10px] text-gray-550 font-bold mt-1 max-w-[120px] truncate">{c.receiptNumber ? `رسید: ${toPersianDigits(c.receiptNumber)}` : `بدون شناسه رسید`}</div>
+                          </td>
+                          <td className="px-4 py-3.5 text-xs text-indigo-950 font-bold max-w-[150px] truncate">{bankName}</td>
+                          <td className="px-4 py-3.5 font-bold text-gray-800">{payee?.name || c.payeeId || 'ناشناس'}</td>
+                          <td className="px-4 py-3.5 font-sans font-black text-rose-600">{toPersianDigits(Number(c.amount).toLocaleString())}</td>
+                          <td className="px-4 py-3.5 font-sans font-medium text-gray-700">{toPersianDigits(c.dueDate)}</td>
+                          <td className="px-4 py-3.5">
+                             <div className={`relative inline-block rounded-lg text-xs font-bold border ${
+                               c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                               c.status === 'bounced' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
+                               c.status === 'cancelled' ? 'bg-gray-100 text-gray-600 border-gray-200 line-through' :
+                               'bg-amber-50 text-amber-700 border-amber-100'
+                             }`}>
+                               <select
+                                 value={c.status || 'issued'}
+                                 onChange={(e) => {
+                                   setUpdatingCheckType('issued');
+                                   setUpdatingCheckId(c.id);
+                                   setStatusVal(e.target.value);
+                                   setIsStatusModalOpen(true);
+                                 }}
+                                 className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold print:pl-2.5 print:pr-2.5"
+                               >
+                                 <option value="issued">در جریان (صادره)</option>
+                                 <option value="cashed">پاس شده</option>
+                                 <option value="bounced">برگشتی</option>
+                                 <option value="cancelled">باطل شده</option>
+                               </select>
+                               <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60 print:hidden" />
+                             </div>
+                          </td>
+                          <td className="px-4 py-3.5 print:hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button 
+                                onClick={() => { 
+                                  setEditingIssuedCheckId(c.id);
+                                  setIcCheckbookId(String(c.checkbookId || ''));
+                                  setIcCheckNumber(c.checkNumber);
+                                  setIcPayeeId(String(c.payeeId || ''));
+                                  setIcAmount(c.amount.toString());
+                                  setIcIssueDate(c.issueDate);
+                                  setIcDueDate(c.dueDate);
+                                  setIcDescription(c.description || '');
+                                  setIsIssuedModalOpen(true);
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 inline-block"
+                                title="ویرایش چک"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteIssuedCheck(c.id)} 
+                                className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 inline-block"
+                                title="حذف چک"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredIssuedChecks.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-16 text-center text-gray-400 text-sm font-medium">
+                          <AlertTriangle className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                          هیچ چکی مطابق شرایط جستجو در سیستم صادر نشده است
                         </td>
                       </tr>
-                    );
-                  })}
-                  {filteredIssuedChecks.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="py-16 text-center text-gray-400 text-sm font-medium">
-                        <AlertTriangle className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                        هیچ چکی مطابق شرایط جستجو در سیستم صادر نشده است
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ) : activeSubTab === 'received_checks' ? (
@@ -748,96 +766,107 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
             </div>
 
-            <div className="overflow-x-auto print:overflow-visible border border-gray-100 print:border-none rounded-2xl print:rounded-none shadow-xs print:shadow-none bg-white">
-              <table className="w-full text-right text-sm">
-                <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
-                  <tr>
-                    <th className="px-4 py-4 font-bold">شماره چک</th>
-                    <th className="px-4 py-4 font-bold">بانک صادرکننده</th>
-                    <th className="px-4 py-4 font-bold">پرداخت‌کننده (طرف حساب)</th>
-                    <th className="px-4 py-4 font-bold">مبلغ (تومان)</th>
-                    <th className="px-4 py-4 font-bold">دریافت</th>
-                    <th className="px-4 py-4 font-bold">سررسید</th>
-                    <th className="px-4 py-4 font-bold">وضعیت</th>
-                    <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 bg-white">
-                  {filteredReceivedChecks.map(c => {
-                    const payer = persons.find(p => p.id?.toString() === c.payerId?.toString());
-                    return (
-                      <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3.5">
-                          <div className="font-mono font-black text-gray-900">{c.checkNumber}</div>
-                          <div className="text-[10px] text-gray-500 font-bold mt-1 max-w-[120px] truncate">{c.receiptNumber ? `رسید: ${c.receiptNumber}` : `بدون شناسه رسید`}</div>
-                        </td>
-                        <td className="px-4 py-3.5 text-xs text-indigo-950 font-bold max-w-[150px] truncate">
-                          {c.bankName} {c.branchName ? `(شعبه: ${c.branchName})` : ''}
-                        </td>
-                        <td className="px-4 py-3.5 font-bold text-gray-800">{payer?.name || c.payerId || 'ناشناس'}</td>
-                        <td className="px-4 py-3.5 font-sans font-black text-emerald-600">{Number(c.amount).toLocaleString()}</td>
-                        <td className="px-4 py-3.5 font-sans font-medium text-gray-500 text-xs">{c.receiveDate}</td>
-                        <td className="px-4 py-3.5 font-sans font-bold text-gray-700">{c.dueDate}</td>
-                        <td className="px-4 py-3.5">
-                           <div className={`relative inline-block rounded-lg text-xs font-bold border ${
-                             c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                             c.status === 'deposited' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
-                             c.status === 'bounced' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
-                             c.status === 'returned' ? 'bg-gray-100 text-gray-600 border-gray-200' :
-                             'bg-amber-50 text-amber-700 border-amber-100'
-                           }`}>
-                             <select
-                               value={c.status || 'received'}
-                               onChange={(e) => {
-                                 setUpdatingCheckType('received');
-                                 setUpdatingCheckId(c.id);
-                                 setStatusVal(e.target.value);
-                                 setIsStatusModalOpen(true);
-                               }}
-                               className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold"
-                             >
-                               <option value="received">دریافت شده</option>
-                               <option value="deposited">خوابانده دفتری</option>
-                               <option value="cashed">وصول شده</option>
-                               <option value="bounced">برگشتی</option>
-                               <option value="returned">عودت داده شده</option>
-                             </select>
-                             <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60 print:hidden" />
-                           </div>
-                        </td>
-                        <td className="px-4 py-3.5 print:hidden">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button 
-                              onClick={() => { 
-                                setEditingReceivedCheckId(c.id);
-                                setRcCheckNumber(c.checkNumber);
-                                setRcBankName(c.bankName || '');
-                                setRcBranchName(c.branchName || '');
-                                setRcPayerId(String(c.payerId || ''));
-                                setRcAmount(c.amount.toString());
-                                setRcReceiveDate(c.receiveDate);
-                                setRcDueDate(c.dueDate);
-                                setRcDescription(c.description || '');
-                                setIsReceivedModalOpen(true);
-                              }}
-                              className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 inline-block"
-                              title="ویرایش چک"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteReceivedCheck(c.id)} 
-                              className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 inline-block"
-                              title="حذف چک"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filteredReceivedChecks.length === 0 && (
+            <div className="print-section w-full">
+              {/* Print Only Header */}
+              <div className="hidden print:block mb-6 border-b-2 border-slate-800 pb-4 text-center">
+                <h1 className="text-xl font-extrabold text-slate-900 font-sans">سامانه مدیریت مالی و حسابداری</h1>
+                <p className="text-sm text-gray-650 font-bold mt-1.5">گزارش و لیست چک‌های دریافتی (وصولی)</p>
+                <div className="flex justify-between items-center mt-5 text-xs text-slate-500 border-t border-slate-100 pt-3 font-bold">
+                  <span>تاریخ چاپ: {toPersianDigits(new Date().toLocaleDateString('fa-IR'))}</span>
+                  <span>تعداد کل اقلام: {toPersianDigits(filteredReceivedChecks.length)}</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto print:overflow-visible border border-gray-100 print:border-none rounded-2xl print:rounded-none shadow-xs print:shadow-none bg-white">
+                <table className="w-full text-right text-sm">
+                  <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-4 font-bold">شماره چک</th>
+                      <th className="px-4 py-4 font-bold">بانک صادرکننده</th>
+                      <th className="px-4 py-4 font-bold">پرداخت‌کننده (طرف حساب)</th>
+                      <th className="px-4 py-4 font-bold">مبلغ (تومان)</th>
+                      <th className="px-4 py-4 font-bold">دریافت</th>
+                      <th className="px-4 py-4 font-bold">سررسید</th>
+                      <th className="px-4 py-4 font-bold">وضعیت</th>
+                      <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 bg-white">
+                    {filteredReceivedChecks.map(c => {
+                      const payer = persons.find(p => p.id?.toString() === c.payerId?.toString());
+                      return (
+                        <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="font-mono font-black text-gray-900">{toPersianDigits(c.checkNumber)}</div>
+                            <div className="text-[10px] text-gray-550 font-bold mt-1 max-w-[120px] truncate">{c.receiptNumber ? `رسید: ${toPersianDigits(c.receiptNumber)}` : `بدون شناسه رسید`}</div>
+                          </td>
+                          <td className="px-4 py-3.5 text-xs text-indigo-950 font-bold max-w-[150px] truncate">
+                            {c.bankName} {c.branchName ? `(شعبه: ${toPersianDigits(c.branchName)})` : ''}
+                          </td>
+                          <td className="px-4 py-3.5 font-bold text-gray-800">{payer?.name || c.payerId || 'ناشناس'}</td>
+                          <td className="px-4 py-3.5 font-sans font-black text-emerald-600">{toPersianDigits(Number(c.amount).toLocaleString())}</td>
+                          <td className="px-4 py-3.5 font-sans font-medium text-gray-500 text-xs">{toPersianDigits(c.receiveDate)}</td>
+                          <td className="px-4 py-3.5 font-sans font-bold text-gray-700">{toPersianDigits(c.dueDate)}</td>
+                          <td className="px-4 py-3.5">
+                             <div className={`relative inline-block rounded-lg text-xs font-bold border ${
+                               c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                               c.status === 'deposited' ? 'bg-blue-50 text-blue-700 border-blue-100' : 
+                               c.status === 'bounced' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
+                               c.status === 'returned' ? 'bg-gray-100 text-gray-600 border-gray-200' :
+                               'bg-amber-50 text-amber-700 border-amber-100'
+                             }`}>
+                               <select
+                                 value={c.status || 'received'}
+                                 onChange={(e) => {
+                                   setUpdatingCheckType('received');
+                                   setUpdatingCheckId(c.id);
+                                   setStatusVal(e.target.value);
+                                   setIsStatusModalOpen(true);
+                                 }}
+                                 className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold print:pl-2.5 print:pr-2.5"
+                               >
+                                 <option value="received">دریافت شده</option>
+                                 <option value="deposited">خوابانده دفتری</option>
+                                 <option value="cashed">وصول شده</option>
+                                 <option value="bounced">برگشتی</option>
+                                 <option value="returned">عودت داده شده</option>
+                               </select>
+                               <ChevronDown className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60 print:hidden" />
+                             </div>
+                          </td>
+                          <td className="px-4 py-3.5 print:hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button 
+                                onClick={() => { 
+                                  setEditingReceivedCheckId(c.id);
+                                  setRcCheckNumber(c.checkNumber);
+                                  setRcBankName(c.bankName || '');
+                                  setRcBranchName(c.branchName || '');
+                                  setRcPayerId(String(c.payerId || ''));
+                                  setRcAmount(c.amount.toString());
+                                  setRcReceiveDate(c.receiveDate);
+                                  setRcDueDate(c.dueDate);
+                                  setRcDescription(c.description || '');
+                                  setIsReceivedModalOpen(true);
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 inline-block"
+                                title="ویرایش چک"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteReceivedCheck(c.id)} 
+                                className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100 inline-block"
+                                title="حذف چک"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredReceivedChecks.length === 0 && (
                     <tr>
                       <td colSpan={8} className="py-16 text-center text-gray-400 text-sm font-medium">
                         <AlertTriangle className="w-10 h-10 text-gray-300 mx-auto mb-2" />
@@ -849,6 +878,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </table>
             </div>
           </div>
+        </div>
         ) : (
           /* SUBTAB 4: CHECK CALENDAR */
           <div className="flex flex-col lg:flex-row gap-6">
