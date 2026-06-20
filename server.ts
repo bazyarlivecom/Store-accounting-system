@@ -47,68 +47,106 @@ async function startServer() {
   
   app.use(express.json({ limit: '50mb' }));
 
-  // --- Local Backups Logic ---
-  const BACKUPS_DIR = path.join(process.cwd(), 'backups');
-  if (!fsPromises.constants) {
-    // node types workaround
-  }
+  // --- Local Backups Logic (Configurable) ---
+  let backupConfig = { path: '', intervalHours: 4 };
   try {
-     await fsPromises.mkdir(BACKUPS_DIR, { recursive: true });
+     const row = db.prepare('SELECT value FROM store WHERE key = ?').get('backupConfig') as { value: string } | undefined;
+     if (row && row.value) {
+        Object.assign(backupConfig, JSON.parse(row.value));
+     }
   } catch(e) {}
 
-  // Auto-backup every 4 hours
-  setInterval(async () => {
+  const getBackupsDir = () => {
+     return backupConfig.path && backupConfig.path.trim() !== '' 
+        ? backupConfig.path 
+        : path.join(process.cwd(), 'backups');
+  };
+
+  let backupInterval: NodeJS.Timeout | null = null;
+  const runBackupJob = async () => {
      try {
+        const dir = getBackupsDir();
+        await fsPromises.mkdir(dir, { recursive: true });
         const rowsStmt = db.prepare('SELECT key, value FROM store');
-        const rows = rowsStmt.all();
+        const rows = rowsStmt.all() as {key: string, value: string}[];
         const backupData: any = {};
         for (const row of rows) {
           backupData[row.key] = JSON.parse(row.value);
         }
         const fileName = `backup-${Date.now()}.json`;
-        await fsPromises.writeFile(path.join(BACKUPS_DIR, fileName), JSON.stringify(backupData));
+        await fsPromises.writeFile(path.join(dir, fileName), JSON.stringify(backupData));
         
-        // keep only last 10 backups
-        const files = await fsPromises.readdir(BACKUPS_DIR);
+        // keep only last 20 backups
+        const files = await fsPromises.readdir(dir);
         const jsonFiles = files.filter(f => f.startsWith('backup-') && f.endsWith('.json')).sort();
-        if (jsonFiles.length > 10) {
-           for (let i = 0; i < jsonFiles.length - 10; i++) {
-              await fsPromises.unlink(path.join(BACKUPS_DIR, jsonFiles[i]));
+        if (jsonFiles.length > 20) {
+           for (let i = 0; i < jsonFiles.length - 20; i++) {
+              await fsPromises.unlink(path.join(dir, jsonFiles[i]));
            }
         }
+        console.log('Auto backup created:', fileName, 'in', dir);
      } catch (err) {
         console.error('Auto backup failed', err);
      }
-  }, 4 * 60 * 60 * 1000);
+  };
+
+  const setupBackupInterval = () => {
+     if (backupInterval) clearInterval(backupInterval);
+     if (backupConfig.intervalHours > 0) {
+        backupInterval = setInterval(runBackupJob, backupConfig.intervalHours * 60 * 60 * 1000);
+     }
+  };
+  
+  setupBackupInterval();
+
+  app.get('/api/db/backup-config', (req, res) => {
+     res.json(backupConfig);
+  });
+
+  app.post('/api/db/backup-config', (req, res) => {
+     try {
+        const { path, intervalHours } = req.body;
+        backupConfig = { path: path || '', intervalHours: Number(intervalHours) || 0 };
+        const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+        insertOrUpdate.run('backupConfig', JSON.stringify(backupConfig));
+        setupBackupInterval();
+        res.json({ success: true, backupConfig });
+     } catch(err: any) {
+        res.status(500).json({ error: err.message });
+     }
+  });
 
   app.get('/api/db/backups', async (req, res) => {
      try {
-        await fsPromises.mkdir(BACKUPS_DIR, { recursive: true });
-        const files = await fsPromises.readdir(BACKUPS_DIR);
+        const dir = getBackupsDir();
+        await fsPromises.mkdir(dir, { recursive: true });
+        const files = await fsPromises.readdir(dir);
         const jsonFiles = files.filter(f => f.startsWith('backup-') && f.endsWith('.json')).sort((a,b) => b.localeCompare(a));
         const backupsList = [];
         for (const file of jsonFiles) {
-           const stat = await fsPromises.stat(path.join(BACKUPS_DIR, file));
+           const stat = await fsPromises.stat(path.join(dir, file));
            backupsList.push({ file, size: stat.size, time: stat.mtimeMs });
         }
         res.json(backupsList);
-     } catch (err) {
+     } catch (err: any) {
         res.status(500).json({ error: err.message });
      }
   });
 
   app.post('/api/db/backups/do', async (req, res) => {
      try {
+        const dir = getBackupsDir();
+        await fsPromises.mkdir(dir, { recursive: true });
         const rowsStmt = db.prepare('SELECT key, value FROM store');
-        const rows = rowsStmt.all();
-        const backupData = {};
+        const rows = rowsStmt.all() as {key: string, value: string}[];
+        const backupData: any = {};
         for (const row of rows) {
           backupData[row.key] = JSON.parse(row.value);
         }
         const fileName = `backup-${Date.now()}.json`;
-        await fsPromises.writeFile(path.join(BACKUPS_DIR, fileName), JSON.stringify(backupData));
+        await fsPromises.writeFile(path.join(dir, fileName), JSON.stringify(backupData));
         res.json({ success: true, fileName });
-     } catch (err) {
+     } catch (err: any) {
         res.status(500).json({ error: err.message });
      }
   });
@@ -116,7 +154,8 @@ async function startServer() {
   app.post('/api/db/backups/restore/:filename', async (req, res) => {
      try {
         const { filename } = req.params;
-        const filePath = path.join(BACKUPS_DIR, filename);
+        const dir = getBackupsDir();
+        const filePath = path.join(dir, filename);
         const raw = await fsPromises.readFile(filePath, 'utf8');
         const parsed = JSON.parse(raw);
         const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
@@ -124,7 +163,7 @@ async function startServer() {
           insertOrUpdate.run(key, JSON.stringify(value));
         }
         res.json({ success: true });
-     } catch (err) {
+     } catch (err: any) {
         res.status(500).json({ error: err.message });
      }
   });
