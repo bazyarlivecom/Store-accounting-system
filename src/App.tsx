@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Barcode from 'react-barcode';
 import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Line, ComposedChart, Cell } from 'recharts';
 import { addCommas, removeCommas, numberToWords, getBaseValueInToman, getDefaultExchangeRate, showInvoiceCurrency, numToPersianWords } from './utils/format';
 import DatePickerModule from "react-multi-date-picker";
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
@@ -365,6 +366,20 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [requiresInitSetup, setRequiresInitSetup] = useState(false);
 
+  // Notification Utility
+  const sendNotification = (message, personPhone, method) => {
+    if (!method || method === 'none' || !personPhone) return;
+    setTimeout(() => {
+      let icon = '💬';
+      if (method === 'sms') icon = '📱';
+      if (method === 'whatsapp') icon = '🟢';
+      if (method === 'gsm') icon = '📡';
+      
+      const toastId = Math.random().toString(36).substring(7);
+      setToasts(prev => [...prev, { id: toastId, message: icon + ' پیامک/اطلاع‌رسانی به ' + personPhone + ' ارسال شد.', type: 'info' }]);
+    }, 1500);
+  };
+
   // Receipts & Payments Form State
   const [receiptPersonId, setReceiptPersonId] = useState<string | number | ''>('');
   const [receiptPersonSearchText, setReceiptPersonSearchText] = useState('');
@@ -653,7 +668,7 @@ export default function App() {
   const [newProductUnit, setNewProductUnit] = useState('');
   const [newProductSecondaryUnit, setNewProductSecondaryUnit] = useState('');
   const [newProductUnitRatio, setNewProductUnitRatio] = useState('');
-  const [productFormTab, setProductFormTab] = useState<'general' | 'financial' | 'inventory'>('general');
+  const [productFormTab, setProductFormTab] = useState<'general' | 'financial' | 'inventory' | 'history'>('general');
   const [newProductDesc, setNewProductDesc] = useState('');
 
   // Categories list
@@ -772,7 +787,7 @@ export default function App() {
     print_footer_note: '', print_signature_1: '', print_signature_2: '', print_signature_3: ''
   });
   const [submittingSettings, setSubmittingSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'general' | 'numbering' | 'features' | 'printing'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'numbering' | 'features' | 'printing' | 'notification'>('general');
 
   // Fetch API data on mount
   const fetchInvoices = async () => {
@@ -794,6 +809,59 @@ export default function App() {
     } catch (error) {
       console.error('Error fetching products or categories', error);
     }
+  };
+
+  const handleExportProductsData = () => {
+    const dataStr = JSON.stringify(products, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `products_export_${new Date().toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR').replace(/\//g, '-')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    customAlert('خروجی کالاها با موفقیت دریافت شد.');
+  };
+
+  const handleImportProductsData = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event: any) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (!Array.isArray(imported)) {
+            customAlert('فایل نامعتبر است. فرمت صحیح ذخیره شده کالاها را انتخاب کنید.');
+            return;
+          }
+          if (!confirm(`تعداد ${imported.length} کالا آماده درون‌ریزی است. ادامه می‌دهید؟`)) return;
+          
+          setSubmittingProduct(true);
+          for (const p of imported) {
+             const payload = { ...p };
+             delete payload.id;
+             delete payload.createdAt;
+             delete payload.updatedAt;
+             await addProduct(payload);
+          }
+          await fetchProducts();
+          setSubmittingProduct(false);
+          customAlert('کالاها با موفقیت درون‌ریزی شدند.');
+        } catch (err) {
+          console.error(err);
+          customAlert('خطا در خواندن فایل!');
+          setSubmittingProduct(false);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   const handleGenerateDemoData = async () => {
@@ -1044,6 +1112,22 @@ export default function App() {
       } else {
         name = `${newPersonFirstName || ''} ${newPersonLastName || ''}`.trim();
         generatedAlias = newPersonAlias || `${newPersonTitle ? newPersonTitle + ' ' : ''}${name}`.trim();
+      }
+
+      const duplicateNationalId = newPersonNationalId ? persons.find(p => p.nationalId === newPersonNationalId && (!isEdit || p.id.toString() !== editingPersonId.toString())) : null;
+      const duplicatePhone = newPersonPhone ? persons.find(p => p.phone === newPersonPhone && (!isEdit || p.id.toString() !== editingPersonId.toString())) : null;
+      const duplicateAlias = generatedAlias ? persons.find(p => (p.alias === generatedAlias || p.name === generatedAlias) && (!isEdit || p.id.toString() !== editingPersonId.toString())) : null;
+
+      let warningMessage = '';
+      if (duplicateAlias) warningMessage += 'نام مستعار یا نام وارد شده تکراری است (مربوط به: ' + (duplicateAlias.name || duplicateAlias.alias) + ').\n';
+      if (duplicateNationalId) warningMessage += 'کد/شناسه ملی وارد شده تکراری است (مربوط به: ' + duplicateNationalId.name + ').\n';
+      if (duplicatePhone) warningMessage += 'شماره تماس وارد شده تکراری است (مربوط به: ' + duplicatePhone.name + ').\n';
+
+      if (warningMessage) {
+         if (!window.confirm(warningMessage + '\nآیا مطمئن هستید که می‌خواهید این شخص را با اطلاعات تکراری ثبت کنید؟')) {
+             setSubmittingPerson(false);
+             return;
+         }
       }
 
       const payload = {
@@ -1383,6 +1467,14 @@ export default function App() {
 
       setLastCreatedReceipt(createdReceiptObj);
       setReceiptSuccessMsg(typeTmp === 'receive' ? 'رسید دریافت با موفقیت صادر شد' : 'رسید پرداخت با موفقیت صادر شد');
+      if (storeSettings?.notify_on_receipt) {
+         const person = persons.find(p => p.id === previewReceiptData.personId);
+         if (person && person.phone) {
+             const amt = typeof formatNumber === 'function' ? formatNumber(previewReceiptData.amount) : previewReceiptData.amount;
+             const isRec = typeTmp === 'receive';
+             sendNotification(`${person.name} گرامی، رسید ${isRec ? 'دریافت از' : 'پرداخت به'} شما به مبلغ ${amt} ${storeSettings?.currency || 'تومان'} با موفقیت ثبت شد.`, person.phone, storeSettings?.notify_method);
+         }
+      }
     } catch (err) {
       console.error(err);
       customAlert('خطا در ارتباط با سرور.');
@@ -2525,6 +2617,15 @@ export default function App() {
          'فاکتور';
 
       setSuccessMsg(`${successTypeName} با موفقیت ثبت شد!`);
+      if (storeSettings?.notify_on_invoice && (payload.type === 'sale' || payload.type === 'purchase')) {
+         const person = persons.find(p => p.id === payload.customerId);
+         if (person && person.phone) {
+             const amt = typeof formatNumber === 'function' ? formatNumber(payload.totalAmount) : payload.totalAmount;
+             const mTitle = payload.type === 'sale' ? 'مشتری گرامی' : 'همکار گرامی';
+             const mWord = payload.type === 'sale' ? 'خرید' : 'فروش';
+             sendNotification(`${mTitle}، فاکتور ${mWord} شما به مبلغ ${amt} ${storeSettings?.currency || 'تومان'} در سیستم ثبت شد.`, person.phone, storeSettings?.notify_method);
+         }
+      }
       await fetchInvoices();
       
       // Reset form after short delay
@@ -6595,6 +6696,24 @@ export default function App() {
                      <Database className="w-4 h-4" />
                      ایجاد دیتای نمونه
                    </button>
+                   <div className="flex gap-1 border-l border-gray-200 pl-2 ml-2">
+                     <button
+                       onClick={handleExportProductsData}
+                       className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
+                       title="خروجی پشتیبان کالاها (JSON)"
+                     >
+                        <ArrowDownToLine className="w-4 h-4" />
+                        صدور
+                     </button>
+                     <button
+                       onClick={handleImportProductsData}
+                       className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
+                       title="ورود اطلاعات کالاها از فایل JSON"
+                     >
+                        <ArrowUpFromLine className="w-4 h-4" />
+                        ورود
+                     </button>
+                   </div>
                    <button
                      onClick={() => setShowProductBarcodesList(true)}
                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold border border-slate-200"
@@ -8206,6 +8325,74 @@ export default function App() {
               * ارقام مربوط به گردش اسناد براساس مبالغ ثبت شده در رسیدهای دریافت و پرداخت رسمی صادر شده در بخش خزانه‌داری محاسبه شده و مستقیماً روی تراز مالی صندوق‌ها و حساب‌های بانکی بالا اثرگذار بوده‌اند.
             </p>
           </div>
+
+          {/* Checks Dashboard Chart */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mt-6">
+            <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-500" />
+              آمار زمان‌بندی و وضعیت چک‌ها بر اساس سررسید
+            </h3>
+            
+            {(() => {
+              const allC = [
+                ...receivedChecks.map(c => ({ ...c, type: 'receive', isPending: c.status === 'pending' })),
+                ...issuedChecks.map(c => ({ ...c, type: 'issue', isPending: c.status === 'pending' }))
+              ];
+              
+              if (allC.length === 0) {
+                 return <p className="text-sm text-gray-500 py-4 text-center">هیچ چکی در سیستم ثبت نشده است.</p>;
+              }
+              
+              const groups: Record<string, any> = {};
+              allC.forEach(c => {
+                 const d = c.dueDate || 'نامشخص';
+                 if (!groups[d]) {
+                    groups[d] = {
+                       name: d,
+                       receivedAmount: 0,
+                       issuedAmount: 0,
+                       pendingReceivedCount: 0,
+                       pendingIssuedCount: 0
+                    };
+                 }
+                 if (c.type === 'receive') {
+                    groups[d].receivedAmount += c.amount || 0;
+                    if (c.isPending) groups[d].pendingReceivedCount += 1;
+                 } else {
+                    groups[d].issuedAmount += c.amount || 0;
+                    if (c.isPending) groups[d].pendingIssuedCount += 1;
+                 }
+              });
+              
+              let chartData = Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+              
+              return (
+                 <div className="w-full h-80 mt-4" dir="ltr">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                       <XAxis dataKey="name" tick={{fontSize: 12, fill: '#6B7280'}} tickMargin={10} />
+                       <YAxis yAxisId="left" tickFormatter={(val) => Math.abs(val) > 999 ? (val/1000).toFixed(0)+'k' : val} tick={{fontSize: 12, fill: '#6B7280'}} />
+                       <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12}} />
+                       <RechartsTooltip 
+                         formatter={(value: any, name: string) => {
+                            if (name === 'مبلغ دریافتی' || name === 'مبلغ پرداختی') return [addCommas(value) + ' ' + (storeSettings?.currency || 'تومان'), name];
+                            return [value, name];
+                         }}
+                         labelStyle={{ fontWeight: 'bold', color: '#374151', textAlign: 'right' }}
+                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', textAlign: 'right' }}
+                       />
+                       <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
+                       <Bar yAxisId="left" dataKey="receivedAmount" name="مبلغ دریافتی" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                       <Bar yAxisId="left" dataKey="issuedAmount" name="مبلغ پرداختی" fill="#F43F5E" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                       <Line yAxisId="right" type="monotone" dataKey="pendingReceivedCount" name="تعداد وصول‌نشده دریافتی" stroke="#059669" strokeWidth={3} dot={{r: 4}} />
+                       <Line yAxisId="right" type="monotone" dataKey="pendingIssuedCount" name="تعداد وصول‌نشده پرداختی" stroke="#E11D48" strokeWidth={3} dot={{r: 4}} />
+                     </ComposedChart>
+                   </ResponsiveContainer>
+                 </div>
+              );
+            })()}
+          </div>
         </motion.div>
       ) : activeTab === 'person_ledger' ? (
         /* Contact/Person Ledger Card View (کارت حساب اشخاص) */
@@ -8228,6 +8415,28 @@ export default function App() {
             </div>
             
             <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!ledgerPersonId) {
+                    customAlert('ابتدا یک شخص را انتخاب کنید.');
+                    return;
+                  }
+                  const person = persons.find(p => p.id.toString() === ledgerPersonId.toString());
+                  if (person && person.phone) {
+                    if (storeSettings?.notify_method === 'none' || !storeSettings?.notify_method) {
+                        customAlert('ارسال پیامک تنظیم نشده است. ابتدا به تنظیمات بروید.');
+                        return;
+                    }
+                    sendNotification(`${person.name} گرامی، به استحضار می رساند مانده حساب شما در سیستم ${storeSettings?.storeName || 'ما'} بررسی و یادآوری می‌گردد. لطفا در صورت امکان جهت تسویه حساب اقدام فرمایید.`, person.phone, storeSettings?.notify_method);
+                  } else {
+                    customAlert('شماره تماس این شخص در سیستم ثبت نشده است.');
+                  }
+                }}
+                className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-emerald-100 shadow-sm"
+              >
+                <span className="text-lg">💬</span>
+                یادآوری پیامکی
+              </button>
               <button
                 onClick={() => {
                    setPrintingPersonLedger(true);
@@ -8978,8 +9187,14 @@ export default function App() {
                چاپ و امضائات
                {settingsTab === 'printing' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
             </button>
+            <button
+               onClick={() => setSettingsTab('notification')}
+               className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === 'notification' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
+            >
+               پیامک و اطلاع‌رسانی
+               {settingsTab === 'notification' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            </button>
           </div>
-
           <div className="p-6 bg-white">
             <form id="settingsForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ذخیره تنظیمات اطمینان دارید؟', () => handleSaveSettings(e as any)) }} className="flex flex-col gap-6">
               
@@ -9227,6 +9442,80 @@ export default function App() {
                             placeholder="مثال: مدیریت"
                           />
                        </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {settingsTab === 'notification' && (
+                <div className="flex flex-col gap-6">
+                  <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
+                    <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">تنظیمات روش ارسال پیام</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="w-full text-right md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">روش پیش‌فرض اطلاع‌رسانی</label>
+                          <select
+                            value={settingsForm.notify_method || 'none'}
+                            onChange={e => setSettingsForm({...settingsForm, notify_method: e.target.value})}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                          >
+                            <option value="none">غیرفعال</option>
+                            <option value="sms">سامانه پیامکی (API)</option>
+                            <option value="whatsapp">واتساپ</option>
+                            <option value="gsm">دستگاه GSM</option>
+                          </select>
+                       </div>
+                       
+                       {settingsForm.notify_method && settingsForm.notify_method !== 'none' && (
+                         <>
+                           <div className="w-full text-right md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">کلید API / تنظیمات درگاه / پورت COM</label>
+                              <input
+                                type="text"
+                                value={settingsForm.notify_api_key || ''}
+                                onChange={e => setSettingsForm({...settingsForm, notify_api_key: e.target.value})}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
+                                placeholder="مثال: p1h2g3... یا پورت COM3"
+                                dir="ltr"
+                              />
+                           </div>
+                         </>
+                       )}
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
+                    <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">رویدادهای اطلاع‌رسانی خودکار</h3>
+                    <div className="space-y-4">
+                      <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={settingsForm.notify_on_invoice || false}
+                          onChange={e => setSettingsForm({...settingsForm, notify_on_invoice: e.target.checked})}
+                          className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                        />
+                        <span className="text-gray-800 font-medium">ارسال فاکتور خرید/فروش برای مشتری</span>
+                      </label>
+
+                      <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={settingsForm.notify_on_receipt || false}
+                          onChange={e => setSettingsForm({...settingsForm, notify_on_receipt: e.target.checked})}
+                          className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                        />
+                        <span className="text-gray-800 font-medium">ارسال رسید ثبت دریافتی / پرداختی</span>
+                      </label>
+
+                      <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={settingsForm.notify_on_balance || false}
+                          onChange={e => setSettingsForm({...settingsForm, notify_on_balance: e.target.checked})}
+                          className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                        />
+                        <span className="text-gray-800 font-medium">گزارش مانده حساب (پس از هر تراکنش)</span>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -10049,6 +10338,15 @@ export default function App() {
                   >
                     انبار و تکمیلی
                   </button>
+                  {editingProductId && (
+                     <button
+                       type="button"
+                       onClick={() => setProductFormTab('history')}
+                       className={`pb-3 font-bold text-sm border-b-2 transition-colors ${productFormTab === 'history' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                     >
+                       تاریخچه قیمت‌ها
+                     </button>
+                  )}
                 </div>
                 
                 <form id="productForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ثبت اطلاعات کالا/خدمات اطمینان دارید؟', () => handleSubmitProduct(e as any)) }} className="p-6">
@@ -10289,6 +10587,39 @@ export default function App() {
                         />
                       </div>
                     </div>
+                  )}
+
+                                    {/* History Tab */}
+                  {productFormTab === 'history' && (
+                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                       <h3 className="text-lg font-extrabold text-gray-900">تاریخچه تغییرات قیمت</h3>
+                       <div className="bg-white border flex-1 border-gray-100 shadow-sm rounded-xl overflow-hidden">
+                         <table className="min-w-full divide-y divide-gray-100">
+                           <thead className="bg-gray-50/50">
+                             <tr>
+                               <th className="text-right px-4 py-3 text-xs font-bold text-gray-500">تاریخ و زمان</th>
+                               <th className="text-right px-4 py-3 text-xs font-bold text-gray-500">قیمت خرید</th>
+                               <th className="text-right px-4 py-3 text-xs font-bold text-gray-500">قیمت فروش</th>
+                             </tr>
+                           </thead>
+                           <tbody className="divide-y divide-gray-100">
+                             {(() => {
+                                const prod = products.find(p => p.id === editingProductId);
+                                if (!prod || !prod.priceHistory || prod.priceHistory.length === 0) {
+                                   return <tr><td colSpan={3} className="text-center py-6 text-sm text-gray-500">تاریخچه‌ای برای این کالا ثبت نشده است.</td></tr>;
+                                }
+                                return prod.priceHistory.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((h, i) => (
+                                   <tr key={i} className="hover:bg-slate-50">
+                                     <td className="px-4 py-3 text-sm text-gray-700" dir="ltr">{new Date(h.date).toLocaleString('fa-IR')}</td>
+                                     <td className="px-4 py-3 text-sm font-bold text-gray-900">{addCommas(h.buyPrice)}</td>
+                                     <td className="px-4 py-3 text-sm font-bold text-gray-900">{addCommas(h.sellPrice)}</td>
+                                   </tr>
+                                ));
+                             })()}
+                           </tbody>
+                         </table>
+                       </div>
+                     </div>
                   )}
 
                   {/* Hidden required fields for HTML5 validation validation to still work across tabs */}

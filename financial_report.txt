@@ -1,0 +1,350 @@
+7950:          initial={{ opacity: 0, y: 10 }}
+7951:          animate={{ opacity: 1, y: 0 }}
+7952:          className="space-y-6 text-right"
+7953:          dir="rtl"
+7954:        >
+7955:          {/* Header */}
+7956:          <div className="bg-gradient-to-l from-indigo-50 to-white rounded-2xl shadow-sm border border-gray-100 px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+7957:            <div>
+7958:              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+7959:                <BarChart3 className="w-6 h-6 text-indigo-600" />
+7960:                گزارش مالی و تراز خزانه‌داری
+7961:              </h1>
+7962:              <p className="text-sm text-gray-500 mt-1">
+7963:                نگاهی خلاصه به عملکرد خرید، فروش، نقدینگی صندوق‌ها و تراز کلی حساب‌های بانکی
+7964:              </p>
+7965:            </div>
+7966:            <div className="flex flex-col md:flex-row items-center gap-3">
+7967:              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+7968:                 <span className="text-xs font-bold text-gray-500">بازه زمانی:</span>
+7969:                 <DatePicker
+7970:                   range
+7971:                   dateSeparator=" تا "
+7972:                   value={reportDateRange as any}
+7973:                   onChange={setReportDateRange as any}
+7974:                   calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
+7975:                   locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
+7976:                   calendarPosition="bottom-right"
+7977:                   inputClass="text-sm font-bold text-indigo-700 bg-transparent border-none outline-none max-w-[170px] text-center"
+7978:                   placeholder="انتخاب بازه تاریخ..."
+7979:                 />
+7980:                 {reportDateRange && reportDateRange.length > 0 && (
+7981:                   <button onClick={() => setReportDateRange([])} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+7982:                 )}
+7983:              </div>
+7984:              <button
+7985:                onClick={async () => {
+7986:                  await Promise.all([
+7987:                    fetchInvoices(),
+7988:                    fetchTransactions(),
+7989:                    fetchAccounts(),
+7990:                    fetchCashboxes()
+7991:                  ]);
+7992:                }}
+7993:                className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-indigo-100 shadow-sm"
+7994:              >
+7995:                <RefreshCw className="w-4 h-4 animate-spin-slow" />
+7996:                بروزرسانی داده‌ها
+7997:              </button>
+7998:            </div>
+7999:          </div>
+8000:
+8001:          {/* Top KPI Cards Grid */}
+8002:          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+8003:            {/* Sales Card */}
+8004:            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
+8005:              <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-indigo-500"></div>
+8006:              <div className="p-3.5 bg-indigo-50 rounded-2xl text-indigo-600">
+8007:                <ShoppingCart className="w-6 h-6" />
+8008:              </div>
+8009:              <div className="flex-1">
+8010:                <h3 className="text-xs font-semibold text-gray-400">مجموع کل فروش (فاکتورها)</h3>
+8011:                <span className="text-xl font-extrabold text-gray-900 block mt-1">
+8012:                  {formatNumber(
+8013:                    invoices.filter(inv => (inv.type === 'sale' || inv.type === 'sale_return') && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.type === 'sale' ? (inv.totalAmount || 0) : -(inv.totalAmount || 0)) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+8014:                  )}{' '}
+8015:                  <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+8016:                </span>
+8017:                <span className="text-xs text-indigo-600 font-bold mt-1 block">
+8018:                  {formatNumber(invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).length)} فاکتور فروش ثبت شده
+8019:                </span>
+8020:              </div>
+8021:            </div>
+8022:
+8023:            {/* Purchases Card */}
+8024:            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
+8025:              <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-amber-500"></div>
+8026:              <div className="p-3.5 bg-amber-50 rounded-2xl text-amber-600">
+8027:                <Receipt className="w-6 h-6" />
+8028:              </div>
+8029:              <div className="flex-1">
+8030:                <h3 className="text-xs font-semibold text-gray-400">مجموع کل خرید (فاکتورها)</h3>
+8031:                <span className="text-xl font-extrabold text-gray-900 block mt-1">
+8032:                  {formatNumber(
+8033:                    invoices.filter(inv => (inv.type === 'purchase' || inv.type === 'purchase_return') && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.type === 'purchase' ? (inv.totalAmount || 0) : -(inv.totalAmount || 0)) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0)
+8034:                  )}{' '}
+8035:                  <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+8036:                </span>
+8037:                <span className="text-xs text-amber-600 font-bold mt-1 block">
+8038:                  {formatNumber(invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).length)} فاکتور خرید ثبت شده
+8039:                </span>
+8040:              </div>
+8041:            </div>
+8042:
+8043:            {/* Net Difference Card */}
+8044:            {(() => {
+8045:              const salesValRaw = invoices.filter(inv => inv.type === 'sale' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+8046:              const salesReturnVal = invoices.filter(inv => inv.type === 'sale_return' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+8047:              const salesVal = salesValRaw - salesReturnVal;
+8048:              /* && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+8049:              */
+8050:              const purchasesValRaw = invoices.filter(inv => inv.type === 'purchase' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+8051:              const purchasesReturnVal = invoices.filter(inv => inv.type === 'purchase_return' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+8052:              const purchasesVal = purchasesValRaw - purchasesReturnVal;
+8053:              /* && (!reportDateRange || reportDateRange.length !== 2 || (new Date(inv.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(inv.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, inv) => sum + (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings.currency), 0);
+8054:              */
+8055:              const netVal = salesVal - purchasesVal;
+8056:              const isPositive = netVal >= 0;
+8057:
+8058:              return (
+8059:                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
+8060:                  <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${isPositive ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+8061:                  <div className={`p-3.5 rounded-2xl ${isPositive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+8062:                    {isPositive ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
+8063:                  </div>
+8064:                  <div className="flex-1">
+8065:                    <h3 className="text-xs font-semibold text-gray-400">تفاضل معاملات (فروش - خرید)</h3>
+8066:                    <span className={`text-xl font-extrabold block mt-1 ${isPositive ? 'text-emerald-700' : 'text-rose-700'}`}>
+8067:                      {formatNumber(netVal)}{' '}
+8068:                      <span className="text-xs font-medium text-gray-500">{storeSettings.currency}</span>
+8069:                    </span>
+8070:                    <span className={`text-xs font-bold mt-1 block ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
+8071:                      {isPositive ? 'موازنه مثبت (سود تجاری ناخالص)' : 'موازنه منفی (زیان تجاری ناخالص)'}
+8072:                    </span>
+8073:                  </div>
+8074:                </div>
+8075:              );
+8076:            })()}
+8077:
+8078:            {/* Due Checks Today Card */}
+8079:            {(() => {
+8080:              const todayStr = new Date().toLocaleDateString('fa-IR');
+8081:              const dueIssued = issuedChecks.filter((c: any) => c.dueDate === todayStr).length;
+8082:              const dueReceived = receivedChecks.filter((c: any) => c.dueDate === todayStr).length;
+8083:              const totalDue = dueIssued + dueReceived;
+8084:
+8085:              return (
+8086:                <div 
+8087:                  onClick={() => setActiveTab('check_calendar')}
+8088:                  className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all group"
+8089:                >
+8090:                  <div className={`absolute right-0 top-0 bottom-0 w-1.5 ${totalDue > 0 ? 'bg-amber-500' : 'bg-gray-300'}`}></div>
+8091:                  <div className={`p-3.5 rounded-2xl transition-colors ${totalDue > 0 ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-100' : 'bg-gray-50 text-gray-400 group-hover:bg-gray-100'}`}>
+8092:                    <Calendar className="w-6 h-6" />
+8093:                  </div>
+8094:                  <div className="flex-1">
+8095:                    <h3 className="text-xs font-semibold text-gray-400">چک‌های سررسیده امروز</h3>
+8096:                    <span className={`text-xl font-extrabold block mt-1 ${totalDue > 0 ? 'text-amber-700' : 'text-gray-700'}`}>
+8097:                      {totalDue} <span className="text-sm font-medium text-gray-500">مورد</span>
+8098:                    </span>
+8099:                    <span className="text-xs font-bold mt-1 block text-gray-500">
+8100:                      {dueIssued} پرداختی | {dueReceived} دریافتی
+8101:                    </span>
+8102:                  </div>
+8103:                </div>
+8104:              );
+8105:            })()}
+8106:          </div>
+8107:
+8108:          {/* Grand Treasury Liquid Total Section */}
+8109:          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+8110:            <div className="flex items-center gap-4">
+8111:              <div className="p-4 bg-emerald-600 text-white rounded-2xl shadow-md shadow-emerald-200">
+8112:                <Wallet className="w-8 h-8" />
+8113:              </div>
+8114:              <div>
+8115:                <h3 className="text-base font-extrabold text-emerald-950">مجموع کل نقدینگی و تراز خزانه‌داری</h3>
+8116:                <p className="text-xs text-emerald-700 mt-1">
+8117:                  مجموع مانده حساب‌های بانکی و موجودی واقعی صندوق‌های ثبت شده در سیستم
+8118:                </p>
+8119:              </div>
+8120:            </div>
+8121:            <div className="text-center md:text-left">
+8122:              <span className="text-xs text-emerald-700 font-semibold block mb-1">دارایی نقدی کل</span>
+8123:              <span className="text-3xl font-extrabold text-emerald-900 tracking-tight">
+8124:                {formatNumber(
+8125:                  accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0) +
+8126:                  cashboxes.reduce((sum, cb) => sum + (cb.balance || 0), 0)
+8127:                )}{' '}
+8128:                <span className="text-sm font-bold text-emerald-900">{storeSettings.currency}</span>
+8129:              </span>
+8130:            </div>
+8131:          </div>
+8132:
+8133:          {/* Accounts vs Cashboxes Grid */}
+8134:          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+8135:            {/* Bank Accounts Segment */}
+8136:            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+8137:              <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+8138:                <CreditCard className="w-5 h-5 text-indigo-500" />
+8139:                تراز و مانده حساب‌های بانکی
+8140:              </h3>
+8141:              
+8142:              {accounts.length === 0 ? (
+8143:                <p className="text-sm text-gray-500 py-6 text-center">هیچ حساب بانکی ثبت نشده است.</p>
+8144:              ) : (
+8145:                <div className="space-y-4">
+8146:                  {accounts.map(acc => (
+8147:                    <div key={acc.id} className="bg-gray-50 hover:bg-gray-100/70 py-3.5 px-4 rounded-xl border border-gray-100 transition-colors flex items-center justify-between">
+8148:                      <div>
+8149:                        <span className="font-bold text-gray-900 block text-sm">{acc.bankName}</span>
+8150:                        <span className="text-xs text-gray-500 mt-0.5 block">
+8151:                          صاحب حساب: {acc.accountHolder || 'ثبت نشده'} | شماره کارت: {acc.cardNumber || '---'}
+8152:                        </span>
+8153:                      </div>
+8154:                      <div className="text-left">
+8155:                        <span className="text-sm font-extrabold text-indigo-600 block">
+8156:                          {formatNumber(acc.balance || 0)}
+8157:                        </span>
+8158:                        <span className="text-[10px] text-gray-400 font-semibold">{storeSettings.currency}</span>
+8159:                      </div>
+8160:                    </div>
+8161:                  ))}
+8162:                  <div className="border-t border-dashed border-gray-200 pt-3 flex items-center justify-between text-gray-900">
+8163:                    <span className="text-sm font-bold">مجموع مانده بانک‌ها:</span>
+8164:                    <span className="text-base font-black text-indigo-700">
+8165:                      {formatNumber(accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0))} {storeSettings.currency}
+8166:                    </span>
+8167:                  </div>
+8168:                </div>
+8169:              )}
+8170:            </div>
+8171:
+8172:            {/* Cashboxes Segment */}
+8173:            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+8174:              <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+8175:                <Wallet className="w-5 h-5 text-amber-500" />
+8176:                تراز و موجودی صندوق‌ها
+8177:              </h3>
+8178:              
+8179:              {cashboxes.length === 0 ? (
+8180:                <p className="text-sm text-gray-500 py-6 text-center">هیچ صندوق نقدی ثبت نشده است.</p>
+8181:              ) : (
+8182:                <div className="space-y-4">
+8183:                  {cashboxes.map(cb => (
+8184:                    <div key={cb.id} className="bg-gray-50 hover:bg-gray-100/70 py-3.5 px-4 rounded-xl border border-gray-100 transition-colors flex items-center justify-between">
+8185:                      <div>
+8186:                        <span className="font-bold text-gray-900 block text-sm">{cb.name}</span>
+8187:                        <span className="text-xs text-gray-500 mt-0.5 block">
+8188:                          مسئول صندوق: {cb.manager || 'ثبت نشده'}
+8189:                        </span>
+8190:                      </div>
+8191:                      <div className="text-left">
+8192:                        <span className="text-sm font-extrabold text-amber-600 block">
+8193:                          {formatNumber(cb.balance || 0)}
+8194:                        </span>
+8195:                        <span className="text-[10px] text-gray-400 font-semibold">{storeSettings.currency}</span>
+8196:                      </div>
+8197:                    </div>
+8198:                  ))}
+8199:                  <div className="border-t border-dashed border-gray-200 pt-3 flex items-center justify-between text-gray-900">
+8200:                    <span className="text-sm font-bold">مجموع موجودی صندوق‌ها:</span>
+8201:                    <span className="text-base font-black text-amber-700">
+8202:                      {formatNumber(cashboxes.reduce((sum, cb) => sum + (cb.balance || 0), 0))} {storeSettings.currency}
+8203:                    </span>
+8204:                  </div>
+8205:                </div>
+8206:              )}
+8207:            </div>
+8208:          </div>
+8209:
+8210:          {/* Cash Flow Summary for Transactions (Receipts & Payments) */}
+8211:          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+8212:            <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4">
+8213:              خلاصه گردش اسناد دریافت و پرداخت خزانه‌داری
+8214:            </h3>
+8215:            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+8216:              <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/50 flex justify-between items-center">
+8217:                <div>
+8218:                  <span className="text-xs text-emerald-800 font-bold block">مجموع دریافت‌ها (رسید دریافت)</span>
+8219:                  <span className="text-[10px] text-gray-500 font-semibold">(آمارهای حاصل از اسناد دریافتی صادره)</span>
+8220:                </div>
+8221:                <span className="text-lg font-black text-emerald-700 font-sans">
+8222:                  {formatNumber(transactions.filter(t => t.type === 'receive' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(t.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(t.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
+8223:                </span>
+8224:              </div>
+8225:              <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100/50 flex justify-between items-center">
+8226:                <div>
+8227:                  <span className="text-xs text-rose-800 font-bold block">مجموع پرداخت‌ها (رسید پرداخت)</span>
+8228:                  <span className="text-[10px] text-gray-500 font-semibold">(آمارهای حاصل از اسناد پرداختی صادره)</span>
+8229:                </div>
+8230:                <span className="text-lg font-black text-rose-700 font-sans">
+8231:                  {formatNumber(transactions.filter(t => t.type === 'pay' && (!reportDateRange || reportDateRange.length !== 2 || (new Date(t.date).setHours(0,0,0,0) >= new Date(reportDateRange[0]).setHours(0,0,0,0) && new Date(t.date).valueOf() <= new Date(reportDateRange[1]).setHours(23,59,59,999)))).reduce((sum, t) => sum + (t.amount || 0), 0))} {storeSettings.currency}
+8232:                </span>
+8233:              </div>
+8234:            </div>
+8235:            <p className="text-xs text-gray-400 leading-relaxed">
+8236:              * ارقام مربوط به گردش اسناد براساس مبالغ ثبت شده در رسیدهای دریافت و پرداخت رسمی صادر شده در بخش خزانه‌داری محاسبه شده و مستقیماً روی تراز مالی صندوق‌ها و حساب‌های بانکی بالا اثرگذار بوده‌اند.
+8237:            </p>
+8238:          </div>
+8239:        </motion.div>
+8240:      ) : activeTab === 'person_ledger' ? (
+8241:        /* Contact/Person Ledger Card View (کارت حساب اشخاص) */
+8242:        <motion.div
+8243:          initial={{ opacity: 0, y: 10 }}
+8244:          animate={{ opacity: 1, y: 0 }}
+8245:          className="space-y-6 text-right print:p-0 print:bg-white print:min-h-screen"
+8246:          dir="rtl"
+8247:        >
+8248:          {/* Header */}
+8249:          <div className="bg-gradient-to-l from-indigo-50 to-white rounded-2xl shadow-sm border border-gray-100 px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 print:hidden">
+8250:            <div>
+8251:              <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+8252:                <User className="w-6 h-6 text-violet-600 font-bold" />
+8253:                کارت حساب و دفتر معین اشخاص
+8254:              </h1>
+8255:              <p className="text-sm text-gray-500 mt-1">
+8256:                گزارش یکپارچه و به ترتیب زمان از تمام فاکتورهای فروش/خرید و رسیدهای دریافت/پرداخت هر یک از طرف حساب‌ها
+8257:              </p>
+8258:            </div>
+8259:            
+8260:            <div className="flex gap-2">
+8261:              <button
+8262:                onClick={() => {
+8263:                  if (!ledgerPersonId) {
+8264:                    customAlert('ابتدا یک شخص را انتخاب کنید.');
+8265:                    return;
+8266:                  }
+8267:                  const person = persons.find(p => p.id.toString() === ledgerPersonId.toString());
+8268:                  if (person && person.phone) {
+8269:                    if (storeSettings?.notify_method === 'none' || !storeSettings?.notify_method) {
+8270:                        customAlert('ارسال پیامک تنظیم نشده است. ابتدا به تنظیمات بروید.');
+8271:                        return;
+8272:                    }
+8273:                    sendNotification(`${person.name} گرامی، به استحضار می رساند مانده حساب شما در سیستم ${storeSettings?.storeName || 'ما'} بررسی و یادآوری می‌گردد. لطفا در صورت امکان جهت تسویه حساب اقدام فرمایید.`, person.phone, storeSettings?.notify_method);
+8274:                  } else {
+8275:                    customAlert('شماره تماس این شخص در سیستم ثبت نشده است.');
+8276:                  }
+8277:                }}
+8278:                className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-emerald-100 shadow-sm"
+8279:              >
+8280:                <span className="text-lg">💬</span>
+8281:                یادآوری پیامکی
+8282:              </button>
+8283:              <button
+8284:                onClick={() => {
+8285:                   setPrintingPersonLedger(true);
+8286:                   setTimeout(() => {
+8287:                      window.print();
+8288:                      setTimeout(() => setPrintingPersonLedger(false), 500);
+8289:                   }, 300);
+8290:                }}
+8291:                className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm border border-indigo-100 shadow-sm"
+8292:              >
+8293:                <Printer className="w-4 h-4" />
+8294:                چاپ حساب
+8295:              </button>
+8296:              {/* Quick Refresh */}
+8297:              <button
+8298:                onClick={async () => {
+8299:                  await Promise.all([

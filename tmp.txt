@@ -1,11 +1,48 @@
-2586-                </button>
-2587-              </div>
-2588-            </form>
-2589-          </div>
-2590-        </motion.div>
-2591:      ) : activeTab === 'database' ? (
-2592-        <DatabaseDashboard showNotification={showNotification} />
-2593-      ) : activeTab === 'update' ? (
-2594-        <motion.div 
-2595-          initial={{ opacity: 0, y: 10 }}
-2596-          animate={{ opacity: 1, y: 0 }}
+765:  const [settingsForm, setSettingsForm] = useState<any>({ 
+1819:      const payload = { ...settingsForm, isSetup: true };
+1841:        setSettingsForm({...settingsForm, logoUrl: reader.result as string});
+1961:    if (activeTab === 'settings' && settingsForm?.fontFamily) {
+1962:      document.documentElement.style.setProperty('--app-font', settingsForm.fontFamily);
+1968:  }, [settingsForm?.fontFamily, activeTab, storeSettings?.fontFamily]);
+3041:                  value={settingsForm.storeName}
+3042:                  onChange={(e) => setSettingsForm({...settingsForm, storeName: e.target.value})}
+3051:                  value={settingsForm.currency}
+3052:                  onChange={(e) => setSettingsForm({...settingsForm, currency: e.target.value})}
+3069:                     onClick={() => setSettingsForm({...settingsForm, calendarType: 'jalali'})}
+3070:                     className={`py-4 px-2 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType !== 'gregorian' ? 'border-indigo-600 bg-indigo-50 text-indigo-800' : 'border-gray-100 text-gray-500 hover:border-gray-200'}`}
+3076:                     onClick={() => setSettingsForm({...settingsForm, calendarType: 'gregorian'})}
+3077:                     className={`py-4 px-2 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType === 'gregorian' ? 'border-indigo-600 bg-indigo-50 text-indigo-800' : 'border-gray-100 text-gray-500 hover:border-gray-200'}`}
+3087:                  value={settingsForm.fontFamily || 'Vazirmatn'}
+3088:                  onChange={(e) => setSettingsForm({...settingsForm, fontFamily: e.target.value})}
+8984:            <form id="settingsForm" onSubmit={(e) => { e.preventDefault(); confirmAction('آیا از ذخیره تنظیمات اطمینان دارید؟', () => handleSaveSettings(e as any)) }} className="flex flex-col gap-6">
+8992:                        {settingsForm.logoUrl ? (
+8994:                            <img src={settingsForm.logoUrl} alt="Logo preview" className="w-16 h-16 object-contain rounded bg-white shadow-sm border border-gray-100" />
+8995:                            <button type="button" onClick={() => setSettingsForm({...settingsForm, logoUrl: ''})} className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+9018:                        value={settingsForm.storeName}
+9019:                        onChange={e => setSettingsForm({...settingsForm, storeName: e.target.value})}
+9047:                        value={settingsForm.fontFamily || 'Vazirmatn'}
+9048:                        onChange={(e) => setSettingsForm({...settingsForm, fontFamily: e.target.value})}
+9061:                        value={settingsForm.phone || ''}
+9062:                        onChange={e => setSettingsForm({...settingsForm, phone: e.target.value})}
+9072:                        value={settingsForm.address || ''}
+9073:                        onChange={e => setSettingsForm({...settingsForm, address: e.target.value})}
+9088:                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, allowNegativeStock: !settingsForm.allowNegativeStock})}>
+9093:                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.allowNegativeStock ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+9094:                          <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.allowNegativeStock ? '-translate-x-6' : 'translate-x-0'}`}></div>
+9098:                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, requireWarehouse: !settingsForm.requireWarehouse})}>
+9103:                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.requireWarehouse ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+9104:                          <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.requireWarehouse ? '-translate-x-6' : 'translate-x-0'}`}></div>
+9146:                                value={settingsForm[`prefix_${doc.key}`] || ''}
+9147:                                onChange={e => setSettingsForm({...settingsForm, [`prefix_${doc.key}`]: e.target.value})}
+9156:                                value={settingsForm[`start_${doc.key}`] || ''}
+9157:                                onChange={e => setSettingsForm({...settingsForm, [`start_${doc.key}`]: e.target.value})}
+9167:                                value={settingsForm[`len_${doc.key}`] || ''}
+9168:                                onChange={e => setSettingsForm({...settingsForm, [`len_${doc.key}`]: parseInt(e.target.value) || ''})}
+9190:                            value={settingsForm.print_footer_note || ''}
+9191:                            onChange={e => setSettingsForm({...settingsForm, print_footer_note: e.target.value})}
+9202:                            value={settingsForm.print_signature_1 || ''}
+9203:                            onChange={e => setSettingsForm({...settingsForm, print_signature_1: e.target.value})}
+9213:                            value={settingsForm.print_signature_2 || ''}
+9214:                            onChange={e => setSettingsForm({...settingsForm, print_signature_2: e.target.value})}
+9224:                            value={settingsForm.print_signature_3 || ''}
+9225:                            onChange={e => setSettingsForm({...settingsForm, print_signature_3: e.target.value})}

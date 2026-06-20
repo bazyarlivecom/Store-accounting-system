@@ -407,6 +407,14 @@ export const addProduct = async (product: any) => {
   }
 
   const newProduct = { ...product, code: newCode, id: generateId(), createdAt: now, updatedAt: now };
+  newProduct.priceHistory = [];
+  if (newProduct.price !== undefined || newProduct.purchasePrice !== undefined || newProduct.buyPrice !== undefined || newProduct.sellPrice !== undefined) {
+      newProduct.priceHistory.push({
+          date: new Date().toISOString(),
+          buyPrice: Number(newProduct.purchasePrice || newProduct.buyPrice || 0),
+          sellPrice: Number(newProduct.price || newProduct.sellPrice || 0)
+      });
+  }
   products.push(newProduct);
   await saveLocalData('products', products);
   return newProduct;
@@ -416,7 +424,24 @@ export const updateProduct = async (id: string, product: any) => {
   const products = await getLocalData<any[]>('products', []);
   const index = products.findIndex((p: any) => p.id === id);
   if (index !== -1) {
-    products[index] = { ...products[index], ...product, updatedAt: Date.now() };
+    const oldProduct = products[index];
+    const newProduct = { ...oldProduct, ...product, updatedAt: Date.now() };
+    
+    const newBuy = Number(newProduct.purchasePrice || newProduct.buyPrice || 0);
+    const newSell = Number(newProduct.price || newProduct.sellPrice || 0);
+    const oldBuy = Number(oldProduct.purchasePrice || oldProduct.buyPrice || 0);
+    const oldSell = Number(oldProduct.price || oldProduct.sellPrice || 0);
+    
+    if (!newProduct.priceHistory) newProduct.priceHistory = [];
+    if (newBuy !== oldBuy || newSell !== oldSell) {
+       newProduct.priceHistory.push({
+          date: new Date().toISOString(),
+          buyPrice: newBuy,
+          sellPrice: newSell
+       });
+    }
+
+    products[index] = newProduct;
     await saveLocalData('products', products);
     return products[index];
   }
