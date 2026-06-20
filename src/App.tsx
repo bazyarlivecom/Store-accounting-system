@@ -13214,119 +13214,117 @@ export default function App() {
                 </button>
               </div>
               
-              <div id="print-area" className="p-6 md:p-8 print:p-4 bg-white relative overflow-y-auto overflow-x-hidden print:overflow-hidden flex-1 block">
-                
-                <div className="relative z-10 print:border-none">
+                            <div id="print-area" className="p-6 md:p-8 print:p-6 bg-white relative overflow-y-auto overflow-x-hidden print:overflow-hidden flex-1 flex flex-col font-sans border-2 border-gray-100 print:border-[3px] print:border-gray-800 rounded-2xl print:rounded-none min-h-[500px]">
+                <div className="relative z-10 flex-1 flex flex-col">
                   {/* Header */}
-                  <div className="flex justify-between items-start mb-8 border-b-2 border-gray-900 pb-6 print:border-gray-900">
-                    <div className="flex flex-col gap-1 w-1/2">
+                  <div className="flex justify-between items-start mb-8 border-b-[3px] border-gray-800 pb-5">
+                    <div className="flex items-center gap-4 w-[35%]">
                       {storeSettings?.logoUrl ? (
-                         <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 object-contain rounded-xl print:grayscale" />
+                         <img src={storeSettings.logoUrl} alt="Logo" className="w-16 h-16 object-contain grayscale" />
                       ) : (
-                         <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center print:bg-gray-100 print:text-gray-900">
-                           <Store className="w-7 h-7 text-gray-400" />
+                         <div className="w-16 h-16 bg-gray-50 border-[2px] border-gray-800 rounded-2xl flex items-center justify-center print:border-gray-800">
+                           <Store className="w-8 h-8 text-gray-800" />
                          </div>
                       )}
-                      <h2 className="text-lg font-black text-gray-900 mt-3 line-clamp-1">{storeSettings?.storeName || 'نام مجموعه تجاری'}</h2>
-                      <p className="text-[10px] text-gray-500 font-bold leading-relaxed max-w-[200px] line-clamp-2 mt-1">{storeSettings?.address}</p>
-                      {storeSettings?.phone && <p className="text-xs text-gray-800 font-mono font-bold mt-1 text-left" dir="ltr">{storeSettings.phone}</p>}
+                      <div>
+                         <h2 className="text-xl font-black text-gray-900 leading-tight">{storeSettings?.storeName || 'نام مجموعه تجاری'}</h2>
+                         {storeSettings?.phone && <p className="text-sm text-gray-700 font-mono font-bold mt-1.5" dir="ltr">{storeSettings.phone}</p>}
+                      </div>
                     </div>
                     
-                    <div className="flex flex-col items-end w-1/2">
-                      <h1 className={`text-xl md:text-2xl font-black tracking-tighter text-gray-900 mb-4 inline-block`}>{receiptTitle}</h1>
-                      <div className="flex flex-col gap-2 w-full max-w-[160px]">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-gray-500 font-bold">شماره سریال</span>
-                          <span className="font-mono font-black text-gray-900">{toPersianDigits(printingTransaction.receiptNumber) || `#${toPersianDigits(printingTransaction.id)}`}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-gray-500 font-bold">تاریخ عملیات</span>
-                          <span className="font-mono font-black text-gray-900">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
-                        </div>
-                      </div>
+                    <div className="w-[30%] text-center flex justify-center mt-2">
+                      <h1 className="text-xl md:text-2xl font-black tracking-tight text-gray-900 border-[3px] border-gray-800 px-6 py-2.5 inline-block rounded-2xl">
+                        {receiptTitle}
+                      </h1>
+                    </div>
+
+                    <div className="w-[35%] flex flex-col items-end text-sm space-y-3 mt-2">
+                       <div className="flex justify-between items-center w-full max-w-[170px]">
+                         <span className="text-gray-800 font-bold">شماره:</span>
+                         <span className="font-mono font-black text-gray-900">{toPersianDigits(printingTransaction.receiptNumber) || `#${toPersianDigits(printingTransaction.id)}`}</span>
+                       </div>
+                       <div className="flex justify-between items-center w-full max-w-[170px]">
+                         <span className="text-gray-800 font-bold">تاریخ:</span>
+                         <span className="font-mono font-black text-gray-900">{printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0]}</span>
+                       </div>
+                       <div className="flex justify-between items-center w-full max-w-[170px]">
+                         <span className="text-gray-800 font-bold">پیوست:</span>
+                         <span className="font-mono font-bold text-gray-900">ندارد</span>
+                       </div>
                     </div>
                   </div>
                   
                   {/* Amount Block */}
-                  <div className="mb-8 p-6 bg-gray-50/80 rounded-2xl border border-gray-100 print:bg-gray-50 print:border-gray-300 print:rounded-2xl flex flex-col items-center justify-center text-center">
-                     <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-3 ${themeBg}`}>مبلغ نهایی تراکنش</span>
-                     <div className="flex items-end gap-2 text-gray-900 overflow-hidden">
-                       <span className="text-4xl md:text-5xl font-black font-mono tracking-tighter" dir="ltr">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}</span>
-                     </div>
-                     <p className="text-sm font-bold text-gray-600 mt-3 border-t border-gray-200 border-dashed pt-3 px-4">
-                        {numToPersianWords(printingTransaction.amount)} <span className="text-xs">{storeSettings?.currency || 'ریال'}</span>
-                     </p>
+                  <div className="mb-10 flex justify-center mt-4">
+                    <div className="w-full max-w-sm border-[3px] border-gray-800 rounded-2xl overflow-hidden flex">
+                       <div className="bg-gray-100 border-l-[3px] border-gray-800 px-5 py-4 flex items-center justify-center">
+                          <span className="text-base font-black text-gray-900 whitespace-nowrap">مبلغ ({storeSettings?.currency || 'ریال'})</span>
+                       </div>
+                       <div className="flex-1 flex items-center justify-center p-4 text-3xl font-black font-mono tracking-wider bg-white relative">
+                          {typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount}
+                       </div>
+                    </div>
                   </div>
 
                   {/* Body details */}
-                  <div className="mb-8 space-y-6">
-                    <div>
-                      <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">طرف حساب / در وجه</span>
-                      <div className="text-lg font-black text-gray-900 border-b border-gray-200 border-dashed pb-2">
-                        {personCode}{personName}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                      {!isSalary && (
-                        <div>
-                          <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">از طریق / واریز به</span>
-                          <div className="text-sm font-bold text-gray-800 border-b border-gray-200 border-dashed pb-2 min-h-[30px] flex items-center gap-1.5">
-                             {printingTransaction.resourceType === 'bank' 
-                               ? <><Wallet className="w-4 h-4 text-gray-400"/> بانک {(accounts.find(a => a.id === printingTransaction.resourceId || a.id.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص')}</>
-                               : printingTransaction.resourceType === 'cashbox' 
-                                 ? <><Database className="w-4 h-4 text-gray-400"/> صندوق {(cashboxes.find(c => c.id === printingTransaction.resourceId || c.id.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص')}</>
-                                 : 'نامشخص'}
-                          </div>
-                        </div>
-                      )}
-                      <div className={isSalary ? 'col-span-2' : ''}>
-                          <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">نوع تسویه</span>
-                          <div className="text-sm font-bold text-gray-800 border-b border-gray-200 border-dashed pb-2 min-h-[30px] flex items-center">
-                             {printingTransaction.method === 'cash' ? 'نقدی / واریز بانکی' : 'چک بانکی'}
-                          </div>
-                      </div>
-                    </div>
-
-                    {printingTransaction.description && (
-                      <div>
-                        <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">بابت / مشخصات سند</span>
-                        <div className="text-sm font-bold text-gray-900 border-b border-gray-200 border-dashed pb-2 leading-loose">
-                          {printingTransaction.description}
-                        </div>
-                      </div>
+                  <div className="mb-8 text-base md:text-[17px] font-bold text-gray-900 leading-[3rem] text-justify px-4">
+                    بدینوسیله گواهی می‌شود مبلغ <span className="border-b-[2px] border-dashed border-gray-800 px-6 font-black mx-1 pb-1 inline-block min-w-[100px] text-center">{typeof formatNumber === 'function' ? formatNumber(printingTransaction.amount) : printingTransaction.amount} {storeSettings?.currency || 'ریال'}</span> معادل ( <span className="border-b-[2px] border-dashed border-gray-800 px-6 font-black text-sm pb-1 inline-block min-w-[200px] text-center">{numToPersianWords(printingTransaction.amount)}</span> ) مشخصاً،
+                    <br/>
+                    {isReceive ? 'از جناب آقای / سرکار خانم / شرکت' : 'به جناب آقای / سرکار خانم / شرکت'} <span className="font-black text-xl border-b-[2px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[250px] text-center">{personCode}{personName}</span> 
+                    <br/>
+                    به صورت <span className="font-black border-b-[2px] border-dashed border-gray-800 px-6 mx-1 pb-1 inline-block min-w-[150px] text-center">{printingTransaction.method === 'cash' ? 'نقدی / واریز بانکی' : 'چک'}</span> 
+                    {!isSalary && (
+                      <>
+                        {' '}{isReceive ? 'به' : 'توسط'} <span className="font-black border-b-[2px] border-dashed border-gray-800 px-6 mx-1 pb-1 inline-block min-w-[180px] text-center">
+                           {printingTransaction.resourceType === 'bank' 
+                             ? `حساب ${accounts.find(a => a.id === printingTransaction.resourceId || a.id?.toString() === printingTransaction.resourceId?.toString())?.bankName || 'نامشخص'}`
+                             : printingTransaction.resourceType === 'cashbox' 
+                               ? `صندوق ${cashboxes.find(c => c.id === printingTransaction.resourceId || c.id?.toString() === printingTransaction.resourceId?.toString())?.name || 'نامشخص'}`
+                               : 'نامشخص'}
+                        </span>
+                      </>
                     )}
+                    <br/>
+                    بابت <span className="font-black border-b-[2px] border-dashed border-gray-800 px-8 mx-1 pb-1 inline-block min-w-[300px] text-center">{printingTransaction.description || '‌'}</span>
+                    <br/>
+                    {isReceive ? 'نقداً دریافت گردید.' : 'تمام و کمال پرداخت گردید.'}
                   </div>
                   
                   {/* Signatures */}
-                  <div className="flex justify-between items-end px-2 mt-16 pt-8 border-t-2 border-gray-900">
-                    <div className="text-center w-40">
-                      <span className="block w-full border-t-2 border-gray-300 border-dashed mb-3"></span>
-                      <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  <div className="flex justify-between items-end px-12 mt-auto pt-32 mb-8">
+                    <div className="text-center w-56">
+                      <span className="block text-sm font-bold text-gray-900 mb-20">
                         {storeSettings?.print_signature_1 || (isReceive ? 'مهر و امضای پرداخت کننده' : isSalary ? 'امضای کارمند' : 'مهر و امضای گیرنده وجه')}
                       </span>
+                      <span className="block w-full border-t-[2px] border-gray-400 border-dashed"></span>
                     </div>
-                    <div className="text-center w-40">
-                      <span className="block w-full border-t-2 border-gray-300 border-dashed mb-3"></span>
-                      <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    <div className="text-center w-56">
+                      <span className="block text-sm font-bold text-gray-900 mb-20">
                         {storeSettings?.print_signature_2 || 'مهر و امضای امور مالی / مدیریت'}
                       </span>
+                      <span className="block w-full border-t-[2px] border-gray-400 border-dashed"></span>
                     </div>
                   </div>
 
                   {storeSettings?.print_footer_note && (
-                    <div className="mt-8 text-center text-[10px] text-gray-400 font-bold leading-relaxed px-4">
+                    <div className="mt-8 text-center text-xs text-gray-600 font-bold leading-relaxed px-4 pt-4 border-t-2 border-gray-800">
                       {storeSettings.print_footer_note}
                     </div>
                   )}
+                  
+                  {/* Address block at bottom if available */}
+                  {!storeSettings?.print_footer_note && storeSettings?.address && (
+                    <div className="mt-8 text-center text-xs text-gray-600 font-bold px-4 pt-4 border-t-[2px] border-gray-800">
+                      نشانی: {storeSettings.address}
+                    </div>
+                  )}
 
-                  <div className="mt-8 text-center text-[8px] text-gray-400 font-mono uppercase opacity-60 flex justify-between px-2">
-                     <span>DOC: {printingTransaction.receiptNumber || printingTransaction.id}</span>
+                  <div className="mt-6 text-center text-[10px] text-gray-500 font-mono opacity-80 flex justify-between px-4 pt-2">
+                     <span>SYS-ID: {printingTransaction.receiptNumber || printingTransaction.id}</span>
                      <span>PRINTED: {new Date().toLocaleString('en-US', { hour12: false })}</span>
                   </div>
                 </div>
               </div>
-              
               <div className="px-6 py-5 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 mt-auto print:hidden rounded-b-3xl relative z-10 shrink-0">
                 <button
                   onClick={() => setPrintingTransaction(null)}
