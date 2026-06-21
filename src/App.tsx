@@ -23,6 +23,7 @@ import InvoiceAllocation from './components/financial/InvoiceAllocation';
 
 import SearchableSelect from './components/ui/SearchableSelect';
 import BarcodeScannerModal from './components/modals/BarcodeScannerModal';
+import EditReceiptModal from './components/modals/EditReceiptModal';
 import FinancialTransfer from './components/financial/FinancialTransfer';
 import QuickRefund from './components/financial/QuickRefund';
 import UserManager from './components/admin/UserManager';
@@ -441,6 +442,8 @@ export default function App() {
   
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
+  const [editingReceipt, setEditingReceipt] = useState<any>(null);
+  const [isEditReceiptModalOpen, setIsEditReceiptModalOpen] = useState(false);
   const [lastCreatedReceipt, setLastCreatedReceipt] = useState<any>(null);
   const [showProductBarcodesList, setShowProductBarcodesList] = useState(false);
 
@@ -534,6 +537,7 @@ export default function App() {
   const [exchangeRate, setExchangeRate] = useState<number>(1);
   const [exchangeRateInput, setExchangeRateInput] = useState<string>('1');
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [sellerInvoiceNumber, setSellerInvoiceNumber] = useState('');
   const [date, setDate] = useState<Date | any>(new Date());
   const [customerId, setCustomerId] = useState<string | number | ''>('');
   const [sourceInvoiceId, setSourceInvoiceId] = useState<string | number | ''>('');
@@ -552,6 +556,7 @@ export default function App() {
        const draft = {
          invoiceMode,
          invoiceNumber,
+         sellerInvoiceNumber,
          customerId,
          sourceInvoiceId,
          items,
@@ -572,7 +577,7 @@ export default function App() {
          setHasDraft(false);
        }
     }
-  }, [items, customerId, invoiceNumber, sourceInvoiceId, overallDiscountPercent, invoiceCurrency, exchangeRate, invoiceMode, invoiceType, invoiceTitle, invoiceDescription, activeTab]);
+  }, [items, customerId, invoiceNumber, sellerInvoiceNumber, sourceInvoiceId, overallDiscountPercent, invoiceCurrency, exchangeRate, invoiceMode, invoiceType, invoiceTitle, invoiceDescription, activeTab]);
   
   useEffect(() => {
     if (localStorage.getItem('invoice_draft')) {
@@ -588,6 +593,7 @@ export default function App() {
         if (parsed.activeTab) setActiveTab(parsed.activeTab);
         setInvoiceMode(parsed.invoiceMode || 'auto');
         setInvoiceNumber(parsed.invoiceNumber || '');
+        setSellerInvoiceNumber(parsed.sellerInvoiceNumber || '');
         setCustomerId(parsed.customerId || '');
         setSourceInvoiceId(parsed.sourceInvoiceId || '');
         setItems(parsed.items || []);
@@ -615,6 +621,7 @@ export default function App() {
     setItems([]);
     setOverallDiscountPercent(0);
     setSourceInvoiceId('');
+    setSellerInvoiceNumber('');
     if (invoiceMode === 'manual') setInvoiceNumber('');
   };
   
@@ -1491,6 +1498,59 @@ export default function App() {
       customAlert('خطا در ارتباط با سرور.');
     } finally {
       setSubmittingReceipt(false);
+    }
+  };
+
+  const handleSaveReceipt = async (updatedFields: any) => {
+    if (!editingReceipt) return;
+    try {
+      await updateTransaction(editingReceipt.id, updatedFields);
+      
+      // Keep related checks in sync
+      if (editingReceipt.method === 'check') {
+        const checkNum = editingReceipt.checkNumber;
+        const receiptNo = editingReceipt.receiptNumber;
+        if (editingReceipt.type === 'receive') {
+          const matchedCheck = receivedChecks.find(c => c.receiptNumber === receiptNo || c.checkNumber === checkNum);
+          if (matchedCheck) {
+            await updateReceivedCheck(matchedCheck.id, {
+              ...matchedCheck,
+              checkNumber: updatedFields.checkNumber || matchedCheck.checkNumber,
+              bankName: updatedFields.checkBankName || matchedCheck.bankName,
+              amount: updatedFields.amount || matchedCheck.amount,
+              payerId: updatedFields.personId || matchedCheck.payerId,
+              dueDate: updatedFields.checkDueDate || matchedCheck.dueDate,
+              receiveDate: updatedFields.jalaliDate || matchedCheck.receiveDate,
+            });
+          }
+        } else {
+          const matchedCheck = issuedChecks.find(c => c.receiptNumber === receiptNo || c.checkNumber === checkNum);
+          if (matchedCheck) {
+            await updateIssuedCheck(matchedCheck.id, {
+              ...matchedCheck,
+              checkNumber: updatedFields.checkNumber || matchedCheck.checkNumber,
+              checkbookId: updatedFields.checkbookId || matchedCheck.checkbookId,
+              amount: updatedFields.amount || matchedCheck.amount,
+              payeeId: updatedFields.personId || matchedCheck.payeeId,
+              dueDate: updatedFields.checkDueDate || matchedCheck.dueDate,
+              issueDate: updatedFields.jalaliDate || matchedCheck.issueDate,
+            });
+          }
+        }
+      }
+
+      await Promise.all([
+        fetchTransactions(),
+        fetchInvoices(),
+        fetchPersons(),
+        fetchAccounts(),
+        fetchCashboxes(),
+        fetchChecks()
+      ]);
+      showNotification('تغییرات با موفقیت روی رسید ذخیره گردید و اسناد مربوطه بروز شدند.', 'success');
+    } catch (err) {
+      console.error(err);
+      customAlert('خطا در بروزرسانی سند رسید.');
     }
   };
 
@@ -2376,6 +2436,7 @@ export default function App() {
     await fetchInvoices();
     setInvoiceMode('manual');
     setInvoiceNumber(inv.invoiceNumber);
+    setSellerInvoiceNumber(inv.sellerInvoiceNumber || '');
     setInvoiceTitle(inv.title || '');
     setInvoiceType(inv.type);
     setInvoiceCurrency(inv.currency || storeSettings.currency);
@@ -2427,14 +2488,16 @@ export default function App() {
     return hasAny;
   };
 
-  const getInvoiceNumber = () => {
-    let typeKey = 'sale';
-    if ((activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_receipt') || invoiceType === 'warehouse_receipt') typeKey = 'warehouse_receipt';
-    else if ((activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_remittance') || invoiceType === 'warehouse_remittance') typeKey = 'warehouse_remittance';
-    else if (activeTab === 'create_purchase' || invoiceType === 'purchase') typeKey = 'purchase';
-    else if (invoiceType === 'proforma') typeKey = 'proforma';
-    else if (activeTab === 'create_sale_return' || invoiceType === 'sale_return') typeKey = 'sale_return';
-    else if (activeTab === 'create_purchase_return' || invoiceType === 'purchase_return') typeKey = 'purchase_return';
+  const getInvoiceNumber = (typeOverride?: string) => {
+    let typeKey = typeOverride || 'sale';
+    if (!typeOverride) {
+      if ((activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_receipt') || invoiceType === 'warehouse_receipt') typeKey = 'warehouse_receipt';
+      else if ((activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_remittance') || invoiceType === 'warehouse_remittance') typeKey = 'warehouse_remittance';
+      else if (activeTab === 'create_purchase' || invoiceType === 'purchase') typeKey = 'purchase';
+      else if (invoiceType === 'proforma') typeKey = 'proforma';
+      else if (activeTab === 'create_sale_return' || invoiceType === 'sale_return') typeKey = 'sale_return';
+      else if (activeTab === 'create_purchase_return' || invoiceType === 'purchase_return') typeKey = 'purchase_return';
+    }
     
     // Default prefixes if not configured
     const defaultPrefixes: Record<string, string> = {
@@ -2443,9 +2506,9 @@ export default function App() {
       sale_return: 'RTN-S-', purchase_return: 'RTN-P-'
     };
     
-    const prefix = typeof (storeSettings as any)["prefix_" + typeKey] !== 'undefined' 
-      ? (storeSettings as any)["prefix_" + typeKey] 
-      : defaultPrefixes[typeKey];
+    const prefix = ((storeSettings as any)["prefix_" + typeKey] !== undefined && (storeSettings as any)["prefix_" + typeKey] !== null)
+      ? String((storeSettings as any)["prefix_" + typeKey])
+      : (defaultPrefixes[typeKey] || '');
       
     // Calculate sequential number based on settings
     const startNumStr = (storeSettings as any)["start_" + typeKey] || storeSettings.invoiceStartNumber || '1000';
@@ -2463,7 +2526,7 @@ export default function App() {
       
       if (invType === typeKey && inv.invoiceNumber) {
         let numStr = String(inv.invoiceNumber);
-        if (numStr.startsWith(prefix)) {
+        if (prefix && numStr.startsWith(prefix)) {
           numStr = numStr.substring(prefix.length);
         }
         const num = parseInt(numStr.replace(/\D/g, ''), 10);
@@ -2482,7 +2545,7 @@ export default function App() {
     setSubmitting(true);
     setSuccessMsg('');
 
-    const finalInvoiceNumber = invoiceMode === 'auto' ? getInvoiceNumber() : invoiceNumber;
+    const finalInvoiceNumber = invoiceMode === 'auto' ? getInvoiceNumber(invoiceType) : invoiceNumber;
 
     if ((activeTab === 'create_warehouse_doc') && !invoiceWarehouseId) {
       customAlert('لطفاً در قسمت توضیحات مبدا/مقصد فرم، یک انبار را مشخص کنید.');
@@ -2502,9 +2565,10 @@ export default function App() {
 
     const payload = customPayload ? {
       ...customPayload,
-      invoiceNumber: customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') ? getInvoiceNumber() : customPayload.invoiceNumber
+      invoiceNumber: (customPayload.invoiceNumber && (customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار'))) ? getInvoiceNumber(customPayload.type) : (customPayload.invoiceNumber || getInvoiceNumber(customPayload.type))
     } : {
       invoiceNumber: finalInvoiceNumber,
+      sellerInvoiceNumber: sellerInvoiceNumber || '',
       title: invoiceTitle,
       description: invoiceDescription,
       warehouseId: invoiceWarehouseId,
@@ -2676,6 +2740,7 @@ export default function App() {
         }
 
         if (invoiceMode === 'manual') setInvoiceNumber('');
+        setSellerInvoiceNumber('');
         setCustomerId('');
         setSourceInvoiceId('');
         setItems([]);
@@ -2772,6 +2837,7 @@ export default function App() {
 
     const tempPayload = {
       invoiceNumber: finalInvoiceNumber,
+      sellerInvoiceNumber: sellerInvoiceNumber || '',
       title: invoiceTitle || (invoiceType === 'sale' ? 'فاکتور فروش کالا' : 'فاکتور خرید کالا'),
       description: invoiceDescription,
       warehouseId: invoiceWarehouseId,
@@ -3775,9 +3841,9 @@ export default function App() {
               </div>
 
               {/* Items List */}
-              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden" data-invoice-flow="purchase-return">
                 <div className="p-5 bg-emerald-50/30 border-b border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام خریداری شده</h3>
+                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام برگشت از خرید</h3>
                     <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
                       <div className="flex-1 relative z-10">
                         <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
@@ -3830,7 +3896,7 @@ export default function App() {
                           </tr>
                         )}
                         {items.map((item, index) => (
-                            <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors">
+                            <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors" data-row-type="purchase-return-row">
                               <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
                               <td className="p-5">
                                   {item.productId ? (
@@ -4030,6 +4096,20 @@ export default function App() {
                     </div>
                   </div>
                   <div>
+                    <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-emerald-500"/>
+                      شماره فاکتور فروشنده (ارجاع)
+                    </label>
+                    <input 
+                      type="text" 
+                      value={sellerInvoiceNumber} 
+                      onChange={(e) => setSellerInvoiceNumber(e.target.value)} 
+                      className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono text-left font-bold text-slate-800 outline-none bg-emerald-50/20" 
+                      dir="ltr" 
+                      placeholder="شماره فاکتور اصلی فروشنده..." 
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-emerald-500"/> عنوان فاکتور</label>
                     <input type="text" value={invoiceTitle} onChange={(e) => setInvoiceTitle(e.target.value)} className="w-full p-3 border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-slate-800 outline-none bg-emerald-50/20" placeholder="عنوانی برای فاکتور وارد کنید..." />
                   </div>
@@ -4124,7 +4204,7 @@ export default function App() {
               </div>
 
               {/* Items List */}
-              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden" data-invoice-flow="purchase">
                 <div className="p-5 bg-emerald-50/30 border-b border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام خریداری شده</h3>
                     <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
@@ -4179,7 +4259,7 @@ export default function App() {
                           </tr>
                         )}
                         {items.map((item, index) => (
-                            <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors">
+                            <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors" data-row-type="purchase-row">
                               <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
                               <td className="p-5">
                                   {item.productId ? (
@@ -4455,9 +4535,9 @@ export default function App() {
               </div>
 
               {/* Items List */}
-              <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden" data-invoice-flow="sale-return">
                 <div className="p-5 bg-indigo-50/30 border-b border-indigo-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> لیست اقلام آماده فروش</h3>
+                    <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> لیست اقلام برگشت از فروش</h3>
                     <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
                       <div className="flex-1 relative z-10">
                         <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
@@ -4510,7 +4590,7 @@ export default function App() {
                           </tr>
                         )}
                         {items.map((item, index) => (
-                            <tr key={item.id} className="hover:bg-indigo-50/20 transition-colors">
+                            <tr key={item.id} className="hover:bg-indigo-50/20 transition-colors" data-row-type="sale-return-row">
                               <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
                               <td className="p-5">
                                   {item.productId ? (
@@ -4805,7 +4885,7 @@ export default function App() {
               </div>
 
               {/* Items List */}
-              <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
+              <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden" data-invoice-flow="sale">
                 <div className="p-5 bg-indigo-50/30 border-b border-indigo-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> لیست اقلام آماده فروش</h3>
                     <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
@@ -4860,7 +4940,7 @@ export default function App() {
                           </tr>
                         )}
                         {items.map((item, index) => (
-                            <tr key={item.id} className="hover:bg-indigo-50/20 transition-colors">
+                            <tr key={item.id} className="hover:bg-indigo-50/20 transition-colors" data-row-type="sale-row">
                               <td className="p-5 text-center font-bold text-slate-300">{index + 1}</td>
                               <td className="p-5">
                                   {item.productId ? (
@@ -5031,7 +5111,8 @@ export default function App() {
                const term = invoiceSearchQuery.toLowerCase();
                const pName = (persons.find(p => p.id.toString() === inv.customerId.toString())?.name || 'نامشخص').toLowerCase();
                const invNum = (inv.invoiceNumber || '').toLowerCase();
-               return pName.includes(term) || invNum.includes(term);
+               const sellNum = (inv.sellerInvoiceNumber || '').toLowerCase();
+               return pName.includes(term) || invNum.includes(term) || sellNum.includes(term);
             });
 
             const totalPurchasesCount = activePurchases.length;
@@ -5064,7 +5145,8 @@ export default function App() {
                const term = invoiceSearchQuery.toLowerCase();
                const pName = (persons.find(p => p.id.toString() === inv.customerId?.toString())?.name || 'نامشخص').toLowerCase();
                const invNum = (inv.invoiceNumber || '').toLowerCase();
-               return pName.includes(term) || invNum.includes(term);
+               const sellNum = (inv.sellerInvoiceNumber || '').toLowerCase();
+               return pName.includes(term) || invNum.includes(term) || sellNum.includes(term);
             });
 
             let groupedInvoices: { groupName: string, invoices: any[] }[] = [];
@@ -5178,7 +5260,12 @@ export default function App() {
                                    <td className="p-4 font-sans text-right font-black text-slate-705 text-sm whitespace-nowrap">#{toPersianDigits(inv.invoiceNumber)}</td>
                                    {(['list_purchase', 'list_sale', 'list_sale_return', 'list_purchase_return'].includes(activeTab)) && (
                                      <td className="p-4 font-bold text-slate-800 text-xs truncate max-w-[150px]" title={inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}>
-                                        {inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}
+                                        <div>{inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}</div>
+                                        {(inv.type === 'purchase' || inv.type === 'purchase_return') && inv.sellerInvoiceNumber && (
+                                           <div className="text-[10px] text-emerald-600 font-mono mt-1" dir="rtl">
+                                              ش.فروشنده: {toPersianDigits(inv.sellerInvoiceNumber)}
+                                           </div>
+                                        )}
                                      </td>
                                    )}
                                    {activeTab.includes('warehouse') && (
@@ -5827,6 +5914,14 @@ export default function App() {
                                </button>
                                <button
                                  type="button"
+                                  onClick={() => { setEditingReceipt(tx); setIsEditReceiptModalOpen(true); }}
+                                  className={`p-2 text-slate-400 ${isReceive ? 'hover:bg-emerald-50 hover:text-emerald-600' : 'hover:bg-rose-50 hover:text-rose-600'} rounded-lg cursor-pointer border-none bg-transparent transition-colors`}
+                                  title="ویرایش رسید"
+                                >
+                                  <Edit2 className="w-4 h-4"/>
+                                </button>
+                                <button
+                                  type="button"
                                  onClick={() => confirmAction('حذف این مورد غیرقابل بازگشت است.', () => deleteTransaction(tx.id.toString()).then(fetchTransactions))}
                                  className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer border-none bg-transparent transition-colors"
                                  title="حذف سند"
@@ -10340,6 +10435,22 @@ export default function App() {
           </div>
         )}
 {isScannerOpen && (<BarcodeScannerModal onClose={() => setIsScannerOpen(false)} onScan={handleBarcodeScan} />)}
+{isEditReceiptModalOpen && editingReceipt && (
+  <EditReceiptModal
+    isOpen={isEditReceiptModalOpen}
+    onClose={() => {
+      setIsEditReceiptModalOpen(false);
+      setEditingReceipt(null);
+    }}
+    receipt={editingReceipt}
+    onSave={handleSaveReceipt}
+    persons={persons}
+    accounts={accounts}
+    cashboxes={cashboxes}
+    checkbooks={checkbooks}
+    storeSettings={storeSettings}
+  />
+)}
         {printingBarcodeProduct && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm print:bg-white print:p-0 print:absolute print:z-auto print:block" dir="rtl">
             <motion.div
@@ -10566,26 +10677,36 @@ export default function App() {
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                       <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="w-full">
-                          <label className="block text-sm font-bold text-emerald-900 mb-2">
-                            قیمت خرید ({storeSettings?.currency || 'تومان'})
+                          <label className="block text-sm font-bold text-emerald-950 mb-2">
+                            قیمت خرید بر اساس کوچکترین واحد ({newProductUnit || 'واحد اصلی'}) ({storeSettings?.currency || 'تومان'})
                           </label>
                           <CurrencyInput
                             value={newProductPurchasePrice}
                             onChange={(e: any) => setNewProductPurchasePrice(e.target.value)}
-                            placeholder="مثال: 1000000"
-                            className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-colors text-emerald-900 font-mono text-left font-bold"
+                            placeholder="مثال: 100000"
+                            className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-colors text-emerald-900 font-mono text-left font-bold bg-white"
                           />
+                          {newProductSecondaryUnit && newProductUnitRatio && Number(newProductUnitRatio) > 1 && newProductPurchasePrice && (
+                            <p className="text-xs font-bold text-emerald-700 mt-1.5 bg-emerald-100/50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                              معادل <span className="font-mono text-sm font-black text-indigo-700">{formatNumber(Number(newProductPurchasePrice.replace(/,/g, '')) * Number(newProductUnitRatio))}</span> {storeSettings?.currency || 'تومان'} به ازای هر <span className="underline">{newProductSecondaryUnit}</span> (ضریب {newProductUnitRatio})
+                            </p>
+                          )}
                         </div>
                         <div className="w-full">
-                          <label className="block text-sm font-bold text-emerald-900 mb-2">
-                            قیمت فروش ({storeSettings?.currency || 'تومان'})
+                          <label className="block text-sm font-bold text-emerald-950 mb-2">
+                            قیمت فروش بر اساس کوچکترین واحد ({newProductUnit || 'واحد اصلی'}) ({storeSettings?.currency || 'تومان'})
                           </label>
                           <CurrencyInput
                             value={newProductPrice}
                             onChange={(e: any) => setNewProductPrice(e.target.value)}
-                            placeholder="مثال: 1500000"
-                            className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-colors text-emerald-900 font-mono text-left font-bold"
+                            placeholder="مثال: 150000"
+                            className="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-sm transition-colors text-emerald-900 font-mono text-left font-bold bg-white"
                           />
+                          {newProductSecondaryUnit && newProductUnitRatio && Number(newProductUnitRatio) > 1 && newProductPrice && (
+                            <p className="text-xs font-bold text-indigo-700 mt-1.5 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                              معادل <span className="font-mono text-sm font-black text-indigo-800">{formatNumber(Number(newProductPrice.replace(/,/g, '')) * Number(newProductUnitRatio))}</span> {storeSettings?.currency || 'تومان'} به ازای هر <span className="underline">{newProductSecondaryUnit}</span> (ضریب {newProductUnitRatio})
+                            </p>
+                          )}
                         </div>
                       </div>
                       
@@ -12463,6 +12584,12 @@ export default function App() {
                             <span className="text-slate-400 font-bold whitespace-nowrap">شماره سند:</span> 
                             <span className="font-bold text-sm tracking-wide">#{toPersianDigits(viewingInvoice.invoiceNumber)}</span>
                          </div>
+                         {(viewingInvoice.type === 'purchase' || viewingInvoice.type === 'purchase_return') && viewingInvoice.sellerInvoiceNumber && (
+                            <div className="flex items-center gap-2 col-span-2 mt-1 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded border border-emerald-100/50 w-fit">
+                               <span className="text-slate-500 font-bold whitespace-nowrap">شماره فاکتور فروشنده (ارجاع):</span> 
+                               <span className="font-mono font-bold text-sm tracking-wide">#{toPersianDigits(viewingInvoice.sellerInvoiceNumber)}</span>
+                            </div>
+                         )}
                       </div>
                     </div>
                     <div className="text-right md:text-left flex flex-col items-end mt-6 md:mt-0 text-slate-800">
@@ -13357,6 +13484,9 @@ export default function App() {
                           </h1>
                           <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-gray-600">
                             <span className="bg-gray-50 print:bg-transparent border border-gray-200 print:border-gray-400 px-3 py-1.5 rounded-lg text-gray-900 font-mono text-base">شماره فاکتور: {toPersianDigits(previewInvoiceData.invoiceNumber)}</span>
+                            {(previewInvoiceData.type === 'purchase' || previewInvoiceData.type === 'purchase_return') && previewInvoiceData.sellerInvoiceNumber && (
+                              <span className="bg-emerald-50 text-emerald-850 border border-emerald-100 px-3 py-1.5 rounded-lg text-xs leading-none">ارجاع فاکتور فروشنده: {toPersianDigits(previewInvoiceData.sellerInvoiceNumber)}</span>
+                            )}
                             <span className="px-2">تاريخ: {previewInvoiceData.jalaliDate || (previewInvoiceData.date && new Date(previewInvoiceData.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'))}</span>
                             {true && <span className="bg-rose-50 text-rose-600 border border-rose-100 px-2 py-1 rounded text-xs">پیش‌نمایش چاپ</span>}
                           </div>

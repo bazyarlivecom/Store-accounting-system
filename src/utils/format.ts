@@ -98,3 +98,11 @@ export function numToPersianWords(num: number): string {
   }
   return word.trim();
 }
+
+export function toPersianDigits(str: string | number | undefined | null): string {
+  if (str === undefined || str === null) return '';
+  const id = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  return str.toString().replace(/[0-9]/g, function (w) {
+    return id[+w];
+  });
+}
