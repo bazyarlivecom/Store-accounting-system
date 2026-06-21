@@ -5463,6 +5463,13 @@ export default function App() {
                          <button onClick={() => setInvoiceGroupMode('season')} className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${invoiceGroupMode === 'season' ? 'bg-indigo-100 text-indigo-700 shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>براساس فصل</button>
                        </div>
                      )}
+                     {activeTab === 'list_warehouse_docs' && (
+                       <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm w-full md:w-auto">
+                         <button onClick={() => setListFilter('all')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${listFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200'}`}>همه اسناد</button>
+                         <button onClick={() => setListFilter('receipt')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${listFilter === 'receipt' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200'}`}>⬇️ رسید (ورود)</button>
+                         <button onClick={() => setListFilter('remittance')} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${listFilter === 'remittance' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200'}`}>⬆️ حواله (خروج)</button>
+                       </div>
+                     )}
                   </div>
                   
                   <div className="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white">
