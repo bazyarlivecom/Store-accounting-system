@@ -2729,12 +2729,13 @@ export default function App() {
            invoiceNumber: autoDocNumber,
            title: 'حواله خروج خودکار (مرتبط با برگشت خرید ' + payload.invoiceNumber + ')',
            type: 'warehouse_remittance',
+           warehouseId: payload.warehouseId,
            currency: payload.currency,
            date: payload.date,
            jalaliDate: payload.jalaliDate,
            customerId: payload.customerId,
            sourceInvoiceId: addedInvoice?.id || payload.invoiceNumber,
-           items: payload.items.map(item => ({...item})),
+           items: payload.items.map(item => ({...item, warehouseId: item.warehouseId || payload.warehouseId})),
            overallDiscountPercent: 0,
            totalAmount: 0 
         };
@@ -2760,12 +2761,13 @@ export default function App() {
            invoiceNumber: autoRemittanceNumber,
            title: 'حواله خروج خودکار (مرتبط با فاکتور ' + payload.invoiceNumber + ')',
            type: 'warehouse_remittance',
+           warehouseId: payload.warehouseId,
            currency: payload.currency,
            date: payload.date,
            jalaliDate: payload.jalaliDate,
            customerId: payload.customerId,
            sourceInvoiceId: addedInvoice?.id || payload.invoiceNumber,
-           items: payload.items.map(item => ({...item})),
+           items: payload.items.map(item => ({...item, warehouseId: item.warehouseId || payload.warehouseId})),
            overallDiscountPercent: 0,
            totalAmount: 0 
         };
@@ -8504,6 +8506,68 @@ export default function App() {
             </div>
           </div>
 
+          {/* Upcoming Checks Notification */}
+          {(() => {
+            const normalizeDateStr = (dStr: string) => {
+              if (!dStr) return 0;
+              const englishDStr = dStr.replace(/[۰-۹]/g, d => '0123456789'['۰۱۲۳۴۵۶۷۸۹'.indexOf(d)]);
+              const parts = englishDStr.split(/[/-]/).map(p => p.padStart(2, '0'));
+              if (parts.length === 3) return parseInt(parts[0] + parts[1] + parts[2], 10);
+              return 0;
+            };
+
+            const today = new Date();
+            const startStr = today.toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            
+            const maxDate = new Date();
+            maxDate.setDate(maxDate.getDate() + 3);
+            const endStr = maxDate.toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+            const startNorm = normalizeDateStr(startStr);
+            const endNorm = normalizeDateStr(endStr);
+            
+            const upcomingIssued = issuedChecks.filter((c: any) => {
+              if (['cashed', 'bounced', 'cancelled'].includes(c.status)) return false;
+              const n = normalizeDateStr(c.dueDate);
+              return n >= startNorm && n <= endNorm;
+            });
+            const upcomingReceived = receivedChecks.filter((c: any) => {
+              if (['cashed', 'deposited', 'bounced', 'returned'].includes(c.status)) return false;
+              const n = normalizeDateStr(c.dueDate);
+              return n >= startNorm && n <= endNorm;
+            });
+            
+            const totalUpcoming = upcomingIssued.length + upcomingReceived.length;
+
+            if (totalUpcoming > 0) {
+              return (
+                <div 
+                  onClick={() => setActiveTab('check_calendar')}
+                  className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-colors shadow-sm"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="bg-amber-100 p-2.5 rounded-xl text-amber-600">
+                      <AlertCircle className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-amber-900 font-extrabold text-sm flex items-center gap-2">
+                        هشدار سررسید چک‌ها (تا ۳ روز آینده)
+                        <span className="bg-amber-200 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">{toPersianDigits(totalUpcoming)} مورد</span>
+                      </h4>
+                      <p className="text-amber-700 text-xs font-semibold mt-1">
+                        شما {toPersianDigits(totalUpcoming)} چک در ۳ روز آینده دارای سررسید دارید ({toPersianDigits(upcomingIssued.length)} پرداختی و {toPersianDigits(upcomingReceived.length)} دریافتی). برای مشاهده تقویم سررسید کلیک کنید.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-amber-500 bg-amber-100/50 p-2 rounded-xl">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           {/* Top KPI Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Sales Card */}
@@ -9521,14 +9585,14 @@ export default function App() {
       ) : activeTab === 'debts_credits' ? (
         <DebtsCreditsReport showNotification={showNotification} />
       ) : activeTab === 'checkbooks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="checkbooks" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="checkbooks" showNotification={showNotification} onDataChange={() => fetchChecks()} currentUser={user?.name || 'کاربر سیستم'} /></motion.div>
       ) : activeTab === 'issued_checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="issued_checks" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="issued_checks" showNotification={showNotification} onDataChange={() => fetchChecks()} currentUser={user?.name || 'کاربر سیستم'} /></motion.div>
       ) : activeTab === 'received_checks' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="received_checks" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="received_checks" showNotification={showNotification} onDataChange={() => fetchChecks()} currentUser={user?.name || 'کاربر سیستم'} /></motion.div>
       ) : activeTab === 'check_calendar' ? (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="check_calendar" showNotification={showNotification} onDataChange={() => fetchChecks()} /></motion.div>
-            ) : activeTab === 'transfer' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="check_calendar" showNotification={showNotification} onDataChange={() => fetchChecks()} currentUser={user?.name || 'کاربر سیستم'} /></motion.div>
+      ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
             ) : activeTab === 'invoice_allocation' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>

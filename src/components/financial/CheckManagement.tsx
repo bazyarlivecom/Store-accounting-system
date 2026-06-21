@@ -6,7 +6,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import { 
   CreditCard, Plus, Edit2, Trash2, CheckCircle, Clock, X, Save, 
-  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart, ChevronDown, Printer
+  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart, ChevronDown, Printer, History, Activity, User
 } from 'lucide-react';
 import { 
   getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, 
@@ -16,7 +16,7 @@ import {
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar', onDataChange?: () => void }) {
+export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange, currentUser = 'کاربر سیستم' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar', onDataChange?: () => void, currentUser?: string }) {
   const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar'>(activeTab);
   
   const toPersianDigits = (str: string | number | undefined | null) => {
@@ -99,6 +99,11 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const [updatingCheckType, setUpdatingCheckType] = useState<'issued' | 'received'>('issued');
   const [updatingCheckId, setUpdatingCheckId] = useState<string|number|null>(null);
   const [statusVal, setStatusVal] = useState('');
+  const [statusDesc, setStatusDesc] = useState('');
+
+  // History view state
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyCheck, setHistoryCheck] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -262,7 +267,9 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
         const wasAlreadyCashed = existing.status === 'cashed';
         
         // Update check entry status
-        await updateIssuedCheck(updatingCheckId.toString(), { ...existing, status: statusVal as any });
+        const historyEntry = { status: statusVal, date: new Date().toISOString(), desc: statusDesc, user: currentUser };
+        const newHistory = existing.history ? [...existing.history, historyEntry] : [historyEntry];
+        await updateIssuedCheck(updatingCheckId.toString(), { ...existing, status: statusVal as any, history: newHistory });
 
         // If status changes to 'cashed' and wasn't already, add direct transaction
         if (statusVal === 'cashed' && !wasAlreadyCashed) {
@@ -301,7 +308,9 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
           return;
         }
 
-        await updateReceivedCheck(updatingCheckId.toString(), { ...existing, status: statusVal as any });
+        const historyEntry = { status: statusVal, date: new Date().toISOString(), desc: statusDesc, user: currentUser };
+        const newHistory = existing.history ? [...existing.history, historyEntry] : [historyEntry];
+        await updateReceivedCheck(updatingCheckId.toString(), { ...existing, status: statusVal as any, history: newHistory });
 
         if (statusVal === 'cashed' && !wasAlreadyCashed) {
           await addTransaction({
@@ -621,7 +630,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                                  onChange={(e) => {
                                    setUpdatingCheckType('issued');
                                    setUpdatingCheckId(c.id);
-                                   setStatusVal(e.target.value);
+                                   setStatusVal(e.target.value); setStatusDesc(''); setStatusDesc('');
                                    setIsStatusModalOpen(true);
                                  }}
                                  className="appearance-none bg-transparent outline-none px-2.5 py-1 pr-6 cursor-pointer text-inherit font-bold print:pl-2.5 print:pr-2.5"
@@ -636,6 +645,16 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                           </td>
                           <td className="px-4 py-3.5 print:hidden">
                             <div className="flex items-center justify-center gap-1.5">
+                              <button 
+                                onClick={() => {
+                                  setHistoryCheck({ ...c, checkType: 'issued' });
+                                  setIsHistoryModalOpen(true);
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100 inline-block"
+                                title="مشاهده سوابق و رهگیری وضعیت"
+                              >
+                                <History className="w-4 h-4" />
+                              </button>
                               <button 
                                 onClick={() => { 
                                   setEditingIssuedCheckId(c.id);
@@ -836,6 +855,16 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                           </td>
                           <td className="px-4 py-3.5 print:hidden">
                             <div className="flex items-center justify-center gap-1.5">
+                              <button 
+                                onClick={() => {
+                                  setHistoryCheck({ ...c, checkType: 'received' });
+                                  setIsHistoryModalOpen(true);
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100 inline-block"
+                                title="مشاهده سوابق و رهگیری وضعیت"
+                              >
+                                <History className="w-4 h-4" />
+                              </button>
                               <button 
                                 onClick={() => { 
                                   setEditingReceivedCheckId(c.id);
@@ -1323,7 +1352,18 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                     </div>
                   )}
                   
-                  <div className="flex justify-end gap-2.5 pt-4 border-t">
+                  <div className="mt-3">
+                    <label className="block text-xs font-black text-gray-700 mb-1.5">توضیحات و سوابق (اختیاری)</label>
+                    <textarea 
+                      rows={2} 
+                      value={statusDesc} 
+                      onChange={e => setStatusDesc(e.target.value)} 
+                      className="w-full border rounded-xl px-4 py-2.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500" 
+                      placeholder="دلیل تغییر وضعیت چک..." 
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end gap-2.5 pt-4 border-t mt-2">
                     <button type="button" onClick={() => setIsStatusModalOpen(false)} className="px-4 py-2 border bg-white border-gray-200 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-50">انصراف</button>
                     <button type="submit" className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm">بروزرسانی وضعیت</button>
                   </div>
@@ -1331,6 +1371,107 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
             </motion.div>
           </div>
         )}
+        {/* MODAL: CHECK HISTORY */}
+        {isHistoryModalOpen && historyCheck && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm print:absolute print:inset-0 print:p-0 print:bg-white" dir="rtl">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-2xl w-full max-w-lg shadow-xl border border-gray-100 flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:border-none">
+              <div className="flex justify-between items-center p-6 border-b print:hidden">
+                <h3 className="text-base font-black text-gray-950 flex items-center gap-2">
+                  <History className="w-5 h-5 text-blue-600" />
+                  سوابق و تاریخچه عملیات چک 
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => window.print()} className="text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-lg transition-colors border border-gray-200" title="چاپ تاریخچه"><Printer className="w-4 h-4" /></button>
+                  <button onClick={() => { setIsHistoryModalOpen(false); setHistoryCheck(null); }} className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 p-2 rounded-lg transition-colors border border-transparent"><X className="w-5 h-5" /></button>
+                </div>
+              </div>
+
+              <div className="p-6 overflow-y-auto print:p-0 print:pt-4">
+                {/* Print Header inside modal */}
+                <div className="hidden print:block mb-6 text-center border-b pb-4">
+                  <h2 className="text-xl font-black text-gray-900 mb-2">گزارش وضعیت و سوابق چک</h2>
+                  <p className="text-sm font-bold text-gray-700">شماره چک: {historyCheck.checkNumber}</p>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6 grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-gray-500 block mb-1">نوع چک:</span>
+                    <span className="font-bold text-gray-900">{historyCheck.checkType === 'issued' ? 'صادره (پرداختی)' : 'دریافتی'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-1">شماره چک:</span>
+                    <span className="font-mono font-black text-gray-900 text-sm">{historyCheck.checkNumber}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-1">مبلغ:</span>
+                    <span className="font-sans font-black text-emerald-600 tracking-tight text-sm text-left block" dir="ltr">{Number(historyCheck.amount).toLocaleString()} <span className="text-[10px] text-gray-400">تومان</span></span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-1">تاریخ سررسید:</span>
+                    <span className="font-bold text-gray-900">{historyCheck.dueDate}</span>
+                  </div>
+                  <div className="col-span-2">
+                     <span className="text-gray-500 block mb-1">طرف حساب:</span>
+                     <span className="font-bold text-gray-900">{persons.find(p => p.id === historyCheck.payerId || p.id === historyCheck.payeeId)?.name || historyCheck.payerId || historyCheck.payeeId}</span>
+                  </div>
+                </div>
+
+                <h4 className="font-black text-sm text-gray-800 mb-4 pb-2 border-b flex items-center gap-2"><Activity className="w-4 h-4 text-gray-400" /> گردش وضعیت</h4>
+                <div className="space-y-4">
+                  {(!historyCheck.history || historyCheck.history.length === 0) ? (
+                    <div className="text-center py-6 text-xs font-bold text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                      تاکنون تاریخچه‌ای برای تغییر وضعیت این چک ثبت نشده است. (وضعیت اولیه)
+                    </div>
+                  ) : (
+                    <div className="relative border-r-2 border-slate-100 pr-4 space-y-6 max-h-[40vh] overflow-y-auto print:max-h-none print:overflow-visible my-2">
+                       {historyCheck.history.map((h: any, i: number) => {
+                          const dateObj = new Date(h.date);
+                          const formattedDate = dateObj.toLocaleDateString('fa-IR');
+                          const formattedTime = dateObj.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+                          return (
+                            <div key={i} className="relative">
+                              <span className="absolute -right-[23px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white print:border-none shadow-sm"></span>
+                              <div className="text-xs text-gray-400 mb-1 border-b border-gray-50 pb-1.5 flex justify-between">
+                                 <span className="font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded-md">
+                                   {
+                                     h.status === 'issued' ? 'صدور چک' :
+                                     h.status === 'received' ? 'دریافت چک' :
+                                     h.status === 'deposited' ? 'واگذاری به بانک (خوابانده)' :
+                                     h.status === 'cashed' ? 'وصول/پاس شده' :
+                                     h.status === 'bounced' ? 'برگشت خورده' :
+                                     h.status === 'returned' ? 'عودت داده شده' :
+                                     h.status === 'cancelled' ? 'باطل شده' : h.status
+                                   }
+                                 </span>
+                                 <div dir="ltr" className="flex gap-2 items-center text-gray-500 font-mono text-[10px]">
+                                    <span>{formattedTime}</span>
+                                    <span>{formattedDate}</span>
+                                 </div>
+                              </div>
+                              <div className="flex justify-between items-start mt-1.5">
+                                {h.desc ? (
+                                  <p className="text-xs font-medium text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100 leading-relaxed shadow-sm flex-1 ml-4">{h.desc}</p>
+                                ) : (
+                                  <p className="text-[10px] text-gray-400 italic flex-1 ml-4">بدون توضیحات اضافی</p>
+                                )}
+                                {h.user && (
+                                  <div className="flex flex-col items-center gap-1 bg-slate-50 border border-slate-100 rounded px-2 py-1 shrink-0 mt-1">
+                                    <User className="w-3 h-3 text-slate-400" />
+                                    <span className="text-[9px] font-bold text-slate-600 truncate max-w-[80px]">{h.user}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                       })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
       </AnimatePresence>
     </div>
   );

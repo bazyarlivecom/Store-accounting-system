@@ -69,6 +69,7 @@ export type IssuedCheck = {
   receiptNumber?: string;
   description?: string;
   imageUrl?: string;
+  history?: { status: string, date: string, desc?: string, user?: string }[];
   isActive?: boolean;
   salePrice?: number;
   discountPercent?: number;
@@ -87,6 +88,7 @@ export type ReceivedCheck = {
   status: 'received' | 'deposited' | 'cashed' | 'bounced' | 'returned';
   receiptNumber?: string;
   description?: string;
+  history?: { status: string, date: string, desc?: string, user?: string }[];
 };
 
 export type ProductCategory = {
