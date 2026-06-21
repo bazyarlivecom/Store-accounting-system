@@ -549,6 +549,22 @@ export default function App() {
   const [invoicePaidAmount, setInvoicePaidAmount] = useState<number>(0);
 
   const [hasDraft, setHasDraft] = useState<boolean>(false);
+
+  // Inter-warehouse Auto-transfer Proposal State
+  const [transferProposal, setTransferProposal] = useState<{
+    show: boolean;
+    items: {
+      productId: string | number;
+      productName: string;
+      unit: string;
+      required: number;
+      availableInTarget: number;
+      deficit: number;
+      remainingDeficit: number;
+      transfers: { fromWarehouseId: string | number; fromWarehouseName: string; toWarehouseId: string | number; toWarehouseName: string; qty: number }[];
+    }[];
+    payload: any;
+  } | null>(null);
   
   // Auto-save effect
   useEffect(() => {
@@ -2553,7 +2569,14 @@ export default function App() {
       return;
     }
     
-    if (storeSettings.requireWarehouse && !activeTab.includes('warehouse') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service') && !invoiceWarehouseId) {
+    // Always enforce sales warehouse for sales
+    if ((activeTab === 'create_sale' || invoiceType === 'sale') && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service') && !invoiceWarehouseId) {
+      customAlert('لطفاً برای فاکتور فروش، انبار فروش را انتخاب کنید. فروش حتماً باید از یک انبار مشخص انجام شود.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (storeSettings.requireWarehouse && !activeTab.includes('warehouse') && activeTab !== 'create_sale' && items.some(i => products.find(p => p.id === i.productId)?.type !== 'service') && !invoiceWarehouseId) {
       customAlert('لطفاً برای فاکتور فروش/خریدِ شامل کالا، انبار را انتخاب کنید.');
       setSubmitting(false);
       return;
@@ -2580,7 +2603,7 @@ export default function App() {
       sourceInvoiceId,
       items: cleanItems.map(item => ({
         ...item,
-        warehouseId: (storeSettings.requireWarehouse || activeTab.includes('warehouse')) && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId
+        warehouseId: (storeSettings.requireWarehouse || activeTab.includes('warehouse') || activeTab === 'create_sale' || invoiceType === 'sale') && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId
       })),
       overallDiscountPercent,
       totalAmount: calculateFinalTotal(),
@@ -2588,8 +2611,77 @@ export default function App() {
       paidAmount: Number(invoicePaidAmount) || 0
     };
 
-    if (!storeSettings.allowNegativeStock && (payload.type === 'sale' || payload.type === 'warehouse_remittance')) {
-      // Group items by productId and warehouseId to check totals
+    // 1. If it's a sale, perform the Sales Warehouse check and identify shortages
+    if (payload.type === 'sale') {
+      const shortages: any[] = [];
+      const requiredQty: Record<string, number> = {};
+      
+      for (const item of payload.items) {
+         if (!item.productId) continue;
+         const productObj = products.find(p => p.id === item.productId);
+         if (productObj?.type === 'service') continue;
+         const q = (Number(item.quantity) || 0) * (item.isSecondaryUnit && item.unitRatio ? Number(item.unitRatio) : 1);
+         requiredQty[item.productId] = (requiredQty[item.productId] || 0) + q;
+      }
+
+      for (const productId of Object.keys(requiredQty)) {
+         const q = requiredQty[productId];
+         const stockInfo = getProductStockInfo(productId);
+         const targetWhId = invoiceWarehouseId ? invoiceWarehouseId.toString() : '';
+         const physicalInWh = targetWhId ? (stockInfo.warehouses[targetWhId]?.physical || 0) : 0;
+         
+         if (physicalInWh < q) {
+            const deficit = q - physicalInWh;
+            const productObj = products.find(p => p.id.toString() === productId.toString());
+            
+            // Collect potential transfers from other active warehouses
+            let remainingDeficit = deficit;
+            const transfersList: any[] = [];
+            
+            const otherActiveWhs = warehouses.filter(w => w.isActive !== false && w.id.toString() !== targetWhId);
+            for (const otherWh of otherActiveWhs) {
+               if (remainingDeficit <= 0) break;
+               const otherPhys = stockInfo.warehouses[otherWh.id.toString()]?.physical || 0;
+               if (otherPhys > 0) {
+                  const transferQty = Math.min(remainingDeficit, otherPhys);
+                  transfersList.push({
+                     fromWarehouseId: otherWh.id,
+                     fromWarehouseName: otherWh.name,
+                     toWarehouseId: targetWhId,
+                     toWarehouseName: warehouses.find(w => w.id.toString() === targetWhId)?.name || 'انبار فروش',
+                     qty: transferQty
+                  });
+                  remainingDeficit -= transferQty;
+               }
+            }
+            
+            shortages.push({
+               productId,
+               productName: productObj?.name || 'کالای نامشخص',
+               unit: productObj?.unit || 'عدد',
+               required: q,
+               availableInTarget: physicalInWh,
+               deficit,
+               remainingDeficit,
+               transfers: transfersList
+            });
+         }
+      }
+
+      if (shortages.length > 0) {
+         // Shortage exists in sales warehouse! Propose transfer
+         setTransferProposal({
+            show: true,
+            items: shortages,
+            payload: payload
+         });
+         setSubmitting(false);
+         return false;
+      }
+    }
+
+    // 2. Standard validation for other conditions or warehouse remittances
+    if (!storeSettings.allowNegativeStock && payload.type === 'warehouse_remittance') {
       const requiredQty: Record<string, number> = {};
       
       for (const item of payload.items) {
@@ -2606,29 +2698,11 @@ export default function App() {
          const q = requiredQty[key];
          const stockInfo = getProductStockInfo(productId);
          
-         if (payload.type === 'sale') {
-            if (whId && whId !== 'global') {
-               const avail = stockInfo.warehouses[whId]?.physical || 0;
-               if (avail < q) {
-                  alert(`موجودی فیزیکی در انبار انتخاب شده کافی نیست. (موجودی: ${avail})`);
-                  setSubmitting(false);
-                  return false;
-               }
-            } else {
-               const avail = stockInfo.totalAvailable;
-               if (avail < q) {
-                  alert(`موجودی در دسترس کالا کافی نیست. (موجودی: ${avail})`);
-                  setSubmitting(false);
-                  return false;
-               }
-            }
-         } else if (payload.type === 'warehouse_remittance') {
-            const avail = stockInfo.warehouses[whId]?.physical || 0;
-            if (avail < q) {
-               alert(`موجودی فیزیکی در انبار انتخاب شده کافی نیست. (موجودی: ${avail})`);
-               setSubmitting(false);
-               return false;
-            }
+         const avail = stockInfo.warehouses[whId]?.physical || 0;
+         if (avail < q) {
+            alert(`موجودی فیزیکی در انبار انتخاب شده کافی نیست. (موجودی: ${avail})`);
+            setSubmitting(false);
+            return false;
          }
       }
     }
@@ -2797,6 +2871,188 @@ export default function App() {
       setSubmitting(false);
     }
     return false;
+  };
+
+  const handleExecuteTransferAndSubmit = async () => {
+    if (!transferProposal) return;
+    setSubmitting(true);
+    
+    try {
+      const { items: proposalItems, payload: originalPayload } = transferProposal;
+      
+      // Let's create the transfer documents for each suggested transfer
+      for (const item of proposalItems) {
+        for (const tr of item.transfers) {
+          // Generate warehouse remittance (exit from source warehouse) and warehouse receipt (entry to sales warehouse)
+          const startNum = parseInt(storeSettings.invoiceStartNumber || '1000', 10);
+          const remPrefix = storeSettings.prefix_warehouse_remittance || 'REM-';
+          const recPrefix = storeSettings.prefix_warehouse_receipt || 'REC-';
+          const numLength = Math.max(1, parseInt(storeSettings.invoiceNumberLength || '6', 10));
+          
+          let maxNumRem = startNum - 1;
+          let maxNumRec = startNum - 1;
+          invoices.forEach(inv => {
+            if (inv.invoiceNumber) {
+              if (inv.invoiceNumber.startsWith(remPrefix)) {
+                 const num = parseInt(inv.invoiceNumber.substring(remPrefix.length), 10);
+                 if (!isNaN(num) && num > maxNumRem) maxNumRem = num;
+              }
+              if (inv.invoiceNumber.startsWith(recPrefix)) {
+                 const num = parseInt(inv.invoiceNumber.substring(recPrefix.length), 10);
+                 if (!isNaN(num) && num > maxNumRec) maxNumRec = num;
+              }
+            }
+          });
+          
+          const remNumber = `${remPrefix}${String(maxNumRem + 1).padStart(numLength, '0')}`;
+          const recNumber = `${recPrefix}${String(maxNumRec + 1).padStart(numLength, '0')}`;
+          
+          const product = products.find(p => p.id.toString() === item.productId.toString());
+          const transferDate = new Date();
+          const transferJalali = transferDate.toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR');
+          
+          // 1. Warehouse Remittance (خروج از انبار مبدا)
+          const remittancePayload = {
+            isAutoGenerated: true,
+            invoiceNumber: remNumber,
+            title: `حواله انتقال کالا به انبار فروش (خودکار بابت فاکتور فروش ${originalPayload.invoiceNumber})`,
+            description: `انتقال خودکار کالا به انبار فروش (${tr.toWarehouseName}) بابت کسر موجودی`,
+            type: 'warehouse_remittance',
+            warehouseId: tr.fromWarehouseId,
+            currency: originalPayload.currency || 'تومان',
+            date: transferDate.toISOString(),
+            jalaliDate: transferJalali,
+            customerId: originalPayload.customerId || '',
+            items: [{
+              id: generateId(),
+              productId: item.productId,
+              productName: item.productName,
+              quantity: tr.qty,
+              unitPrice: product?.price || 0,
+              discountPercent: 0,
+              totalPrice: (product?.price || 0) * tr.qty,
+              selectedUnit: product?.unit || '',
+              unitRatio: product?.unitRatio || 1,
+              isSecondaryUnit: false,
+              warehouseId: tr.fromWarehouseId
+            }],
+            overallDiscountPercent: 0,
+            totalAmount: 0
+          };
+          
+          // 2. Warehouse Receipt (ورود به انبار مقصد/فروش)
+          const receiptPayload = {
+            isAutoGenerated: true,
+            invoiceNumber: recNumber,
+            title: `رسید انتقال کالا به انبار فروش (خودکار بابت فاکتور فروش ${originalPayload.invoiceNumber})`,
+            description: `انتقال خودکار کالا از انبار مبدا (${tr.fromWarehouseName}) بابت کسر موجودی`,
+            type: 'warehouse_receipt',
+            warehouseId: tr.toWarehouseId,
+            currency: originalPayload.currency || 'تومان',
+            date: transferDate.toISOString(),
+            jalaliDate: transferJalali,
+            customerId: originalPayload.customerId || '',
+            items: [{
+              id: generateId(),
+              productId: item.productId,
+              productName: item.productName,
+              quantity: tr.qty,
+              unitPrice: product?.price || 0,
+              discountPercent: 0,
+              totalPrice: (product?.price || 0) * tr.qty,
+              selectedUnit: product?.unit || '',
+              unitRatio: product?.unitRatio || 1,
+              isSecondaryUnit: false,
+              warehouseId: tr.toWarehouseId
+            }],
+            overallDiscountPercent: 0,
+            totalAmount: 0
+          };
+          
+          await addInvoice(remittancePayload as any);
+          await addInvoice(receiptPayload as any);
+        }
+      }
+      
+      // Recalculate stock
+      await recalculateAllWarehouseStocks();
+      setTransferProposal(null);
+      
+      // Submit original invoice with bypass of shortage checks (since stock is now in target warehouse!)
+      const addedInvoice = await addInvoice(originalPayload);
+      
+      // Code to automatically construct warehouse remittance for the sale:
+      const startNum = parseInt(storeSettings.invoiceStartNumber || '1000', 10);
+      const remPrefix = storeSettings.prefix_warehouse_remittance || 'REM-';
+      const numLength = Math.max(1, parseInt(storeSettings.invoiceNumberLength || '6', 10));
+      
+      let maxNum = startNum - 1;
+      const latestInvoices = await getInvoices();
+      latestInvoices.forEach((inv: any) => {
+        if (inv.invoiceNumber && inv.invoiceNumber.startsWith(remPrefix)) {
+           const num = parseInt(inv.invoiceNumber.substring(remPrefix.length), 10);
+           if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      });
+      const autoRemittanceNumber = `${remPrefix}${String(maxNum + 1).padStart(numLength, '0')}`;
+
+      const remittancePayload = {
+         isAutoGenerated: true,
+         invoiceNumber: autoRemittanceNumber,
+         title: 'حواله خروج خودکار (مرتبط با فاکتور ' + originalPayload.invoiceNumber + ')',
+         type: 'warehouse_remittance',
+         warehouseId: originalPayload.warehouseId,
+         currency: originalPayload.currency,
+         date: originalPayload.date,
+         jalaliDate: originalPayload.jalaliDate,
+         customerId: originalPayload.customerId,
+         sourceInvoiceId: addedInvoice?.id || originalPayload.invoiceNumber,
+         items: originalPayload.items.map((it: any) => ({ ...it, warehouseId: originalPayload.warehouseId })),
+         overallDiscountPercent: 0,
+         totalAmount: 0 
+      };
+      await addInvoice(remittancePayload as any);
+      
+      setSuccessMsg(`سند انتقال موجودی و فاکتور فروش شماره ${originalPayload.invoiceNumber} با موفقیت ثبت شدند!`);
+      
+      if (storeSettings?.notify_on_invoice && originalPayload.customerId) {
+         const person = persons.find(p => p.id === originalPayload.customerId);
+         if (person && person.phone) {
+             const amt = typeof formatNumber === 'function' ? formatNumber(originalPayload.totalAmount) : originalPayload.totalAmount;
+             sendNotification(`مشتری گرامی، فاکتور خرید شما به مبلغ ${amt} ${storeSettings?.currency || 'تومان'} در سیستم ثبت شد.`, person.phone, storeSettings?.notify_method);
+         }
+      }
+      
+      await fetchInvoices();
+      clearDraft();
+      
+      setTimeout(() => {
+        if (invoiceMode === 'manual') setInvoiceNumber('');
+        setSellerInvoiceNumber('');
+        setCustomerId('');
+        setSourceInvoiceId('');
+        setItems([]);
+        setOverallDiscountPercent(0);
+        setInvoiceCurrency(storeSettings.currency || 'تومان');
+        setExchangeRate(1);
+        setExchangeRateInput('1');
+        
+        setInvoiceType('sale');
+        setInvoiceTitle('فاکتور فروش کالا');
+        setInvoicePaymentStatus('unpaid');
+        setInvoicePaidAmount(0);
+        
+        setSuccessMsg('');
+        setPreviewInvoiceData(null);
+      }, 1500);
+      
+      setActiveTab('list_sale');
+    } catch (err) {
+      console.error(err);
+      customAlert('خطایی در اجرای انتقال و ثبت فاکتور پیش آمد.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const submitInvoice = async (e: React.FormEvent) => {
@@ -4870,17 +5126,15 @@ export default function App() {
                       placeholder="توضیحات و یادداشت..." 
                     />
                   </div>
-                  {storeSettings.requireWarehouse && (
                     <div className="lg:col-span-1">
-                      <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Box className="w-4 h-4 text-indigo-500"/> انبار خروج کالا</label>
-                      <select value={invoiceWarehouseId} onChange={(e) => setInvoiceWarehouseId(e.target.value)} className="w-full p-3 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30 text-base font-bold text-indigo-900 outline-none">
-                         <option value="">-- لطفاً انبار را انتخاب کنید --</option>
+                      <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Box className="w-4 h-4 text-indigo-500"/> انبار فروش (خروج کالا) <span className="text-rose-500 font-extrabold">*</span></label>
+                      <select value={invoiceWarehouseId} onChange={(e) => setInvoiceWarehouseId(e.target.value)} className="w-full p-3 border border-indigo-100/80 rounded-xl focus:ring-2 focus:ring-indigo-500 bg-indigo-50/30 text-base font-bold text-indigo-950 outline-none">
+                         <option value="">-- لطفاً انبار فروش را انتخاب کنید --</option>
                          {warehouses.filter(w => w.isActive !== false).map((v) => (
                            <option key={v.id} value={v.id}>{v.name}</option>
                          ))}
                       </select>
                     </div>
-                  )}
                 </div>
               </div>
 
@@ -13431,6 +13685,131 @@ export default function App() {
             </motion.div>
           </div>
         );})()}
+
+        {/* Inter-warehouse Auto-transfer Proposal Dialog */}
+        {transferProposal && transferProposal.show && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl shadow-2xl border-2 border-indigo-100 overflow-hidden w-full max-w-2xl max-h-[90vh] flex flex-col font-sans"
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-indigo-100 flex justify-between items-center bg-indigo-50/40">
+                <div className="text-right">
+                  <h3 className="text-lg font-black text-indigo-950 flex items-center gap-2">
+                    <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
+                    تأمین موجودی و انتقال خودکار بین انبارها
+                  </h3>
+                  <p className="text-xs text-slate-500 font-bold mt-0.5">برخی اقلام فاکتور در انبار فروش منتخب کسر موجودی دارند.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTransferProposal(null)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-slate-100 p-2 rounded-xl transition-colors border border-gray-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                
+                {/* Intro message */}
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs font-bold text-amber-900 leading-relaxed">
+                  موجودی کافی در انبار فروش منتخب یافت نشد. بر اساس آمار موجودی انبارها، انتقال‌های زیر جهت تامین کسری فاکتور فروش پیشنهاد می‌شود. با ضربه روی «تأیید و اجرای هوشمند انتقال»، اسناد انتقال انبار صادر و فاکتور فروش شما فوراً ذخیره می‌شود.
+                </div>
+
+                {/* Items Shortages List */}
+                <div className="space-y-4">
+                  <h4 className="font-extrabold text-sm text-slate-800 border-b border-indigo-50 pb-2 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-indigo-500" /> بررسی جزئیات کالاها و روش تأمین
+                  </h4>
+
+                  {transferProposal.items.map((item, idx) => {
+                    const hasActionableTransfers = item.transfers && item.transfers.length > 0;
+                    return (
+                      <div key={idx} className="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 space-y-3">
+                        <div className="flex justify-between items-start flex-wrap gap-2">
+                          <span className="font-black text-slate-900 text-sm">{item.productName}</span>
+                          <div className="flex gap-2">
+                            <span className="text-[10px] bg-indigo-50 text-indigo-950 font-bold px-2 py-0.5 border border-indigo-150 rounded-md">
+                              موردنیاز: {item.required} {item.unit}
+                            </span>
+                            <span className="text-[10px] bg-rose-50 text-rose-700 font-bold px-2 py-0.5 border border-rose-150 rounded-md">
+                              کسری در انبار فروش: {item.deficit} {item.unit}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* List of suggested transfers */}
+                        {hasActionableTransfers ? (
+                          <div className="space-y-2 mt-2">
+                            <div className="text-[11px] text-slate-400 font-bold">برنامه انتقال پیشنهادی:</div>
+                            {item.transfers.map((tr: any, tIdx: number) => (
+                              <div key={tIdx} className="bg-white border border-indigo-50/50 rounded-xl p-3 flex justify-between items-center text-xs text-slate-700 shadow-sm">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="bg-slate-100 px-2 py-1 rounded font-bold text-slate-800">{tr.fromWarehouseName}</span>
+                                  <span className="text-indigo-500">←</span>
+                                  <span className="font-black text-slate-800">انتقال {tr.qty} {item.unit}</span>
+                                  <span className="text-indigo-500">←</span>
+                                  <span className="bg-indigo-50 px-2 py-1 rounded font-bold text-indigo-900">{tr.toWarehouseName}</span>
+                                </div>
+                                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">آماده صدور سند</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs font-bold text-rose-500 bg-rose-50/50 border border-rose-100 px-3 py-2 rounded-xl flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                            موجودی این کالا در هیچ انبار دیگری هم کافی نیست! (کسری غیرقابل تامین: {item.deficit} {item.unit})
+                          </div>
+                        )}
+                        
+                        {/* Remaining deficit if any */}
+                        {item.remainingDeficit > 0 && hasActionableTransfers && (
+                          <div className="text-[10px] text-rose-600 font-bold flex items-center gap-1.5 mt-2 bg-rose-50/30 p-2 rounded-lg border border-rose-100/50">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            کسری باقی‌مانده غیرقابل تأمین از انبارهای دیگر: {item.remainingDeficit} {item.unit}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-5 bg-indigo-50/30 border-t border-indigo-100 flex justify-between items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTransferProposal(null)}
+                  className="px-6 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold transition-all text-xs"
+                >
+                  انصراف و اصلاح فاکتور
+                </button>
+
+                {transferProposal.items.some(i => i.transfers && i.transfers.length > 0) ? (
+                  <button
+                    type="button"
+                    onClick={handleExecuteTransferAndSubmit}
+                    disabled={submitting}
+                    className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-xl font-black flex items-center gap-2 transition-all shadow-md shadow-indigo-600/10 text-xs"
+                  >
+                    {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    تأیید و اجرای هوشمند انتقال و ثبت فاکتور
+                  </button>
+                ) : (
+                  <div className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    انتقال خودکار غیرمقدور (عدم موجودی کل کالاها)
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
 
         {/* Invoice PRE-REGISTER Preview overlay */}
 
