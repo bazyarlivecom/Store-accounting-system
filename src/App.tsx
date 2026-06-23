@@ -36,6 +36,7 @@ import LoansManager from './components/loans/LoansManager';
 import ChartOfAccounts from './components/accounting/ChartOfAccounts';
 import AccountingDocsList from './components/accounting/AccountingDocsList';
 import AccountingDocCreate from './components/accounting/AccountingDocCreate';
+import AccountingDocView from './components/accounting/AccountingDocView';
 import AccountingAutoSync from './components/accounting/AccountingAutoSync';
 import AccountingVerification from './components/accounting/AccountingVerification';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
@@ -93,7 +94,7 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans' | 'system_logs' | 'stocktaking' | 'chart_of_accounts' | 'accounting_docs_list' | 'accounting_doc_create' | 'accounting_auto_sync' | 'accounting_verification'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans' | 'system_logs' | 'stocktaking' | 'chart_of_accounts' | 'accounting_docs_list' | 'accounting_doc_create' | 'accounting_doc_view' | 'accounting_auto_sync' | 'accounting_verification'>('financial_report');
   const [systemModule, setSystemModule] = useState<'selector' | 'all' | 'commerce' | 'inventory' | 'accounting' | 'admin'>(() => {
     try { const saved = localStorage.getItem('app_systemModule'); return saved ? JSON.parse(saved) : 'selector'; } catch { return 'selector'; }
   });
@@ -493,6 +494,7 @@ export default function App() {
       // For financial report
       const [reportDateRange, setReportDateRange] = useState<Date[]>([]);
       const [viewingInvoice, setViewingInvoice] = useState<any>(null);
+      const [viewingAccountingDoc, setViewingAccountingDoc] = useState<any>(null);
       const [pricingWizardInvoice, setPricingWizardInvoice] = useState<any>(null);
       const [pricingWizardItems, setPricingWizardItems] = useState<any[]>([]);
       const [pricingPrintMode, setPricingPrintMode] = useState<'list' | 'labels'>('list');
@@ -10553,15 +10555,17 @@ export default function App() {
       ) : activeTab === 'chart_of_accounts' ? (
         <ChartOfAccounts showNotification={showNotification} currentUser={user?.name} />
       ) : activeTab === 'accounting_docs_list' ? (
-        <AccountingDocsList showNotification={showNotification} onNavigateToCreate={() => setActiveTab('accounting_doc_create')} onNavigateToView={() => {}} />
+        <AccountingDocsList showNotification={showNotification} onNavigateToCreate={() => setActiveTab('accounting_doc_create')} onNavigateToView={(doc: any) => { setViewingAccountingDoc(doc); setActiveTab('accounting_doc_view'); }} />
       ) : activeTab === 'accounting_doc_create' ? (
         <AccountingDocCreate showNotification={showNotification} onBack={() => setActiveTab('accounting_docs_list')} />
+      ) : activeTab === 'accounting_doc_view' && viewingAccountingDoc ? (
+        <AccountingDocView doc={viewingAccountingDoc} accounts={ledgerAccountsData} storeSettings={storeSettings} onBack={() => setActiveTab('accounting_docs_list')} />
       ) : activeTab === 'accounting_auto_sync' ? (
         <AccountingAutoSync showNotification={showNotification} />
       ) : activeTab === 'accounting_verification' ? (
         <AccountingVerification showNotification={showNotification} />
       ) : null}
-          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'check_charts', 'transfer', 'quick_refund', 'stocktaking', 'chart_of_accounts', 'accounting_docs_list', 'accounting_doc_create', 'accounting_auto_sync', 'accounting_verification'].includes(activeTab)) && renderTabContent()}
+          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'check_charts', 'transfer', 'quick_refund', 'stocktaking', 'chart_of_accounts', 'accounting_docs_list', 'accounting_doc_create', 'accounting_doc_view', 'accounting_auto_sync', 'accounting_verification'].includes(activeTab)) && renderTabContent()}
           </div>
         </main>
 

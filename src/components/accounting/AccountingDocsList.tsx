@@ -75,18 +75,19 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
                 <th className="p-4 font-bold text-slate-600 text-sm text-center">آرتیکل‌ها</th>
                 <th className="p-4 font-bold text-slate-600 text-sm text-center">وضعیت</th>
                 <th className="p-4 font-bold text-slate-600 text-sm">مجموع مبالغ</th>
+                <th className="p-4 font-bold text-slate-600 text-sm text-center">عملیات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                  <tr>
-                   <td colSpan={6} className="p-6 text-center text-slate-500">
+                   <td colSpan={7} className="p-6 text-center text-slate-500">
                      <div className="flex justify-center p-4"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
                    </td>
                  </tr>
               ) : filteredDocs.length === 0 ? (
                 <tr>
-                   <td colSpan={6} className="p-8 text-center text-slate-400">
+                   <td colSpan={7} className="p-8 text-center text-slate-400">
                      <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
                      <p className="font-bold">هیچ سندی یافت نشد</p>
                    </td>
@@ -110,6 +111,15 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
                     </td>
                     <td className="p-4 text-sm font-black text-indigo-700 font-mono" dir="ltr">
                       {total.toLocaleString()}
+                    </td>
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={() => onNavigateToView?.(doc)}
+                        className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                        title="مشاهده و چاپ"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 )})

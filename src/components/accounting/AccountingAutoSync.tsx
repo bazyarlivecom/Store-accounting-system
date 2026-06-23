@@ -62,8 +62,28 @@ export default function AccountingAutoSync({ showNotification }: any) {
     
     setIsSyncing(true);
     try {
-      const defaultLedgerIds = await getLedgerAccounts();
-      const defaultLedger = defaultLedgerIds.length > 0 ? defaultLedgerIds[0].id : '';
+      const accounts = await getLedgerAccounts();
+      const pers = await getPersons();
+      const defaultLedger = accounts.length > 0 ? accounts[0].id : '';
+
+      const getPersonLedgerAcc = (personId: string | number) => {
+          if (!personId) return defaultLedger;
+          const person = pers.find(p => p.id?.toString() === personId.toString());
+          if (!person || !person.accountingCode) return defaultLedger;
+          const lAcc = accounts.find(a => a.code === person.accountingCode);
+          return lAcc ? lAcc.id : defaultLedger;
+      };
+
+      const getAccByCode = (code: string) => {
+          const acc = accounts.find(a => a.code === code);
+          return acc ? acc.id : defaultLedger;
+      };
+
+      const cashAcc = getAccByCode('11');
+      const salesAcc = getAccByCode('41');
+      const inventoryAcc = getAccByCode('13');
+      const recvAcc = getAccByCode('12');
+      const payAcc = getAccByCode('21');
 
       let successCount = 0;
 
@@ -71,14 +91,14 @@ export default function AccountingAutoSync({ showNotification }: any) {
       for (const p of missingBalances) {
           const items = [];
           if (p.initialBalanceType === 'debtor') {
-              items.push({ description: 'بدهکار - طرف حساب', debit: Number(p.initialBalance), credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: p.id });
+              items.push({ description: 'بدهکار - طرف حساب', debit: Number(p.initialBalance), credit: 0, ledgerAccountId: getPersonLedgerAcc(p.id), detailedAccountId: p.id });
               items.push({ description: 'بستانکار - تراز افتتاحیه', debit: 0, credit: Number(p.initialBalance), ledgerAccountId: defaultLedger });
           } else {
               items.push({ description: 'بدهکار - تراز افتتاحیه', debit: Number(p.initialBalance), credit: 0, ledgerAccountId: defaultLedger });
-              items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(p.initialBalance), ledgerAccountId: defaultLedger, detailedAccountId: p.id });
+              items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(p.initialBalance), ledgerAccountId: getPersonLedgerAcc(p.id), detailedAccountId: p.id });
           }
           await addAccountingDocument({
-              date: p.registrationDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              date: p.registrationDate ? new Date(p.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               description: `سند افتتاحیه طرف حساب: ${p.name}`,
               status: 'approved',
               sourceType: 'opening_balance',
@@ -92,14 +112,14 @@ export default function AccountingAutoSync({ showNotification }: any) {
       for (const t of missingTransactions) {
           const items = [];
           if (t.type === 'receive') {
-              items.push({ description: 'بدهکار - منابع', debit: Number(t.amount), credit: 0, ledgerAccountId: defaultLedger });
-              items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(t.amount), ledgerAccountId: defaultLedger, detailedAccountId: t.personId });
+              items.push({ description: 'بدهکار - منابع (صندوق/بانک)', debit: Number(t.amount), credit: 0, ledgerAccountId: cashAcc });
+              items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(t.amount), ledgerAccountId: getPersonLedgerAcc(t.personId), detailedAccountId: t.personId });
           } else {
-              items.push({ description: 'بدهکار - طرف حساب', debit: Number(t.amount), credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: t.personId });
-              items.push({ description: 'بستانکار - منابع', debit: 0, credit: Number(t.amount), ledgerAccountId: defaultLedger });
+              items.push({ description: 'بدهکار - طرف حساب', debit: Number(t.amount), credit: 0, ledgerAccountId: getPersonLedgerAcc(t.personId), detailedAccountId: t.personId });
+              items.push({ description: 'بستانکار - منابع (صندوق/بانک)', debit: 0, credit: Number(t.amount), ledgerAccountId: cashAcc });
           }
           await addAccountingDocument({
-              date: t.date?.split('T')[0] || new Date().toISOString().split('T')[0],
+              date: t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               description: `سند اتوماتیک تراکنش به مبدا تراکنش ${t.id}`,
               status: 'approved',
               sourceType: t.type === 'receive' ? 'receipt' : 'payment',
@@ -114,16 +134,16 @@ export default function AccountingAutoSync({ showNotification }: any) {
           const items = [];
           const total = Number(inv.totalAmount) || 0;
           if (inv.type === 'sale' || inv.type === 'purchase_return') {
-              items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: inv.customerId });
-              items.push({ description: 'بستانکار - درآمد/موجودی', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: getPersonLedgerAcc(inv.customerId), detailedAccountId: inv.customerId });
+              items.push({ description: 'بستانکار - درآمد/موجودی', debit: 0, credit: total, ledgerAccountId: salesAcc });
           } else if (inv.type === 'purchase' || inv.type === 'sale_return') {
-              items.push({ description: 'بدهکار - موجودی/هزینه', debit: total, credit: 0, ledgerAccountId: defaultLedger });
-              items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: inv.customerId });
+              items.push({ description: 'بدهکار - موجودی/هزینه', debit: total, credit: 0, ledgerAccountId: inventoryAcc });
+              items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: getPersonLedgerAcc(inv.customerId), detailedAccountId: inv.customerId });
           }
 
           if (items.length > 0) {
               await addAccountingDocument({
-                  date: inv.date?.split('T')[0] || new Date().toISOString().split('T')[0],
+                  date: inv.date ? new Date(inv.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                   description: `سند اتوماتیک فاکتور شماره ${inv.invoiceNumber || inv.id}`,
                   status: 'approved',
                   sourceType: inv.type.includes('sale') ? 'invoice_sale' : 'invoice_purchase',
@@ -139,14 +159,14 @@ export default function AccountingAutoSync({ showNotification }: any) {
           const items = [];
           const total = Number(c.amount) || 0;
           if (c._isIssued) {
-              items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: c.receiverId });
-              items.push({ description: 'بستانکار - اسناد پرداختنی', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: getPersonLedgerAcc(c.receiverId), detailedAccountId: c.receiverId });
+              items.push({ description: 'بستانکار - اسناد پرداختنی', debit: 0, credit: total, ledgerAccountId: payAcc });
           } else {
-              items.push({ description: 'بدهکار - اسناد دریافتنی', debit: total, credit: 0, ledgerAccountId: defaultLedger });
-              items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: c.payerId });
+              items.push({ description: 'بدهکار - اسناد دریافتنی', debit: total, credit: 0, ledgerAccountId: recvAcc });
+              items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: getPersonLedgerAcc(c.payerId), detailedAccountId: c.payerId });
           }
           await addAccountingDocument({
-              date: c.issueDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              date: c.issueDate ? new Date(c.issueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               description: `سند اتوماتیک چک ${c._isIssued ? 'پرداختی' : 'دریافتی'} شماره ${c.checkNumber}`,
               status: 'approved',
               sourceType: c._isIssued ? 'issued_check' : 'received_check',
@@ -161,14 +181,14 @@ export default function AccountingAutoSync({ showNotification }: any) {
           const items = [];
           const total = Number(l.amount) || 0;
           if (l.type === 'given') {
-              items.push({ description: 'بدهکار - وام پرداختی (شخص)', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: l.personId });
-              items.push({ description: 'بستانکار - منابع (بانک/صندوق)', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بدهکار - وام پرداختی (شخص)', debit: total, credit: 0, ledgerAccountId: getPersonLedgerAcc(l.personId), detailedAccountId: l.personId });
+              items.push({ description: 'بستانکار - منابع (بانک/صندوق)', debit: 0, credit: total, ledgerAccountId: cashAcc });
           } else {
-              items.push({ description: 'بدهکار - منابع (بانک/صندوق)', debit: total, credit: 0, ledgerAccountId: defaultLedger });
-              items.push({ description: 'بستانکار - وام دریافتی (شخص)', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: l.personId });
+              items.push({ description: 'بدهکار - منابع (بانک/صندوق)', debit: total, credit: 0, ledgerAccountId: cashAcc });
+              items.push({ description: 'بستانکار - وام دریافتی (شخص)', debit: 0, credit: total, ledgerAccountId: getPersonLedgerAcc(l.personId), detailedAccountId: l.personId });
           }
           await addAccountingDocument({
-              date: l.startDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              date: l.startDate ? new Date(l.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               description: `سند اتوماتیک وام ${l.type === 'given' ? 'پرداختی' : 'دریافتی'}`,
               status: 'approved',
               sourceType: 'loan',
@@ -182,10 +202,10 @@ export default function AccountingAutoSync({ showNotification }: any) {
       for (const inst of missingInstallments) {
           const items = [];
           const total = Number(inst.paidAmount) || Number(inst.amount) || 0;
-          items.push({ description: 'بدهکار - تسویه قسط (صندوق/بانک)', debit: total, credit: 0, ledgerAccountId: defaultLedger });
+          items.push({ description: 'بدهکار - تسویه قسط (صندوق/بانک)', debit: total, credit: 0, ledgerAccountId: cashAcc });
           items.push({ description: 'بستانکار - وام پرداختی (یا برعکس)', debit: 0, credit: total, ledgerAccountId: defaultLedger });
           await addAccountingDocument({
-              date: inst.paidDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              date: inst.paidDate ? new Date(inst.paidDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
               description: `سند اتوماتیک تسویه قسط`,
               status: 'approved',
               sourceType: 'installment',

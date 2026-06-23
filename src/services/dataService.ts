@@ -273,8 +273,71 @@ export const addPerson = async (person: any) => {
     finalPersonCode = await generateDocNumber('person');
   }
 
+  // --- Handle Ledger Accounts for the Person ---
+  let finalAccountingCode = person.accountingCode;
+  
+  const ledgerAccounts = await getLedgerAccounts();
+  // Find standard parent for the role
+  let parentCode = '12'; // Default to receivables for customer
+  let parentNature = 'debit';
+  if (roleId === 'supplier') {
+    parentCode = '21';
+    parentNature = 'credit';
+  } else if (roleId === 'employee') {
+    parentCode = '21'; // Maybe under payables
+    parentNature = 'credit';
+  }
+
+  const parentGeneralAcc = ledgerAccounts.find(a => a.code === parentCode);
+  
+  if (parentGeneralAcc) {
+    // Check for a specific subsidiary account for this role (e.g. "مشتریان", "تامین‌کنندگان")
+    let subsidiaryCode = parentCode + '01'; // Default 01 sub-account
+    if (roleId === 'supplier') subsidiaryCode = '2101';
+    else if (roleId === 'employee') subsidiaryCode = '2102';
+    
+    let subAcc = ledgerAccounts.find(a => a.code === subsidiaryCode);
+    if (!subAcc) {
+      // Create it
+      const subAccTitle = roleId === 'supplier' ? 'تامین‌کنندگان' : (roleId === 'employee' ? 'کارکنان' : 'مشتریان');
+      subAcc = {
+        id: generateId(),
+        code: subsidiaryCode,
+        title: subAccTitle,
+        type: 'subsidiary',
+        nature: parentNature,
+        parentId: parentGeneralAcc.id
+      };
+      await addLedgerAccount(subAcc);
+      ledgerAccounts.push(subAcc); // update local array
+    }
+
+    if (!finalAccountingCode || String(finalAccountingCode).trim() === '') {
+      // Generate accounting code under subsidiary
+      let maxAccSuffix = 0;
+      ledgerAccounts.forEach(a => {
+        if (a.parentId === subAcc.id && a.code && a.code.startsWith(subsidiaryCode)) {
+          const s = Number(a.code.substring(subsidiaryCode.length));
+          if (!isNaN(s) && s > maxAccSuffix) maxAccSuffix = s;
+        }
+      });
+      finalAccountingCode = `${subsidiaryCode}${(maxAccSuffix + 1).toString().padStart(4, '0')}`;
+    }
+
+    // Always create a detailed ledger account for the person
+    const newPersonLedger = {
+      id: generateId(),
+      code: finalAccountingCode,
+      title: person.alias || person.name,
+      type: 'detailed',
+      nature: parentNature,
+      parentId: subAcc.id
+    };
+    await addLedgerAccount(newPersonLedger);
+  }
+
   const now = Date.now();
-  const newPerson = { ...person, personCode: finalPersonCode, id: generateId(), createdAt: now, updatedAt: now };
+  const newPerson = { ...person, personCode: finalPersonCode, accountingCode: finalAccountingCode, id: generateId(), createdAt: now, updatedAt: now };
   persons.push(newPerson);
   await saveLocalData('persons', persons);
   
@@ -289,7 +352,71 @@ export const updatePerson = async (id: string, person: any) => {
   const persons = await getLocalData<any[]>('persons', []);
   const index = persons.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
-    persons[index] = { ...persons[index], ...person, updatedAt: Date.now() };
+    const oldPerson = persons[index];
+    const updatedPerson = { ...oldPerson, ...person, updatedAt: Date.now() };
+
+    // Ensure Ledger Account exists
+    let finalAccountingCode = updatedPerson.accountingCode;
+    const ledgerAccounts = await getLedgerAccounts();
+    const roleId = updatedPerson.role;
+
+    let parentCode = '12';
+    let parentNature = 'debit';
+    if (roleId === 'supplier') {
+      parentCode = '21';
+      parentNature = 'credit';
+    } else if (roleId === 'employee') {
+      parentCode = '21';
+      parentNature = 'credit';
+    }
+
+    const parentGeneralAcc = ledgerAccounts.find(a => a.code === parentCode);
+    
+    if (parentGeneralAcc) {
+      let subsidiaryCode = parentCode + '01';
+      if (roleId === 'supplier') subsidiaryCode = '2101';
+      else if (roleId === 'employee') subsidiaryCode = '2102';
+      
+      let subAcc = ledgerAccounts.find(a => a.code === subsidiaryCode);
+      if (!subAcc) {
+        const subAccTitle = roleId === 'supplier' ? 'تامین‌کنندگان' : (roleId === 'employee' ? 'کارکنان' : 'مشتریان');
+        subAcc = { id: generateId(), code: subsidiaryCode, title: subAccTitle, type: 'subsidiary', nature: parentNature, parentId: parentGeneralAcc.id };
+        await addLedgerAccount(subAcc);
+        ledgerAccounts.push(subAcc);
+      }
+
+      if (!finalAccountingCode || String(finalAccountingCode).trim() === '') {
+        let maxAccSuffix = 0;
+        ledgerAccounts.forEach(a => {
+          if (a.parentId === subAcc.id && a.code && a.code.startsWith(subsidiaryCode)) {
+            const s = Number(a.code.substring(subsidiaryCode.length));
+            if (!isNaN(s) && s > maxAccSuffix) maxAccSuffix = s;
+          }
+        });
+        finalAccountingCode = `${subsidiaryCode}${(maxAccSuffix + 1).toString().padStart(4, '0')}`;
+        updatedPerson.accountingCode = finalAccountingCode;
+
+        const newPersonLedger = {
+          id: generateId(),
+          code: finalAccountingCode,
+          title: updatedPerson.alias || updatedPerson.name,
+          type: 'detailed',
+          nature: parentNature,
+          parentId: subAcc.id
+        };
+        await addLedgerAccount(newPersonLedger);
+      } else {
+        // If it exists, let's update title
+        const existingAcc = ledgerAccounts.find(a => a.code === finalAccountingCode);
+        if (existingAcc) {
+           if (existingAcc.title !== (updatedPerson.alias || updatedPerson.name)) {
+              await updateLedgerAccount(existingAcc.id, { ...existingAcc, title: updatedPerson.alias || updatedPerson.name });
+           }
+        }
+      }
+    }
+
+    persons[index] = updatedPerson;
     await saveLocalData('persons', persons);
   
   if (typeof addSystemLog !== 'undefined') {
