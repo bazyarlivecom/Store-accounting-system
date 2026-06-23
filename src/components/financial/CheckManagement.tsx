@@ -101,6 +101,10 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const [statusVal, setStatusVal] = useState('');
   const [statusDesc, setStatusDesc] = useState('');
 
+  // Status Filter State
+  const [issuedCheckStatusFilter, setIssuedCheckStatusFilter] = useState<string>('all');
+  const [receivedCheckStatusFilter, setReceivedCheckStatusFilter] = useState<string>('all');
+
   // History view state
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyCheck, setHistoryCheck] = useState<any>(null);
@@ -385,24 +389,28 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   const filteredIssuedChecks = issuedChecks.filter(c => {
     const payeeName = String(persons.find(p => p.id?.toString() === c.payeeId?.toString())?.name || c.payeeId || '');
     const query = issuedSearchQuery.toLowerCase();
-    return (
+    const searchMatch = (
       String(c.checkNumber || '').toLowerCase().includes(query) ||
       payeeName.toLowerCase().includes(query) ||
       (c.description || '').toLowerCase().includes(query) ||
       String(c.amount || '').includes(query)
     );
+    const statusMatch = issuedCheckStatusFilter === 'all' || c.status === issuedCheckStatusFilter;
+    return searchMatch && statusMatch;
   }).sort((a, b) => normalizeDate(a.dueDate) - normalizeDate(b.dueDate));
 
   const filteredReceivedChecks = receivedChecks.filter(c => {
     const payerName = String(persons.find(p => p.id?.toString() === c.payerId?.toString())?.name || c.payerId || '');
     const query = receivedSearchQuery.toLowerCase();
-    return (
+    const searchMatch = (
       String(c.checkNumber || '').toLowerCase().includes(query) ||
       payerName.toLowerCase().includes(query) ||
       String(c.bankName || '').toLowerCase().includes(query) ||
       (c.description || '').toLowerCase().includes(query) ||
       String(c.amount || '').includes(query)
     );
+    const statusMatch = receivedCheckStatusFilter === 'all' || c.status === receivedCheckStatusFilter;
+    return searchMatch && statusMatch;
   }).sort((a, b) => normalizeDate(a.dueDate) - normalizeDate(b.dueDate));
 
   // KPI Calculations
@@ -551,6 +559,19 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                   <AlertTriangle className="w-5 h-5" />
                 </div>
               </div>
+            </div>
+
+            {/* Status Flow Tabs */}
+            <div className="flex overflow-x-auto gap-2 mb-4 pb-2 print:hidden scrollbar-hide">
+              {['all', 'issued', 'cashed', 'bounced', 'cancelled'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setIssuedCheckStatusFilter(status)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shadow-sm ${issuedCheckStatusFilter === status ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+                >
+                  {status === 'all' ? 'همه چک‌ها' : status === 'issued' ? 'در جریان (صادره)' : status === 'cashed' ? 'پاس شده' : status === 'bounced' ? 'برگشتی' : 'باطل شده'}
+                </button>
+              ))}
             </div>
 
             {/* Actions & Filters Panel */}
@@ -757,6 +778,19 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                   <AlertTriangle className="w-5 h-5" />
                 </div>
               </div>
+            </div>
+
+            {/* Status Flow Tabs */}
+            <div className="flex overflow-x-auto gap-2 mb-4 pb-2 print:hidden scrollbar-hide">
+              {['all', 'received', 'deposited', 'cashed', 'bounced', 'returned'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setReceivedCheckStatusFilter(status)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shadow-sm ${receivedCheckStatusFilter === status ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
+                >
+                  {status === 'all' ? 'همه چک‌ها' : status === 'received' ? 'موجود صندوق' : status === 'deposited' ? 'واگذار شده' : status === 'cashed' ? 'وصول شده' : status === 'bounced' ? 'برگشتی' : 'عودت داده شده'}
+                </button>
+              ))}
             </div>
 
             {/* Actions & Filters Panel */}

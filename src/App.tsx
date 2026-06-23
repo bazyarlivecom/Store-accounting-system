@@ -9127,12 +9127,14 @@ export default function App() {
 
             // Issued Checks
             const issuedCheckEntries = issuedChecks
-              .filter(c => c.payeeId?.toString() === ledgerPersonId.toString() && c.status !== 'blank' && c.status !== 'cancelled')
+              .filter(c => c.payeeId?.toString() === ledgerPersonId.toString() && c.status !== 'blank')
               .map(c => {
                 const isCashed = c.status === 'cashed';
+                const isEffectActive = c.status === 'issued' || c.status === 'cashed';
                 const statusLabel = 
                   c.status === 'cashed' ? 'پاس شده' :
-                  c.status === 'bounced' ? 'برگشت خورده' : 'صادر شده';
+                  c.status === 'bounced' ? 'برگشت خورده' :
+                  c.status === 'cancelled' ? 'ابطال شده' : 'صادر شده';
                 
                 return {
                   id: `ic-${c.id}`,
@@ -9141,7 +9143,7 @@ export default function App() {
                   jalaliDate: c.issueDate || c.dueDate || '-',
                   type: `چک صادره (${statusLabel})`,
                   desc: (c.description && !c.description.includes(c.checkNumber)) ? `${c.description} (شماره چک: ${c.checkNumber})` : (c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`),
-                  debit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
+                  debit: isEffectActive ? (c.amount || 0) : 0,
                   credit: 0,
                   rawItem: c,
                   entryType: 'issued_check'
@@ -9150,12 +9152,14 @@ export default function App() {
 
             // Received Checks
             const receivedCheckEntries = receivedChecks
-              .filter(c => c.payerId?.toString() === ledgerPersonId.toString() && c.status !== 'returned')
+              .filter(c => c.payerId?.toString() === ledgerPersonId.toString())
               .map(c => {
                 const isCashed = c.status === 'cashed';
+                const isEffectActive = c.status === 'received' || c.status === 'deposited' || c.status === 'cashed';
                 const statusLabel = 
                   c.status === 'cashed' ? 'وصول شده' :
                   c.status === 'bounced' ? 'برگشت خورده' :
+                  c.status === 'returned' ? 'عودت داده شده' :
                   c.status === 'deposited' ? 'واگذار شده به بانک' : 'دریافت شده';
                 
                 return {
@@ -9166,7 +9170,7 @@ export default function App() {
                   type: `چک دریافتی (${statusLabel})`,
                   desc: c.description || `برگه چک دریافتی شماره ${c.checkNumber} - بانک ${c.bankName} به سررسید ${c.dueDate}`,
                   debit: 0,
-                  credit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
+                  credit: isEffectActive ? (c.amount || 0) : 0,
                   rawItem: c,
                   entryType: 'received_check'
                 };
