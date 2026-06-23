@@ -21,6 +21,7 @@ export type PersonRole = {
 export type Person = { 
   id: string | number; 
   personCode?: string;
+  accountingCode?: string;
   title?: string;
   name: string; 
   firstName?: string;

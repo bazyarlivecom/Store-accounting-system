@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Plus, Search, Eye } from 'lucide-react';
-import { getAccountingDocuments, getLedgerAccounts } from '../../services/dataService';
-import { AccountingDocument, LedgerAccount } from '../../types';
+import { getAccountingDocuments, getLedgerAccounts, getStoreSettings } from '../../services/dataService';
+import { AccountingDocument, LedgerAccount, CompanySettings } from '../../types';
 
 export default function AccountingDocsList({ onNavigateToCreate, onNavigateToView }: any) {
   const [docs, setDocs] = useState<AccountingDocument[]>([]);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
+  const [storeSettings, setStoreSettings] = useState<CompanySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -16,12 +17,14 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
 
   const loadData = async () => {
     setIsLoading(true);
-    const [fetchedDocs, fetchedAccs] = await Promise.all([
+    const [fetchedDocs, fetchedAccs, fetchedSettings] = await Promise.all([
       getAccountingDocuments(),
-      getLedgerAccounts()
+      getLedgerAccounts(),
+      getStoreSettings()
     ]);
     setDocs(fetchedDocs.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0)));
     setAccounts(fetchedAccs);
+    setStoreSettings(fetchedSettings);
     setIsLoading(false);
   };
 
@@ -95,7 +98,7 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
                   return (
                   <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 text-sm font-black text-slate-800 font-mono">{doc.documentNumber}</td>
-                    <td className="p-4 text-sm font-bold text-slate-600">{doc.date}</td>
+                    <td className="p-4 text-sm font-bold text-slate-600">{new Date(doc.date).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR')}</td>
                     <td className="p-4 text-sm text-slate-700 truncate max-w-xs">{doc.description}</td>
                     <td className="p-4 text-sm font-bold text-slate-600 text-center">{doc.items?.length || 0} خط</td>
                     <td className="p-4 text-sm font-bold text-center">

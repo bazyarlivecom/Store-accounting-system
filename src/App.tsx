@@ -413,7 +413,7 @@ export default function App() {
     if (!personSearchTerm) return true;
     const terms = personSearchTerm.toLowerCase().split(' ').filter(Boolean);
     const grp = personGroups.find(g => g.id === p.group);
-    const searchable = `${p.name || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.phone || ''} ${p.nationalId || ''} ${p.personCode || ''} ${grp?.name || ''}`.toLowerCase();
+    const searchable = `${p.name || ''} ${p.firstName || ''} ${p.lastName || ''} ${p.phone || ''} ${p.nationalId || ''} ${p.personCode || ''} ${p.accountingCode || ''} ${grp?.name || ''}`.toLowerCase();
     return terms.every(term => searchable.includes(term));
   });
 
@@ -780,6 +780,7 @@ export default function App() {
   const [newPersonNationalId, setNewPersonNationalId] = useState('');
   const [newPersonAddress, setNewPersonAddress] = useState('');
   const [newPersonRole, setNewPersonRole] = useState<string>('');
+  const [newPersonAccountingCode, setNewPersonAccountingCode] = useState('');
   const [newPersonPhone, setNewPersonPhone] = useState('');
   const [newPersonGroup, setNewPersonGroup] = useState('');
   const [newPersonProvince, setNewPersonProvince] = useState('');
@@ -1238,6 +1239,7 @@ export default function App() {
         companyName: newPersonCompanyName,
         fatherName: newPersonFatherName,
         nationalId: newPersonNationalId,
+        accountingCode: newPersonAccountingCode,
         address: newPersonAddress,
         role: newPersonRole,
         phone: newPersonPhone,
@@ -1264,6 +1266,7 @@ export default function App() {
       setNewPersonCompanyName('');
       setNewPersonFatherName('');
       setNewPersonNationalId('');
+      setNewPersonAccountingCode('');
       setNewPersonAddress('');
       setNewPersonPhone('');
       setNewPersonGroup('');
@@ -2026,6 +2029,7 @@ export default function App() {
     setNewPersonCompanyName(p.companyName || '');
     setNewPersonFatherName(p.fatherName || '');
     setNewPersonNationalId(p.nationalId || '');
+    setNewPersonAccountingCode(p.accountingCode || '');
     setNewPersonAddress(p.address || '');
     setNewPersonPhone(p.phone || '');
     setNewPersonGroup(p.group || '');
@@ -7544,6 +7548,7 @@ export default function App() {
                       setNewPersonCompanyName('');
                       setNewPersonFatherName('');
                       setNewPersonNationalId('');
+                      setNewPersonAccountingCode('');
                       setNewPersonAddress('');
                       setNewPersonPhone('');
                       setNewPersonRole('customer');
@@ -7593,7 +7598,7 @@ export default function App() {
                   <input
                     type="text"
                     className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm text-gray-950 font-bold"
-                    placeholder="جستجوی سریع شخص (نام، شماره تماس، کد ملی، شماره شخص، گروه)..."
+                    placeholder="جستجوی سریع شخص (نام، شماره تماس، کد ملی، شماره شخص، کد حسابداری، گروه)..."
                     value={personSearchTerm}
                     onChange={(e) => setPersonSearchTerm(e.target.value)}
                   />
@@ -7681,6 +7686,7 @@ export default function App() {
                       <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
                         <th className="py-4 px-6 text-right">ردیف</th>
                         <th className="py-4 px-6 text-center">کد شخص</th>
+                        <th className="py-4 px-6 text-center">کد حسابداری</th>
                         <th className="py-4 px-6 text-right">نام / عنوان</th>
                         <th className="py-4 px-6 text-right">گروه شخص</th>
                         <th className="py-4 px-6 text-right">نوع کاربر</th>
@@ -7704,6 +7710,13 @@ export default function App() {
                           <td className="py-4 px-6 text-center">
                             {p.personCode ? (
                               <span className="font-sans font-black bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-xl text-xs">{toPersianDigits(p.personCode)}</span>
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            {p.accountingCode ? (
+                              <span className="font-mono text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200 px-2 py-1 rounded-md">{toPersianDigits(p.accountingCode)}</span>
                             ) : (
                               <span className="text-gray-300">-</span>
                             )}
@@ -12480,6 +12493,19 @@ export default function App() {
                                 dir="ltr"
                               />
                             </div>
+                            <div className="w-full text-right">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                کد حسابداری (اختیاری)
+                              </label>
+                              <input
+                                type="text"
+                                value={newPersonAccountingCode}
+                                onChange={(e) => setNewPersonAccountingCode(e.target.value)}
+                                placeholder="مانند: 1205001"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 text-left"
+                                dir="ltr"
+                              />
+                            </div>
                           </>
                         ) : (
                           <>
@@ -12511,7 +12537,7 @@ export default function App() {
                                 />
                               </div>
                             </div>
-                            <div className="w-full text-right md:col-span-2">
+                            <div className="w-full text-right md:col-span-1">
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 شناسه ملی شرکت
                               </label>
@@ -12520,6 +12546,19 @@ export default function App() {
                                 value={newPersonNationalId}
                                 onChange={(e) => setNewPersonNationalId(e.target.value)}
                                 placeholder="شناسه ملی"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 text-left"
+                                dir="ltr"
+                              />
+                            </div>
+                            <div className="w-full text-right md:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                کد حسابداری (اختیاری)
+                              </label>
+                              <input
+                                type="text"
+                                value={newPersonAccountingCode}
+                                onChange={(e) => setNewPersonAccountingCode(e.target.value)}
+                                placeholder="مانند: 1205001"
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900 text-left"
                                 dir="ltr"
                               />
