@@ -102,41 +102,117 @@ export const saveStoreSettings = async (settings: CompanySettings): Promise<void
   await saveLocalData('company_profile', settings);
 };
 
+export const parseToGregorianDate = (dateStr: string | number | Date, calendarType: string): Date | null => {
+  if (!dateStr) return null;
+  if (dateStr instanceof Date) return dateStr;
+  
+  let checkDate = new Date(dateStr);
+  if (!isNaN(checkDate.getTime())) {
+    if (typeof dateStr === 'number' || calendarType === 'gregorian') {
+      return checkDate;
+    }
+  }
+
+  try {
+    const cleanStr = String(dateStr).replace(/\//g, '-');
+    const jalaliDate = new DateObject({
+      date: cleanStr,
+      format: "YYYY-MM-DD",
+      calendar: persian,
+      locale: persian_fa
+    });
+    const d = jalaliDate.toDate();
+    if (d && !isNaN(d.getTime())) {
+      return d;
+    }
+  } catch (e) {
+    // fallback
+  }
+
+  return isNaN(checkDate.getTime()) ? null : checkDate;
+};
+
+export const getFinancialYears = async () => {
+  return getLocalData<any[]>('financial_years', []);
+};
+
+export const saveFinancialYears = async (years: any[]) => {
+  await saveLocalData('financial_years', years);
+};
+
+export const getActiveFinancialYear = async () => {
+  const years = await getFinancialYears();
+  return years.find(y => y.status === 'open') || null;
+};
+
+export const addFinancialYear = async (year: any) => {
+  const years = await getFinancialYears();
+  const hasOpen = years.some(y => y.status === 'open');
+  if (hasOpen) {
+    throw new Error('تا زمانیکه یک سال مالی باز و فعال وجود دارد، نمی‌توان سال مالی جدیدی تعریف کرد.');
+  }
+  const now = Date.now();
+  const newYear = {
+    ...year,
+    id: generateId(),
+    status: 'open',
+    createdAt: now,
+    updatedAt: now
+  };
+  years.push(newYear);
+  await saveFinancialYears(years);
+  
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_FINANCIAL_YEAR', `تعریف سال مالی جدید: ${newYear.name}`, 'FinancialYear', newYear.id);
+  }
+  return newYear;
+};
+
+export const closeFinancialYear = async (id: string | number) => {
+  const years = await getFinancialYears();
+  const idx = years.findIndex(y => String(y.id) === String(id));
+  if (idx !== -1) {
+    years[idx].status = 'closed';
+    years[idx].updatedAt = Date.now();
+    await saveFinancialYears(years);
+    
+    if (typeof addSystemLog !== 'undefined') {
+      await addSystemLog('CLOSE_FINANCIAL_YEAR', `بستن سال مالی: ${years[idx].name}`, 'FinancialYear', id);
+    }
+    return years[idx];
+  }
+  return null;
+};
+
 export const checkFinancialYear = async (dateStr: string | number) => {
   if (!dateStr) return;
-  const settings = await getStoreSettings();
-  if (!settings) return;
-  
-  const start = settings.financialYearStart;
-  const end = settings.financialYearEnd;
-  
-  if (!start && !end) return;
-
-  let checkDate = new Date(dateStr);
-  if (isNaN(checkDate.getTime())) {
-    try {
-      const jalaliDate = new DateObject({ date: String(dateStr).replace(/\//g, '-'), format: "YYYY-MM-DD", calendar: persian, locale: persian_fa });
-      checkDate = new Date(jalaliDate.toDate().toISOString());
-    } catch (e) {
-      return;
-    }
-    if (isNaN(checkDate.getTime())) return;
+  const activeYear = await getActiveFinancialYear();
+  if (!activeYear) {
+    throw new Error("هیچ سال مالی فعال و بازی در سیستم وجود ندارد. ابتدا یک سال مالی باز ایجاد کنید.");
   }
+  
+  const settings = await getStoreSettings() as any;
+  const calendarType = settings?.calendarType || 'jalali';
+  
+  const checkDate = parseToGregorianDate(dateStr, calendarType);
+  if (!checkDate) return;
+  
   checkDate.setHours(0,0,0,0);
-
-  if (start) {
-    let startDate = new Date(start);
+  
+  const startDate = parseToGregorianDate(activeYear.startDate, calendarType);
+  const endDate = parseToGregorianDate(activeYear.endDate, calendarType);
+  
+  if (startDate) {
     startDate.setHours(0,0,0,0);
     if (checkDate < startDate) {
-      throw new Error(`تاریخ وارد شده قبل از شروع سال مالی است و مجاز نمی‌باشد.`);
+      throw new Error(`تاریخ وارد شده (${dateStr}) قبل از شروع سال مالی فعال (${activeYear.startDate}) است.`);
     }
   }
-
-  if (end) {
-    let endDate = new Date(end);
+  
+  if (endDate) {
     endDate.setHours(23,59,59,999);
     if (checkDate > endDate) {
-      throw new Error(`تاریخ وارد شده بعد از پایان سال مالی است و مجاز نمی‌باشد.`);
+      throw new Error(`تاریخ وارد شده (${dateStr}) بعد از پایان سال مالی فعال (${activeYear.endDate}) است.`);
     }
   }
 };
@@ -431,7 +507,7 @@ export const ensureLedgerAccount = async (
   if (!finalAccountingCode || String(finalAccountingCode).trim() === '') {
     let maxAccSuffix = 0;
     ledgerAccounts.forEach(a => {
-      if (a.parentId === subAcc.id && a.code && a.code.startsWith(subsidiaryCode)) {
+      if (a.code && a.code.startsWith(subsidiaryCode) && a.code.length > subsidiaryCode.length) {
         const s = Number(a.code.substring(subsidiaryCode.length));
         if (!isNaN(s) && s > maxAccSuffix) maxAccSuffix = s;
       }
@@ -459,6 +535,23 @@ export const ensureLedgerAccount = async (
 
 export const getAccounts = async () => {
   const accounts = await getLocalData<any[]>('accounts', []);
+  let modified = false;
+  for (let i = 0; i < accounts.length; i++) {
+    if (!accounts[i].accountingCode || String(accounts[i].accountingCode).trim() === '') {
+      accounts[i].accountingCode = await ensureLedgerAccount(
+        accounts[i],
+        '11',
+        '1102',
+        'بانک‌ها',
+        accounts[i].bankName + ' - ' + (accounts[i].branchName || ''),
+        'debit'
+      );
+      modified = true;
+    }
+  }
+  if (modified) {
+    await saveLocalData('accounts', accounts);
+  }
   return accounts.sort((a, b) => b.createdAt - a.createdAt);
 };
 
@@ -481,8 +574,10 @@ export const updateAccount = async (id: string, account: any) => {
   const accounts = await getLocalData<any[]>('accounts', []);
   const index = accounts.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
-    let finalAccountingCode = await ensureLedgerAccount(account, '11', '1102', 'بانک‌ها', account.bankName + ' - ' + (account.branchName || ''), 'debit');
-    accounts[index] = { ...accounts[index], ...account, accountingCode: finalAccountingCode, updatedAt: Date.now() };
+    const oldAccount = accounts[index];
+    const mergedAccount = { ...oldAccount, ...account };
+    let finalAccountingCode = await ensureLedgerAccount(mergedAccount, '11', '1102', 'بانک‌ها', mergedAccount.bankName + ' - ' + (mergedAccount.branchName || ''), 'debit');
+    accounts[index] = { ...mergedAccount, accountingCode: finalAccountingCode, updatedAt: Date.now() };
     await saveLocalData('accounts', accounts);
   
   if (typeof addSystemLog !== 'undefined') {
@@ -502,6 +597,23 @@ export const deleteAccount = async (id: string) => {
 // Cashboxes
 export const getCashboxes = async () => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
+  let modified = false;
+  for (let i = 0; i < cashboxes.length; i++) {
+    if (!cashboxes[i].accountingCode || String(cashboxes[i].accountingCode).trim() === '') {
+      cashboxes[i].accountingCode = await ensureLedgerAccount(
+        cashboxes[i],
+        '11',
+        '1101',
+        'صندوق‌ها',
+        cashboxes[i].name,
+        'debit'
+      );
+      modified = true;
+    }
+  }
+  if (modified) {
+    await saveLocalData('cashboxes', cashboxes);
+  }
   return cashboxes.sort((a, b) => b.createdAt - a.createdAt);
 };
 
@@ -524,8 +636,10 @@ export const updateCashbox = async (id: string, cashbox: any) => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
   const index = cashboxes.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
-    let finalAccountingCode = await ensureLedgerAccount(cashbox, '11', '1101', 'صندوق‌ها', cashbox.name, 'debit');
-    cashboxes[index] = { ...cashboxes[index], ...cashbox, accountingCode: finalAccountingCode, updatedAt: Date.now() };
+    const oldCashbox = cashboxes[index];
+    const mergedCashbox = { ...oldCashbox, ...cashbox };
+    let finalAccountingCode = await ensureLedgerAccount(mergedCashbox, '11', '1101', 'صندوق‌ها', mergedCashbox.name, 'debit');
+    cashboxes[index] = { ...mergedCashbox, accountingCode: finalAccountingCode, updatedAt: Date.now() };
     await saveLocalData('cashboxes', cashboxes);
   
   if (typeof addSystemLog !== 'undefined') {
@@ -814,14 +928,56 @@ export const addTransaction = async (transaction: any) => {
      const docType = transaction.type === 'receive' ? 'receipt' : 'payment';
      const title = transaction.type === 'receive' ? 'رسید دریافت' : transaction.type === 'pay' ? 'رسید پرداخت' : transaction.type === 'salary' ? 'پرداخت حقوق' : 'تراکنش مالی';
      const items = [];
-     const defaultLedgerIds = await getLocalData<any[]>('ledger_accounts', []);
-     const defaultLedger = defaultLedgerIds.length > 0 ? defaultLedgerIds[0].id : '';
-     if (transaction.type === 'receive') {
-        items.push({ description: 'بدهکار - منابع', debit: Number(transaction.amount), credit: 0, ledgerAccountId: defaultLedger });
-        items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(transaction.amount), ledgerAccountId: defaultLedger, detailedAccountId: transaction.personId });
+     const ledgerAccounts = await getLedgerAccounts();
+     const defaultLedger = ledgerAccounts.length > 0 ? ledgerAccounts[0].id : '';
+
+     // Find Person Ledger Account
+     let personLedgerId = defaultLedger;
+     if (transaction.personId) {
+        const persons = await getLocalData<any[]>('persons', []);
+        const person = persons.find(p => String(p.id) === String(transaction.personId));
+        if (person && person.accountingCode) {
+           const acc = ledgerAccounts.find(a => a.code === person.accountingCode);
+           if (acc) personLedgerId = acc.id;
+        }
+     }
+
+     // Find Bank/Cashbox Resource Ledger Account
+     let resourceLedgerId = defaultLedger;
+     const resType = transaction.resourceType || (transaction.accountId ? 'bank' : transaction.cashboxId ? 'cashbox' : '');
+     const resId = transaction.resourceId || transaction.accountId || transaction.cashboxId;
+
+     if (resType === 'bank' && resId) {
+        const accountsList = await getLocalData<any[]>('accounts', []);
+        const account = accountsList.find(a => String(a.id) === String(resId));
+        if (account && account.accountingCode) {
+           const acc = ledgerAccounts.find(a => a.code === account.accountingCode);
+           if (acc) resourceLedgerId = acc.id;
+        } else {
+           const acc = ledgerAccounts.find(a => a.code === '1102');
+           if (acc) resourceLedgerId = acc.id;
+        }
+     } else if (resType === 'cashbox' && resId) {
+        const cashboxesList = await getLocalData<any[]>('cashboxes', []);
+        const cashbox = cashboxesList.find(c => String(c.id) === String(resId));
+        if (cashbox && cashbox.accountingCode) {
+           const acc = ledgerAccounts.find(a => a.code === cashbox.accountingCode);
+           if (acc) resourceLedgerId = acc.id;
+        } else {
+           const acc = ledgerAccounts.find(a => a.code === '1101');
+           if (acc) resourceLedgerId = acc.id;
+        }
      } else {
-        items.push({ description: 'بدهکار - طرف حساب', debit: Number(transaction.amount), credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: transaction.personId });
-        items.push({ description: 'بستانکار - منابع', debit: 0, credit: Number(transaction.amount), ledgerAccountId: defaultLedger });
+        const acc = ledgerAccounts.find(a => a.code === '11');
+        if (acc) resourceLedgerId = acc.id;
+     }
+
+     if (transaction.type === 'receive') {
+        items.push({ description: 'بدهکار - منابع', debit: Number(transaction.amount), credit: 0, ledgerAccountId: resourceLedgerId });
+        items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(transaction.amount), ledgerAccountId: personLedgerId, detailedAccountId: transaction.personId });
+     } else {
+        items.push({ description: 'بدهکار - طرف حساب', debit: Number(transaction.amount), credit: 0, ledgerAccountId: personLedgerId, detailedAccountId: transaction.personId });
+        items.push({ description: 'بستانکار - منابع', debit: 0, credit: Number(transaction.amount), ledgerAccountId: resourceLedgerId });
      }
      await addAccountingDocument({
         date: new Date().toISOString().split('T')[0],
@@ -923,16 +1079,37 @@ export const addInvoice = async (invoice: any) => {
      if (docType === 'purchase_return') title = 'برگشت از خرید';
      
      const items = [];
-     const defaultLedgerIds = await getLocalData<any[]>('ledger_accounts', []);
-     const defaultLedger = defaultLedgerIds.length > 0 ? defaultLedgerIds[0].id : '';
+     const ledgerAccounts = await getLedgerAccounts();
+     const defaultLedger = ledgerAccounts.length > 0 ? ledgerAccounts[0].id : '';
      const total = Number(newInvoice.totalAmount) || 0;
+
+     // Find Customer/Supplier/Person Ledger Account
+     let personLedgerId = defaultLedger;
+     if (newInvoice.customerId) {
+        const persons = await getLocalData<any[]>('persons', []);
+        const person = persons.find(p => String(p.id) === String(newInvoice.customerId));
+        if (person && person.accountingCode) {
+           const acc = ledgerAccounts.find(a => a.code === person.accountingCode);
+           if (acc) personLedgerId = acc.id;
+        }
+     }
+
+     // Find Sales Revenue ('41') Ledger Account
+     let salesLedgerId = defaultLedger;
+     const salesAcc = ledgerAccounts.find(a => a.code === '41');
+     if (salesAcc) salesLedgerId = salesAcc.id;
+
+     // Find Inventory ('13') Ledger Account
+     let inventoryLedgerId = defaultLedger;
+     const inventoryAcc = ledgerAccounts.find(a => a.code === '13');
+     if (inventoryAcc) inventoryLedgerId = inventoryAcc.id;
      
      if (docType === 'sale' || docType === 'purchase_return') {
-        items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: newInvoice.customerId });
-        items.push({ description: 'بستانکار - درآمد/موجودی', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+        items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: personLedgerId, detailedAccountId: newInvoice.customerId });
+        items.push({ description: 'بستانکار - درآمد/فروش', debit: 0, credit: total, ledgerAccountId: salesLedgerId });
      } else if (docType === 'purchase' || docType === 'sale_return') {
-        items.push({ description: 'بدهکار - موجودی/هزینه', debit: total, credit: 0, ledgerAccountId: defaultLedger });
-        items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: newInvoice.customerId });
+        items.push({ description: 'بدهکار - موجودی کالا', debit: total, credit: 0, ledgerAccountId: inventoryLedgerId });
+        items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: personLedgerId, detailedAccountId: newInvoice.customerId });
      }
      
      if (items.length > 0) {

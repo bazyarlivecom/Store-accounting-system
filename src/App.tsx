@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Barcode from 'react-barcode';
 import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus, Copy, LayoutDashboard, Phone, MapPin } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -11,7 +11,7 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './context/AuthContext';
-import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, updateInvoice, deleteInvoice, getTransactions, addTransaction, updateTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
+import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, updateInvoice, deleteInvoice, getTransactions, addTransaction, updateTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks, getFinancialYears, getActiveFinancialYear, addFinancialYear, closeFinancialYear } from './services/dataService';
 import ModuleSelector from './components/ui/ModuleSelector';
 import DatabaseDashboard from './components/admin/DatabaseDashboard';
 import SystemChecklist from './components/admin/SystemChecklist';
@@ -39,6 +39,7 @@ import AccountingDocCreate from './components/accounting/AccountingDocCreate';
 import AccountingDocView from './components/accounting/AccountingDocView';
 import AccountingAutoSync from './components/accounting/AccountingAutoSync';
 import AccountingVerification from './components/accounting/AccountingVerification';
+import FinancialYearManager from './components/accounting/FinancialYearManager';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
 import appVersion from './version.json';
 
@@ -88,13 +89,27 @@ const CurrencyInput = ({ value, onChange, placeholder, className, hideWords, cur
 };
 
 export default function App() {
-    const [historyProductId, setHistoryProductId] = useState<string | null>(null);
+  const [activeFinancialYear, setActiveFinancialYearState] = useState<any>(null);
+  const [hasCheckedFinancialYears, setHasCheckedFinancialYears] = useState(false);
+
+  const fetchFinancialYearInfo = async () => {
+    try {
+      const years = await getFinancialYears();
+      const active = years.find((y: any) => y.status === 'open') || null;
+      setActiveFinancialYearState(active);
+      setHasCheckedFinancialYears(true);
+    } catch (e) {
+      console.error('fetchFinancialYearInfo error', e);
+    }
+  };
+
+  const [historyProductId, setHistoryProductId] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({isOpen: false, message: '', onConfirm: () => {}});
   const confirmAction = (message: string, onConfirm: () => void) => {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans' | 'system_logs' | 'stocktaking' | 'chart_of_accounts' | 'accounting_docs_list' | 'accounting_doc_create' | 'accounting_doc_view' | 'accounting_auto_sync' | 'accounting_verification'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans' | 'system_logs' | 'stocktaking' | 'financial_years' | 'chart_of_accounts' | 'accounting_docs_list' | 'accounting_doc_create' | 'accounting_doc_view' | 'accounting_auto_sync' | 'accounting_verification'>('financial_report');
   const [systemModule, setSystemModule] = useState<'selector' | 'all' | 'commerce' | 'inventory' | 'accounting' | 'admin'>(() => {
     try { const saved = localStorage.getItem('app_systemModule'); return saved ? JSON.parse(saved) : 'selector'; } catch { return 'selector'; }
   });
@@ -222,6 +237,7 @@ export default function App() {
       label: 'حسابداری دوبل',
       icon: <Calculator className="w-5 h-5" />,
       items: [
+        { id: 'financial_years', label: 'مدیریت سال‌های مالی', roles: ['admin', 'accountant'] },
         { id: 'accounting_verification', label: 'تراز آزمایشی و بررسی اسناد', roles: ['admin', 'accountant'] },
         { id: 'chart_of_accounts', label: 'کدینگ حساب‌ها (جدول حساب)', roles: ['admin', 'accountant'] },
         { id: 'accounting_docs_list', label: 'اسناد حسابداری', roles: ['admin', 'accountant'] },
@@ -325,6 +341,23 @@ export default function App() {
     }
     return g;
   });
+
+  const filteredSidebarGroups = useMemo(() => {
+    if (hasCheckedFinancialYears && !activeFinancialYear) {
+      return [
+        {
+          id: 'financial_years_setup',
+          label: 'راه‌اندازی سال مالی',
+          icon: <Calendar className="w-5 h-5" />,
+          items: [
+            { id: 'financial_years', label: 'تعریف و مدیریت سال مالی', roles: ['admin', 'accountant'] },
+            { id: 'settings', label: 'تنظیمات پایه‌ای (تعیین تقویم)', roles: ['admin'] }
+          ]
+        }
+      ];
+    }
+    return sidebarGroups;
+  }, [sidebarGroups, hasCheckedFinancialYears, activeFinancialYear]);
 
   useEffect(() => {
     setLastCreatedReceipt(null);
@@ -703,6 +736,22 @@ export default function App() {
   };
   
   const [submitting, setSubmitting] = useState(false);
+
+  // Redirect to financial_years if no active financial year is set
+  useEffect(() => {
+    if (hasCheckedFinancialYears && !activeFinancialYear) {
+      if (activeTab !== 'financial_years' && activeTab !== 'settings') {
+        setActiveTab('financial_years');
+      }
+    }
+  }, [hasCheckedFinancialYears, activeFinancialYear, activeTab]);
+
+  // Re-fetch financial year info when tab changes to 'financial_years' or 'settings'
+  useEffect(() => {
+    if (activeTab === 'financial_years') {
+      fetchFinancialYearInfo();
+    }
+  }, [activeTab]);
   
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
@@ -2297,7 +2346,8 @@ export default function App() {
         fetchWarehouses(),
         fetchSettings(),
         fetchTransactions(),
-        fetchChecks()
+        fetchChecks(),
+        fetchFinancialYearInfo()
       ]);
       await fetchInvoices();
     } catch (error) {
@@ -6990,7 +7040,7 @@ export default function App() {
 
   const renderSidebarGroups = () => (
     <div className="space-y-1 py-4 font-sans text-right">
-      {sidebarGroups.map((group) => {
+      {filteredSidebarGroups.map((group) => {
         const hasVisibleItems = group.items.some(item => !user || item.roles.includes(user.role));
         if (!hasVisibleItems) return null;
         
@@ -7037,7 +7087,7 @@ export default function App() {
 
   const renderHorizontalMenu = () => (
     <div className="flex items-center gap-1.5 px-4 pb-2 flex-wrap border-t border-gray-50 pt-2" dir="rtl">
-      {sidebarGroups.map((group) => {
+      {filteredSidebarGroups.map((group) => {
         const visibleItems = group.items.filter(item => !user || item.roles.includes(user.role));
         if (visibleItems.length === 0) return null;
         const isActiveGroup = group.items.some(i => i.id === activeTab);
@@ -10591,6 +10641,8 @@ export default function App() {
         <SystemChecklist />
       ) : activeTab === 'stocktaking' ? (
         <StocktakingManager showNotification={showNotification} currentUser={user?.name} onNavigateToDocs={() => setActiveTab('create_warehouse_doc')} />
+      ) : activeTab === 'financial_years' ? (
+        <FinancialYearManager showNotification={showNotification} />
       ) : activeTab === 'chart_of_accounts' ? (
         <ChartOfAccounts showNotification={showNotification} currentUser={user?.name} />
       ) : activeTab === 'accounting_docs_list' ? (
@@ -10604,7 +10656,7 @@ export default function App() {
       ) : activeTab === 'accounting_verification' ? (
         <AccountingVerification showNotification={showNotification} />
       ) : null}
-          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'check_charts', 'transfer', 'quick_refund', 'stocktaking', 'chart_of_accounts', 'accounting_docs_list', 'accounting_doc_create', 'accounting_doc_view', 'accounting_auto_sync', 'accounting_verification'].includes(activeTab)) && renderTabContent()}
+          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'check_charts', 'transfer', 'quick_refund', 'stocktaking', 'financial_years', 'chart_of_accounts', 'accounting_docs_list', 'accounting_doc_create', 'accounting_doc_view', 'accounting_auto_sync', 'accounting_verification'].includes(activeTab)) && renderTabContent()}
           </div>
         </main>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Settings, Play, RefreshCcw, FileText, CheckCircle, HandCoins } from 'lucide-react';
-import { getAccountingDocuments, addAccountingDocument, getInvoices, getTransactions, getPersons, getLedgerAccounts, getIssuedChecks, getReceivedChecks, getLoans, getInstallments } from '../../services/dataService';
+import { getAccountingDocuments, addAccountingDocument, getInvoices, getTransactions, getPersons, getLedgerAccounts, getIssuedChecks, getReceivedChecks, getLoans, getInstallments, getAccounts, getCashboxes } from '../../services/dataService';
 
 export default function AccountingAutoSync({ showNotification }: any) {
   const [missingInvoices, setMissingInvoices] = useState<any[]>([]);
@@ -62,21 +62,48 @@ export default function AccountingAutoSync({ showNotification }: any) {
     
     setIsSyncing(true);
     try {
-      const accounts = await getLedgerAccounts();
+      const ledgerAccounts = await getLedgerAccounts();
       const pers = await getPersons();
-      const defaultLedger = accounts.length > 0 ? accounts[0].id : '';
+      const bankAccounts = await getAccounts();
+      const cashboxesList = await getCashboxes();
+      const defaultLedger = ledgerAccounts.length > 0 ? ledgerAccounts[0].id : '';
 
       const getPersonLedgerAcc = (personId: string | number) => {
           if (!personId) return defaultLedger;
           const person = pers.find(p => p.id?.toString() === personId.toString());
           if (!person || !person.accountingCode) return defaultLedger;
-          const lAcc = accounts.find(a => a.code === person.accountingCode);
+          const lAcc = ledgerAccounts.find(a => a.code === person.accountingCode);
           return lAcc ? lAcc.id : defaultLedger;
       };
 
       const getAccByCode = (code: string) => {
-          const acc = accounts.find(a => a.code === code);
+          const acc = ledgerAccounts.find(a => a.code === code);
           return acc ? acc.id : defaultLedger;
+      };
+
+      const getResourceLedgerAcc = (t: any) => {
+          const resType = t.resourceType || (t.accountId ? 'bank' : t.cashboxId ? 'cashbox' : '');
+          const resId = t.resourceId || t.accountId || t.cashboxId;
+
+          if (resType === 'bank' && resId) {
+              const account = bankAccounts.find(a => a.id?.toString() === resId.toString());
+              if (account && account.accountingCode) {
+                  const lAcc = ledgerAccounts.find(a => a.code === account.accountingCode);
+                  if (lAcc) return lAcc.id;
+              }
+              const fallback = ledgerAccounts.find(a => a.code === '1102');
+              if (fallback) return fallback.id;
+          } else if (resType === 'cashbox' && resId) {
+              const cashbox = cashboxesList.find(c => c.id?.toString() === resId.toString());
+              if (cashbox && cashbox.accountingCode) {
+                  const lAcc = ledgerAccounts.find(a => a.code === cashbox.accountingCode);
+                  if (lAcc) return lAcc.id;
+              }
+              const fallback = ledgerAccounts.find(a => a.code === '1101');
+              if (fallback) return fallback.id;
+          }
+          const fallback = ledgerAccounts.find(a => a.code === '11');
+          return fallback ? fallback.id : defaultLedger;
       };
 
       const safeDate = (dateStr: any) => {
@@ -90,7 +117,6 @@ export default function AccountingAutoSync({ showNotification }: any) {
           }
       };
 
-      const cashAcc = getAccByCode('11');
       const salesAcc = getAccByCode('41');
       const inventoryAcc = getAccByCode('13');
       const recvAcc = getAccByCode('12');
@@ -122,12 +148,13 @@ export default function AccountingAutoSync({ showNotification }: any) {
       // Sync Transactions
       for (const t of missingTransactions) {
           const items = [];
+          const resourceLedgerId = getResourceLedgerAcc(t);
           if (t.type === 'receive') {
-              items.push({ description: 'بدهکار - منابع (صندوق/بانک)', debit: Number(t.amount), credit: 0, ledgerAccountId: cashAcc });
+              items.push({ description: 'بدهکار - منابع (صندوق/بانک)', debit: Number(t.amount), credit: 0, ledgerAccountId: resourceLedgerId });
               items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(t.amount), ledgerAccountId: getPersonLedgerAcc(t.personId), detailedAccountId: t.personId });
           } else {
               items.push({ description: 'بدهکار - طرف حساب', debit: Number(t.amount), credit: 0, ledgerAccountId: getPersonLedgerAcc(t.personId), detailedAccountId: t.personId });
-              items.push({ description: 'بستانکار - منابع (صندوق/بانک)', debit: 0, credit: Number(t.amount), ledgerAccountId: cashAcc });
+              items.push({ description: 'بستانکار - منابع (صندوق/بانک)', debit: 0, credit: Number(t.amount), ledgerAccountId: resourceLedgerId });
           }
           await addAccountingDocument({
               date: safeDate(t.date),
@@ -191,11 +218,12 @@ export default function AccountingAutoSync({ showNotification }: any) {
       for (const l of missingLoans) {
           const items = [];
           const total = Number(l.amount) || 0;
+          const resourceLedgerId = getResourceLedgerAcc(l);
           if (l.type === 'given') {
               items.push({ description: 'بدهکار - وام پرداختی (شخص)', debit: total, credit: 0, ledgerAccountId: getPersonLedgerAcc(l.personId), detailedAccountId: l.personId });
-              items.push({ description: 'بستانکار - منابع (بانک/صندوق)', debit: 0, credit: total, ledgerAccountId: cashAcc });
+              items.push({ description: 'بستانکار - منابع (بانک/صندوق)', debit: 0, credit: total, ledgerAccountId: resourceLedgerId });
           } else {
-              items.push({ description: 'بدهکار - منابع (بانک/صندوق)', debit: total, credit: 0, ledgerAccountId: cashAcc });
+              items.push({ description: 'بدهکار - منابع (بانک/صندوق)', debit: total, credit: 0, ledgerAccountId: resourceLedgerId });
               items.push({ description: 'بستانکار - وام دریافتی (شخص)', debit: 0, credit: total, ledgerAccountId: getPersonLedgerAcc(l.personId), detailedAccountId: l.personId });
           }
           await addAccountingDocument({
@@ -213,7 +241,8 @@ export default function AccountingAutoSync({ showNotification }: any) {
       for (const inst of missingInstallments) {
           const items = [];
           const total = Number(inst.paidAmount) || Number(inst.amount) || 0;
-          items.push({ description: 'بدهکار - تسویه قسط (صندوق/بانک)', debit: total, credit: 0, ledgerAccountId: cashAcc });
+          const resourceLedgerId = getResourceLedgerAcc(inst);
+          items.push({ description: 'بدهکار - تسویه قسط (صندوق/بانک)', debit: total, credit: 0, ledgerAccountId: resourceLedgerId });
           items.push({ description: 'بستانکار - وام پرداختی (یا برعکس)', debit: 0, credit: total, ledgerAccountId: defaultLedger });
           await addAccountingDocument({
               date: safeDate(inst.paidDate),
