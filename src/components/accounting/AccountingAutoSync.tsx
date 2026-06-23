@@ -1,0 +1,308 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Settings, Play, RefreshCcw, FileText, CheckCircle, HandCoins } from 'lucide-react';
+import { getAccountingDocuments, addAccountingDocument, getInvoices, getTransactions, getPersons, getLedgerAccounts, getIssuedChecks, getReceivedChecks, getLoans, getInstallments } from '../../services/dataService';
+
+export default function AccountingAutoSync({ showNotification }: any) {
+  const [missingInvoices, setMissingInvoices] = useState<any[]>([]);
+  const [missingTransactions, setMissingTransactions] = useState<any[]>([]);
+  const [missingBalances, setMissingBalances] = useState<any[]>([]); // Persons opening balances
+  const [missingChecks, setMissingChecks] = useState<any[]>([]);
+  const [missingLoans, setMissingLoans] = useState<any[]>([]);
+  const [missingInstallments, setMissingInstallments] = useState<any[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    scanSystem();
+  }, []);
+
+  const scanSystem = async () => {
+    setIsScanning(true);
+    try {
+      const docs = await getAccountingDocuments();
+      const invoices = await getInvoices();
+      const transactions = await getTransactions();
+      const persons = await getPersons();
+      const issuedChecks = await getIssuedChecks();
+      const receivedChecks = await getReceivedChecks();
+      const loans = await getLoans();
+      const installments = await getInstallments();
+
+      const invoiceDocs = docs.filter(d => d.sourceType?.includes('invoice'));
+      const transactionDocs = docs.filter(d => ['receipt', 'payment', 'salary'].includes(d.sourceType || ''));
+      const balanceDocs = docs.filter(d => d.sourceType === 'opening_balance');
+      const checkDocs = docs.filter(d => d.sourceType?.includes('check'));
+      const loanDocs = docs.filter(d => d.sourceType === 'loan');
+      const instDocs = docs.filter(d => d.sourceType === 'installment');
+
+      const mInvoices = invoices.filter(inv => !['proforma', 'warehouse_receipt', 'warehouse_remittance'].includes(inv.type) && !invoiceDocs.some(d => d.sourceId?.toString() === inv.id.toString()));
+      const mTransactions = transactions.filter(t => !transactionDocs.some(d => d.sourceId?.toString() === t.id.toString()));
+      const mBalances = persons.filter(p => p.initialBalance && Number(p.initialBalance) > 0 && p.initialBalanceType !== 'settled' && !balanceDocs.some(d => d.sourceId?.toString() === p.id.toString()));
+      
+      const mChecks = [...issuedChecks.map(c => ({...c, _isIssued: true})), ...receivedChecks.map(c => ({...c, _isIssued: false}))].filter(c => !checkDocs.some(d => d.sourceId?.toString() === c.id.toString()));
+      const mLoans = loans.filter(l => !loanDocs.some(d => d.sourceId?.toString() === l.id.toString()));
+      // Only check paid installments
+      const mInsts = installments.filter(i => i.status === 'paid' && !instDocs.some(d => d.sourceId?.toString() === i.id.toString()));
+
+      setMissingInvoices(mInvoices);
+      setMissingTransactions(mTransactions);
+      setMissingBalances(mBalances);
+      setMissingChecks(mChecks);
+      setMissingLoans(mLoans);
+      setMissingInstallments(mInsts);
+    } catch (err) {
+      showNotification('خطا در اسکن سیستم', 'error');
+    }
+    setIsScanning(false);
+  };
+
+  const handleSyncAll = async () => {
+    if (!window.confirm('آیا از صدور خودکار اسناد حسابداری برای تمامی موارد معوقه اطمینان دارید؟')) return;
+    
+    setIsSyncing(true);
+    try {
+      const defaultLedgerIds = await getLedgerAccounts();
+      const defaultLedger = defaultLedgerIds.length > 0 ? defaultLedgerIds[0].id : '';
+
+      let successCount = 0;
+
+      // Sync Persons Opening Balances
+      for (const p of missingBalances) {
+          const items = [];
+          if (p.initialBalanceType === 'debtor') {
+              items.push({ description: 'بدهکار - طرف حساب', debit: Number(p.initialBalance), credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: p.id });
+              items.push({ description: 'بستانکار - تراز افتتاحیه', debit: 0, credit: Number(p.initialBalance), ledgerAccountId: defaultLedger });
+          } else {
+              items.push({ description: 'بدهکار - تراز افتتاحیه', debit: Number(p.initialBalance), credit: 0, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(p.initialBalance), ledgerAccountId: defaultLedger, detailedAccountId: p.id });
+          }
+          await addAccountingDocument({
+              date: p.registrationDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              description: `سند افتتاحیه طرف حساب: ${p.name}`,
+              status: 'approved',
+              sourceType: 'opening_balance',
+              sourceId: p.id,
+              items
+          });
+          successCount++;
+      }
+
+      // Sync Transactions
+      for (const t of missingTransactions) {
+          const items = [];
+          if (t.type === 'receive') {
+              items.push({ description: 'بدهکار - منابع', debit: Number(t.amount), credit: 0, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(t.amount), ledgerAccountId: defaultLedger, detailedAccountId: t.personId });
+          } else {
+              items.push({ description: 'بدهکار - طرف حساب', debit: Number(t.amount), credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: t.personId });
+              items.push({ description: 'بستانکار - منابع', debit: 0, credit: Number(t.amount), ledgerAccountId: defaultLedger });
+          }
+          await addAccountingDocument({
+              date: t.date?.split('T')[0] || new Date().toISOString().split('T')[0],
+              description: `سند اتوماتیک تراکنش به مبدا تراکنش ${t.id}`,
+              status: 'approved',
+              sourceType: t.type === 'receive' ? 'receipt' : 'payment',
+              sourceId: t.id,
+              items
+          });
+          successCount++;
+      }
+
+      // Sync Invoices
+      for (const inv of missingInvoices) {
+          const items = [];
+          const total = Number(inv.totalAmount) || 0;
+          if (inv.type === 'sale' || inv.type === 'purchase_return') {
+              items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: inv.customerId });
+              items.push({ description: 'بستانکار - درآمد/موجودی', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+          } else if (inv.type === 'purchase' || inv.type === 'sale_return') {
+              items.push({ description: 'بدهکار - موجودی/هزینه', debit: total, credit: 0, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: inv.customerId });
+          }
+
+          if (items.length > 0) {
+              await addAccountingDocument({
+                  date: inv.date?.split('T')[0] || new Date().toISOString().split('T')[0],
+                  description: `سند اتوماتیک فاکتور شماره ${inv.invoiceNumber || inv.id}`,
+                  status: 'approved',
+                  sourceType: inv.type.includes('sale') ? 'invoice_sale' : 'invoice_purchase',
+                  sourceId: inv.id,
+                  items
+              });
+              successCount++;
+          }
+      }
+
+      // Sync Checks
+      for (const c of missingChecks) {
+          const items = [];
+          const total = Number(c.amount) || 0;
+          if (c._isIssued) {
+              items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: c.receiverId });
+              items.push({ description: 'بستانکار - اسناد پرداختنی', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+          } else {
+              items.push({ description: 'بدهکار - اسناد دریافتنی', debit: total, credit: 0, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: c.payerId });
+          }
+          await addAccountingDocument({
+              date: c.issueDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              description: `سند اتوماتیک چک ${c._isIssued ? 'پرداختی' : 'دریافتی'} شماره ${c.checkNumber}`,
+              status: 'approved',
+              sourceType: c._isIssued ? 'issued_check' : 'received_check',
+              sourceId: c.id,
+              items
+          });
+          successCount++;
+      }
+
+      // Sync Loans
+      for (const l of missingLoans) {
+          const items = [];
+          const total = Number(l.amount) || 0;
+          if (l.type === 'given') {
+              items.push({ description: 'بدهکار - وام پرداختی (شخص)', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: l.personId });
+              items.push({ description: 'بستانکار - منابع (بانک/صندوق)', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+          } else {
+              items.push({ description: 'بدهکار - منابع (بانک/صندوق)', debit: total, credit: 0, ledgerAccountId: defaultLedger });
+              items.push({ description: 'بستانکار - وام دریافتی (شخص)', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: l.personId });
+          }
+          await addAccountingDocument({
+              date: l.startDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              description: `سند اتوماتیک وام ${l.type === 'given' ? 'پرداختی' : 'دریافتی'}`,
+              status: 'approved',
+              sourceType: 'loan',
+              sourceId: l.id,
+              items
+          });
+          successCount++;
+      }
+
+      // Sync Installments
+      for (const inst of missingInstallments) {
+          const items = [];
+          const total = Number(inst.paidAmount) || Number(inst.amount) || 0;
+          items.push({ description: 'بدهکار - تسویه قسط (صندوق/بانک)', debit: total, credit: 0, ledgerAccountId: defaultLedger });
+          items.push({ description: 'بستانکار - وام پرداختی (یا برعکس)', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+          await addAccountingDocument({
+              date: inst.paidDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+              description: `سند اتوماتیک تسویه قسط`,
+              status: 'approved',
+              sourceType: 'installment',
+              sourceId: inst.id,
+              items
+          });
+          successCount++;
+      }
+
+      showNotification(`${successCount} سند با موفقیت تولید و ثبت گردید.`, 'success');
+      scanSystem();
+    } catch (err) {
+      showNotification('خطا در تولید برخی از اسناد', 'error');
+      scanSystem();
+    }
+    setIsSyncing(false);
+  };
+
+  const totalMissing = missingInvoices.length + missingTransactions.length + missingBalances.length + missingChecks.length + missingLoans.length + missingInstallments.length;
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-amber-100 p-2 rounded-xl text-amber-600">
+          <Settings className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-xl font-black text-slate-800">تولید اسناد معوقه</h2>
+          <p className="text-sm text-slate-500 mt-1">تولید خودکار اسناد حسابداری برای رویدادهای ثبت‌شده قبل از سیستم حسابداری (فاکتورها، تراکنش‌ها، چک‌ها، وام‌ها و اقساط)</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+         <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100">
+            <h3 className="font-bold text-slate-700 flex items-center gap-2">
+               <RefreshCcw className={`w-5 h-5 text-indigo-500 ${isScanning ? 'animate-spin' : ''}`} /> وضعیت اسناد سیستم
+            </h3>
+            <button onClick={scanSystem} disabled={isScanning || isSyncing} className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition">
+               اسکن مجدد
+            </button>
+         </div>
+
+         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center">
+               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500">
+                  <FileText className="w-6 h-6" />
+               </div>
+               <div className="text-2xl font-black text-slate-800 font-mono mb-1">{missingInvoices.length}</div>
+               <div className="text-sm font-bold text-slate-500">فاکتورهای بدون سند</div>
+            </div>
+            
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center">
+               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-emerald-500">
+                  <HandCoins className="w-6 h-6" />
+               </div>
+               <div className="text-2xl font-black text-slate-800 font-mono mb-1">{missingTransactions.length}</div>
+               <div className="text-sm font-bold text-slate-500">پرداخت/دریافت بدون سند</div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center">
+               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-amber-500">
+                  <FileText className="w-6 h-6" />
+               </div>
+               <div className="text-2xl font-black text-slate-800 font-mono mb-1">{missingBalances.length}</div>
+               <div className="text-sm font-bold text-slate-500">موجودی اولیه شخص</div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center">
+               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-purple-500">
+                  <FileText className="w-6 h-6" />
+               </div>
+               <div className="text-2xl font-black text-slate-800 font-mono mb-1">{missingChecks.length}</div>
+               <div className="text-sm font-bold text-slate-500">چک‌های بدون سند</div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center">
+               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-rose-500">
+                  <HandCoins className="w-6 h-6" />
+               </div>
+               <div className="text-2xl font-black text-slate-800 font-mono mb-1">{missingLoans.length}</div>
+               <div className="text-sm font-bold text-slate-500">وام‌های بدون سند</div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center">
+               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-blue-500">
+                  <FileText className="w-6 h-6" />
+               </div>
+               <div className="text-2xl font-black text-slate-800 font-mono mb-1">{missingInstallments.length}</div>
+               <div className="text-sm font-bold text-slate-500">اقساط (پرداختی) بدون سند</div>
+            </div>
+         </div>
+
+         <div className="bg-indigo-50/50 rounded-2xl p-6 border border-indigo-100 text-center">
+             {totalMissing === 0 ? (
+                 <div className="flex flex-col items-center justify-center py-4">
+                    <CheckCircle className="w-16 h-16 text-emerald-500 mb-4" />
+                    <h4 className="text-lg font-bold text-emerald-800 mb-1">سیستم یکپارچه است</h4>
+                    <p className="text-sm text-emerald-600">تمامی رویدادهای مالی دارای سند حسابداری متناظر هستند و نیازی به صدور معوقه نیست.</p>
+                 </div>
+             ) : (
+                 <div className="flex flex-col items-center justify-center py-4">
+                    <div className="text-3xl font-black text-indigo-700 font-mono mb-2">{totalMissing}</div>
+                    <h4 className="text-lg font-bold text-slate-800 mb-1">رویداد منتظر صدور سند</h4>
+                    <p className="text-sm text-slate-600 mb-6 max-w-lg mx-auto">با کلیک روی دکمه زیر، سیستم به طور خودکار تمامی اسناد حسابداری مربوط به فاکتورها، تراکنش‌ها و مانده‌های اولیه را طبق ساختار حساب پیش‌فرض ایجاد خواهد کرد.</p>
+                    
+                    <button 
+                      onClick={handleSyncAll}
+                      disabled={isSyncing}
+                      className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 disabled:opacity-50"
+                    >
+                       {isSyncing ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
+                       تولید اتوماتیک همه‌ی اسناد معوقه
+                    </button>
+                 </div>
+             )}
+         </div>
+      </div>
+    </div>
+  );
+}

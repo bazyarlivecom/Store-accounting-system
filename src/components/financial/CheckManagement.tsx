@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import DatePickerModule, { Calendar as RMCalendar } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Bar } from 'recharts';
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import { 
   CreditCard, Plus, Edit2, Trash2, CheckCircle, Clock, X, Save, 
@@ -16,8 +17,8 @@ import {
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange, currentUser = 'کاربر سیستم' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar', onDataChange?: () => void, currentUser?: string }) {
-  const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar'>(activeTab);
+export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange, currentUser = 'کاربر سیستم' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts', onDataChange?: () => void, currentUser?: string }) {
+  const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts'>(activeTab as any);
   
   const toPersianDigits = (str: string | number | undefined | null) => {
     if (str === null || str === undefined) return '';
@@ -288,6 +289,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               amount: existing.amount,
               personId: existing.payeeId,
               date: new Date().toLocaleDateString('fa-IR'),
+              method: 'check',
               receiptNumber: existing.checkNumber,
               description: `تسویه و پاس شدن برگه چک صادره شماره ${existing.checkNumber} به ذینفع`
             });
@@ -324,6 +326,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
             amount: existing.amount,
             personId: existing.payerId,
             date: new Date().toLocaleDateString('fa-IR'),
+            method: 'check',
             receiptNumber: existing.checkNumber,
             description: `وصول و نقد شدن چک دریافتی شماره ${existing.checkNumber} - بانک ${existing.bankName || ''}`
           });
@@ -431,10 +434,10 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
          <div>
            <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
              <CreditCard className="w-6 h-6 text-indigo-600" /> 
-             {activeSubTab === 'checkbooks' ? 'مدیریت و لیست دسته چک‌ها' : activeSubTab === 'issued_checks' ? 'مدیریت چک‌های صادره (پرداختی)' : activeSubTab === 'check_calendar' ? 'تقویم سررسید چک‌ها' : 'مدیریت چک‌های دریافتی (وصولی)'}
+             {activeSubTab === 'checkbooks' ? 'مدیریت و لیست دسته چک‌ها' : activeSubTab === 'issued_checks' ? 'مدیریت چک‌های صادره (پرداختی)' : activeSubTab === 'check_calendar' ? 'تقویم سررسید چک‌ها' : activeSubTab === 'check_charts' ? 'داشبورد و نمودار وضعیت چک‌ها' : 'مدیریت چک‌های دریافتی (وصولی)'}
            </h1>
            <p className="text-xs text-gray-500 mt-1">
-             {activeSubTab === 'checkbooks' ? 'تعریف و نظارت بر دسته‌چک‌های بانکی اختصاصی' : activeSubTab === 'issued_checks' ? 'نظارت بر وضعیت برگه‌های چک پرداخت شده به حساب مشتریان و تامین‌کنندگان' : activeSubTab === 'check_calendar' ? 'نظارت تصویری بر تاریخ‌های سررسید چک‌ها بوسیله تقویم ماهانه' : 'مدیریت وضعیت وصول و اقلام چک‌های دریافت شده از اشخاص'}
+             {activeSubTab === 'checkbooks' ? 'تعریف و نظارت بر دسته‌چک‌های بانکی اختصاصی' : activeSubTab === 'issued_checks' ? 'نظارت بر وضعیت برگه‌های چک پرداخت شده به حساب مشتریان و تامین‌کنندگان' : activeSubTab === 'check_calendar' ? 'نظارت تصویری بر تاریخ‌های سررسید چک‌ها بوسیله تقویم ماهانه' : activeSubTab === 'check_charts' ? 'گزارش‌گیری و نمایش بصری وضعیت و گردش چک‌های پرداختی و دریافتی' : 'مدیریت وضعیت وصول و اقلام چک‌های دریافت شده از اشخاص'}
            </p>
          </div>
       </div>
@@ -958,7 +961,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
             </div>
           </div>
         </div>
-        ) : (
+        ) : activeSubTab === 'check_calendar' ? (
           /* SUBTAB 4: CHECK CALENDAR */
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="w-full lg:w-1/3 xl:w-1/4">
@@ -1112,6 +1115,91 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                 </div>
                 
               </div>
+            </div>
+          </div>
+        ) : (
+          /* SUBTAB 5: CHECK CHARTS */
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Issued Checks Chart */}
+              <div className="bg-white border text-right border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col items-center p-6 hover:shadow-md transition-shadow">
+                <h3 className="font-bold text-gray-800 self-start w-full border-b pb-3 mb-6 flex items-center justify-between">
+                  نمودار وضعیت چک‌های صادره (پرداختی)
+                  <span className="text-xs text-gray-500 font-normal">کل: {totalIssuedAmount.toLocaleString()} تومان</span>
+                </h3>
+                {totalIssuedAmount > 0 ? (
+                  <div className="w-full flex-1 min-h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'پاس شده', value: cashedIssuedAmount, color: '#34d399' },
+                            { name: 'در جریان (پرداختی)', value: pendingIssuedAmount, color: '#9ca3af' },
+                            { name: 'برگشتی', value: bouncedIssuedAmount, color: '#fb7185' }
+                          ].filter(d => d.value > 0)}
+                          cx="50%" cy="50%" innerRadius={70} outerRadius={110}
+                          paddingAngle={3} dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {[
+                            { name: 'پاس شده', value: cashedIssuedAmount, color: '#34d399' },
+                            { name: 'در جریان (پرداختی)', value: pendingIssuedAmount, color: '#9ca3af' },
+                            { name: 'برگشتی', value: bouncedIssuedAmount, color: '#fb7185' }
+                          ].filter(d => d.value > 0).map((entry, idx) => (
+                            <Cell key={`cell-${idx}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(val: number) => [val.toLocaleString() + ' تومان', 'مبلغ']} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                   <div className="flex-1 flex w-full items-center justify-center min-h-[300px] text-gray-400 font-medium text-sm">آماری جهت نمایش در دسترس نیست</div>
+                )}
+              </div>
+
+              {/* Received Checks Chart */}
+              <div className="bg-white border text-right border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col items-center p-6 hover:shadow-md transition-shadow">
+                <h3 className="font-bold text-gray-800 self-start w-full border-b pb-3 mb-6 flex items-center justify-between">
+                  نمودار وضعیت چک‌های دریافتی (وصولی)
+                  <span className="text-xs text-gray-500 font-normal">کل: {totalReceivedAmount.toLocaleString()} تومان</span>
+                </h3>
+                {totalReceivedAmount > 0 ? (
+                  <div className="w-full flex-1 min-h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'وصول شده', value: cashedReceivedAmount, color: '#10b981' },
+                            { name: 'در جریان (وصولی)', value: inHandReceivedAmount, color: '#a78bfa' },
+                            { name: 'برگشتی', value: bouncedReceivedAmount, color: '#f43f5e' }
+                          ].filter(d => d.value > 0)}
+                          cx="50%" cy="50%" innerRadius={70} outerRadius={110}
+                          paddingAngle={3} dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {[
+                             { name: 'وصول شده', value: cashedReceivedAmount, color: '#10b981' },
+                             { name: 'در جریان (وصولی)', value: inHandReceivedAmount, color: '#a78bfa' },
+                             { name: 'برگشتی', value: bouncedReceivedAmount, color: '#f43f5e' }
+                          ].filter(d => d.value > 0).map((entry, idx) => (
+                            <Cell key={`cell-rec-${idx}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(val: number) => [val.toLocaleString() + ' تومان', 'مبلغ']} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex w-full items-center justify-center min-h-[300px] text-gray-400 font-medium text-sm">آماری جهت نمایش در دسترس نیست</div>
+                )}
+              </div>
+
             </div>
           </div>
         )}

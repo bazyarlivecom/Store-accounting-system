@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HardDrive, CheckCircle, RefreshCcw, Download, Clock, Settings, Save } from 'lucide-react';
+import { HardDrive, CheckCircle, RefreshCcw, Download, Clock, Settings, Save, Folder, FolderOpen, ArrowRight, Home, X } from 'lucide-react';
 
 interface LocalBackupProps {
   showNotification: (msg: string, type: 'success' | 'error') => void;
@@ -12,6 +12,14 @@ export default function DriveBackup({ showNotification }: LocalBackupProps) {
   const [backupConfig, setBackupConfig] = useState({ path: '', intervalHours: 4 });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isBackupSettingsOpen, setIsBackupSettingsOpen] = useState(false);
+
+  // Folder Picker States
+  const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
+  const [currentDir, setCurrentDir] = useState<string>('');
+  const [parentDir, setParentDir] = useState<string>('');
+  const [dirs, setDirs] = useState<string[]>([]);
+  const [drives, setDrives] = useState<string[]>([]);
+  const [isLoadingDirs, setIsLoadingDirs] = useState(false);
 
   const fetchConfig = async () => {
     try {
@@ -44,6 +52,49 @@ export default function DriveBackup({ showNotification }: LocalBackupProps) {
     fetchConfig();
     fetchBackups();
   }, []);
+
+  const loadDrives = async () => {
+     try {
+        const res = await fetch('/api/sys/drives');
+        const data = await res.json();
+        setDrives(data || []);
+     } catch (e) {
+        console.error(e);
+     }
+  };
+
+  const loadDirectory = async (pathStr: string) => {
+     setIsLoadingDirs(true);
+     try {
+       const res = await fetch('/api/sys/dirs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: pathStr })
+       });
+       const data = await res.json();
+       if (data.current) {
+          setCurrentDir(data.current);
+          setParentDir(data.parent);
+          setDirs(data.dirs || []);
+       }
+     } catch (e) {
+       console.error(e);
+       showNotification('خطا در خواندن پوشه', 'error');
+     } finally {
+       setIsLoadingDirs(false);
+     }
+  };
+
+  const openFolderPicker = () => {
+     loadDrives();
+     loadDirectory(backupConfig.path || '');
+     setIsFolderPickerOpen(true);
+  };
+
+  const handleSelectFolder = () => {
+     setBackupConfig({ ...backupConfig, path: currentDir });
+     setIsFolderPickerOpen(false);
+  };
 
   const saveConfig = async () => {
     setIsSavingConfig(true);
@@ -134,14 +185,23 @@ export default function DriveBackup({ showNotification }: LocalBackupProps) {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
                  <label className="block text-xs font-bold text-gray-600">مسیر ذخیره فایل‌ها (Local Path)</label>
-                 <input
-                    type="text"
-                    dir="ltr"
-                    value={backupConfig.path}
-                    onChange={e => setBackupConfig({...backupConfig, path: e.target.value})}
-                    placeholder="مثال: C:\\backups یا /var/backups (خالی = پیش‌فرض)"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-left"
-                 />
+                 <div className="flex gap-2">
+                   <input
+                      type="text"
+                      dir="ltr"
+                      value={backupConfig.path}
+                      onChange={e => setBackupConfig({...backupConfig, path: e.target.value})}
+                      placeholder="مثال: C:\\backups یا /var/backups"
+                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 font-mono text-left w-full max-w-[calc(100%-120px)]"
+                   />
+                   <button
+                      onClick={openFolderPicker}
+                      className="whitespace-nowrap flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors border border-slate-200 text-xs shadow-sm w-[110px]"
+                   >
+                     <FolderOpen className="w-4 h-4" />
+                     انتخاب پوشه
+                   </button>
+                 </div>
                  <p className="text-[10px] text-gray-400">در صورت خالی بودن، زیرپوشه backups در مسیر نصب برنامه استفاده می‌شود.</p>
               </div>
 
@@ -254,6 +314,112 @@ export default function DriveBackup({ showNotification }: LocalBackupProps) {
             )}
          </div>
       </div>
+
+      {isFolderPickerOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl border border-gray-100 flex flex-col max-h-[80vh]">
+            <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between shrink-0">
+              <h3 className="font-bold flex items-center gap-2 text-sm">
+                 <FolderOpen className="w-5 h-5 text-indigo-400" />
+                 انتخاب مسیر ذخیره‌سازی
+              </h3>
+              <button 
+                onClick={() => setIsFolderPickerOpen(false)}
+                className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 bg-slate-50 border-b border-slate-200 shrink-0">
+               {drives.length > 0 && (
+                  <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+                     <Home className="w-4 h-4 text-slate-400 mt-1 shrink-0" />
+                     {drives.map(d => (
+                        <button
+                           key={d}
+                           onClick={() => loadDirectory(d)}
+                           className="px-2 py-1 bg-white border border-slate-200 text-xs font-bold text-slate-700 rounded shadow-sm hover:border-indigo-400 hover:text-indigo-600 shrink-0"
+                           dir="ltr"
+                        >
+                           {d}
+                        </button>
+                     ))}
+                  </div>
+               )}
+               <div className="flex bg-white border border-slate-200 rounded-lg p-1.5 items-center gap-2">
+                  <button 
+                    onClick={() => loadDirectory(parentDir)}
+                    disabled={!parentDir || parentDir === currentDir}
+                    className="p-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 disabled:opacity-50"
+                  >
+                     <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <input 
+                    type="text"
+                    dir="ltr"
+                    value={currentDir}
+                    onChange={(e) => setCurrentDir(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadDirectory(currentDir)}
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-mono p-1 text-slate-700"
+                  />
+                  <button
+                    onClick={() => loadDirectory(currentDir)}
+                    className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded"
+                  >
+                     برو
+                  </button>
+               </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2 bg-white min-h-[250px]">
+               {isLoadingDirs ? (
+                  <div className="flex justify-center p-10"><RefreshCcw className="w-6 h-6 animate-spin text-indigo-300" /></div>
+               ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                     <button
+                        onClick={() => loadDirectory(parentDir)}
+                        className="px-3 py-2 flex items-center gap-2 hover:bg-slate-50 rounded-lg text-slate-600 border border-transparent hover:border-slate-100 transition-colors"
+                        disabled={!parentDir || parentDir === currentDir}
+                        dir="ltr"
+                     >
+                        <Folder className="w-8 h-8 text-indigo-200 shrink-0" />
+                        <span className="text-xs font-mono truncate text-left w-full mt-1">.. (بالا)</span>
+                     </button>
+                     {dirs.map(d => (
+                        <button
+                           key={d}
+                           onClick={() => loadDirectory(currentDir.endsWith('\\') || currentDir.endsWith('/') ? currentDir + d : currentDir + (currentDir.includes('\\') ? '\\' : '/') + d)}
+                           className="px-3 py-2 flex items-center gap-2 hover:bg-slate-50 rounded-lg text-slate-700 border border-transparent hover:border-slate-100 transition-colors"
+                           dir="ltr"
+                           title={d}
+                        >
+                           <Folder className="w-8 h-8 text-indigo-300 fill-indigo-50 shrink-0" />
+                           <span className="text-xs font-mono font-medium truncate text-left w-full mt-1">{d}</span>
+                        </button>
+                     ))}
+                  </div>
+               )}
+            </div>
+
+            <div className="bg-slate-50 px-5 py-4 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+               <button
+                  onClick={() => setIsFolderPickerOpen(false)}
+                  className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-100"
+               >
+                  انصراف
+               </button>
+               <button
+                  onClick={handleSelectFolder}
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow whitespace-nowrap"
+               >
+                  انتخاب اینجا
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

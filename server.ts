@@ -362,6 +362,30 @@ async function startServer() {
     }
   });
 
+  app.post('/api/sys/dirs', async (req, res) => {
+    try {
+      const target = req.body.path || process.cwd();
+      const items = await fsPromises.readdir(target, { withFileTypes: true });
+      const dirs = items.filter(i => i.isDirectory()).map(i => i.name);
+      const parent = path.dirname(target);
+      res.json({ current: target, parent, dirs });
+    } catch(err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/sys/drives', async (req, res) => {
+    try {
+       if (process.platform === 'win32') {
+          res.json(['C:\\', 'D:\\', 'E:\\', 'F:\\']);
+       } else {
+          res.json(['/']);
+       }
+    } catch (e) {
+       res.json(['/']);
+    }
+  });
+
   app.post('/api/db/execute', (req, res) => {
     const { query, params } = req.body;
     try {

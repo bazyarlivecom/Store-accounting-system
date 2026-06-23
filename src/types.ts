@@ -228,6 +228,59 @@ export interface WarehouseStock {
 }
 
 
+export type StocktakingItem = {
+  productId: string | number;
+  productName: string;
+  expectedStock: number;
+  countedStock: number | null;
+  difference: number; // countedStock - expectedStock
+  costValue?: number; // unit cost * difference (positive for surplus, negative for deficit)
+};
+
+export type Stocktaking = {
+  id: string | number;
+  date: string; // Jalali or ISO
+  warehouseId: string | number;
+  status: 'pending' | 'in_progress' | 'confirmed' | 'applied';
+  items: StocktakingItem[];
+  description?: string;
+  createdBy?: string;
+  appliedDate?: string;
+  totalDeficitValue?: number;
+  totalSurplusValue?: number;
+};
+
+export type LedgerAccount = {
+  id: string | number;
+  code: string;
+  title: string;
+  type: 'group' | 'general' | 'subsidiary' | 'detailed'; // گروه، کل، معین، تفصیلی
+  nature: 'debit' | 'credit'; // بدهکار یا بستانکار
+  parentId?: string | number | null;
+};
+
+export type AccountingDocumentItem = {
+  id?: string | number;
+  ledgerAccountId: string | number;
+  detailedAccountId?: string | number; // references Persons, Banks, etc. if needed
+  description: string;
+  debit: number;
+  credit: number;
+};
+
+export type AccountingDocument = {
+  id: string | number;
+  documentNumber: number;
+  date: string;
+  description: string;
+  status: 'draft' | 'approved';
+  items: AccountingDocumentItem[];
+  sourceType?: 'manual' | 'invoice_sale' | 'invoice_purchase' | 'receipt' | 'payment';
+  sourceId?: string | number; 
+  createdAt?: number;
+  updatedAt?: number;
+};
+
 export type Loan = { id: string | number; personId: string | number; amount: number; startDate: string; totalInstallments: number; installmentAmount: number; description?: string; status: 'active' | 'completed' | 'overdue'; type: 'given' | 'received'; };
 
 export type Installment = { id: string | number; loanId: string | number; dueDate: string; amount: number; status: 'pending' | 'paid' | 'overdue'; paidDate?: string; paidAmount?: number; description?: string; };

@@ -12,6 +12,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
 import { useAuth } from './context/AuthContext';
 import { generateId, getUsers, addUser, updateUser, deleteUser, getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, getIssuedChecks, addIssuedCheck, updateIssuedCheck, deleteIssuedCheck, getReceivedChecks, addReceivedCheck, updateReceivedCheck, deleteReceivedCheck, getStoreSettings, saveStoreSettings, getPersonGroups, addPersonGroup, updatePersonGroup, deletePersonGroup, getPersonRoles, addPersonRole, updatePersonRole, deletePersonRole, getPersons, addPerson, updatePerson, deletePerson, getProducts, addProduct, updateProduct, deleteProduct, getProductCategories, addProductCategory, updateProductCategory, deleteProductCategory, getAccounts, addAccount, updateAccount, deleteAccount, getCashboxes, addCashbox, updateCashbox, deleteCashbox, getWarehouses, addWarehouse, updateWarehouse, deleteWarehouse, getInvoices, addInvoice, updateInvoice, deleteInvoice, getTransactions, addTransaction, updateTransaction, deleteTransaction, getWarehouseStocks, recalculateAllWarehouseStocks } from './services/dataService';
+import ModuleSelector from './components/ui/ModuleSelector';
 import DatabaseDashboard from './components/admin/DatabaseDashboard';
 import SystemChecklist from './components/admin/SystemChecklist';
 import SystemLogs from './components/admin/SystemLogs';
@@ -28,9 +29,15 @@ import FinancialTransfer from './components/financial/FinancialTransfer';
 import QuickRefund from './components/financial/QuickRefund';
 import UserManager from './components/admin/UserManager';
 import InventoryReport from './components/reports/InventoryReport';
+import StocktakingManager from './components/inventory/StocktakingManager';
 import AnalyticalDashboard from './components/reports/AnalyticalDashboard';
 import DebtsCreditsReport from './components/reports/DebtsCreditsReport';
 import LoansManager from './components/loans/LoansManager';
+import ChartOfAccounts from './components/accounting/ChartOfAccounts';
+import AccountingDocsList from './components/accounting/AccountingDocsList';
+import AccountingDocCreate from './components/accounting/AccountingDocCreate';
+import AccountingAutoSync from './components/accounting/AccountingAutoSync';
+import AccountingVerification from './components/accounting/AccountingVerification';
 import { Person, PersonGroup, Product, Account, Cashbox, Warehouse, InvoiceItem, WarehouseStock } from './types';
 import appVersion from './version.json';
 
@@ -86,7 +93,10 @@ export default function App() {
     setConfirmState({isOpen: true, message, onConfirm});
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans' | 'system_logs'>('financial_report');
+  const [activeTab, setActiveTab ] = useState<'create_sale' | 'debts_credits' | 'create_purchase' | 'list_sale' | 'list_purchase' | 'create_receive_receipt' | 'list_receive_receipt' | 'create_pay_receipt' | 'list_pay_receipt' | 'create_salary_payroll' | 'list_salary_payroll' | 'create_warehouse_doc' | 'list_warehouse_docs' | 'products' | 'product_view' | 'product_categories' | 'persons' | 'person_groups' | 'person_roles' | 'accounts' | 'cashboxes' | 'warehouses' | 'update' | 'settings' | 'financial_report' | 'analytical_dashboard' | 'person_ledger' | 'inventory_report' | 'checklist' | 'database' | 'users_manager' | 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts' | 'transfer' | 'invoice_allocation' | 'quick_refund' | 'quick_price_inquiry' | 'create_sale_return' | 'create_purchase_return' | 'list_sale_return' | 'list_purchase_return' | 'loans' | 'system_logs' | 'stocktaking' | 'chart_of_accounts' | 'accounting_docs_list' | 'accounting_doc_create' | 'accounting_auto_sync' | 'accounting_verification'>('financial_report');
+  const [systemModule, setSystemModule] = useState<'selector' | 'all' | 'commerce' | 'inventory' | 'accounting' | 'admin'>(() => {
+    try { const saved = localStorage.getItem('app_systemModule'); return saved ? JSON.parse(saved) : 'selector'; } catch { return 'selector'; }
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try { const saved = localStorage.getItem('app_isFullWidth'); return saved ? JSON.parse(saved) : false; } catch { return false; }
@@ -119,6 +129,10 @@ export default function App() {
   });
 
   useEffect(() => {
+    localStorage.setItem('app_systemModule', JSON.stringify(systemModule));
+  }, [systemModule]);
+
+  useEffect(() => {
     localStorage.setItem('app_isFullWidth', JSON.stringify(isFullWidth));
   }, [isFullWidth]);
 
@@ -134,7 +148,7 @@ export default function App() {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
   };
 
-  const sidebarGroups = [
+  const allSidebarGroups = [
     {
       id: 'reports',
       label: 'داشبورد و گزارشات',
@@ -145,6 +159,7 @@ export default function App() {
         { id: 'person_ledger', label: 'دفتر کل اشخاص', roles: ['admin', 'accountant', 'viewer'] },
         { id: 'debts_credits', label: 'بدهکاران و بستانکاران', roles: ['admin', 'accountant', 'viewer'] },
         { id: 'inventory_report', label: 'کاردکس و موجودی کالا', roles: ['admin', 'accountant', 'viewer'] },
+        { id: 'stocktaking', label: 'انبارگردانی', roles: ['admin', 'manager'] },
       ]
     },
     {
@@ -202,6 +217,18 @@ export default function App() {
       ]
     },
     {
+      id: 'accounting_core',
+      label: 'حسابداری دوبل',
+      icon: <Calculator className="w-5 h-5" />,
+      items: [
+        { id: 'accounting_verification', label: 'تراز آزمایشی و بررسی اسناد', roles: ['admin', 'accountant'] },
+        { id: 'chart_of_accounts', label: 'کدینگ حساب‌ها (جدول حساب)', roles: ['admin', 'accountant'] },
+        { id: 'accounting_docs_list', label: 'اسناد حسابداری', roles: ['admin', 'accountant'] },
+        { id: 'accounting_doc_create', label: 'صدور سند حسابداری', roles: ['admin', 'accountant'] },
+        { id: 'accounting_auto_sync', label: 'تولید اسناد معوقه', roles: ['admin', 'accountant'] },
+      ]
+    },
+    {
       id: 'receipts_payments',
       label: 'دریافت و پرداخت',
       icon: <ArrowRightLeft className="w-5 h-5" />,
@@ -222,6 +249,7 @@ export default function App() {
         { id: 'received_checks', label: 'چک‌های دریافتی', roles: ['admin', 'accountant'] },
         { id: 'issued_checks', label: 'چک‌های پرداختی', roles: ['admin', 'accountant'] },
         { id: 'check_calendar', label: 'تقویم چک‌ها', roles: ['admin', 'accountant', 'manager'] },
+        { id: 'check_charts', label: 'داشبورد و وضعیت چک‌ها', roles: ['admin', 'accountant', 'manager'] },
       ]
     },
     {
@@ -265,6 +293,37 @@ export default function App() {
       ]
     }
   ];
+
+  const sidebarGroups = allSidebarGroups.filter(g => {
+    if (systemModule === 'all' || systemModule === 'selector') return true;
+    if (systemModule === 'commerce') {
+      return ['reports', 'sales_operations', 'purchase_operations', 'persons', 'products_management'].includes(g.id);
+    }
+    if (systemModule === 'inventory') {
+      return ['reports', 'products_management', 'warehousing'].includes(g.id);
+    }
+    if (systemModule === 'accounting') {
+      return ['reports', 'banking', 'accounting_core', 'receipts_payments', 'checks_management', 'loans_management', 'salary', 'persons'].includes(g.id);
+    }
+    if (systemModule === 'admin') {
+      return ['reports', 'settings'].includes(g.id);
+    }
+    return true;
+  }).map(g => {
+    if (g.id === 'reports' && systemModule !== 'all' && systemModule !== 'selector') {
+      return {
+        ...g,
+        items: g.items.filter(item => {
+          if (systemModule === 'commerce') return ['analytical_dashboard'].includes(item.id);
+          if (systemModule === 'inventory') return ['inventory_report', 'stocktaking'].includes(item.id);
+          if (systemModule === 'accounting') return ['financial_report', 'analytical_dashboard', 'person_ledger', 'debts_credits'].includes(item.id);
+          if (systemModule === 'admin') return true;
+          return true;
+        })
+      };
+    }
+    return g;
+  });
 
   useEffect(() => {
     setLastCreatedReceipt(null);
@@ -1010,8 +1069,14 @@ export default function App() {
         await updateProduct(editingProductId.toString(), payload);
         setSuccessMsg('کالا با موفقیت ویرایش شد.');
       } else {
-        await addProduct(payload);
+        const addedProduct = await addProduct(payload);
         setSuccessMsg('کالای جدید با موفقیت ثبت شد.');
+        
+        if (['create_sale', 'create_purchase', 'create_warehouse_doc'].includes(activeTab)) {
+            handleFastAddProduct(addedProduct.id.toString(), addedProduct);
+            setNotification({ message: 'کالا به عنوان ردیف جدید به فاکتور اضافه شد.', type: 'info' });
+            setTimeout(() => setNotification(null), 3000);
+        }
       }
       
       await fetchProducts();
@@ -2258,9 +2323,9 @@ export default function App() {
     return lastPrice;
   };
 
-  const handleFastAddProduct = (productIdStr: string) => {
+  const handleFastAddProduct = (productIdStr: string, forceProductObj?: any) => {
     if (!productIdStr) return;
-    const product = products.find(p => p.id.toString() === productIdStr);
+    const product = forceProductObj || products.find(p => p.id.toString() === productIdStr);
     if (!product) return;
 
     const isPurchase = activeTab === 'create_purchase' || (activeTab === 'create_warehouse_doc' && invoiceType === 'warehouse_receipt');
@@ -2274,7 +2339,7 @@ export default function App() {
     setItems(currentItems => {
       // Check if it exists
       const existingItemIndex = currentItems.findIndex(i => i.productId?.toString() === productIdStr);
-      if (existingItemIndex > -1) {
+      if (existingItemIndex > -1 && !storeSettings.allowDuplicateInvoiceRows) {
          const newItems = [...currentItems];
          newItems[existingItemIndex].quantity = Number(newItems[existingItemIndex].quantity || 0) + 1;
          newItems[existingItemIndex].totalPrice = Math.max(0, (newItems[existingItemIndex].quantity * newItems[existingItemIndex].unitPrice) * (1 - (newItems[existingItemIndex].discountPercent / 100)));
@@ -7007,7 +7072,21 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Confirm Action Modal */}      {confirmState.isOpen && (        <div className="fixed inset-0 bg-slate-900/40 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">          <motion.div             initial={{ opacity: 0, scale: 0.95 }}            animate={{ opacity: 1, scale: 1 }}            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col items-center border border-gray-100"             dir="rtl"          >            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">               <AlertTriangle className="w-6 h-6" />            </div>            <h3 className="font-extrabold text-lg mb-2">تایید عملیات</h3>            <p className="text-gray-500 text-sm text-center mb-6">{confirmState.message}</p>            <div className="flex gap-3 w-full">               <button onClick={() => { confirmState.onConfirm(); setConfirmState({...confirmState, isOpen: false}) }} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">بله، تایید</button>               <button onClick={() => setConfirmState({...confirmState, isOpen: false})} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">انصراف</button>            </div>          </motion.div>        </div>      )}<div className={`flex ${menuLayout === 'horizontal' ? 'flex-col h-screen' : 'h-screen'} overflow-hidden bg-gray-50/50 text-gray-800 font-sans print:h-auto print:block print:overflow-visible`} dir="rtl">
+      {/* Confirm Action Modal */}      {confirmState.isOpen && (        <div className="fixed inset-0 bg-slate-900/40 z-[99999] flex items-center justify-center p-4 backdrop-blur-sm">          <motion.div             initial={{ opacity: 0, scale: 0.95 }}            animate={{ opacity: 1, scale: 1 }}            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl flex flex-col items-center border border-gray-100"             dir="rtl"          >            <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4">               <AlertTriangle className="w-6 h-6" />            </div>            <h3 className="font-extrabold text-lg mb-2">تایید عملیات</h3>            <p className="text-gray-500 text-sm text-center mb-6">{confirmState.message}</p>            <div className="flex gap-3 w-full">               <button onClick={() => { confirmState.onConfirm(); setConfirmState({...confirmState, isOpen: false}) }} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors">بله، تایید</button>               <button onClick={() => setConfirmState({...confirmState, isOpen: false})} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">انصراف</button>            </div>          </motion.div>        </div>      )}
+
+      {systemModule === 'selector' ? (
+        <ModuleSelector 
+          onSelectModule={(sel) => {
+            setSystemModule(sel);
+            if (sel === 'commerce') setActiveTab('analytical_dashboard');
+            else if (sel === 'inventory') setActiveTab('inventory_report');
+            else if (sel === 'accounting') setActiveTab('financial_report');
+            else if (sel === 'admin') setActiveTab('settings');
+            else setActiveTab('financial_report');
+          }}
+        />
+      ) : (
+      <div className={`flex ${menuLayout === 'horizontal' ? 'flex-col h-screen' : 'h-screen'} overflow-hidden bg-gray-50/50 text-gray-800 font-sans print:h-auto print:block print:overflow-visible`} dir="rtl">
       {/* Sidebar Mobile Overlay */}
       {isSidebarOpen && (
         <div 
@@ -7089,6 +7168,14 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSystemModule('selector')}
+              className="px-3 py-2 border rounded-xl transition-all cursor-pointer font-black gap-2 flex items-center text-xs shadow-3xs active:scale-95 text-slate-600 hover:text-emerald-700 bg-white border-emerald-200"
+              title="تغییر ماژول کاری"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span className="hidden sm:inline-block">تغییر بخش کاری</span>
+            </button>
             {user && (
                <div className="hidden md:flex items-center gap-3 ml-4 pl-4 border-l border-slate-200">
                  <div className="flex flex-col text-left">
@@ -9128,52 +9215,110 @@ export default function App() {
             // Issued Checks
             const issuedCheckEntries = issuedChecks
               .filter(c => c.payeeId?.toString() === ledgerPersonId.toString() && c.status !== 'blank')
-              .map(c => {
-                const isCashed = c.status === 'cashed';
-                const isEffectActive = c.status === 'issued' || c.status === 'cashed';
-                const statusLabel = 
-                  c.status === 'cashed' ? 'پاس شده' :
-                  c.status === 'bounced' ? 'برگشت خورده' :
-                  c.status === 'cancelled' ? 'ابطال شده' : 'صادر شده';
+              .flatMap(c => {
+                const entries = [];
                 
-                return {
-                  id: `ic-${c.id}`,
+                // Base entry for Issuance
+                entries.push({
+                  id: `ic-${c.id}-issued`,
                   refId: c.checkNumber || `چک صادره #${c.id}`,
                   date: c.issueDate || c.dueDate || new Date().toISOString(),
                   jalaliDate: c.issueDate || c.dueDate || '-',
-                  type: `چک صادره (${statusLabel})`,
+                  type: `چک صادره${c.status === 'issued' || c.status === 'cashed' ? '' : ' (اولیه)'}`,
                   desc: (c.description && !c.description.includes(c.checkNumber)) ? `${c.description} (شماره چک: ${c.checkNumber})` : (c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`),
-                  debit: isEffectActive ? (c.amount || 0) : 0,
+                  debit: c.amount || 0,
                   credit: 0,
                   rawItem: c,
                   entryType: 'issued_check'
-                };
+                });
+
+                if (c.status === 'bounced') {
+                   const bounceHistory = c.history?.find(h => h.status === 'bounced');
+                   entries.push({
+                     id: `ic-${c.id}-bounced`,
+                     refId: c.checkNumber || `چک صادره #${c.id}`,
+                     date: bounceHistory?.date || new Date().toISOString(),
+                     jalaliDate: bounceHistory?.date ? new Date(bounceHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `برگشت چک صادره`,
+                     desc: `برگشت خوردن چک صادره شماره ${c.checkNumber}`,
+                     debit: 0,
+                     credit: c.amount || 0,
+                     rawItem: c,
+                     entryType: 'issued_check'
+                   });
+                }
+                
+                if (c.status === 'cancelled') {
+                   const cancelHistory = c.history?.find(h => h.status === 'cancelled');
+                   entries.push({
+                     id: `ic-${c.id}-cancelled`,
+                     refId: c.checkNumber || `چک صادره #${c.id}`,
+                     date: cancelHistory?.date || new Date().toISOString(),
+                     jalaliDate: cancelHistory?.date ? new Date(cancelHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `ابطال چک صادره`,
+                     desc: `ابطال چک صادره شماره ${c.checkNumber}`,
+                     debit: 0,
+                     credit: c.amount || 0,
+                     rawItem: c,
+                     entryType: 'issued_check'
+                   });
+                }
+
+                return entries;
               });
 
             // Received Checks
             const receivedCheckEntries = receivedChecks
               .filter(c => c.payerId?.toString() === ledgerPersonId.toString())
-              .map(c => {
-                const isCashed = c.status === 'cashed';
-                const isEffectActive = c.status === 'received' || c.status === 'deposited' || c.status === 'cashed';
-                const statusLabel = 
-                  c.status === 'cashed' ? 'وصول شده' :
-                  c.status === 'bounced' ? 'برگشت خورده' :
-                  c.status === 'returned' ? 'عودت داده شده' :
-                  c.status === 'deposited' ? 'واگذار شده به بانک' : 'دریافت شده';
+              .flatMap(c => {
+                const entries = [];
                 
-                return {
-                  id: `rc-${c.id}`,
+                entries.push({
+                  id: `rc-${c.id}-received`,
                   refId: c.checkNumber || `چک دریافتی #${c.id}`,
                   date: c.receiveDate || c.dueDate || new Date().toISOString(),
                   jalaliDate: c.receiveDate || c.dueDate || '-',
-                  type: `چک دریافتی (${statusLabel})`,
+                  type: `چک دریافتی${(c.status === 'received' || c.status === 'deposited' || c.status === 'cashed') ? '' : ' (اولیه)'}`,
                   desc: c.description || `برگه چک دریافتی شماره ${c.checkNumber} - بانک ${c.bankName} به سررسید ${c.dueDate}`,
                   debit: 0,
-                  credit: isEffectActive ? (c.amount || 0) : 0,
+                  credit: c.amount || 0,
                   rawItem: c,
                   entryType: 'received_check'
-                };
+                });
+
+                if (c.status === 'bounced') {
+                   const bounceHistory = c.history?.find(h => h.status === 'bounced');
+                   entries.push({
+                     id: `rc-${c.id}-bounced`,
+                     refId: c.checkNumber || `چک دریافتی #${c.id}`,
+                     date: bounceHistory?.date || new Date().toISOString(),
+                     jalaliDate: bounceHistory?.date ? new Date(bounceHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `برگشت چک دریافتی`,
+                     desc: `برگشت خوردن چک دریافتی شماره ${c.checkNumber}`,
+                     debit: c.amount || 0,
+                     credit: 0,
+                     rawItem: c,
+                     entryType: 'received_check'
+                   });
+                }
+
+                if (c.status === 'returned') {
+                   const returnHistory = c.history?.find(h => h.status === 'returned');
+                   entries.push({
+                     id: `rc-${c.id}-returned`,
+                     refId: c.checkNumber || `چک دریافتی #${c.id}`,
+                     date: returnHistory?.date || new Date().toISOString(),
+                     jalaliDate: returnHistory?.date ? new Date(returnHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `عودت چک دریافتی`,
+                     desc: `عودت برگه چک دریافتی شماره ${c.checkNumber}`,
+                     debit: c.amount || 0,
+                     credit: 0,
+                     rawItem: c,
+                     entryType: 'received_check'
+                   });
+                }
+
+                return entries;
               });
 
             const getJalaliSortValue = (jalaliStr: string) => {
@@ -9630,6 +9775,8 @@ export default function App() {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="received_checks" showNotification={showNotification} onDataChange={() => fetchChecks()} currentUser={user?.name || 'کاربر سیستم'} /></motion.div>
       ) : activeTab === 'check_calendar' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="check_calendar" showNotification={showNotification} onDataChange={() => fetchChecks()} currentUser={user?.name || 'کاربر سیستم'} /></motion.div>
+      ) : activeTab === 'check_charts' ? (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CheckManagement activeTab="check_charts" showNotification={showNotification} onDataChange={() => fetchChecks()} currentUser={user?.name || 'کاربر سیستم'} /></motion.div>
       ) : activeTab === 'transfer' ? (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><FinancialTransfer /></motion.div>
             ) : activeTab === 'invoice_allocation' ? (
@@ -9838,6 +9985,16 @@ export default function App() {
                           <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.requireWarehouse ? '-translate-x-6' : 'translate-x-0'}`}></div>
                         </div>
                       </div>
+
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer" onClick={() => setSettingsForm({...settingsForm, allowDuplicateInvoiceRows: !settingsForm.allowDuplicateInvoiceRows})}>
+                        <div className="pr-2">
+                          <div className="font-bold text-gray-800 text-sm">مجوز تکراری بودن ردیف‌ها در فاکتور</div>
+                          <div className="text-xs text-gray-500 mt-1">در صورت غیرفعال بودن، افزودن مجدد کالای تکراری صرفاً تعداد آن را در فاکتور افزایش می‌دهد.</div>
+                        </div>
+                        <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.allowDuplicateInvoiceRows ? 'bg-indigo-600' : 'bg-gray-300'}`}>
+                          <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.allowDuplicateInvoiceRows ? '-translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -9849,18 +10006,11 @@ export default function App() {
                     <p className="text-sm text-indigo-800 font-medium text-right">در این بخش الگو، پیشوند، شماره شروع و تعداد ارقام قسمت عددی انواع اسناد را به صورت جداگانه تعیین کنید.</p>
                   </div>
 
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
-                    <table className="w-full text-sm text-right" dir="rtl">
-                      <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
-                        <tr>
-                          <th className="p-4 w-1/4">نوع سند / فرم</th>
-                          <th className="p-4 w-1/4">پیشوند نمادین</th>
-                          <th className="p-4 w-1/4">شماره شروع</th>
-                          <th className="p-4 w-1/4">تعداد مجاز ارقام</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 table-fixed">
-                        {[
+                  <div className="flex flex-col gap-6">
+                    {[
+                      {
+                        title: 'فروش و انبار',
+                        items: [
                           { key: 'sale', label: 'فاکتور فروش', defaultPrefix: 'INV-' },
                           { key: 'proforma', label: 'پیش‌فاکتور (Proforma)', defaultPrefix: 'PF-' },
                           { key: 'purchase', label: 'فاکتور خرید', defaultPrefix: 'PUR-' },
@@ -9868,47 +10018,99 @@ export default function App() {
                           { key: 'purchase_return', label: 'برگشت از خرید', defaultPrefix: 'RTN-P-' },
                           { key: 'warehouse_receipt', label: 'رسید انبار (ورود)', defaultPrefix: 'REC-' },
                           { key: 'warehouse_remittance', label: 'حواله انبار (خروج)', defaultPrefix: 'REM-' },
+                        ]
+                      },
+                      {
+                        title: 'خزانه‌داری (دریافت و پرداخت)',
+                        items: [
                           { key: 'receive_receipt', label: 'رسید دریافت وجه', defaultPrefix: 'RD-' },
                           { key: 'pay_receipt', label: 'رسید پرداخت وجه', defaultPrefix: 'PD-' },
                           { key: 'salary', label: 'فیش حقوقی', defaultPrefix: 'PAY-' },
-                        ].map(doc => (
-                          <tr key={doc.key} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="p-4 font-bold text-gray-800 border-l border-gray-100">{doc.label}</td>
-                            <td className="p-4 border-l border-gray-100">
-                              <input
-                                type="text"
-                                value={settingsForm[`prefix_${doc.key}`] || ''}
-                                onChange={e => setSettingsForm({...settingsForm, [`prefix_${doc.key}`]: e.target.value})}
-                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
-                                dir="ltr"
-                                placeholder={doc.defaultPrefix}
-                              />
-                            </td>
-                            <td className="p-4 border-l border-gray-100">
-                              <input
-                                type="number"
-                                value={settingsForm[`start_${doc.key}`] || ''}
-                                onChange={e => setSettingsForm({...settingsForm, [`start_${doc.key}`]: e.target.value})}
-                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
-                                dir="ltr"
-                                placeholder="1000"
-                              />
-                            </td>
-                            <td className="p-4">
-                              <input
-                                type="number"
-                                min="1" max="15"
-                                value={settingsForm[`len_${doc.key}`] || ''}
-                                onChange={e => setSettingsForm({...settingsForm, [`len_${doc.key}`]: parseInt(e.target.value) || ''})}
-                                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
-                                dir="ltr"
-                                placeholder="6"
-                              />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        ]
+                      },
+                      {
+                        title: 'مدیریت چک',
+                        items: [
+                          { key: 'check_issued', label: 'چک پرداختی', defaultPrefix: 'CHK-O-' },
+                          { key: 'check_received', label: 'چک دریافتی', defaultPrefix: 'CHK-I-' },
+                        ]
+                      },
+                      {
+                        title: 'اشخاص و کالاها',
+                        items: [
+                          { key: 'person', label: 'کد شخص / مشتری', defaultPrefix: 'P-' },
+                          { key: 'product', label: 'کد کالا', defaultPrefix: 'PRD-' },
+                        ]
+                      },
+                      {
+                        title: 'حسابداری',
+                        items: [
+                          { key: 'accounting_document', label: 'سند حسابداری', defaultPrefix: 'ACC-' },
+                        ]
+                      },
+                      {
+                        title: 'وام و اقساط',
+                        items: [
+                          { key: 'loan', label: 'پرونده وام', defaultPrefix: 'LN-' },
+                          { key: 'installment', label: 'رسید قسط', defaultPrefix: 'INS-' },
+                        ]
+                      }
+                    ].map((section, sIndex) => (
+                      <div key={sIndex} className="overflow-x-auto border border-gray-200 rounded-xl bg-white shadow-sm">
+                        <div className="bg-slate-100 px-4 py-3 border-b border-gray-200 font-extrabold text-slate-800 flex items-center gap-2">
+                           <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                           {section.title}
+                        </div>
+                        <table className="w-full text-sm text-right" dir="rtl">
+                          <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
+                            <tr>
+                              <th className="p-4 w-1/4">نوع سند / فرم</th>
+                              <th className="p-4 w-1/4">پیشوند نمادین</th>
+                              <th className="p-4 w-1/4">شماره شروع</th>
+                              <th className="p-4 w-1/4">تعداد مجاز ارقام</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 table-fixed">
+                            {section.items.map(doc => (
+                              <tr key={doc.key} className="hover:bg-gray-50/50 transition-colors">
+                                <td className="p-4 font-bold text-gray-800 border-l border-gray-100">{doc.label}</td>
+                                <td className="p-4 border-l border-gray-100">
+                                  <input
+                                    type="text"
+                                    value={settingsForm[`prefix_${doc.key}`] || ''}
+                                    onChange={e => setSettingsForm({...settingsForm, [`prefix_${doc.key}`]: e.target.value})}
+                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
+                                    dir="ltr"
+                                    placeholder={doc.defaultPrefix}
+                                  />
+                                </td>
+                                <td className="p-4 border-l border-gray-100">
+                                  <input
+                                    type="number"
+                                    value={settingsForm[`start_${doc.key}`] || ''}
+                                    onChange={e => setSettingsForm({...settingsForm, [`start_${doc.key}`]: e.target.value})}
+                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
+                                    dir="ltr"
+                                    placeholder="1000"
+                                  />
+                                </td>
+                                <td className="p-4">
+                                  <input
+                                    type="number"
+                                    min="1" max="15"
+                                    value={settingsForm[`len_${doc.key}`] || ''}
+                                    onChange={e => setSettingsForm({...settingsForm, [`len_${doc.key}`]: parseInt(e.target.value) || ''})}
+                                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
+                                    dir="ltr"
+                                    placeholder="6"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -10333,8 +10535,20 @@ export default function App() {
         )
       ) : activeTab === 'checklist' ? (
         <SystemChecklist />
+      ) : activeTab === 'stocktaking' ? (
+        <StocktakingManager showNotification={showNotification} currentUser={user?.name} onNavigateToDocs={() => setActiveTab('create_warehouse_doc')} />
+      ) : activeTab === 'chart_of_accounts' ? (
+        <ChartOfAccounts showNotification={showNotification} currentUser={user?.name} />
+      ) : activeTab === 'accounting_docs_list' ? (
+        <AccountingDocsList showNotification={showNotification} onNavigateToCreate={() => setActiveTab('accounting_doc_create')} onNavigateToView={() => {}} />
+      ) : activeTab === 'accounting_doc_create' ? (
+        <AccountingDocCreate showNotification={showNotification} onBack={() => setActiveTab('accounting_docs_list')} />
+      ) : activeTab === 'accounting_auto_sync' ? (
+        <AccountingAutoSync showNotification={showNotification} />
+      ) : activeTab === 'accounting_verification' ? (
+        <AccountingVerification showNotification={showNotification} />
       ) : null}
-          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'transfer', 'quick_refund'].includes(activeTab)) && renderTabContent()}
+          {(!['products', 'product_view', 'persons', 'accounts', 'cashboxes', 'settings', 'financial_report', 'analytical_dashboard', 'person_ledger', 'inventory_report', 'database', 'update', 'checklist', 'checkbooks', 'issued_checks', 'received_checks', 'check_calendar', 'check_charts', 'transfer', 'quick_refund', 'stocktaking', 'chart_of_accounts', 'accounting_docs_list', 'accounting_doc_create', 'accounting_auto_sync', 'accounting_verification'].includes(activeTab)) && renderTabContent()}
           </div>
         </main>
 
@@ -13300,48 +13514,110 @@ export default function App() {
             // Issued Checks
             const issuedCheckEntries = issuedChecks
               .filter(c => c.payeeId?.toString() === drawerPersonId.toString() && c.status !== 'blank' && c.status !== 'cancelled')
-              .map(c => {
-                const isCashed = c.status === 'cashed';
-                const statusLabel = 
-                  c.status === 'cashed' ? 'پاس شده' :
-                  c.status === 'bounced' ? 'برگشت خورده' : 'صادر شده';
+              .flatMap(c => {
+                const entries = [];
                 
-                return {
-                  id: `ic-${c.id}`,
+                // Base entry for Issuance
+                entries.push({
+                  id: `ic-${c.id}-issued`,
                   refId: c.checkNumber || `چک صادره #${c.id}`,
                   date: c.issueDate || c.dueDate || new Date().toISOString(),
                   jalaliDate: c.issueDate || c.dueDate || '-',
-                  type: `چک صادره (${statusLabel})`,
+                  type: `چک صادره${c.status === 'issued' || c.status === 'cashed' ? '' : ' (اولیه)'}`,
                   desc: (c.description && !c.description.includes(c.checkNumber)) ? `${c.description} (شماره چک: ${c.checkNumber})` : (c.description || `برگه چک صادره شماره ${c.checkNumber} به سررسید ${c.dueDate}`),
-                  debit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
+                  debit: c.amount || 0,
                   credit: 0,
                   rawItem: c,
                   entryType: 'issued_check'
-                };
+                });
+
+                if (c.status === 'bounced') {
+                   const bounceHistory = c.history?.find(h => h.status === 'bounced');
+                   entries.push({
+                     id: `ic-${c.id}-bounced`,
+                     refId: c.checkNumber || `چک صادره #${c.id}`,
+                     date: bounceHistory?.date || new Date().toISOString(),
+                     jalaliDate: bounceHistory?.date ? new Date(bounceHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `برگشت چک صادره`,
+                     desc: `برگشت خوردن چک صادره شماره ${c.checkNumber}`,
+                     debit: 0,
+                     credit: c.amount || 0,
+                     rawItem: c,
+                     entryType: 'issued_check'
+                   });
+                }
+                
+                if (c.status === 'cancelled') {
+                   const cancelHistory = c.history?.find(h => h.status === 'cancelled');
+                   entries.push({
+                     id: `ic-${c.id}-cancelled`,
+                     refId: c.checkNumber || `چک صادره #${c.id}`,
+                     date: cancelHistory?.date || new Date().toISOString(),
+                     jalaliDate: cancelHistory?.date ? new Date(cancelHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `ابطال چک صادره`,
+                     desc: `ابطال چک صادره شماره ${c.checkNumber}`,
+                     debit: 0,
+                     credit: c.amount || 0,
+                     rawItem: c,
+                     entryType: 'issued_check'
+                   });
+                }
+
+                return entries;
               });
 
             // Received Checks
             const receivedCheckEntries = receivedChecks
               .filter(c => c.payerId?.toString() === drawerPersonId.toString() && c.status !== 'returned')
-              .map(c => {
-                const isCashed = c.status === 'cashed';
-                const statusLabel = 
-                  c.status === 'cashed' ? 'وصول شده' :
-                  c.status === 'bounced' ? 'برگشت خورده' :
-                  c.status === 'deposited' ? 'واگذار شده به بانک' : 'دریافت شده';
+              .flatMap(c => {
+                const entries = [];
                 
-                return {
-                  id: `rc-${c.id}`,
+                entries.push({
+                  id: `rc-${c.id}-received`,
                   refId: c.checkNumber || `چک دریافتی #${c.id}`,
                   date: c.receiveDate || c.dueDate || new Date().toISOString(),
                   jalaliDate: c.receiveDate || c.dueDate || '-',
-                  type: `چک دریافتی (${statusLabel})`,
+                  type: `چک دریافتی${(c.status === 'received' || c.status === 'deposited' || c.status === 'cashed') ? '' : ' (اولیه)'}`,
                   desc: c.description || `برگه چک دریافتی شماره ${c.checkNumber} - بانک ${c.bankName} به سررسید ${c.dueDate}`,
                   debit: 0,
-                  credit: (isCashed || c.status === "bounced") ? 0 : (c.amount || 0),
+                  credit: c.amount || 0,
                   rawItem: c,
                   entryType: 'received_check'
-                };
+                });
+
+                if (c.status === 'bounced') {
+                   const bounceHistory = c.history?.find(h => h.status === 'bounced');
+                   entries.push({
+                     id: `rc-${c.id}-bounced`,
+                     refId: c.checkNumber || `چک دریافتی #${c.id}`,
+                     date: bounceHistory?.date || new Date().toISOString(),
+                     jalaliDate: bounceHistory?.date ? new Date(bounceHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `برگشت چک دریافتی`,
+                     desc: `برگشت خوردن چک دریافتی شماره ${c.checkNumber}`,
+                     debit: c.amount || 0,
+                     credit: 0,
+                     rawItem: c,
+                     entryType: 'received_check'
+                   });
+                }
+
+                if (c.status === 'returned') {
+                   const returnHistory = c.history?.find(h => h.status === 'returned');
+                   entries.push({
+                     id: `rc-${c.id}-returned`,
+                     refId: c.checkNumber || `چک دریافتی #${c.id}`,
+                     date: returnHistory?.date || new Date().toISOString(),
+                     jalaliDate: returnHistory?.date ? new Date(returnHistory.date).toLocaleDateString('fa-IR') : '-',
+                     type: `عودت چک دریافتی`,
+                     desc: `عودت برگه چک دریافتی شماره ${c.checkNumber}`,
+                     debit: c.amount || 0,
+                     credit: 0,
+                     rawItem: c,
+                     entryType: 'received_check'
+                   });
+                }
+
+                return entries;
               });
 
             const getJalaliSortValueDef = (jalaliStr: string) => {
@@ -14261,6 +14537,7 @@ export default function App() {
       </footer>
       </div>
     </div>
+    )}
     {printingTransaction && (() => {
       const isReceive = printingTransaction.type === 'receive';
       const isSalary = printingTransaction.type === 'salary';

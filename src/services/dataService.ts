@@ -46,6 +46,50 @@ export const generateId = () => {
   });
 };
 
+// Document Number Generator based on system settings
+export const generateDocNumber = async (docTypeKey: string): Promise<string> => {
+  try {
+    const settings = await getStoreSettings();
+    if (!settings) return Date.now().toString().slice(-6);
+
+    const prefixKey = `prefix_${docTypeKey}`;
+    const startKey = `start_${docTypeKey}`;
+    const lenKey = `len_${docTypeKey}`;
+
+    const prefix = settings[prefixKey as keyof CompanySettings] !== undefined ? String(settings[prefixKey as keyof CompanySettings]) : '';
+    const startObj = settings[startKey as keyof CompanySettings];
+    const start = startObj && !isNaN(Number(startObj)) ? Number(startObj) : 1000;
+    const lenObj = settings[lenKey as keyof CompanySettings];
+    const len = lenObj && !isNaN(Number(lenObj)) ? Number(lenObj) : 6;
+
+    let items: any[] = [];
+    if (docTypeKey === 'sale' || docTypeKey === 'purchase' || docTypeKey.includes('return') || docTypeKey === 'proforma') {
+      items = await getInvoices();
+      items = items.filter(i => docTypeKey.includes('return') ? i.type === docTypeKey : (docTypeKey === 'sale' ? i.type === 'sale' : i.type === docTypeKey));
+    } else if (docTypeKey === 'warehouse_receipt' || docTypeKey === 'warehouse_remittance') {
+      items = await getInvoices();
+      items = items.filter(i => i.type === docTypeKey);
+    } else if (docTypeKey === 'receive_receipt' || docTypeKey === 'pay_receipt' || docTypeKey === 'salary') {
+      items = await getTransactions();
+      const typeMap: any = { 'receive_receipt': 'receive', 'pay_receipt': 'pay', 'salary': 'salary' };
+      items = items.filter(i => i.type === typeMap[docTypeKey]);
+    } else if (docTypeKey === 'check_issued') items = await getIssuedChecks();
+    else if (docTypeKey === 'check_received') items = await getReceivedChecks();
+    else if (docTypeKey === 'person') items = await getPersons();
+    else if (docTypeKey === 'product') items = await getProducts();
+    else if (docTypeKey === 'accounting_document') items = await getAccountingDocuments();
+    else if (docTypeKey === 'loan') items = await getLoans();
+    else if (docTypeKey === 'installment') items = await getInstallments();
+
+    const sequentialNum = start + items.length;
+    const numStr = String(sequentialNum).padStart(len, '0');
+    return `${prefix}${numStr}`;
+    
+  } catch (err) {
+    return Date.now().toString().slice(-6);
+  }
+};
+
 export const getStoreSettings = async (): Promise<CompanySettings | null> => {
   return await getLocalData<CompanySettings | null>('company_profile', null);
 };
@@ -221,7 +265,13 @@ export const addPerson = async (person: any) => {
   }
 
   const nextSuffix = (maxSuffix + 1).toString().padStart(4, '0'); // e.g. 0001
-  const finalPersonCode = `${roleCodePrefix}${nextSuffix}`;
+  let finalPersonCode = `${roleCodePrefix}${nextSuffix}`;
+
+  // Check if there is specific configuration for Person Code in settings
+  const settings = await getStoreSettings();
+  if (settings && settings.prefix_person !== undefined) {
+    finalPersonCode = await generateDocNumber('person');
+  }
 
   const now = Date.now();
   const newPerson = { ...person, personCode: finalPersonCode, id: generateId(), createdAt: now, updatedAt: now };
@@ -485,6 +535,12 @@ export const addProduct = async (product: any) => {
     maxNum++;
     newCode = `00-${maxNum.toString().padStart(3, '0')}`;
   }
+  
+  // Check if there is specific configuration for Product Code in settings
+  const settings = await getStoreSettings();
+  if (settings && settings.prefix_product !== undefined) {
+    newCode = await generateDocNumber('product');
+  }
 
   const newProduct = { ...product, code: newCode, id: generateId(), createdAt: now, updatedAt: now };
   newProduct.priceHistory = [];
@@ -552,7 +608,16 @@ export const getTransactions = async () => {
 export const addTransaction = async (transaction: any) => {
   const transactions = await getLocalData<any[]>('transactions', []);
   const now = Date.now();
-  const newTransaction = { ...transaction, id: generateId(), createdAt: now, updatedAt: now };
+  
+  let finalTx = { ...transaction };
+  if (!finalTx.receiptNumber) {
+     const docTypeMap: any = { 'receive': 'receive_receipt', 'pay': 'pay_receipt', 'salary': 'salary' };
+     if (docTypeMap[finalTx.type]) {
+       finalTx.receiptNumber = await generateDocNumber(docTypeMap[finalTx.type]);
+     }
+  }
+
+  const newTransaction = { ...finalTx, id: generateId(), createdAt: now, updatedAt: now };
 
   if (transaction.type === 'receive' || transaction.type === 'pay' || transaction.type === 'salary') {
     const amount = Number(transaction.amount) || 0;
@@ -588,6 +653,31 @@ export const addTransaction = async (transaction: any) => {
 
   transactions.push(newTransaction);
   await saveLocalData('transactions', transactions);
+
+  // Auto-generate basic accounting document
+  try {
+     const docType = transaction.type === 'receive' ? 'receipt' : 'payment';
+     const title = transaction.type === 'receive' ? 'رسید دریافت' : transaction.type === 'pay' ? 'رسید پرداخت' : transaction.type === 'salary' ? 'پرداخت حقوق' : 'تراکنش مالی';
+     const items = [];
+     const defaultLedgerIds = await getLocalData<any[]>('ledger_accounts', []);
+     const defaultLedger = defaultLedgerIds.length > 0 ? defaultLedgerIds[0].id : '';
+     if (transaction.type === 'receive') {
+        items.push({ description: 'بدهکار - منابع', debit: Number(transaction.amount), credit: 0, ledgerAccountId: defaultLedger });
+        items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(transaction.amount), ledgerAccountId: defaultLedger, detailedAccountId: transaction.personId });
+     } else {
+        items.push({ description: 'بدهکار - طرف حساب', debit: Number(transaction.amount), credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: transaction.personId });
+        items.push({ description: 'بستانکار - منابع', debit: 0, credit: Number(transaction.amount), ledgerAccountId: defaultLedger });
+     }
+     await addAccountingDocument({
+        date: new Date().toISOString().split('T')[0],
+        description: `سند اتوماتیک ${title} به مبدا تراکنش ${newTransaction.id}`,
+        status: 'approved',
+        sourceType: docType,
+        sourceId: newTransaction.id,
+        items
+     });
+  } catch(e) {}
+
   return newTransaction;
 };
 
@@ -648,7 +738,14 @@ export const getInvoices = async () => {
 export const addInvoice = async (invoice: any) => {
   const invoices = await getLocalData<any[]>('invoices', []);
   const now = Date.now();
-  const newInvoice = { ...invoice, id: generateId(), createdAt: now, updatedAt: now };
+  
+  // Apply auto-generated invoice number if missing
+  let finalInvoiceObj = { ...invoice };
+  if (!finalInvoiceObj.invoiceNumber || finalInvoiceObj.invoiceNumber.trim() === '') {
+     finalInvoiceObj.invoiceNumber = await generateDocNumber(finalInvoiceObj.type);
+  }
+
+  const newInvoice = { ...finalInvoiceObj, id: generateId(), createdAt: now, updatedAt: now };
   invoices.push(newInvoice);
   await saveLocalData('invoices', invoices);
   
@@ -659,6 +756,39 @@ export const addInvoice = async (invoice: any) => {
 
   // Recalculate warehouse stocks automatically
   await recalculateAllWarehouseStocks();
+
+  try {
+     const docType = newInvoice.type;
+     let title = 'فاکتور';
+     if (docType === 'sale') title = 'فاکتور فروش';
+     if (docType === 'purchase') title = 'فاکتور خرید';
+     if (docType === 'sale_return') title = 'برگشت از فروش';
+     if (docType === 'purchase_return') title = 'برگشت از خرید';
+     
+     const items = [];
+     const defaultLedgerIds = await getLocalData<any[]>('ledger_accounts', []);
+     const defaultLedger = defaultLedgerIds.length > 0 ? defaultLedgerIds[0].id : '';
+     const total = Number(newInvoice.totalAmount) || 0;
+     
+     if (docType === 'sale' || docType === 'purchase_return') {
+        items.push({ description: 'بدهکار - شخص', debit: total, credit: 0, ledgerAccountId: defaultLedger, detailedAccountId: newInvoice.customerId });
+        items.push({ description: 'بستانکار - درآمد/موجودی', debit: 0, credit: total, ledgerAccountId: defaultLedger });
+     } else if (docType === 'purchase' || docType === 'sale_return') {
+        items.push({ description: 'بدهکار - موجودی/هزینه', debit: total, credit: 0, ledgerAccountId: defaultLedger });
+        items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: defaultLedger, detailedAccountId: newInvoice.customerId });
+     }
+     
+     if (items.length > 0) {
+       await addAccountingDocument({
+          date: new Date().toISOString().split('T')[0],
+          description: `سند اتوماتیک ${title} شماره ${newInvoice.invoiceNumber || newInvoice.id}`,
+          status: 'approved',
+          sourceType: docType.includes('sale') ? 'invoice_sale' : 'invoice_purchase',
+          sourceId: newInvoice.id,
+          items
+       });
+     }
+  } catch(e) {}
 
   return newInvoice;
 };
@@ -1017,8 +1147,96 @@ export const recalculateAllWarehouseStocks = async () => {
 };
 
 
+export const getStocktakings = async () => getLocalData<any[]>('stocktakings', []);
+export const saveStocktakings = async (data: any[]) => saveLocalData('stocktakings', data);
+export const addStocktaking = async (st: any) => {
+  const stocktakings = await getStocktakings();
+  const added = { ...st, id: generateId() };
+  stocktakings.push(added);
+  await saveStocktakings(stocktakings);
+  return added;
+};
+export const updateStocktaking = async (id: string | number, updatedSt: any) => {
+  const stocktakings = await getStocktakings();
+  const idx = stocktakings.findIndex(s => s.id?.toString() === id?.toString());
+  if (idx > -1) {
+    stocktakings[idx] = updatedSt;
+    await saveStocktakings(stocktakings);
+    return updatedSt;
+  }
+  return null;
+};
+export const deleteStocktaking = async (id: string | number) => {
+  const stocktakings = await getStocktakings();
+  const newSts = stocktakings.filter(s => s.id?.toString() !== id?.toString());
+  await saveStocktakings(newSts);
+};
+
 export const getLoans = async () => getLocalData<any[]>('loans', []);
 export const saveLoans = async (roles: any[]) => saveLocalData('loans', roles);
+
+export const getLedgerAccounts = async () => getLocalData<any[]>('ledger_accounts', []);
+export const saveLedgerAccounts = async (data: any[]) => saveLocalData('ledger_accounts', data);
+export const addLedgerAccount = async (la: any) => {
+  const accs = await getLedgerAccounts();
+  const added = { ...la, id: generateId() };
+  accs.push(added);
+  await saveLedgerAccounts(accs);
+  return added;
+};
+export const updateLedgerAccount = async (id: string | number, updated: any) => {
+  const accs = await getLedgerAccounts();
+  const idx = accs.findIndex((x: any) => x.id?.toString() === id?.toString());
+  if (idx > -1) {
+    accs[idx] = updated;
+    await saveLedgerAccounts(accs);
+    return updated;
+  }
+  return null;
+};
+export const deleteLedgerAccount = async (id: string | number) => {
+  const accs = await getLedgerAccounts();
+  const newAccs = accs.filter((x: any) => x.id?.toString() !== id?.toString());
+  await saveLedgerAccounts(newAccs);
+};
+
+export const getAccountingDocuments = async () => getLocalData<any[]>('accounting_documents', []);
+export const saveAccountingDocuments = async (data: any[]) => saveLocalData('accounting_documents', data);
+export const addAccountingDocument = async (doc: any) => {
+  const docs = await getAccountingDocuments();
+  // Generate a document number if not provided
+  let docNum = doc.documentNumber;
+  if (!docNum || String(docNum).trim() === '') {
+     const settings = await getStoreSettings();
+     if (settings && settings.prefix_accounting_document !== undefined) {
+         docNum = await generateDocNumber('accounting_document');
+     } else {
+         let maxDocNum = 0;
+         docs.forEach((d: any) => { if (Number(d.documentNumber) > maxDocNum) maxDocNum = Number(d.documentNumber); });
+         docNum = String(maxDocNum + 1).padStart(4, '0');
+     }
+  }
+  const added = { ...doc, id: generateId(), documentNumber: docNum, createdAt: Date.now() };
+  docs.push(added);
+  await saveAccountingDocuments(docs);
+  return added;
+};
+export const updateAccountingDocument = async (id: string | number, updated: any) => {
+  const docs = await getAccountingDocuments();
+  const idx = docs.findIndex((x: any) => x.id?.toString() === id?.toString());
+  if (idx > -1) {
+    docs[idx] = { ...updated, updatedAt: Date.now() };
+    await saveAccountingDocuments(docs);
+    return docs[idx];
+  }
+  return null;
+};
+export const deleteAccountingDocument = async (id: string | number) => {
+  const docs = await getAccountingDocuments();
+  const newDocs = docs.filter((x: any) => x.id?.toString() !== id?.toString());
+  await saveAccountingDocuments(newDocs);
+};
+
 export const getInstallments = async () => getLocalData<any[]>('installments', []);
 export const saveInstallments = async (groups: any[]) => saveLocalData('installments', groups);
 
