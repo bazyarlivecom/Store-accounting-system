@@ -7,7 +7,7 @@ import { AccountingDocument, LedgerAccount, CompanySettings } from '../../types'
 export default function AccountingDocsList({ onNavigateToCreate, onNavigateToView }: any) {
   const [docs, setDocs] = useState<AccountingDocument[]>([]);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
-  const [storeSettings, setStoreSettings] = useState<CompanySettings | null>(null);
+  const [storeSettings, setStoreSettings] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 

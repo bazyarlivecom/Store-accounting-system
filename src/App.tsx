@@ -10559,7 +10559,7 @@ export default function App() {
       ) : activeTab === 'accounting_doc_create' ? (
         <AccountingDocCreate showNotification={showNotification} onBack={() => setActiveTab('accounting_docs_list')} />
       ) : activeTab === 'accounting_doc_view' && viewingAccountingDoc ? (
-        <AccountingDocView doc={viewingAccountingDoc} accounts={ledgerAccountsData} storeSettings={storeSettings} onBack={() => setActiveTab('accounting_docs_list')} />
+        <AccountingDocView doc={viewingAccountingDoc} storeSettings={storeSettings} onBack={() => setActiveTab('accounting_docs_list')} />
       ) : activeTab === 'accounting_auto_sync' ? (
         <AccountingAutoSync showNotification={showNotification} />
       ) : activeTab === 'accounting_verification' ? (

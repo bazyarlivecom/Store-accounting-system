@@ -1,21 +1,30 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useReactToPrint } from 'react-to-print';
 import { Printer, ArrowRight, CheckCircle, FileText } from 'lucide-react';
 import { AccountingDocument, LedgerAccount } from '../../types';
+import { getLedgerAccounts } from '../../services/dataService';
 
 interface Props {
   doc: AccountingDocument;
-  accounts: LedgerAccount[];
   storeSettings?: any;
   onBack: () => void;
 }
 
-export default function AccountingDocView({ doc, accounts, storeSettings, onBack }: Props) {
+export default function AccountingDocView({ doc, storeSettings, onBack }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   
+  useEffect(() => {
+    const loadData = async () => {
+      const loadedAccs = await getLedgerAccounts();
+      setAccounts(loadedAccs);
+    };
+    loadData();
+  }, []);
+
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `Accounting_Doc_${doc.documentNumber}`,
   });
 

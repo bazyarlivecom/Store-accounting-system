@@ -25,7 +25,7 @@ export default function AccountingDocCreate({ showNotification, onBack }: any) {
       getLedgerAccounts(),
       getPersons()
     ]);
-    // only show 'subsidiary' (معین) or 'detailed' (تفصیلی) for selection in journal
+    // only show 'general' (کل), 'subsidiary' (معین) or 'detailed' (تفصیلی) for selection in journal
     setAccounts(accs);
     setPersons(pers);
   };
@@ -154,8 +154,8 @@ export default function AccountingDocCreate({ showNotification, onBack }: any) {
                       className="w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs"
                     >
                       <option value="">-- انتخاب حساب --</option>
-                      {accounts.filter(a => ['subsidiary', 'detailed'].includes(a.type)).map(a => (
-                        <option key={a.id} value={a.id}>{a.code} - {a.title}</option>
+                      {accounts.filter(a => ['general', 'subsidiary', 'detailed'].includes(a.type)).map(a => (
+                        <option key={a.id} value={a.id}>{a.code} - {a.title} ({a.type === 'general' ? 'کل' : a.type === 'subsidiary' ? 'معین' : 'تفصیلی'})</option>
                       ))}
                     </select>
                   </td>

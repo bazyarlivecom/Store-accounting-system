@@ -7,7 +7,7 @@ import { AccountingDocument, LedgerAccount, CompanySettings } from '../../types'
 export default function AccountingVerification({ showNotification }: any) {
   const [docs, setDocs] = useState<AccountingDocument[]>([]);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
-  const [storeSettings, setStoreSettings] = useState<CompanySettings | null>(null);
+  const [storeSettings, setStoreSettings] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'audit' | 'trial_balance'>('audit');
   const [searchTerm, setSearchTerm] = useState('');
@@ -108,10 +108,10 @@ export default function AccountingVerification({ showNotification }: any) {
     };
   }).filter(acc => acc.sumDebit > 0 || acc.sumCredit > 0); // Only show accounts with activity
 
-  const tbTotalDebit = trialBalance.filter(a => ['subsidiary', 'detailed'].includes(a.type)).reduce((s, a) => s + a.sumDebit, 0);
-  const tbTotalCredit = trialBalance.filter(a => ['subsidiary', 'detailed'].includes(a.type)).reduce((s, a) => s + a.sumCredit, 0);
-  const tbTotalRemainDebit = trialBalance.filter(a => ['subsidiary', 'detailed'].includes(a.type)).reduce((s, a) => s + a.remainDebit, 0);
-  const tbTotalRemainCredit = trialBalance.filter(a => ['subsidiary', 'detailed'].includes(a.type)).reduce((s, a) => s + a.remainCredit, 0);
+  const tbTotalDebit = trialBalance.reduce((s, a) => s + a.sumDebit, 0);
+  const tbTotalCredit = trialBalance.reduce((s, a) => s + a.sumCredit, 0);
+  const tbTotalRemainDebit = trialBalance.reduce((s, a) => s + a.remainDebit, 0);
+  const tbTotalRemainCredit = trialBalance.reduce((s, a) => s + a.remainCredit, 0);
 
   const filteredDocs = auditedDocs.filter(d => 
     d.documentNumber?.toString().includes(searchTerm) ||
