@@ -1,3 +1,7 @@
+import { DateObject } from "react-multi-date-picker";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
+
 export interface CompanySettings {
   storeName: string;
   phone?: string;
@@ -109,14 +113,22 @@ export const checkFinancialYear = async (dateStr: string | number) => {
   if (!start && !end) return;
 
   let checkDate = new Date(dateStr);
-  if (isNaN(checkDate.getTime())) return;
+  if (isNaN(checkDate.getTime())) {
+    try {
+      const jalaliDate = new DateObject({ date: String(dateStr).replace(/\//g, '-'), format: "YYYY-MM-DD", calendar: persian, locale: persian_fa });
+      checkDate = new Date(jalaliDate.toDate().toISOString());
+    } catch (e) {
+      return;
+    }
+    if (isNaN(checkDate.getTime())) return;
+  }
   checkDate.setHours(0,0,0,0);
 
   if (start) {
     let startDate = new Date(start);
     startDate.setHours(0,0,0,0);
     if (checkDate < startDate) {
-      throw new Error(`تاریخ وارد شده (${new Date(dateStr).toLocaleDateString('fa-IR')}) قبل از شروع سال مالی است و مجاز نمی‌باشد.`);
+      throw new Error(`تاریخ وارد شده قبل از شروع سال مالی است و مجاز نمی‌باشد.`);
     }
   }
 
@@ -124,7 +136,7 @@ export const checkFinancialYear = async (dateStr: string | number) => {
     let endDate = new Date(end);
     endDate.setHours(23,59,59,999);
     if (checkDate > endDate) {
-      throw new Error(`تاریخ وارد شده (${new Date(dateStr).toLocaleDateString('fa-IR')}) بعد از پایان سال مالی است و مجاز نمی‌باشد.`);
+      throw new Error(`تاریخ وارد شده بعد از پایان سال مالی است و مجاز نمی‌باشد.`);
     }
   }
 };

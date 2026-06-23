@@ -1781,9 +1781,9 @@ export default function App() {
       ]);
 
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting salary', error);
-      customAlert('خطای سیستمی رخ داد');
+      customAlert(error.message || 'خطای سیستمی رخ داد');
     } finally {
       setSubmittingSalary(false);
     }
