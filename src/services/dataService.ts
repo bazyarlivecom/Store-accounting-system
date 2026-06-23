@@ -317,67 +317,30 @@ export const addPerson = async (person: any) => {
   }
 
   // --- Handle Ledger Accounts for the Person ---
-  let finalAccountingCode = person.accountingCode;
-  
-  const ledgerAccounts = await getLedgerAccounts();
-  // Find standard parent for the role
-  let parentCode = '12'; // Default to receivables for customer
+  let parentCode = '12';
   let parentNature = 'debit';
+  let subsidiaryCode = '1201';
+  let subAccTitle = 'مشتریان';
   if (roleId === 'supplier') {
     parentCode = '21';
     parentNature = 'credit';
+    subsidiaryCode = '2101';
+    subAccTitle = 'تامین‌کنندگان';
   } else if (roleId === 'employee') {
-    parentCode = '21'; // Maybe under payables
+    parentCode = '21';
     parentNature = 'credit';
+    subsidiaryCode = '2102';
+    subAccTitle = 'کارکنان';
   }
-
-  const parentGeneralAcc = ledgerAccounts.find(a => a.code === parentCode);
   
-  if (parentGeneralAcc) {
-    // Check for a specific subsidiary account for this role (e.g. "مشتریان", "تامین‌کنندگان")
-    let subsidiaryCode = parentCode + '01'; // Default 01 sub-account
-    if (roleId === 'supplier') subsidiaryCode = '2101';
-    else if (roleId === 'employee') subsidiaryCode = '2102';
-    
-    let subAcc = ledgerAccounts.find(a => a.code === subsidiaryCode);
-    if (!subAcc) {
-      // Create it
-      const subAccTitle = roleId === 'supplier' ? 'تامین‌کنندگان' : (roleId === 'employee' ? 'کارکنان' : 'مشتریان');
-      subAcc = {
-        id: generateId(),
-        code: subsidiaryCode,
-        title: subAccTitle,
-        type: 'subsidiary',
-        nature: parentNature,
-        parentId: parentGeneralAcc.id
-      };
-      await addLedgerAccount(subAcc);
-      ledgerAccounts.push(subAcc); // update local array
-    }
-
-    if (!finalAccountingCode || String(finalAccountingCode).trim() === '') {
-      // Generate accounting code under subsidiary
-      let maxAccSuffix = 0;
-      ledgerAccounts.forEach(a => {
-        if (a.parentId === subAcc.id && a.code && a.code.startsWith(subsidiaryCode)) {
-          const s = Number(a.code.substring(subsidiaryCode.length));
-          if (!isNaN(s) && s > maxAccSuffix) maxAccSuffix = s;
-        }
-      });
-      finalAccountingCode = `${subsidiaryCode}${(maxAccSuffix + 1).toString().padStart(4, '0')}`;
-    }
-
-    // Always create a detailed ledger account for the person
-    const newPersonLedger = {
-      id: generateId(),
-      code: finalAccountingCode,
-      title: person.alias || person.name,
-      type: 'detailed',
-      nature: parentNature,
-      parentId: subAcc.id
-    };
-    await addLedgerAccount(newPersonLedger);
-  }
+  let finalAccountingCode = await ensureLedgerAccount(
+    person,
+    parentCode,
+    subsidiaryCode,
+    subAccTitle,
+    person.alias || person.name,
+    parentNature
+  );
 
   const now = Date.now();
   const newPerson = { ...person, personCode: finalPersonCode, accountingCode: finalAccountingCode, id: generateId(), createdAt: now, updatedAt: now };
@@ -399,65 +362,32 @@ export const updatePerson = async (id: string, person: any) => {
     const updatedPerson = { ...oldPerson, ...person, updatedAt: Date.now() };
 
     // Ensure Ledger Account exists
-    let finalAccountingCode = updatedPerson.accountingCode;
-    const ledgerAccounts = await getLedgerAccounts();
-    const roleId = updatedPerson.role;
-
     let parentCode = '12';
     let parentNature = 'debit';
+    const roleId = updatedPerson.role;
+    let subsidiaryCode = '1201';
+    let subAccTitle = 'مشتریان';
     if (roleId === 'supplier') {
       parentCode = '21';
       parentNature = 'credit';
+      subsidiaryCode = '2101';
+      subAccTitle = 'تامین‌کنندگان';
     } else if (roleId === 'employee') {
       parentCode = '21';
       parentNature = 'credit';
+      subsidiaryCode = '2102';
+      subAccTitle = 'کارکنان';
     }
-
-    const parentGeneralAcc = ledgerAccounts.find(a => a.code === parentCode);
     
-    if (parentGeneralAcc) {
-      let subsidiaryCode = parentCode + '01';
-      if (roleId === 'supplier') subsidiaryCode = '2101';
-      else if (roleId === 'employee') subsidiaryCode = '2102';
-      
-      let subAcc = ledgerAccounts.find(a => a.code === subsidiaryCode);
-      if (!subAcc) {
-        const subAccTitle = roleId === 'supplier' ? 'تامین‌کنندگان' : (roleId === 'employee' ? 'کارکنان' : 'مشتریان');
-        subAcc = { id: generateId(), code: subsidiaryCode, title: subAccTitle, type: 'subsidiary', nature: parentNature, parentId: parentGeneralAcc.id };
-        await addLedgerAccount(subAcc);
-        ledgerAccounts.push(subAcc);
-      }
-
-      if (!finalAccountingCode || String(finalAccountingCode).trim() === '') {
-        let maxAccSuffix = 0;
-        ledgerAccounts.forEach(a => {
-          if (a.parentId === subAcc.id && a.code && a.code.startsWith(subsidiaryCode)) {
-            const s = Number(a.code.substring(subsidiaryCode.length));
-            if (!isNaN(s) && s > maxAccSuffix) maxAccSuffix = s;
-          }
-        });
-        finalAccountingCode = `${subsidiaryCode}${(maxAccSuffix + 1).toString().padStart(4, '0')}`;
-        updatedPerson.accountingCode = finalAccountingCode;
-
-        const newPersonLedger = {
-          id: generateId(),
-          code: finalAccountingCode,
-          title: updatedPerson.alias || updatedPerson.name,
-          type: 'detailed',
-          nature: parentNature,
-          parentId: subAcc.id
-        };
-        await addLedgerAccount(newPersonLedger);
-      } else {
-        // If it exists, let's update title
-        const existingAcc = ledgerAccounts.find(a => a.code === finalAccountingCode);
-        if (existingAcc) {
-           if (existingAcc.title !== (updatedPerson.alias || updatedPerson.name)) {
-              await updateLedgerAccount(existingAcc.id, { ...existingAcc, title: updatedPerson.alias || updatedPerson.name });
-           }
-        }
-      }
-    }
+    let finalAccountingCode = await ensureLedgerAccount(
+      updatedPerson,
+      parentCode,
+      subsidiaryCode,
+      subAccTitle,
+      updatedPerson.alias || updatedPerson.name,
+      parentNature
+    );
+    updatedPerson.accountingCode = finalAccountingCode;
 
     persons[index] = updatedPerson;
     await saveLocalData('persons', persons);
@@ -477,6 +407,56 @@ export const deletePerson = async (id: string) => {
 };
 
 // Accounts
+export const ensureLedgerAccount = async (
+  entity: any,
+  parentCode: string,
+  subsidiaryCode: string,
+  subsidiaryTitle: string,
+  entityTitle: string,
+  nature: string
+) => {
+  let finalAccountingCode = entity.accountingCode;
+  const ledgerAccounts = await getLedgerAccounts();
+  
+  const parentGeneralAcc = ledgerAccounts.find(a => a.code === parentCode);
+  if (!parentGeneralAcc) return finalAccountingCode;
+
+  let subAcc = ledgerAccounts.find(a => a.code === subsidiaryCode);
+  if (!subAcc) {
+    subAcc = { id: generateId(), code: subsidiaryCode, title: subsidiaryTitle, type: 'subsidiary', nature, parentId: parentGeneralAcc.id };
+    await addLedgerAccount(subAcc);
+    ledgerAccounts.push(subAcc);
+  }
+
+  if (!finalAccountingCode || String(finalAccountingCode).trim() === '') {
+    let maxAccSuffix = 0;
+    ledgerAccounts.forEach(a => {
+      if (a.parentId === subAcc.id && a.code && a.code.startsWith(subsidiaryCode)) {
+        const s = Number(a.code.substring(subsidiaryCode.length));
+        if (!isNaN(s) && s > maxAccSuffix) maxAccSuffix = s;
+      }
+    });
+    finalAccountingCode = `${subsidiaryCode}${(maxAccSuffix + 1).toString().padStart(4, '0')}`;
+    
+    const newEntityLedger = {
+      id: generateId(),
+      code: finalAccountingCode,
+      title: entityTitle,
+      type: 'detailed',
+      nature,
+      parentId: subAcc.id
+    };
+    await addLedgerAccount(newEntityLedger);
+  } else {
+    const existingAcc = ledgerAccounts.find(a => a.code === finalAccountingCode);
+    if (existingAcc && existingAcc.title !== entityTitle) {
+      await updateLedgerAccount(existingAcc.id, { ...existingAcc, title: entityTitle });
+    }
+  }
+
+  return finalAccountingCode;
+};
+
 export const getAccounts = async () => {
   const accounts = await getLocalData<any[]>('accounts', []);
   return accounts.sort((a, b) => b.createdAt - a.createdAt);
@@ -485,7 +465,8 @@ export const getAccounts = async () => {
 export const addAccount = async (account: any) => {
   const accounts = await getLocalData<any[]>('accounts', []);
   const now = Date.now();
-  const newAccount = { ...account, id: generateId(), createdAt: now, updatedAt: now };
+  let finalAccountingCode = await ensureLedgerAccount(account, '11', '1102', 'بانک‌ها', account.bankName + ' - ' + (account.branchName || ''), 'debit');
+  const newAccount = { ...account, accountingCode: finalAccountingCode, id: generateId(), createdAt: now, updatedAt: now };
   accounts.push(newAccount);
   await saveLocalData('accounts', accounts);
   
@@ -500,7 +481,8 @@ export const updateAccount = async (id: string, account: any) => {
   const accounts = await getLocalData<any[]>('accounts', []);
   const index = accounts.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
-    accounts[index] = { ...accounts[index], ...account, updatedAt: Date.now() };
+    let finalAccountingCode = await ensureLedgerAccount(account, '11', '1102', 'بانک‌ها', account.bankName + ' - ' + (account.branchName || ''), 'debit');
+    accounts[index] = { ...accounts[index], ...account, accountingCode: finalAccountingCode, updatedAt: Date.now() };
     await saveLocalData('accounts', accounts);
   
   if (typeof addSystemLog !== 'undefined') {
@@ -526,7 +508,8 @@ export const getCashboxes = async () => {
 export const addCashbox = async (cashbox: any) => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
   const now = Date.now();
-  const newCashbox = { ...cashbox, id: generateId(), createdAt: now, updatedAt: now };
+  let finalAccountingCode = await ensureLedgerAccount(cashbox, '11', '1101', 'صندوق‌ها', cashbox.name, 'debit');
+  const newCashbox = { ...cashbox, accountingCode: finalAccountingCode, id: generateId(), createdAt: now, updatedAt: now };
   cashboxes.push(newCashbox);
   await saveLocalData('cashboxes', cashboxes);
   
@@ -541,7 +524,8 @@ export const updateCashbox = async (id: string, cashbox: any) => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
   const index = cashboxes.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
-    cashboxes[index] = { ...cashboxes[index], ...cashbox, updatedAt: Date.now() };
+    let finalAccountingCode = await ensureLedgerAccount(cashbox, '11', '1101', 'صندوق‌ها', cashbox.name, 'debit');
+    cashboxes[index] = { ...cashboxes[index], ...cashbox, accountingCode: finalAccountingCode, updatedAt: Date.now() };
     await saveLocalData('cashboxes', cashboxes);
   
   if (typeof addSystemLog !== 'undefined') {
@@ -1395,7 +1379,7 @@ export const getLedgerAccounts = async () => {
 export const saveLedgerAccounts = async (data: any[]) => saveLocalData('ledger_accounts', data);
 export const addLedgerAccount = async (la: any) => {
   const accs = await getLedgerAccounts();
-  const added = { ...la, id: generateId() };
+  const added = { ...la, id: la.id || generateId() };
   accs.push(added);
   await saveLedgerAccounts(accs);
   return added;
