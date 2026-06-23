@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Barcode from 'react-barcode';
-import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus } from 'lucide-react';
+import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus, Copy } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Line, ComposedChart, Cell } from 'recharts';
@@ -1846,6 +1846,26 @@ export default function App() {
     setNewProductCategoryId(p.categoryId || '');
     setNewProductCode(p.code || '');
     setNewProductBarcode(p.barcode || '');
+    setNewProductWarehouseId(p.warehouseId?.toString() || '');
+    setNewProductStock(p.stock?.toString() || '');
+    setNewProductMinStock(p.minStock?.toString() || '');
+    setNewProductUnit(p.unit || '');
+    setNewProductSecondaryUnit(p.secondaryUnit || '');
+    setNewProductUnitRatio(p.unitRatio?.toString() || '');
+    setNewProductDesc(p.description || '');
+    setProductFormTab('general');
+    setIsProductModalOpen(true);
+  };
+
+  const handleDuplicateProduct = (p: Product | any) => {
+    setEditingProductId(null);
+    setNewProductName(p.name + ' (کپی)');
+    setNewProductPrice(p.price.toString());
+    setNewProductPurchasePrice(p.purchasePrice?.toString() || '');
+    setNewProductType(p.type);
+    setNewProductCategoryId(p.categoryId || '');
+    setNewProductCode('');
+    setNewProductBarcode('');
     setNewProductWarehouseId(p.warehouseId?.toString() || '');
     setNewProductStock(p.stock?.toString() || '');
     setNewProductMinStock(p.minStock?.toString() || '');
@@ -7317,6 +7337,13 @@ export default function App() {
                             title="مشاهده کارت کالا"
                           >
                             <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDuplicateProduct(p)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
+                            title="کپی کردن کالا"
+                          >
+                            <Copy className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleEditProduct(p)}
