@@ -4,11 +4,14 @@ import { createServer as createViteServer } from 'vite';
 import { exec } from 'child_process';
 import fsPromises from 'fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import cookieParser from 'cookie-parser';
 
 const DATA_FILE = path.join(process.cwd(), 'database.json');
 const SQLITE_FILE = path.join(process.cwd(), 'database.sqlite');
 
-let db: DatabaseSync;
+let db;
 
 async function initDB() {
   db = new DatabaseSync(SQLITE_FILE);
@@ -32,11 +35,9 @@ async function initDB() {
         insertStmt.run(key, JSON.stringify(value));
       }
     }
-    // Rename old file so we don't migrate again
     await fsPromises.rename(DATA_FILE, DATA_FILE + '.bak');
     console.log('Migrated JSON DB to SQLite');
   } catch (e) {
-    // Migration not needed or already done
   }
 }
 
@@ -46,11 +47,146 @@ async function startServer() {
   const PORT = 3000;
   
   app.use(express.json({ limit: '50mb' }));
+  app.use(cookieParser());
+
+  // === AUTHENTICATION & USERS === //
+  const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-2024';
+  const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'super-secret-jwt-refresh-key-2024';
+
+  const getUsers = () => {
+    try {
+      const row = db.prepare('SELECT value FROM store WHERE key = ?').get('users');
+      return row ? JSON.parse(row.value) : [];
+    } catch(e) { return []; }
+  };
+
+  const saveUsers = (users) => {
+    db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('users', JSON.stringify(users));
+  };
+  
+  // Custom users endpoint intercepting password saves
+  app.post('/api/data/users', async (req, res, next) => {
+    try {
+      const users = req.body;
+      if (Array.isArray(users)) {
+        for (const user of users) {
+          if (user.password && !user.password.startsWith('$2b$')) {
+            user.password = await bcrypt.hash(user.password, 10);
+          }
+        }
+      }
+      req.body = users;
+      next();
+    } catch(e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    const { username, password } = req.body;
+    const users = getUsers();
+    
+    if (users.length === 0 && username === 'admin' && password === '123') {
+       const hashed = await bcrypt.hash('123', 10);
+       const admin = { id: 'admin-1', username: 'admin', password: hashed, name: 'مدیر کل', role: 'admin', isActive: true, requires2FA: false };
+       saveUsers([admin]);
+       users.push(admin);
+    }
+    
+    const user = users.find(u => u.username === username);
+    if (!user) return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است.' });
+    if (!user.isActive) return res.status(403).json({ error: 'حساب کاربری غیرفعال است.' });
+    
+    let isMatch = false;
+    if (user.password.startsWith('$2b$')) {
+       isMatch = await bcrypt.compare(password, user.password);
+    } else {
+       isMatch = (password === user.password);
+       if (isMatch) {
+          user.password = await bcrypt.hash(password, 10);
+          saveUsers(users);
+       }
+    }
+    
+    if (!isMatch) return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است.' });
+    
+    if (user.requires2FA) {
+       const otp = Math.floor(100000 + Math.random() * 900000).toString();
+       user.currentOTP = { code: otp, expiresAt: Date.now() + 5 * 60 * 1000 };
+       saveUsers(users);
+       console.log('OTP for ' + username + ' is: ' + otp);
+       
+       const tempToken = jwt.sign({ username }, JWT_SECRET, { expiresIn: '5m' });
+       return res.json({ requireOTP: true, tempToken, message: 'کد تایید ورود جهت تست (در کنسول هم چاپ شد): ' + otp }); 
+    } else {
+       return finalizeLogin(res, user);
+    }
+  });
+
+  app.post('/api/auth/verify-otp', async (req, res) => {
+    const { tempToken, otp } = req.body;
+    try {
+      const decoded = jwt.verify(tempToken, JWT_SECRET);
+      const users = getUsers();
+      const user = users.find(u => u.username === decoded.username);
+      
+      if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
+      if (!user.currentOTP || user.currentOTP.code !== otp || user.currentOTP.expiresAt < Date.now()) {
+         return res.status(401).json({ error: 'کد ورود نامعتبر است یا منقضی شده است' });
+      }
+      
+      delete user.currentOTP;
+      saveUsers(users);
+      
+      return finalizeLogin(res, user);
+    } catch(err) {
+      return res.status(401).json({ error: 'توکن نامعتبر است' });
+    }
+  });
+  
+  app.post('/api/auth/refresh', (req, res) => {
+     const token = req.cookies.refreshToken;
+     if (!token) return res.status(401).json({ error: 'نیازمند ورود مجدد' });
+     
+     try {
+       const decoded = jwt.verify(token, JWT_REFRESH_SECRET);
+       const users = getUsers();
+       const user = users.find(u => u.username === decoded.username);
+       if (!user || user.tokenVersion !== decoded.tokenVersion) {
+         return res.status(401).json({ error: 'توکن نامعتبر است' });
+       }
+       
+       const accessToken = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '15m' });
+       res.json({ accessToken });
+     } catch(e) {
+       res.status(401).json({ error: 'توکن نامعتبر است' });
+     }
+  });
+  
+  app.post('/api/auth/logout', (req, res) => {
+      res.clearCookie('refreshToken');
+      res.json({ success: true });
+  });
+  
+  function finalizeLogin(res, user) {
+     const tokenVersion = user.tokenVersion || 1;
+     const accessToken = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '15m' });
+     const refreshToken = jwt.sign({ username: user.username, tokenVersion }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+     
+     res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/api/auth/refresh' });
+     
+     const userWithoutPwd = { ...user };
+     delete userWithoutPwd.password;
+     delete userWithoutPwd.currentOTP;
+     res.json({ accessToken, user: userWithoutPwd });
+  }
+  // === END AUTHENTICATION === //
 
   // --- Local Backups Logic (Configurable) ---
   let backupConfig = { path: '', intervalHours: 4 };
   try {
-     const row = db.prepare('SELECT value FROM store WHERE key = ?').get('backupConfig') as { value: string } | undefined;
+     const getStmt = db.prepare('SELECT value FROM store WHERE key = ?');
+     const row = getStmt.get('backupConfig');
      if (row && row.value) {
         Object.assign(backupConfig, JSON.parse(row.value));
      }
@@ -62,14 +198,14 @@ async function startServer() {
         : path.join(process.cwd(), 'backups');
   };
 
-  let backupInterval: NodeJS.Timeout | null = null;
+  let backupInterval = null;
   const runBackupJob = async () => {
      try {
         const dir = getBackupsDir();
         await fsPromises.mkdir(dir, { recursive: true });
         const rowsStmt = db.prepare('SELECT key, value FROM store');
-        const rows = rowsStmt.all() as {key: string, value: string}[];
-        const backupData: any = {};
+        const rows = rowsStmt.all();
+        const backupData = {};
         for (const row of rows) {
           backupData[row.key] = JSON.parse(row.value);
         }
@@ -84,36 +220,33 @@ async function startServer() {
               await fsPromises.unlink(path.join(dir, jsonFiles[i]));
            }
         }
-        console.log('Auto backup created:', fileName, 'in', dir);
      } catch (err) {
-        console.error('Auto backup failed', err);
+        console.error('Backup job failed', err);
      }
   };
 
-  const setupBackupInterval = () => {
+  if (backupConfig.intervalHours > 0) {
+     backupInterval = setInterval(runBackupJob, backupConfig.intervalHours * 60 * 60 * 1000);
+  }
+
+  app.post('/api/db/backup-config', (req, res) => {
+     backupConfig = { ...backupConfig, ...req.body };
+     const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+     insertOrUpdate.run('backupConfig', JSON.stringify(backupConfig));
      if (backupInterval) clearInterval(backupInterval);
      if (backupConfig.intervalHours > 0) {
         backupInterval = setInterval(runBackupJob, backupConfig.intervalHours * 60 * 60 * 1000);
      }
-  };
-  
-  setupBackupInterval();
-
-  app.get('/api/db/backup-config', (req, res) => {
-     res.json(backupConfig);
+     res.json({ success: true, config: backupConfig });
   });
 
-  app.post('/api/db/backup-config', (req, res) => {
-     try {
-        const { path, intervalHours } = req.body;
-        backupConfig = { path: path || '', intervalHours: Number(intervalHours) || 0 };
-        const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-        insertOrUpdate.run('backupConfig', JSON.stringify(backupConfig));
-        setupBackupInterval();
-        res.json({ success: true, backupConfig });
-     } catch(err: any) {
-        res.status(500).json({ error: err.message });
-     }
+  app.get('/api/db/backup-config', (req, res) => {
+      res.json(backupConfig);
+  });
+
+  app.post('/api/db/run-backup', async (req, res) => {
+      await runBackupJob();
+      res.json({ success: true });
   });
 
   app.get('/api/db/backups', async (req, res) => {
@@ -128,60 +261,35 @@ async function startServer() {
            backupsList.push({ file, size: stat.size, time: stat.mtimeMs });
         }
         res.json(backupsList);
-     } catch (err: any) {
-        res.status(500).json({ error: err.message });
+     } catch(e) {
+        res.status(500).json({ error: e.message });
      }
   });
 
-  app.post('/api/db/backups/do', async (req, res) => {
-     try {
-        const dir = getBackupsDir();
-        await fsPromises.mkdir(dir, { recursive: true });
-        const rowsStmt = db.prepare('SELECT key, value FROM store');
-        const rows = rowsStmt.all() as {key: string, value: string}[];
-        const backupData: any = {};
-        for (const row of rows) {
-          backupData[row.key] = JSON.parse(row.value);
-        }
-        const fileName = `backup-${Date.now()}.json`;
-        await fsPromises.writeFile(path.join(dir, fileName), JSON.stringify(backupData));
-        res.json({ success: true, fileName });
-     } catch (err: any) {
-        res.status(500).json({ error: err.message });
-     }
+  app.delete('/api/db/backups/:filename', async (req, res) => {
+      try {
+         const { filename } = req.params;
+         const dir = getBackupsDir();
+         const filePath = path.join(dir, filename);
+         if (!filePath.startsWith(dir)) return res.status(403).send('Invalid path');
+         await fsPromises.unlink(filePath);
+         res.json({ success: true });
+      } catch(e) {
+         res.status(500).json({ error: e.message });
+      }
   });
-
-  app.post('/api/db/backups/restore/:filename', async (req, res) => {
-     try {
-        const { filename } = req.params;
-        const dir = getBackupsDir();
-        const filePath = path.join(dir, filename);
-        const raw = await fsPromises.readFile(filePath, 'utf8');
-        const parsed = JSON.parse(raw);
-        const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-        for (const [key, value] of Object.entries(parsed)) {
-          insertOrUpdate.run(key, JSON.stringify(value));
-        }
-        res.json({ success: true });
-     } catch (err: any) {
-        res.status(500).json({ error: err.message });
-     }
-  });
-  // --- End Local Backups Logic ---
-
-
 
   app.get('/api/data/:key', async (req, res) => {
     const { key } = req.params;
     try {
       const getStmt = db.prepare('SELECT value FROM store WHERE key = ?');
-      const row = getStmt.get(key) as { value: string } | undefined;
+      const row = getStmt.get(key);
       if (row) {
         res.json(JSON.parse(row.value));
       } else {
         res.json(null);
       }
-    } catch (err: any) {
+    } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
@@ -193,7 +301,7 @@ async function startServer() {
       const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
       insertOrUpdate.run(key, JSON.stringify(data));
       res.json({ success: true });
-    } catch (err: any) {
+    } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
@@ -207,18 +315,18 @@ async function startServer() {
       } catch(e) {}
       
       const rowsStmt = db.prepare('SELECT key, value FROM store');
-      const rows = rowsStmt.all() as { key: string, value: string }[];
-      const collections: any[] = [];
+      const rows = rowsStmt.all();
+      const collections = [];
       
       for (const row of rows) {
         const value = JSON.parse(row.value);
         const sizeBytes = Buffer.byteLength(row.value, 'utf8');
-        let recordCount = Array.isArray(value) ? value.length : Object.keys(value as any).length;
+        let recordCount = Array.isArray(value) ? value.length : Object.keys(value).length;
         collections.push({ name: row.key, size: sizeBytes, recordCount });
       }
       
       res.json({ totalSize, collections });
-    } catch (err: any) {
+    } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
@@ -226,8 +334,8 @@ async function startServer() {
   app.get('/api/db/backup', async (req, res) => {
     try {
       const rowsStmt = db.prepare('SELECT key, value FROM store');
-      const rows = rowsStmt.all() as { key: string, value: string }[];
-      const backupData: any = {};
+      const rows = rowsStmt.all();
+      const backupData = {};
       for (const row of rows) {
         backupData[row.key] = JSON.parse(row.value);
       }
@@ -236,7 +344,7 @@ async function startServer() {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
       res.send(JSON.stringify(backupData, null, 2));
-    } catch (err: any) {
+    } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
@@ -249,29 +357,36 @@ async function startServer() {
         insertOrUpdate.run(key, JSON.stringify(value));
       }
       res.json({ success: true });
-    } catch (err: any) {
+    } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.post('/api/system/update', (req, res) => {
-    exec('git pull origin main', (error, stdout, stderr) => {
-      if (error) {
-        return res.status(500).json({ success: false, message: 'خطا در دریافت بروزرسانی از گیت‌هاب', error: stderr || error.message });
+  app.post('/api/db/execute', (req, res) => {
+    const { query, params } = req.body;
+    try {
+      const isSelect = query.trim().toUpperCase().startsWith('SELECT');
+      const stmt = db.prepare(query);
+      if (isSelect) {
+        const results = stmt.all(...(params || []));
+        res.json({ results });
+      } else {
+        const info = stmt.run(...(params || []));
+        res.json({ info });
       }
-      res.json({ success: true, message: 'بروزرسانی با موفقیت انجام شد', output: stdout });
-    });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa',
+      appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    // Static serving for production
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -279,7 +394,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

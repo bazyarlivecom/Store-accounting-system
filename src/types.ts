@@ -191,6 +191,7 @@ export type User = {
   name: string;
   role: UserRole;
   isActive: boolean;
+  requires2FA?: boolean;
 }; 
 export type CompanySettings = {
   companyName: string;

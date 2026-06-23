@@ -15,7 +15,8 @@ export default function UserManager() {
     password: '',
     name: '',
     role: 'cashier' as UserRole,
-    isActive: true
+    isActive: true,
+    requires2FA: false
   });
 
   const loadUsers = async () => {
@@ -34,7 +35,8 @@ export default function UserManager() {
       password: u.password || '',
       name: u.name,
       role: u.role,
-      isActive: u.isActive
+      isActive: u.isActive,
+      requires2FA: u.requires2FA || false
     });
     setIsModalOpen(true);
   };
@@ -114,11 +116,14 @@ export default function UserManager() {
                           {roleLabels[u.role] || u.role}
                        </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 flex flex-col gap-2">
                        {u.isActive ? (
-                         <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">فعال</span>
+                         <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs text-center">فعال</span>
                        ) : (
-                         <span className="text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded text-xs">غیرفعال</span>
+                         <span className="text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded text-xs text-center">غیرفعال</span>
+                       )}
+                       {u.requires2FA && (
+                         <span className="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded text-[10px] text-center border border-blue-100">OTP روشن</span>
                        )}
                     </td>
                     <td className="px-6 py-4 flex gap-2 justify-center">
@@ -169,6 +174,13 @@ export default function UserManager() {
                      <label className="text-sm font-bold">وضعیت حساب:</label>
                      <label className="flex items-center gap-1 cursor-pointer">
                         <input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form, isActive: e.target.checked})}/>
+                        <span>فعال است</span>
+                     </label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                     <label className="text-sm font-bold">ورود دو مرحله‌ای (OTP):</label>
+                     <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" checked={form.requires2FA} onChange={e=>setForm({...form, requires2FA: e.target.checked})}/>
                         <span>فعال است</span>
                      </label>
                   </div>
