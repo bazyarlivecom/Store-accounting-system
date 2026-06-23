@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ca
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import { 
   CreditCard, Plus, Edit2, Trash2, CheckCircle, Clock, X, Save, 
-  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart, ChevronDown, Printer, History, Activity, User
+  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart as BarChartIcon, ChevronDown, Printer, History, Activity, User
 } from 'lucide-react';
 import { 
   getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, 

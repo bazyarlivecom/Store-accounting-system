@@ -81,7 +81,7 @@ export default function UserManager() {
             </div>
             <button onClick={() => {
                 setEditingId(null);
-                setForm({ username: '', password: '', name: '', role: 'cashier', isActive: true });
+                setForm({ username: '', password: '', name: '', role: 'cashier', isActive: true, requires2FA: false });
                 setIsModalOpen(true);
             }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium">
                <Plus className="w-4 h-4"/> ایجاد کاربر جدید

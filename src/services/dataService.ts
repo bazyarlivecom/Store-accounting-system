@@ -269,7 +269,7 @@ export const addPerson = async (person: any) => {
 
   // Check if there is specific configuration for Person Code in settings
   const settings = await getStoreSettings();
-  if (settings && settings.prefix_person !== undefined) {
+  if (settings && (settings as any).prefix_person !== undefined) {
     finalPersonCode = await generateDocNumber('person');
   }
 
@@ -538,7 +538,7 @@ export const addProduct = async (product: any) => {
   
   // Check if there is specific configuration for Product Code in settings
   const settings = await getStoreSettings();
-  if (settings && settings.prefix_product !== undefined) {
+  if (settings && (settings as any).prefix_product !== undefined) {
     newCode = await generateDocNumber('product');
   }
 
@@ -1208,7 +1208,7 @@ export const addAccountingDocument = async (doc: any) => {
   let docNum = doc.documentNumber;
   if (!docNum || String(docNum).trim() === '') {
      const settings = await getStoreSettings();
-     if (settings && settings.prefix_accounting_document !== undefined) {
+     if (settings && (settings as any).prefix_accounting_document !== undefined) {
          docNum = await generateDocNumber('accounting_document');
      } else {
          let maxDocNum = 0;
