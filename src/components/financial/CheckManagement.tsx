@@ -337,6 +337,15 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
     fetchData();
   };
 
+  const editCheckbook = (cb: Checkbook) => {
+    setEditingCheckbookId(cb.id);
+    setCbAccountId(cb.accountId?.toString() || '');
+    setCbStart(cb.startNumber);
+    setCbEnd(cb.endNumber);
+    setCbIssued(cb.issuedDate || '');
+    setIsCheckbookModalOpen(true);
+  };
+
   const deleteCb = async (id: string|number) => {
     if (window.confirm('آیا از حذف این دسته چک اطمینان دارید؟')) {
       await deleteCheckbook(id.toString());
@@ -471,6 +480,13 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                       {cb.issuedDate && <div className="text-[10px] text-gray-400 mt-2">تاریخ ثبت: {cb.issuedDate}</div>}
                       
                       <div className="flex justify-end gap-2 absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => editCheckbook(cb)} 
+                          className="p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                          title="ویرایش دسته چک"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => deleteCb(cb.id)} 
                           className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
@@ -1075,7 +1091,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               <div className="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 className="text-base font-black text-gray-950 flex items-center gap-2">
                   <Plus className="w-5 h-5 text-indigo-600" />
-                  ثبت و تعریف دسته چک جدید
+                  {editingCheckbookId ? 'ویرایش دسته چک' : 'ثبت و تعریف دسته چک جدید'}
                 </h3>
                 <button onClick={() => setIsCheckbookModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
               </div>
@@ -1107,7 +1123,7 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                   
                   <div className="flex justify-end gap-2.5 pt-4 border-t">
                     <button type="button" onClick={() => setIsCheckbookModalOpen(false)} className="px-4 py-2 border bg-white border-gray-200 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-50">انصراف</button>
-                    <button type="submit" className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm">ثبت و ایجاد دسته چک</button>
+                    <button type="submit" className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm">{editingCheckbookId ? 'ذخیره تغییرات دسته چک' : 'ثبت و ایجاد دسته چک'}</button>
                   </div>
               </form>
             </motion.div>
