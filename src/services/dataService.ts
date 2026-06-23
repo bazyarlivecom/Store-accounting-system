@@ -1175,7 +1175,43 @@ export const deleteStocktaking = async (id: string | number) => {
 export const getLoans = async () => getLocalData<any[]>('loans', []);
 export const saveLoans = async (roles: any[]) => saveLocalData('loans', roles);
 
-export const getLedgerAccounts = async () => getLocalData<any[]>('ledger_accounts', []);
+export const getLedgerAccounts = async () => {
+  let accs = await getLocalData<any[]>('ledger_accounts', []);
+  if (accs.length === 0) {
+    const assetsId = generateId();
+    const liabilitiesId = generateId();
+    const equityId = generateId();
+    const incomeId = generateId();
+    const expensesId = generateId();
+    
+    accs = [
+      { id: assetsId, code: '1', title: 'دارایی‌ها', type: 'group', nature: 'debit', parentId: null },
+      { id: liabilitiesId, code: '2', title: 'بدهی‌ها', type: 'group', nature: 'credit', parentId: null },
+      { id: equityId, code: '3', title: 'حقوق صاحبان سهام', type: 'group', nature: 'credit', parentId: null },
+      { id: incomeId, code: '4', title: 'درآمدها', type: 'group', nature: 'credit', parentId: null },
+      { id: expensesId, code: '5', title: 'هزینه‌ها', type: 'group', nature: 'debit', parentId: null },
+      
+      { id: generateId(), code: '11', title: 'موجودی نقد و بانک', type: 'general', nature: 'debit', parentId: assetsId },
+      { id: generateId(), code: '12', title: 'حساب‌ها و اسناد دریافتنی تجاری', type: 'general', nature: 'debit', parentId: assetsId },
+      { id: generateId(), code: '13', title: 'موجودی مواد و کالا', type: 'general', nature: 'debit', parentId: assetsId },
+      { id: generateId(), code: '14', title: 'پیش پرداخت‌ها', type: 'general', nature: 'debit', parentId: assetsId },
+      { id: generateId(), code: '15', title: 'دارایی‌های ثابت', type: 'general', nature: 'debit', parentId: assetsId },
+      
+      { id: generateId(), code: '21', title: 'حساب‌ها و اسناد پرداختنی تجاری', type: 'general', nature: 'credit', parentId: liabilitiesId },
+      { id: generateId(), code: '22', title: 'پیش دریافت‌ها', type: 'general', nature: 'credit', parentId: liabilitiesId },
+      
+      { id: generateId(), code: '31', title: 'سرمایه', type: 'general', nature: 'credit', parentId: equityId },
+      
+      { id: generateId(), code: '41', title: 'فروش کالا و خدمات', type: 'general', nature: 'credit', parentId: incomeId },
+      
+      { id: generateId(), code: '51', title: 'بهای تمام شده کالای فروش رفته', type: 'general', nature: 'debit', parentId: expensesId },
+      { id: generateId(), code: '52', title: 'هزینه‌های حقوق و دستمزد', type: 'general', nature: 'debit', parentId: expensesId },
+      { id: generateId(), code: '53', title: 'هزینه‌های اداری و تشکیلاتی', type: 'general', nature: 'debit', parentId: expensesId }
+    ];
+    await saveLocalData('ledger_accounts', accs);
+  }
+  return accs;
+};
 export const saveLedgerAccounts = async (data: any[]) => saveLocalData('ledger_accounts', data);
 export const addLedgerAccount = async (la: any) => {
   const accs = await getLedgerAccounts();
