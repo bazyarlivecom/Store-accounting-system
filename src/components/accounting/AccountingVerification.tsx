@@ -73,45 +73,48 @@ export default function AccountingVerification({ showNotification }: any) {
   const totalSystemCredit = auditedDocs.reduce((sum, doc) => sum + doc.totalCredit, 0);
 
   // --- Trial Balance Calculations ---
-  const trialBalance = accounts.map(acc => {
-    let sumDebit = 0;
-    let sumCredit = 0;
+  const rawBalances: Record<string, { sumDebit: number, sumCredit: number }> = {};
+  accounts.forEach(a => rawBalances[a.id] = { sumDebit: 0, sumCredit: 0 });
 
-    docs.forEach(doc => {
-      // Only include approved docs in trial balance (optional, but standard)
-      if (doc.status !== 'approved') return;
-
-      doc.items.forEach(item => {
-        // If this is the exact account
-        if (item.ledgerAccountId?.toString() === acc.id.toString()) {
-          sumDebit += (Number(item.debit) || 0);
-          sumCredit += (Number(item.credit) || 0);
-        }
-      });
+  docs.forEach(doc => {
+    if (doc.status !== 'approved') return;
+    doc.items.forEach(item => {
+      let currentAccId = item.ledgerAccountId;
+      while (currentAccId) {
+         if (rawBalances[currentAccId]) {
+            rawBalances[currentAccId].sumDebit += (Number(item.debit) || 0);
+            rawBalances[currentAccId].sumCredit += (Number(item.credit) || 0);
+         }
+         const acc = accounts.find(a => a.id?.toString() === currentAccId?.toString());
+         currentAccId = acc?.parentId;
+      }
     });
+  });
 
+  const trialBalance = accounts.map(acc => {
+    const b = rawBalances[acc.id] || { sumDebit: 0, sumCredit: 0 };
     let remainDebit = 0;
     let remainCredit = 0;
 
-    if (sumDebit > sumCredit) {
-      remainDebit = sumDebit - sumCredit;
-    } else if (sumCredit > sumDebit) {
-      remainCredit = sumCredit - sumDebit;
+    if (b.sumDebit > b.sumCredit) {
+      remainDebit = b.sumDebit - b.sumCredit;
+    } else if (b.sumCredit > b.sumDebit) {
+      remainCredit = b.sumCredit - b.sumDebit;
     }
 
     return {
       ...acc,
-      sumDebit,
-      sumCredit,
+      sumDebit: b.sumDebit,
+      sumCredit: b.sumCredit,
       remainDebit,
       remainCredit
     };
   }).filter(acc => acc.sumDebit > 0 || acc.sumCredit > 0); // Only show accounts with activity
 
-  const tbTotalDebit = trialBalance.reduce((s, a) => s + a.sumDebit, 0);
-  const tbTotalCredit = trialBalance.reduce((s, a) => s + a.sumCredit, 0);
-  const tbTotalRemainDebit = trialBalance.reduce((s, a) => s + a.remainDebit, 0);
-  const tbTotalRemainCredit = trialBalance.reduce((s, a) => s + a.remainCredit, 0);
+  const tbTotalDebit = trialBalance.filter(a => !a.parentId).reduce((s, a) => s + a.sumDebit, 0);
+  const tbTotalCredit = trialBalance.filter(a => !a.parentId).reduce((s, a) => s + a.sumCredit, 0);
+  const tbTotalRemainDebit = trialBalance.filter(a => !a.parentId).reduce((s, a) => s + a.remainDebit, 0);
+  const tbTotalRemainCredit = trialBalance.filter(a => !a.parentId).reduce((s, a) => s + a.remainCredit, 0);
 
   const filteredDocs = auditedDocs.filter(d => 
     d.documentNumber?.toString().includes(searchTerm) ||

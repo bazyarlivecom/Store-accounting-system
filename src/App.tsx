@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Barcode from 'react-barcode';
-import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus, Copy, LayoutDashboard } from 'lucide-react';
+import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus, Copy, LayoutDashboard, Phone, MapPin } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Line, ComposedChart, Cell } from 'recharts';
@@ -1317,6 +1317,33 @@ export default function App() {
     }
   };
 
+  const [isGeneratingCodes, setIsGeneratingCodes] = useState(false);
+  const handleGenerateMissingAccountingCodes = async () => {
+    setIsGeneratingCodes(true);
+    try {
+      const personsWithoutCode = persons.filter(p => !p.accountingCode || String(p.accountingCode).trim() === '');
+      if (personsWithoutCode.length === 0) {
+        alert('تمام اشخاص در حال حاضر دارای کد حسابداری هستند.');
+        setIsGeneratingCodes(false);
+        return;
+      }
+      
+      let generated = 0;
+      for (const p of personsWithoutCode) {
+         await updatePerson(p.id as string, p);
+         generated++;
+      }
+      
+      setSuccessMsg(`کد حسابداری برای ${generated} شخص با موفقیت صادر شد.`);
+      await fetchPersons();
+    } catch (error) {
+      console.error(error);
+      alert('خطا در صدور کدهای حسابداری');
+    } finally {
+      setIsGeneratingCodes(false);
+    }
+  };
+
   const fetchAccounts = async () => {
     try {
       const data = await getAccounts();
@@ -1579,9 +1606,9 @@ export default function App() {
              sendNotification(`${person.name} گرامی، رسید ${isRec ? 'دریافت از' : 'پرداخت به'} شما به مبلغ ${amt} ${storeSettings?.currency || 'تومان'} با موفقیت ثبت شد.`, person.phone, storeSettings?.notify_method);
          }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      customAlert('خطا در ارتباط با سرور.');
+      customAlert(err.message || 'خطا در ارتباط با سرور.');
     } finally {
       setSubmittingReceipt(false);
     }
@@ -2957,9 +2984,9 @@ export default function App() {
         setPreviewInvoiceData(null); // Clear preview modal
       }, 1500);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting invoice:', error);
-      customAlert('خطا در ارتباط با سرور.');
+      customAlert(error.message || 'خطا در ارتباط با سرور.');
     } finally {
       setSubmitting(false);
     }
@@ -3140,9 +3167,9 @@ export default function App() {
       }, 1500);
       
       setActiveTab('list_sale');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      customAlert('خطایی در اجرای انتقال و ثبت فاکتور پیش آمد.');
+      customAlert(err.message || 'خطایی در اجرای انتقال و ثبت فاکتور پیش آمد.');
     } finally {
       setSubmitting(false);
     }
@@ -3373,6 +3400,38 @@ export default function App() {
     if (balance > 0) return { amount: balance, status: 'بدهکار', color: 'text-rose-600', bg: 'bg-rose-50' };
     if (balance < 0) return { amount: Math.abs(balance), status: 'بستانکار', color: 'text-emerald-600', bg: 'bg-emerald-50' };
     return { amount: 0, status: 'بی‌حساب', color: 'text-gray-500', bg: 'bg-gray-100' };
+  };
+
+  const renderPersonInfoBox = (personId: string | number, themeClass: string = 'bg-gray-50 border-gray-100 text-gray-600') => {
+    const person = persons.find(p => p.id?.toString() === personId?.toString());
+    if (!person) return null;
+    const bal = calculatePersonBalance(personId);
+    return (
+      <div className={`mt-2 text-xs font-bold w-full ${themeClass} border rounded-lg p-3 flex flex-col gap-2`}>
+        {(person.phone || person.address) && (
+          <div className="flex flex-col gap-1.5 pb-2 border-b border-black/5">
+            {person.phone && (
+              <div className="flex items-center gap-1.5 opacity-90 font-medium">
+                <Phone className="w-3.5 h-3.5" />
+                <span dir="ltr" className="text-right w-full">{person.phone}</span>
+              </div>
+            )}
+            {person.address && (
+              <div className="flex gap-1.5 opacity-90 font-medium leading-relaxed">
+                <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>{person.address}</span>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex justify-between items-center text-[11px] sm:text-xs">
+          <span className="opacity-80">مانده حساب فعلی:</span>
+          <span className={`${bal.bg || 'bg-white'} ${bal.color || 'text-slate-800'} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
+            {bal.amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(bal.amount)} ${storeSettings.currency || 'تومان'} (${bal.status})`}
+          </span>
+        </div>
+      </div>
+    );
   };
 
   const calculateSubtotal = () => items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
@@ -3898,14 +3957,7 @@ export default function App() {
                           placeholder="-- انتخاب کنید --"
                           searchPlaceholder="جستجوی شخص..."
                         />
-                        {customerId && (
-                          <div className="mt-2 text-xs font-bold w-full bg-gray-50 border border-gray-100 rounded-lg p-2 px-3 flex justify-between items-center text-gray-600">
-                             <span>مانده حساب فعلی:</span>
-                             <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
-                                {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
-                             </span>
-                          </div>
-                        )}
+                        {customerId && renderPersonInfoBox(customerId, 'bg-gray-50 border-gray-100 text-gray-600')}
                       </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-700 mb-1">انبار انتخابی</label>
@@ -4132,14 +4184,7 @@ export default function App() {
                         searchPlaceholder="جستجوی شخص یا شرکت..."
                       />
                     </div>
-                    {customerId && (
-                      <div className="mt-2 text-xs font-bold w-full bg-emerald-50/50 border border-emerald-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
-                         <span>مانده حساب فعلی:</span>
-                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
-                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
-                         </span>
-                      </div>
-                    )}
+                    {customerId && renderPersonInfoBox(customerId, 'bg-emerald-50/50 border-emerald-100/50 text-slate-600')}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Wallet className="w-4 h-4 text-emerald-500"/> وضعیت پرداخت</label>
@@ -4495,14 +4540,7 @@ export default function App() {
                         searchPlaceholder="جستجوی شخص یا شرکت..."
                       />
                     </div>
-                    {customerId && (
-                      <div className="mt-2 text-xs font-bold w-full bg-emerald-50/50 border border-emerald-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
-                         <span>مانده حساب فعلی:</span>
-                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
-                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
-                         </span>
-                      </div>
-                    )}
+                    {customerId && renderPersonInfoBox(customerId, 'bg-emerald-50/50 border-emerald-100/50 text-slate-600')}
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><Wallet className="w-4 h-4 text-emerald-500"/> وضعیت پرداخت</label>
@@ -4850,14 +4888,7 @@ export default function App() {
                         searchPlaceholder="جستجوی شخص یا شرکت..."
                       />
                     </div>
-                    {customerId && (
-                      <div className="mt-2 text-xs font-bold w-full bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
-                         <span>مانده حساب فعلی:</span>
-                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
-                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
-                         </span>
-                      </div>
-                    )}
+                    {customerId && renderPersonInfoBox(customerId, 'bg-indigo-50/50 border-indigo-100/50 text-slate-600')}
                   </div>
                   <div className="lg:col-span-1">
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-indigo-500"/> توضیحات</label>
@@ -5200,14 +5231,7 @@ export default function App() {
                         searchPlaceholder="جستجوی شخص یا شرکت..."
                       />
                     </div>
-                    {customerId && (
-                      <div className="mt-2 text-xs font-bold w-full bg-indigo-50/50 border border-indigo-100/50 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
-                         <span>مانده حساب فعلی:</span>
-                         <span className={`${calculatePersonBalance(customerId).bg} ${calculatePersonBalance(customerId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
-                            {calculatePersonBalance(customerId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(customerId).amount)} ${storeSettings.currency} (${calculatePersonBalance(customerId).status})`}
-                         </span>
-                      </div>
-                    )}
+                    {customerId && renderPersonInfoBox(customerId, 'bg-indigo-50/50 border-indigo-100/50 text-slate-600')}
                   </div>
                   <div className="lg:col-span-1">
                     <label className="block text-sm font-bold text-slate-600 mb-2 flex items-center gap-1.5"><FileText className="w-4 h-4 text-indigo-500"/> توضیحات</label>
@@ -5857,14 +5881,7 @@ export default function App() {
                           value={receiptPersonId}
                           onChange={() => {}}
                         />
-                        {receiptPersonId && (
-                          <div className={`mt-2 text-xs font-bold w-full ${isReceive ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-rose-50/50 border-rose-100/50'} border rounded-lg p-2 px-3 flex justify-between items-center text-slate-600`}>
-                             <span>مانده حساب فعلی:</span>
-                             <span className={`${calculatePersonBalance(receiptPersonId).bg} ${calculatePersonBalance(receiptPersonId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
-                                {calculatePersonBalance(receiptPersonId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(receiptPersonId).amount)} ${storeSettings.currency} (${calculatePersonBalance(receiptPersonId).status})`}
-                             </span>
-                          </div>
-                        )}
+                        {receiptPersonId && renderPersonInfoBox(receiptPersonId, `${isReceive ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-rose-50/50 border-rose-100/50'} text-slate-600`)}
                       </div>
 
                      <div>
@@ -6329,14 +6346,7 @@ export default function App() {
                          <option key={p.id} value={p.id}>{p.alias || p.name} - {getRoleName(p.role)}</option>
                          ))}
                        </select>
-                       {salaryPersonId && (
-                         <div className="mt-2 text-xs font-bold w-full bg-slate-50 border border-slate-100 rounded-lg p-2 px-3 flex justify-between items-center text-slate-600">
-                            <span>مانده حساب فعلی:</span>
-                            <span className={`${calculatePersonBalance(salaryPersonId).bg} ${calculatePersonBalance(salaryPersonId).color} px-2.5 py-0.5 rounded shadow-sm border border-black/5`}>
-                               {calculatePersonBalance(salaryPersonId).amount === 0 ? 'صفر (بی‌حساب)' : `${formatCurrency(calculatePersonBalance(salaryPersonId).amount)} ${storeSettings.currency} (${calculatePersonBalance(salaryPersonId).status})`}
-                            </span>
-                         </div>
-                       )}
+                       {salaryPersonId && renderPersonInfoBox(salaryPersonId, 'bg-slate-50 border-slate-100 text-slate-600')}
                      </div>
 
                      <div>
@@ -7528,6 +7538,15 @@ export default function App() {
                   <p className="text-xs text-slate-500 font-bold mt-1">پرونده‌ی اطلاعاتی جامع مشتریان و همکاران</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleGenerateMissingAccountingCodes}
+                    disabled={isGeneratingCodes}
+                    className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 bg-white rounded-xl flex items-center gap-2 transition-all text-xs font-black shadow-xs cursor-pointer disabled:opacity-50"
+                    title="صدور کد حسابداری برای اشخاصی که کد حسابداری ندارند"
+                  >
+                    {isGeneratingCodes ? <RefreshCw className="w-4 h-4 text-indigo-500 animate-spin" /> : <Key className="w-4 h-4 text-indigo-500" />}
+                    صدور کد حسابداری
+                  </button>
                   <button
                     onClick={() => {
                       setPersonIOAction('export');
@@ -9968,6 +9987,26 @@ export default function App() {
                         value={settingsForm.address || ''}
                         onChange={e => setSettingsForm({...settingsForm, address: e.target.value})}
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                      />
+                    </div>
+
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">تاریخ شروع سال مالی</label>
+                      <input
+                        type="date"
+                        value={settingsForm.financialYearStart || ''}
+                        onChange={e => setSettingsForm({...settingsForm, financialYearStart: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-sans"
+                      />
+                    </div>
+                    
+                    <div className="w-full text-right">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">تاریخ پایان سال مالی</label>
+                      <input
+                        type="date"
+                        value={settingsForm.financialYearEnd || ''}
+                        onChange={e => setSettingsForm({...settingsForm, financialYearEnd: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-sans"
                       />
                     </div>
                   </div>

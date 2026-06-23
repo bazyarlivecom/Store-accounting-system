@@ -79,6 +79,17 @@ export default function AccountingAutoSync({ showNotification }: any) {
           return acc ? acc.id : defaultLedger;
       };
 
+      const safeDate = (dateStr: any) => {
+          try {
+              if (!dateStr) return new Date().toISOString().split('T')[0];
+              const d = new Date(dateStr);
+              if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+              return d.toISOString().split('T')[0];
+          } catch {
+              return new Date().toISOString().split('T')[0];
+          }
+      };
+
       const cashAcc = getAccByCode('11');
       const salesAcc = getAccByCode('41');
       const inventoryAcc = getAccByCode('13');
@@ -98,7 +109,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
               items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(p.initialBalance), ledgerAccountId: getPersonLedgerAcc(p.id), detailedAccountId: p.id });
           }
           await addAccountingDocument({
-              date: p.registrationDate ? new Date(p.registrationDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              date: safeDate(p.registrationDate),
               description: `سند افتتاحیه طرف حساب: ${p.name}`,
               status: 'approved',
               sourceType: 'opening_balance',
@@ -119,7 +130,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
               items.push({ description: 'بستانکار - منابع (صندوق/بانک)', debit: 0, credit: Number(t.amount), ledgerAccountId: cashAcc });
           }
           await addAccountingDocument({
-              date: t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              date: safeDate(t.date),
               description: `سند اتوماتیک تراکنش به مبدا تراکنش ${t.id}`,
               status: 'approved',
               sourceType: t.type === 'receive' ? 'receipt' : 'payment',
@@ -143,7 +154,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
 
           if (items.length > 0) {
               await addAccountingDocument({
-                  date: inv.date ? new Date(inv.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                  date: safeDate(inv.date),
                   description: `سند اتوماتیک فاکتور شماره ${inv.invoiceNumber || inv.id}`,
                   status: 'approved',
                   sourceType: inv.type.includes('sale') ? 'invoice_sale' : 'invoice_purchase',
@@ -166,7 +177,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
               items.push({ description: 'بستانکار - شخص', debit: 0, credit: total, ledgerAccountId: getPersonLedgerAcc(c.payerId), detailedAccountId: c.payerId });
           }
           await addAccountingDocument({
-              date: c.issueDate ? new Date(c.issueDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              date: safeDate(c.issueDate),
               description: `سند اتوماتیک چک ${c._isIssued ? 'پرداختی' : 'دریافتی'} شماره ${c.checkNumber}`,
               status: 'approved',
               sourceType: c._isIssued ? 'issued_check' : 'received_check',
@@ -188,7 +199,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
               items.push({ description: 'بستانکار - وام دریافتی (شخص)', debit: 0, credit: total, ledgerAccountId: getPersonLedgerAcc(l.personId), detailedAccountId: l.personId });
           }
           await addAccountingDocument({
-              date: l.startDate ? new Date(l.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              date: safeDate(l.startDate),
               description: `سند اتوماتیک وام ${l.type === 'given' ? 'پرداختی' : 'دریافتی'}`,
               status: 'approved',
               sourceType: 'loan',
@@ -205,7 +216,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
           items.push({ description: 'بدهکار - تسویه قسط (صندوق/بانک)', debit: total, credit: 0, ledgerAccountId: cashAcc });
           items.push({ description: 'بستانکار - وام پرداختی (یا برعکس)', debit: 0, credit: total, ledgerAccountId: defaultLedger });
           await addAccountingDocument({
-              date: inst.paidDate ? new Date(inst.paidDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              date: safeDate(inst.paidDate),
               description: `سند اتوماتیک تسویه قسط`,
               status: 'approved',
               sourceType: 'installment',
@@ -218,7 +229,8 @@ export default function AccountingAutoSync({ showNotification }: any) {
       showNotification(`${successCount} سند با موفقیت تولید و ثبت گردید.`, 'success');
       scanSystem();
     } catch (err) {
-      showNotification('خطا در تولید برخی از اسناد', 'error');
+      console.error(err);
+      showNotification('خطا در تولید اسناد: ' + (err as any).message, 'error');
       scanSystem();
     }
     setIsSyncing(false);

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Loan, Installment, Person, Account } from '../../types';
 import { Plus, Percent, Edit2, Trash2, Search, CheckCircle, ChevronDown, ChevronUp, AlertCircle, RefreshCw, Layers, Calendar, DollarSign, Wallet, Users, Activity, List, ArrowLeftRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { saveLoans, saveInstallments, addTransaction, checkFinancialYear } from '../../services/dataService';
 
 interface LoansManagerProps {
   loans: Loan[];
@@ -102,9 +103,16 @@ export default function LoansManager({
     return str.replace(/,/g, "");
   };
 
-  const handleCreateLoan = () => {
+  const handleCreateLoan = async () => {
     if (!formData.personId || formData.amount === '' || formData.totalInstallments === '' || formData.installmentAmount === '' || !formData.accountId) {
       alert('لطفا تمام فیلدهای ضروری را پر کنید.');
+      return;
+    }
+
+    try {
+      await checkFinancialYear(formData.startDate);
+    } catch (err: any) {
+      alert(err.message || 'تاریخ شروع خارج از سال مالی است.');
       return;
     }
 
@@ -156,7 +164,6 @@ export default function LoansManager({
 
     const transactionId = `txn-loan-${loanId}`;
     const newTransaction = {
-      id: transactionId,
       type: formData.type === 'given' ? 'payment' : 'receive',
       amount: amountNum,
       accountId: formData.accountId,
@@ -168,9 +175,21 @@ export default function LoansManager({
       isSystem: true,
     };
 
-    setLoans([...loans, newLoan]);
-    setInstallments([...installments, ...newInstallments]);
-    setTransactions([...transactions, newTransaction]);
+    const newLoansList = [...loans, newLoan];
+    const newInstsList = [...installments, ...newInstallments];
+    
+    setLoans(newLoansList);
+    setInstallments(newInstsList);
+    
+    try {
+      const addedTx = await addTransaction(newTransaction as any);
+      setTransactions([...transactions, addedTx]);
+      await saveLoans(newLoansList);
+      await saveInstallments(newInstsList);
+    } catch (err: any) {
+      alert(err.message || 'خطا در ذخیره وام');
+      return;
+    }
     
     setFormData({
       personId: '',
@@ -186,10 +205,17 @@ export default function LoansManager({
     setActiveTab('list');
   };
 
-  const handlePayInstallment = () => {
+  const handlePayInstallment = async () => {
     if(!paymentForm.installmentId || paymentForm.amount === '' || !paymentForm.accountId) {
        alert('اطلاعات پرداخت ناقص است.');
        return;
+    }
+
+    try {
+      await checkFinancialYear(paymentForm.paymentDate);
+    } catch (err: any) {
+      alert(err.message || 'تاریخ خارج از سال مالی است.');
+      return;
     }
 
     const inst = installments.find(i => i.id === paymentForm.installmentId);
@@ -225,7 +251,6 @@ export default function LoansManager({
     });
 
     const newTransaction = {
-      id: `txn-inst-${Date.now()}`,
       type: loan.type === 'given' ? 'receive' : 'payment',
       amount: amountNum,
       accountId: paymentForm.accountId,
@@ -239,7 +264,17 @@ export default function LoansManager({
 
     setInstallments(updatedInstallments);
     setLoans(updatedLoans);
-    setTransactions([...transactions, newTransaction]);
+    
+    try {
+      const addedTx = await addTransaction(newTransaction as any);
+      setTransactions([...transactions, addedTx]);
+      await saveLoans(updatedLoans);
+      await saveInstallments(updatedInstallments);
+    } catch (err: any) {
+      alert(err.message || 'خطا در ثبت پرداخت');
+      return;
+    }
+    
     setPaymentForm({ installmentId: null, amount: '', accountId: '', paymentDate: new Date().toLocaleDateString('fa-IR').replace(/\//g, '-') });
   };
 

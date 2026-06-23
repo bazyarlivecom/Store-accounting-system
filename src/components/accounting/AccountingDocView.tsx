@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useReactToPrint } from 'react-to-print';
 import { Printer, ArrowRight, CheckCircle, FileText } from 'lucide-react';
 import { AccountingDocument, LedgerAccount } from '../../types';
-import { getLedgerAccounts } from '../../services/dataService';
+import { getLedgerAccounts, getPersons } from '../../services/dataService';
 
 interface Props {
   doc: AccountingDocument;
@@ -14,11 +14,13 @@ interface Props {
 export default function AccountingDocView({ doc, storeSettings, onBack }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
+  const [persons, setPersons] = useState<any[]>([]);
   
   useEffect(() => {
     const loadData = async () => {
-      const loadedAccs = await getLedgerAccounts();
+      const [loadedAccs, loadedPersons] = await Promise.all([getLedgerAccounts(), getPersons()]);
       setAccounts(loadedAccs);
+      setPersons(loadedPersons);
     };
     loadData();
   }, []);
@@ -32,6 +34,11 @@ export default function AccountingDocView({ doc, storeSettings, onBack }: Props)
     const acc = accounts.find((a) => a.id.toString() === id.toString());
     if (!acc) return 'نامشخص';
     return `${acc.code} - ${acc.title}`;
+  };
+
+  const getPersonName = (id: string | number) => {
+    const person = persons.find(p => p.id?.toString() === id?.toString());
+    return person ? person.name : id;
   };
 
   const totalDebit = doc.items.reduce((sum, item) => sum + Number(item.debit || 0), 0);
@@ -117,7 +124,7 @@ export default function AccountingDocView({ doc, storeSettings, onBack }: Props)
                   <td className="border border-slate-300 p-3">
                     <div className="flex flex-col gap-1">
                        <span className="text-slate-800">{getAccountTitle(item.ledgerAccountId)}</span>
-                       {item.detailedAccountId && <span className="text-slate-500 text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md self-start">تفصیلی: {item.detailedAccountId}</span>}
+                       {item.detailedAccountId && <span className="text-slate-500 text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md self-start">شخص: {getPersonName(item.detailedAccountId)}</span>}
                     </div>
                   </td>
                   <td className="border border-slate-300 p-3 text-slate-700">{item.description}</td>

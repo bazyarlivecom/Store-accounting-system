@@ -98,6 +98,37 @@ export const saveStoreSettings = async (settings: CompanySettings): Promise<void
   await saveLocalData('company_profile', settings);
 };
 
+export const checkFinancialYear = async (dateStr: string | number) => {
+  if (!dateStr) return;
+  const settings = await getStoreSettings();
+  if (!settings) return;
+  
+  const start = settings.financialYearStart;
+  const end = settings.financialYearEnd;
+  
+  if (!start && !end) return;
+
+  let checkDate = new Date(dateStr);
+  if (isNaN(checkDate.getTime())) return;
+  checkDate.setHours(0,0,0,0);
+
+  if (start) {
+    let startDate = new Date(start);
+    startDate.setHours(0,0,0,0);
+    if (checkDate < startDate) {
+      throw new Error(`تاریخ وارد شده (${new Date(dateStr).toLocaleDateString('fa-IR')}) قبل از شروع سال مالی است و مجاز نمی‌باشد.`);
+    }
+  }
+
+  if (end) {
+    let endDate = new Date(end);
+    endDate.setHours(23,59,59,999);
+    if (checkDate > endDate) {
+      throw new Error(`تاریخ وارد شده (${new Date(dateStr).toLocaleDateString('fa-IR')}) بعد از پایان سال مالی است و مجاز نمی‌باشد.`);
+    }
+  }
+};
+
 // Users
 export const getUsers = async () => {
   const users = await getLocalData<any[]>('users', []);
@@ -733,6 +764,7 @@ export const getTransactions = async () => {
 };
 
 export const addTransaction = async (transaction: any) => {
+  if (transaction.date) await checkFinancialYear(transaction.date);
   const transactions = await getLocalData<any[]>('transactions', []);
   const now = Date.now();
   
@@ -809,6 +841,7 @@ export const addTransaction = async (transaction: any) => {
 };
 
 export const updateTransaction = async (id: string | number, updated: any) => {
+  if (updated.date) await checkFinancialYear(updated.date);
   const transactions = await getLocalData<any[]>('transactions', []);
   const idx = transactions.findIndex((t: any) => t.id.toString() === id.toString());
   if (idx !== -1) {
@@ -863,6 +896,7 @@ export const getInvoices = async () => {
 };
 
 export const addInvoice = async (invoice: any) => {
+  if (invoice.date) await checkFinancialYear(invoice.date);
   const invoices = await getLocalData<any[]>('invoices', []);
   const now = Date.now();
   
@@ -921,6 +955,7 @@ export const addInvoice = async (invoice: any) => {
 };
 
 export const updateInvoice = async (id: string | number, updated: any) => {
+  if (updated.date) await checkFinancialYear(updated.date);
   const invoices = await getLocalData<any[]>('invoices', []);
   const idx = invoices.findIndex((i: any) => i.id.toString() === id.toString());
   if (idx !== -1) {
@@ -1006,6 +1041,7 @@ export const getIssuedChecks = async () => {
 };
 
 export const addIssuedCheck = async (record: any) => {
+  if (record.issueDate) await checkFinancialYear(record.issueDate);
   const data = await getLocalData<any[]>('issued_checks', []);
   const now = Date.now();
   const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
@@ -1020,6 +1056,7 @@ export const addIssuedCheck = async (record: any) => {
 };
 
 export const updateIssuedCheck = async (id: string, record: any) => {
+  if (record.issueDate) await checkFinancialYear(record.issueDate);
   const data = await getLocalData<any[]>('issued_checks', []);
   const index = data.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
@@ -1047,6 +1084,7 @@ export const getReceivedChecks = async () => {
 };
 
 export const addReceivedCheck = async (record: any) => {
+  if (record.issueDate) await checkFinancialYear(record.issueDate);
   const data = await getLocalData<any[]>('received_checks', []);
   const now = Date.now();
   const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
@@ -1061,6 +1099,7 @@ export const addReceivedCheck = async (record: any) => {
 };
 
 export const updateReceivedCheck = async (id: string, record: any) => {
+  if (record.issueDate) await checkFinancialYear(record.issueDate);
   const data = await getLocalData<any[]>('received_checks', []);
   const index = data.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
@@ -1277,6 +1316,7 @@ export const recalculateAllWarehouseStocks = async () => {
 export const getStocktakings = async () => getLocalData<any[]>('stocktakings', []);
 export const saveStocktakings = async (data: any[]) => saveLocalData('stocktakings', data);
 export const addStocktaking = async (st: any) => {
+  if (st.date) await checkFinancialYear(st.date);
   const stocktakings = await getStocktakings();
   const added = { ...st, id: generateId() };
   stocktakings.push(added);
@@ -1284,6 +1324,7 @@ export const addStocktaking = async (st: any) => {
   return added;
 };
 export const updateStocktaking = async (id: string | number, updatedSt: any) => {
+  if (updatedSt.date) await checkFinancialYear(updatedSt.date);
   const stocktakings = await getStocktakings();
   const idx = stocktakings.findIndex(s => s.id?.toString() === id?.toString());
   if (idx > -1) {
@@ -1366,6 +1407,7 @@ export const deleteLedgerAccount = async (id: string | number) => {
 export const getAccountingDocuments = async () => getLocalData<any[]>('accounting_documents', []);
 export const saveAccountingDocuments = async (data: any[]) => saveLocalData('accounting_documents', data);
 export const addAccountingDocument = async (doc: any) => {
+  if (doc.date) await checkFinancialYear(doc.date);
   const docs = await getAccountingDocuments();
   // Generate a document number if not provided
   let docNum = doc.documentNumber;
@@ -1385,6 +1427,7 @@ export const addAccountingDocument = async (doc: any) => {
   return added;
 };
 export const updateAccountingDocument = async (id: string | number, updated: any) => {
+  if (updated.date) await checkFinancialYear(updated.date);
   const docs = await getAccountingDocuments();
   const idx = docs.findIndex((x: any) => x.id?.toString() === id?.toString());
   if (idx > -1) {

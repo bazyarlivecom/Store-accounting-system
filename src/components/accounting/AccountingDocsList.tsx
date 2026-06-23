@@ -10,6 +10,11 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
   const [storeSettings, setStoreSettings] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [filterSourceType, setFilterSourceType] = useState('');
+  const [filterAccountId, setFilterAccountId] = useState('');
 
   useEffect(() => {
     loadData();
@@ -28,10 +33,23 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
     setIsLoading(false);
   };
 
-  const filteredDocs = docs.filter(d => 
-    d.documentNumber.toString().includes(searchTerm) ||
-    d.description?.includes(searchTerm)
-  );
+  const filteredDocs = docs.filter(d => {
+    const matchSearch = d.documentNumber?.toString().includes(searchTerm) || d.description?.includes(searchTerm);
+    const docDate = new Date(d.date);
+    const matchFromDate = fromDate ? docDate >= new Date(fromDate) : true;
+    
+    let matchToDate = true;
+    if (toDate) {
+      const toDateObj = new Date(toDate);
+      toDateObj.setHours(23, 59, 59, 999);
+      matchToDate = docDate <= toDateObj;
+    }
+    
+    const matchSourceType = filterSourceType ? d.sourceType === filterSourceType : true;
+    const matchAccount = filterAccountId ? d.items.some(item => item.ledgerAccountId?.toString() === filterAccountId.toString() || item.detailedAccountId?.toString() === filterAccountId.toString()) : true;
+    
+    return matchSearch && matchFromDate && matchToDate && matchSourceType && matchAccount;
+  });
 
   return (
     <div className="space-y-6">
@@ -51,8 +69,8 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col sm:flex-row gap-4 items-center shadow-sm">
-        <div className="relative flex-1 w-full">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-col gap-4 shadow-sm">
+        <div className="relative w-full">
           <Search className="w-5 h-5 text-slate-400 absolute right-3 top-2.5" />
           <input
             type="text"
@@ -61,6 +79,60 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500"
           />
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">از تاریخ</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-sans"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">تا تاریخ</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-sans"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">نوع سند</label>
+            <select
+              value={filterSourceType}
+              onChange={(e) => setFilterSourceType(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">همه اسناد</option>
+              <option value="opening_balance">افتتاحیه</option>
+              <option value="invoice_sale">فروش</option>
+              <option value="invoice_purchase">خرید</option>
+              <option value="receipt">دریافت</option>
+              <option value="payment">پرداخت</option>
+              <option value="issued_check">چک پرداختی</option>
+              <option value="received_check">چک دریافتی</option>
+              <option value="loan">وام</option>
+              <option value="installment">قسط</option>
+              <option value="manual">دستی</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">حساب معین/تفصیلی</label>
+            <select
+              value={filterAccountId}
+              onChange={(e) => setFilterAccountId(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">همه حساب‌ها</option>
+              {accounts.filter(a => ['general', 'subsidiary', 'detailed'].includes(a.type)).map(a => (
+                <option key={a.id} value={a.id}>{a.code} - {a.title}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
