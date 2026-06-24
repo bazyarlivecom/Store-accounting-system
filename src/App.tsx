@@ -88,6 +88,30 @@ const CurrencyInput = ({ value, onChange, placeholder, className, hideWords, cur
   );
 };
 
+const FastBarcodeScanner = ({ onScan }: { onScan: (code: string) => void }) => {
+  return (
+    <div className="relative flex-1 md:max-w-[280px] min-w-[200px]">
+      <ScanLine className="absolute right-3 top-3 w-5 h-5 text-gray-400" />
+      <input
+        type="text"
+        placeholder="ورود بارکد / کد کالا (Enter)"
+        className="w-full pr-10 pl-3 p-[11px] bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left outline-none text-sm shadow-sm transition-colors"
+        dir="ltr"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = e.currentTarget.value.trim();
+            if (val) {
+              onScan(val);
+              e.currentTarget.value = '';
+            }
+          }
+        }}
+      />
+    </div>
+  );
+};
+
 export default function App() {
   const [activeFinancialYear, setActiveFinancialYearState] = useState<any>(null);
   const [hasCheckedFinancialYears, setHasCheckedFinancialYears] = useState(false);
@@ -2455,6 +2479,16 @@ export default function App() {
     });
   };
 
+  const handleFastBarcodeScan = (code: string) => {
+    const product = products.find(p => p.barcode === code || p.code === code);
+    if (product) {
+      handleFastAddProduct(String(product.id), product);
+      showNotification(`کالا "${product.name}" اضافه شد`, 'success');
+    } else {
+      showNotification('کالایی با این بارکد/کد یافت نشد', 'error');
+    }
+  };
+
   const handleItemChange = (id: string, field: keyof InvoiceItem, value: any) => {
     setItems(
       items.map((item) => {
@@ -4064,20 +4098,23 @@ export default function App() {
                               <Plus className="w-4 h-4" /> افزودن سطر دستی
                             </button>
                         </div>
-                        <div className="w-full relative z-10 ">
-                             <SearchableSelect 
-                               options={products.map(p => ({
-                                 value: p.id,
-                                 label: p.name,
-                                 subLabel: formatProductStockDetails(p),
-                                 badge: p.type === 'service' ? 'خدمات' : 'کالا',
-                                 searchStr: `${p.code || ''} ${p.barcode || ''}`
-                               }))}
-                               value=""
-                               onChange={(val) => handleFastAddProduct(String(val))}
-                               placeholder="🔎 جستجو و افزودن سریع کالا به لیست..."
-                               searchPlaceholder="جستجوی کالا..."
-                             />
+                        <div className="w-full relative z-10 flex flex-col md:flex-row gap-2">
+                             <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                             <div className="flex-[2]">
+                               <SearchableSelect 
+                                 options={products.map(p => ({
+                                   value: p.id,
+                                   label: p.name,
+                                   subLabel: formatProductStockDetails(p),
+                                   badge: p.type === 'service' ? 'خدمات' : 'کالا',
+                                   searchStr: `${p.code || ''} ${p.barcode || ''}`
+                                 }))}
+                                 value=""
+                                 onChange={(val) => handleFastAddProduct(String(val))}
+                                 placeholder="🔎 جستجو و افزودن سریع کالا به لیست..."
+                                 searchPlaceholder="جستجوی کالا..."
+                               />
+                             </div>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -4324,8 +4361,9 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden" data-invoice-flow="purchase-return">
                 <div className="p-5 bg-emerald-50/30 border-b border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام برگشت از خرید</h3>
-                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
-                      <div className="flex-1 relative z-10">
+                    <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
+                      <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                      <div className="flex-[2] relative z-10 w-full">
                         <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
                           <SearchableSelect 
                             options={products.map(p => ({
@@ -4342,8 +4380,8 @@ export default function App() {
                           />
                         </div>
                       </div>
-                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 transition-colors focus:ring-2 focus:ring-emerald-500" title="اسکن بارکد با دوربین">
-                        <ScanLine className="w-6 h-6"/>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-[11px] bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 transition-colors focus:ring-2 focus:ring-emerald-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-5 h-5"/>
                       </button>
                     </div>
                     <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-emerald-200 text-emerald-700 shadow-sm rounded-xl font-bold hover:bg-emerald-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-emerald-500">
@@ -4702,8 +4740,9 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden" data-invoice-flow="purchase">
                 <div className="p-5 bg-emerald-50/30 border-b border-emerald-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-emerald-600"/> لیست اقلام خریداری شده</h3>
-                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
-                      <div className="flex-1 relative z-10">
+                    <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
+                      <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                      <div className="flex-[2] relative z-10 w-full">
                         <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
                           <SearchableSelect 
                             options={products.map(p => ({
@@ -4720,8 +4759,8 @@ export default function App() {
                           />
                         </div>
                       </div>
-                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 transition-colors focus:ring-2 focus:ring-emerald-500" title="اسکن بارکد با دوربین">
-                        <ScanLine className="w-6 h-6"/>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-[11px] bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 transition-colors focus:ring-2 focus:ring-emerald-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-5 h-5"/>
                       </button>
                     </div>
                     <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-emerald-200 text-emerald-700 shadow-sm rounded-xl font-bold hover:bg-emerald-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-emerald-500">
@@ -5048,8 +5087,9 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden" data-invoice-flow="sale-return">
                 <div className="p-5 bg-indigo-50/30 border-b border-indigo-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> لیست اقلام برگشت از فروش</h3>
-                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
-                      <div className="flex-1 relative z-10">
+                    <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
+                      <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                      <div className="flex-[2] relative z-10 w-full">
                         <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
                           <SearchableSelect 
                             options={products.filter(p => storeSettings.allowNegativeStock || p.type === 'service' || calculateProductCurrentStock(p.id) > 0).map(p => ({
@@ -5066,8 +5106,8 @@ export default function App() {
                           />
                         </div>
                       </div>
-                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
-                        <ScanLine className="w-6 h-6"/>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-[11px] bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-5 h-5"/>
                       </button>
                     </div>
                     <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-indigo-200 text-indigo-700 shadow-sm rounded-xl font-bold hover:bg-indigo-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-indigo-500">
@@ -5411,8 +5451,9 @@ export default function App() {
               <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden" data-invoice-flow="sale">
                 <div className="p-5 bg-indigo-50/30 border-b border-indigo-100 flex flex-col md:flex-row justify-between items-center gap-4">
                     <h3 className="font-extrabold text-slate-800 flex items-center gap-2 whitespace-nowrap"><Package className="w-5 h-5 text-indigo-600"/> لیست اقلام آماده فروش</h3>
-                    <div className="flex-1 w-full flex items-center gap-2 max-w-2xl">
-                      <div className="flex-1 relative z-10">
+                    <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
+                      <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                      <div className="flex-[2] relative z-10 w-full">
                         <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
                           <SearchableSelect 
                             options={products.filter(p => storeSettings.allowNegativeStock || p.type === 'service' || calculateProductCurrentStock(p.id) > 0).map(p => ({
@@ -5429,8 +5470,8 @@ export default function App() {
                           />
                         </div>
                       </div>
-                      <button onClick={() => setIsScannerOpen(true)} className="p-3.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
-                        <ScanLine className="w-6 h-6"/>
+                      <button onClick={() => setIsScannerOpen(true)} className="p-[11px] bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 transition-colors focus:ring-2 focus:ring-indigo-500" title="اسکن بارکد با دوربین">
+                        <ScanLine className="w-5 h-5"/>
                       </button>
                     </div>
                     <button onClick={() => setIsProductModalOpen(true)} className="px-5 py-3 bg-white border border-indigo-200 text-indigo-700 shadow-sm rounded-xl font-bold hover:bg-indigo-50 flex items-center gap-2 transition-colors whitespace-nowrap outline-none focus:ring-2 focus:ring-indigo-500">
