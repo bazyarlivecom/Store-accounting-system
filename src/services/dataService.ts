@@ -108,7 +108,7 @@ export const parseToGregorianDate = (dateStr: string | number | Date, calendarTy
   
   let checkDate = new Date(dateStr);
   if (!isNaN(checkDate.getTime())) {
-    if (typeof dateStr === 'number' || calendarType === 'gregorian') {
+    if (typeof dateStr === 'number' || calendarType === 'gregorian' || checkDate.getFullYear() > 1900) {
       return checkDate;
     }
   }

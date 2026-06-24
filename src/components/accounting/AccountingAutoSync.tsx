@@ -107,8 +107,9 @@ export default function AccountingAutoSync({ showNotification }: any) {
       };
 
       const safeDate = (dateStr: any) => {
+          if (!dateStr) return new Date().toISOString().split('T')[0];
+          if (typeof dateStr === 'string' && dateStr.trim() !== '') return dateStr;
           try {
-              if (!dateStr) return new Date().toISOString().split('T')[0];
               const d = new Date(dateStr);
               if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
               return d.toISOString().split('T')[0];
