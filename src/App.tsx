@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Barcode from 'react-barcode';
-import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus, Copy, LayoutDashboard, Phone, MapPin } from 'lucide-react';
+import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus, Copy, LayoutDashboard, Phone, MapPin, PlusCircle, MinusCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, Line, ComposedChart, Cell } from 'recharts';
@@ -386,6 +386,7 @@ export default function App() {
   const [personRoles, setPersonRoles] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
     const [cashboxes, setCashboxes] = useState<Cashbox[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -402,6 +403,8 @@ export default function App() {
   const [selectedPersonRole, setSelectedPersonRole] = useState<string>('all');
   const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
   const [personPageSize, setPersonPageSize] = useState<number>(10);
+  const [productCurrentPage, setProductCurrentPage] = useState<number>(1);
+  const [productPageSize, setProductPageSize] = useState<number>(10);
   const [newPersonGroupName, setNewPersonGroupName] = useState('');
   const [newPersonGroupColor, setNewPersonGroupColor] = useState('indigo');
   const [editingPersonGroupId, setEditingPersonGroupId] = useState<string | null>(null);
@@ -455,6 +458,10 @@ export default function App() {
   useEffect(() => {
     setPersonCurrentPage(1);
   }, [personSearchTerm, selectedPersonGroup, personPageSize]);
+
+  useEffect(() => {
+    setProductCurrentPage(1);
+  }, [productSearchTerm, selectedProductCategory, productPageSize]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [checkbooks, setCheckbooks] = useState<any[]>([]);
   const [issuedChecks, setIssuedChecks] = useState<any[]>([]);
@@ -733,6 +740,7 @@ export default function App() {
     setSourceInvoiceId('');
     setSellerInvoiceNumber('');
     if (invoiceMode === 'manual') setInvoiceNumber('');
+    setEditingInvoiceId(null);
   };
   
   const [submitting, setSubmitting] = useState(false);
@@ -2614,10 +2622,15 @@ export default function App() {
       alert('برای این فاکتور عملیات انبار (رسید/حواله) مبدا ثبت شده است و قابل ویرایش نمی‌باشد.');
       return;
     }
-    if (!confirm('آیا می‌خواهید این فاکتور را ویرایش مجدد کنید؟ نسخه فعلی حذف خواهد شد.')) return;
     
-    await deleteInvoice(inv.id);
-    await fetchInvoices();
+    const isDraft = inv.isDraft || inv.status === 'draft';
+    if (!isDraft) {
+      if (!confirm('آیا می‌خواهید این فاکتور را ویرایش کنید؟ نسخه قبلی پس از ذخیره نهایی حذف و با نسخه جدید جایگزین خواهد شد.')) return;
+    } else {
+      if (!confirm('آیا می‌خواهید این فاکتور پیش‌نویس را ویرایش کنید؟')) return;
+    }
+    
+    setEditingInvoiceId(inv.id);
     setInvoiceMode('manual');
     setInvoiceNumber(inv.invoiceNumber);
     setSellerInvoiceNumber(inv.sellerInvoiceNumber || '');
@@ -2725,11 +2738,15 @@ export default function App() {
     return prefix + formattedNum;
   };
 
-  const saveInvoiceData = async (customPayload?: any) => {
+  const saveInvoiceData = async (customPayload?: any, isDraftOverride?: boolean) => {
     setSubmitting(true);
     setSuccessMsg('');
 
-    const finalInvoiceNumber = invoiceMode === 'auto' ? getInvoiceNumber(invoiceType) : invoiceNumber;
+    const isDraft = isDraftOverride || (customPayload && (customPayload.isDraft || customPayload.status === 'draft'));
+
+    const finalInvoiceNumber = isDraft 
+      ? `پیش‌نویس-${Date.now().toString().slice(-5)}`
+      : (invoiceMode === 'auto' ? getInvoiceNumber(invoiceType) : invoiceNumber);
 
     if ((activeTab === 'create_warehouse_doc') && !invoiceWarehouseId) {
       customAlert('لطفاً در قسمت توضیحات مبدا/مقصد فرم، یک انبار را مشخص کنید.');
@@ -2756,7 +2773,11 @@ export default function App() {
 
     const payload = customPayload ? {
       ...customPayload,
-      invoiceNumber: (customPayload.invoiceNumber && (customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار'))) ? getInvoiceNumber(customPayload.type) : (customPayload.invoiceNumber || getInvoiceNumber(customPayload.type))
+      isDraft,
+      status: isDraft ? 'draft' : 'final',
+      invoiceNumber: (customPayload.invoiceNumber && (customPayload.invoiceNumber.includes('پیش‌نویس') || customPayload.invoiceNumber.includes('خودکار') || customPayload.invoiceNumber.includes('تولید خودکار'))) 
+        ? (isDraft ? `پیش‌نویس-${Date.now().toString().slice(-5)}` : getInvoiceNumber(customPayload.type)) 
+        : (customPayload.invoiceNumber || getInvoiceNumber(customPayload.type))
     } : {
       invoiceNumber: finalInvoiceNumber,
       sellerInvoiceNumber: sellerInvoiceNumber || '',
@@ -2776,11 +2797,13 @@ export default function App() {
       overallDiscountPercent,
       totalAmount: calculateFinalTotal(),
       paymentStatus: invoicePaymentStatus,
-      paidAmount: Number(invoicePaidAmount) || 0
+      paidAmount: Number(invoicePaidAmount) || 0,
+      isDraft,
+      status: isDraft ? 'draft' : 'final'
     };
 
-    // 1. If it's a sale, perform the Sales Warehouse check and identify shortages
-    if (payload.type === 'sale') {
+    // 1. If it's a sale and not a draft, perform the Sales Warehouse check and identify shortages
+    if (payload.type === 'sale' && !isDraft) {
       const shortages: any[] = [];
       const requiredQty: Record<string, number> = {};
       
@@ -2876,10 +2899,14 @@ export default function App() {
     }
 
     try {
+      if (editingInvoiceId) {
+        await deleteInvoice(editingInvoiceId);
+        setEditingInvoiceId(null);
+      }
       const addedInvoice = await addInvoice(payload as any);
       
       // Auto-create warehouse remittance for purchase return
-      if (payload.type === 'purchase_return') {
+      if (payload.type === 'purchase_return' && !isDraft) {
         const startNum = parseInt(storeSettings.invoiceStartNumber || '1000', 10);
         const autoPrefix = storeSettings.prefix_warehouse_remittance || 'REM-';
         const numLength = Math.max(1, parseInt(storeSettings.invoiceNumberLength || '6', 10));
@@ -2911,7 +2938,7 @@ export default function App() {
       }
 
       // Auto-create warehouse remittance for sales
-      if (payload.type === 'sale') {
+      if (payload.type === 'sale' && !isDraft) {
         const startNum = parseInt(storeSettings.invoiceStartNumber || '1000', 10);
         const remPrefix = storeSettings.prefix_warehouse_remittance || 'REM-';
         const numLength = Math.max(1, parseInt(storeSettings.invoiceNumberLength || '6', 10));
@@ -2947,8 +2974,8 @@ export default function App() {
          payload.type === 'warehouse_remittance' ? 'حواله انبار' : 
          'فاکتور';
 
-      setSuccessMsg(`${successTypeName} با موفقیت ثبت شد!`);
-      if (storeSettings?.notify_on_invoice && (payload.type === 'sale' || payload.type === 'purchase')) {
+      setSuccessMsg(isDraft ? `پیش‌نویس ${successTypeName} با موفقیت ذخیره شد!` : `${successTypeName} با موفقیت ثبت شد!`);
+      if (storeSettings?.notify_on_invoice && (payload.type === 'sale' || payload.type === 'purchase') && !isDraft) {
          const person = persons.find(p => p.id === payload.customerId);
          if (person && person.phone) {
              const amt = typeof formatNumber === 'function' ? formatNumber(payload.totalAmount) : payload.totalAmount;
@@ -4174,6 +4201,15 @@ export default function App() {
                   {successMsg}
                 </div>
               )}
+              {editingInvoiceId && (
+                <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Info className="w-5 h-5 text-amber-600 shrink-0" />
+                    <span>شما در حال ویرایش فاکتور برگشت از خرید پیش‌نویس/ثبت‌شده شماره <strong className="text-amber-950">#{toPersianDigits(invoiceNumber)}</strong> هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.</span>
+                  </div>
+                  <button onClick={clearDraft} className="px-3 py-1 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-xs font-bold transition-all cursor-pointer">انصراف از ویرایش</button>
+                </div>
+              )}
 
               {/* Header Info */}
               <div className="bg-white rounded-3xl p-6 shadow-sm border-2 border-emerald-50">
@@ -4489,7 +4525,20 @@ export default function App() {
                   </div>
                 </div>
                 <div className="p-6 bg-emerald-50/20 border-t border-emerald-100 flex justify-end gap-3">
-                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20">
+                    <button
+                      type="button"
+                      disabled={submitting || items.length === 0 || !customerId}
+                      onClick={() => {
+                        if (confirm('آیا از ذخیره این فاکتور برگشت از خرید به عنوان پیش‌نویس اطمینان دارید؟')) {
+                          saveInvoiceData(null, true);
+                        }
+                      }}
+                      className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+                    >
+                      <FileText className="w-5 h-5" />
+                      ذخیره به عنوان پیش‌نویس
+                    </button>
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20 cursor-pointer">
                       {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
                       ثبت برگشت از خرید
                     </button>
@@ -4514,6 +4563,15 @@ export default function App() {
                 <div className="bg-emerald-50 text-emerald-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-emerald-100 font-bold shadow-sm">
                   <CheckCircle className="w-5 h-5" />
                   {successMsg}
+                </div>
+              )}
+              {editingInvoiceId && (
+                <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Info className="w-5 h-5 text-amber-600 shrink-0" />
+                    <span>شما در حال ویرایش فاکتور خرید پیش‌نویس/ثبت‌شده شماره <strong className="text-amber-950">#{toPersianDigits(invoiceNumber)}</strong> هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.</span>
+                  </div>
+                  <button onClick={clearDraft} className="px-3 py-1 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-xs font-bold transition-all cursor-pointer">انصراف از ویرایش</button>
                 </div>
               )}
 
@@ -4845,7 +4903,20 @@ export default function App() {
                   </div>
                 </div>
                 <div className="p-6 bg-emerald-50/20 border-t border-emerald-100 flex justify-end gap-3">
-                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20">
+                    <button
+                      type="button"
+                      disabled={submitting || items.length === 0 || !customerId}
+                      onClick={() => {
+                        if (confirm('آیا از ذخیره این فاکتور خرید به عنوان پیش‌نویس اطمینان دارید؟')) {
+                          saveInvoiceData(null, true);
+                        }
+                      }}
+                      className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+                    >
+                      <FileText className="w-5 h-5" />
+                      ذخیره به عنوان پیش‌نویس
+                    </button>
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20 cursor-pointer">
                       {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
                       ثبت نهایی خرید
                     </button>
@@ -4869,6 +4940,15 @@ export default function App() {
                 <div className="bg-indigo-50 text-indigo-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-indigo-100 font-bold shadow-sm">
                   <CheckCircle className="w-5 h-5" />
                   {successMsg}
+                </div>
+              )}
+              {editingInvoiceId && (
+                <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Info className="w-5 h-5 text-amber-600 shrink-0" />
+                    <span>شما در حال ویرایش فاکتور برگشت از فروش پیش‌نویس/ثبت‌شده شماره <strong className="text-amber-950">#{toPersianDigits(invoiceNumber)}</strong> هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.</span>
+                  </div>
+                  <button onClick={clearDraft} className="px-3 py-1 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-xs font-bold transition-all cursor-pointer">انصراف از ویرایش</button>
                 </div>
               )}
 
@@ -5173,7 +5253,20 @@ export default function App() {
                   </div>
                 </div>
                 <div className="p-6 bg-indigo-50/20 border-t border-indigo-100 flex justify-end gap-3">
-                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20">
+                    <button
+                      type="button"
+                      disabled={submitting || items.length === 0 || !customerId}
+                      onClick={() => {
+                        if (confirm('آیا از ذخیره این فاکتور به عنوان پیش‌نویس اطمینان دارید؟')) {
+                          saveInvoiceData(null, true);
+                        }
+                      }}
+                      className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+                    >
+                      <FileText className="w-5 h-5" />
+                      ذخیره به عنوان پیش‌نویس
+                    </button>
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20 cursor-pointer">
                       {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
                       ثبت و بررسی فاکتور/سند
                     </button>
@@ -5198,6 +5291,15 @@ export default function App() {
                 <div className="bg-indigo-50 text-indigo-700 px-5 py-4 rounded-xl flex items-center gap-3 border border-indigo-100 font-bold shadow-sm">
                   <CheckCircle className="w-5 h-5" />
                   {successMsg}
+                </div>
+              )}
+              {editingInvoiceId && (
+                <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Info className="w-5 h-5 text-amber-600 shrink-0" />
+                    <span>شما در حال ویرایش فاکتور پیش‌نویس/ثبت‌شده شماره <strong className="text-amber-950">#{toPersianDigits(invoiceNumber)}</strong> هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.</span>
+                  </div>
+                  <button onClick={clearDraft} className="px-3 py-1 bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-xs font-bold transition-all cursor-pointer">انصراف از ویرایش</button>
                 </div>
               )}
 
@@ -5514,7 +5616,20 @@ export default function App() {
                   </div>
                 </div>
                 <div className="p-6 bg-indigo-50/20 border-t border-indigo-100 flex justify-end gap-3">
-                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20">
+                    <button
+                      type="button"
+                      disabled={submitting || items.length === 0 || !customerId}
+                      onClick={() => {
+                        if (confirm('آیا از ذخیره این فاکتور به عنوان پیش‌نویس اطمینان دارید؟')) {
+                          saveInvoiceData(null, true);
+                        }
+                      }}
+                      className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+                    >
+                      <FileText className="w-5 h-5" />
+                      ذخیره به عنوان پیش‌نویس
+                    </button>
+                    <button onClick={handleInvoicePreviewTrigger} disabled={submitting || items.length === 0 || !customerId} className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20 cursor-pointer">
                       {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-6 h-6" />}
                       ثبت و بررسی فاکتور/سند
                     </button>
@@ -5685,7 +5800,14 @@ export default function App() {
                                )}
                                {group.invoices.map(inv => (
                                  <tr key={inv.id} className="hover:bg-gray-50/80 transition-colors">
-                                   <td className="p-4 font-sans text-right font-black text-slate-705 text-sm whitespace-nowrap">#{toPersianDigits(inv.invoiceNumber)}</td>
+                                   <td className="p-4 font-sans text-right font-black text-slate-705 text-sm whitespace-nowrap">
+                                     <div className="flex items-center gap-1.5">
+                                       <span>#{toPersianDigits(inv.invoiceNumber)}</span>
+                                       {(inv.isDraft || inv.status === 'draft') && (
+                                         <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-amber-200">پیش‌نویس</span>
+                                       )}
+                                     </div>
+                                   </td>
                                    {(['list_purchase', 'list_sale', 'list_sale_return', 'list_purchase_return'].includes(activeTab)) && (
                                      <td className="p-4 font-bold text-slate-800 text-xs truncate max-w-[150px]" title={inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}>
                                         <div>{inv.title || (activeTab === 'list_sale' ? 'فاکتور فروش' : 'فاکتور خرید')}</div>
@@ -6384,54 +6506,69 @@ export default function App() {
                  <form onSubmit={handleSubmitSalary} className="space-y-6">
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                      <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">انتخاب کارمند</label>
-                       <select 
-                         value={salaryPersonId} 
-                         onChange={(e) => setSalaryPersonId(e.target.value)} 
-                         className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
-                         required
-                       >
-                         <option value="">-- انتخاب پرسنل --</option>
-                         {persons.map(p => (
-                         <option key={p.id} value={p.id}>{p.alias || p.name} - {getRoleName(p.role)}</option>
-                         ))}
-                       </select>
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5 justify-start">
+                         <User className="w-4 h-4 text-indigo-500" />
+                         انتخاب کارمند
+                       </label>
+                       <SearchableSelect
+                         options={persons.map(p => ({
+                           value: p.id,
+                           label: p.alias || p.name,
+                           subLabel: p.personCode ? `کد: ${p.personCode} | ${getRoleName(p.role)}` : getRoleName(p.role),
+                           badge: getRoleName(p.role)
+                         }))}
+                         value={salaryPersonId}
+                         onChange={(val) => setSalaryPersonId(val)}
+                         placeholder="-- جستجو و انتخاب کارمند --"
+                         searchPlaceholder="جستجو نام، کد یا نقش..."
+                       />
                        {salaryPersonId && renderPersonInfoBox(salaryPersonId, 'bg-slate-50 border-slate-100 text-slate-600')}
                      </div>
 
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">دوره حقوق (ماه و سال)</label>
+                     <div className="space-y-1.5">
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5 justify-start">
+                         <Calendar className="w-4 h-4 text-indigo-500" />
+                         دوره حقوق (ماه و سال)
+                       </label>
                        <div className="flex gap-2">
-                         <select value={salaryPeriodMonth} onChange={(e) => setSalaryPeriodMonth(e.target.value)} className="w-[120px] p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans">
+                         <select value={salaryPeriodMonth} onChange={(e) => setSalaryPeriodMonth(e.target.value)} className="w-[120px] p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans cursor-pointer bg-white">
                            {['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'].map((m, i) => (
                              <option key={String(i+1)} value={String(i+1)}>{m}</option>
                            ))}
                          </select>
-                         <input type="number" value={salaryPeriodYear} onChange={(e) => setSalaryPeriodYear(e.target.value)} className="flex-1 min-w-[80px] p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-center font-mono" />
+                         <input type="number" value={salaryPeriodYear} onChange={(e) => setSalaryPeriodYear(e.target.value)} className="flex-1 min-w-[80px] p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-center font-mono" placeholder="سال" />
                        </div>
                      </div>
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">تاریخ پرداخت/اصدار</label>
+
+                     <div className="space-y-1.5">
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5 justify-start">
+                         <Calendar className="w-4 h-4 text-indigo-500" />
+                         تاریخ پرداخت/اصدار
+                       </label>
                        <DatePicker
                          value={salaryDate}
                          onChange={setSalaryDate}
                          calendar={storeSettings?.calendarType === 'gregorian' ? undefined : persian}
                          locale={storeSettings?.calendarType === 'gregorian' ? undefined : persian_fa}
                          calendarPosition="bottom-right"
-                         inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center"
+                         inputClass="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-center cursor-pointer"
                          containerClassName="w-full"
                        />
                      </div>
 
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-2">حقوق پایه ({storeSettings.currency})</label>
+                     <div className="space-y-1.5">
+                       <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1.5 justify-start">
+                         <DollarSign className="w-4 h-4 text-indigo-500" />
+                         حقوق پایه ({storeSettings.currency})
+                       </label>
                        <input 
                           type="number" 
                           value={salaryBaseAmount} 
                           onChange={(e) => setSalaryBaseAmount(e.target.value)} 
-                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-bold text-indigo-950" 
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono text-left font-black text-indigo-950 text-base" 
                           dir="ltr" 
                           required 
+                          placeholder="0"
                         />
                         {salaryBaseAmount && !isNaN(Number(salaryBaseAmount)) && Number(salaryBaseAmount) > 0 && (
                           <div className="mt-1.5 p-2 bg-indigo-50/40 border border-indigo-100 rounded-lg text-xs leading-relaxed text-right">
@@ -6444,7 +6581,12 @@ export default function App() {
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                      {/* Earnings */}
                      <div className="bg-emerald-50/55 p-6 rounded-2xl border border-emerald-100/50 space-y-4">
-                       <h3 className="font-extrabold text-emerald-800 text-sm border-b border-emerald-100 pb-2 mb-3">آیتم‌های مشمول دریافت (اضافات)</h3>
+                        <div className="flex items-center justify-between border-b border-emerald-100/60 pb-3">
+                          <h3 className="font-extrabold text-emerald-800 text-sm flex items-center gap-1.5">
+                            <PlusCircle className="w-5 h-5 text-emerald-600" />
+                            آیتم‌های مشمول دریافت (اضافات)
+                          </h3>
+                        </div>
                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                          <div>
                            <label className="block text-xs font-bold text-gray-600 mb-1">حق مسکن</label>
@@ -6463,7 +6605,12 @@ export default function App() {
 
                      {/* Deductions */}
                      <div className="bg-rose-50/50 p-6 rounded-2xl border border-rose-100/50 space-y-4">
-                       <h3 className="font-extrabold text-rose-800 text-sm border-b border-rose-100 pb-2 mb-3">آیتم‌های کسورات قانونی و انضباطی</h3>
+                        <div className="flex items-center justify-between border-b border-rose-100/60 pb-3">
+                          <h3 className="font-extrabold text-rose-800 text-sm flex items-center gap-1.5">
+                            <MinusCircle className="w-5 h-5 text-rose-600" />
+                            آیتم‌های کسورات قانونی و انضباطی
+                          </h3>
+                        </div>
                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                          <div>
                            <label className="block text-xs font-bold text-gray-600 mb-1">حق بیمه سهم کارمند</label>
@@ -6529,22 +6676,65 @@ export default function App() {
                      <input type="text" value={salaryDescription} onChange={(e) => setSalaryDescription(e.target.value)} className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500" placeholder="بابت فیش رسمی حقوق ماه جاری کارمند..." />
                    </div>
 
-                   <div className="flex justify-between items-center bg-indigo-50 p-5 rounded-2xl border border-indigo-100">
-                     <div className="text-right">
-                       <span className="text-xs text-indigo-600 font-bold block mb-1">مبلغ پرداختی خالص کارمند</span>
-                       <span className="text-2xl font-black text-indigo-950 font-mono" dir="ltr">
-                         {formatCurrency((Number(salaryBaseAmount) || 0) + (Number(salaryHousingAllowance) || 0) + (Number(salaryGroceryAllowance) || 0) + (Number(salaryOtherAllowances) || 0) - (Number(salaryInsuranceDeduction) || 0) - (Number(salaryTaxDeduction) || 0) - (Number(salaryOtherDeductions) || 0))} {storeSettings.currency}
-                       </span>
-                     </div>
-                     <button 
-                       type="submit" 
-                       disabled={submittingSalary} 
-                       className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer border-none"
-                     >
-                       {submittingSalary ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                       تایید نهایی و صدور فیش حقوقی
-                     </button>
-                   </div>
+                   {(() => {
+                     const baseSalaryNum = Number(salaryBaseAmount) || 0;
+                     const totalExtras = (Number(salaryHousingAllowance) || 0) + (Number(salaryGroceryAllowance) || 0) + (Number(salaryOtherAllowances) || 0);
+                     const totalDeductions = (Number(salaryInsuranceDeduction) || 0) + (Number(salaryTaxDeduction) || 0) + (Number(salaryOtherDeductions) || 0);
+                     const netPayable = baseSalaryNum + totalExtras - totalDeductions;
+
+                     return (
+                       <div className="space-y-6">
+                         {/* Realtime breakdown checklist panel */}
+                         <div className="bg-gradient-to-tr from-slate-50 to-slate-100/50 rounded-2xl border border-slate-150 p-5 space-y-4 shadow-3xs">
+                           <div className="flex items-center gap-2 text-slate-800 font-extrabold text-xs uppercase tracking-wider justify-start">
+                             <Info className="w-4 h-4 text-indigo-500" />
+                             خلاصه محاسبات ارقام فیش حقوقی پرسنل
+                           </div>
+                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-bold">
+                             <div className="bg-white p-4 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-3xs text-right">
+                               <span className="text-xs text-slate-400 font-bold">حقوق پایه:</span>
+                               <span className="text-slate-800 font-mono font-black" dir="ltr">{formatCurrency(baseSalaryNum)} {storeSettings.currency}</span>
+                             </div>
+                             <div className="bg-white p-4 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-3xs text-right">
+                               <span className="text-xs text-emerald-500 font-bold">جمع کل اضافات (+):</span>
+                               <span className="text-emerald-700 font-mono font-black" dir="ltr">{formatCurrency(totalExtras)} {storeSettings.currency}</span>
+                             </div>
+                             <div className="bg-white p-4 rounded-xl border border-slate-100 flex flex-col gap-1 shadow-3xs text-right">
+                               <span className="text-xs text-rose-500 font-bold">جمع کل کسورات (-):</span>
+                               <span className="text-rose-700 font-mono font-black" dir="ltr">{formatCurrency(totalDeductions)} {storeSettings.currency}</span>
+                             </div>
+                             <div className="bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 flex flex-col gap-1 shadow-3xs text-right">
+                               <span className="text-xs text-indigo-600 font-bold">خالص پرداختی نهایی:</span>
+                               <span className="text-indigo-950 font-black text-base font-mono" dir="ltr">{formatCurrency(netPayable)} {storeSettings.currency}</span>
+                             </div>
+                           </div>
+                           {netPayable > 0 && (
+                             <div className="text-xs text-slate-500 leading-relaxed text-right mt-1 font-semibold">
+                               به حروف: <strong className="text-indigo-900">{numToPersianWords(netPayable)}</strong> {storeSettings.currency}
+                             </div>
+                           )}
+                         </div>
+
+                         {/* Submission Footer with Net Payable highlighted */}
+                         <div className="flex flex-col sm:flex-row justify-between items-center bg-indigo-600/5 p-6 rounded-2xl border border-indigo-500/10 gap-4">
+                           <div className="text-right">
+                             <span className="text-xs text-indigo-600 font-black block mb-1">مبلغ پرداختی خالص کارمند</span>
+                             <span className="text-2xl font-black text-indigo-950 font-sans tracking-tight" dir="ltr">
+                               {formatCurrency(netPayable)} {storeSettings.currency}
+                             </span>
+                           </div>
+                           <button 
+                             type="submit" 
+                             disabled={submittingSalary} 
+                             className="w-full sm:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer border-none"
+                           >
+                             {submittingSalary ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                             تایید نهایی و صدور فیش حقوقی
+                           </button>
+                         </div>
+                       </div>
+                     );
+                   })()}
                  </form>
                </div>
              </motion.div>
@@ -7417,121 +7607,198 @@ export default function App() {
                 return matchesSearch && matchesCat;
               });
 
+              const totalPages = Math.ceil(filteredProducts.length / productPageSize);
+              const safeCurrentPage = Math.max(1, Math.min(productCurrentPage, totalPages));
+              const paginatedProducts = filteredProducts.slice((safeCurrentPage - 1) * productPageSize, safeCurrentPage * productPageSize);
+
+              const getPaginationItems = () => {
+                const items: (number | string)[] = [];
+                if (totalPages <= 7) {
+                  for (let i = 1; i <= totalPages; i++) items.push(i);
+                } else {
+                  if (safeCurrentPage <= 4) {
+                    items.push(1, 2, 3, 4, 5, '...', totalPages);
+                  } else if (safeCurrentPage >= totalPages - 3) {
+                    items.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+                  } else {
+                    items.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+                  }
+                }
+                return items;
+              };
+
               return filteredProducts.length === 0 ? (
                 <div className="p-12 text-center text-gray-500">
                   <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p>هیچ کالایی یافت نشد.</p>
                 </div>
               ) : (
-                <table className="w-full text-right min-w-[1000px]">
-                  <thead>
-                    <tr className="text-xs font-bold text-gray-500 border-b border-gray-100 bg-gray-50/50 uppercase tracking-wider">
-                      <th className="py-4 px-6 text-center w-16">ردیف</th>
-                      <th className="py-4 px-6 text-right">عنوان کالا / خدمات</th>
-                      <th className="py-4 px-6 text-right">کد / بارکد</th>
-                      <th className="py-4 px-6 text-center">موجودی</th>
-                      <th className="py-4 px-6 text-right">قیمت خرید</th>
-                      <th className="py-4 px-6 text-right">قیمت فروش</th>
-                      <th className="py-4 px-6 text-center w-28">عملیات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 text-sm">
-                    {filteredProducts.map((p, index) => (
-                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <td className="py-4 px-6 text-gray-400 font-sans text-center">
-                        <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm">
-                           {index + 1}
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <div className="flex flex-col gap-1.5">
-                          <span className="font-extrabold text-gray-800">{p.name}</span>
-                          <div className="flex items-center gap-2">
-                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center ${p.type === 'service' ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
-                               {p.type === 'service' ? 'خدمات' : 'کالا'}
-                             </span>
-                             {p.category && (
-                               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
-                                 {p.category}
-                               </span>
-                             )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 font-mono text-xs text-gray-500">
-                        {p.code ? <div className="mb-0.5"><span className="text-gray-400 ml-1">کد:</span>{p.code}</div> : null}
-                        {p.barcode ? <div><span className="text-gray-400 ml-1">بارکد:</span>{p.barcode}</div> : null}
-                        {!p.code && !p.barcode && '---'}
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        {p.type === 'service' ? (
-                          <span className="text-gray-400">-</span>
-                        ) : (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="font-sans font-bold text-gray-700 text-base">{calculateProductCurrentStock(p.id)}</span>
-                            {p.unit && <span className="text-[10px] text-gray-500">{p.unit}</span>}
-                            {calculateProductCurrentStock(p.id) <= (p.minStock || 0) && (p.minStock || 0) > 0 && (
-                              <span className="text-[10px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-100 mt-1">نیاز به شارژ</span>
+                <div className="space-y-6">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-right min-w-[1000px]">
+                      <thead>
+                        <tr className="text-xs font-bold text-gray-500 border-b border-gray-100 bg-gray-50/50 uppercase tracking-wider">
+                          <th className="py-4 px-6 text-center w-16">ردیف</th>
+                          <th className="py-4 px-6 text-right">عنوان کالا / خدمات</th>
+                          <th className="py-4 px-6 text-right">کد / بارکد</th>
+                          <th className="py-4 px-6 text-center">موجودی</th>
+                          <th className="py-4 px-6 text-right">قیمت خرید</th>
+                          <th className="py-4 px-6 text-right">قیمت فروش</th>
+                          <th className="py-4 px-6 text-center w-28">عملیات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 text-sm">
+                        {paginatedProducts.map((p, index) => (
+                        <tr key={p.id} className="hover:bg-slate-50/80 transition-colors group">
+                          <td className="py-4 px-6 text-gray-400 font-sans text-center">
+                            <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm">
+                               {((safeCurrentPage - 1) * productPageSize + index + 1).toLocaleString('fa-IR')}
+                            </div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="flex flex-col gap-1.5">
+                              <span className="font-extrabold text-gray-800">{p.name}</span>
+                              <div className="flex items-center gap-2">
+                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center ${p.type === 'service' ? 'bg-orange-50 text-orange-700 border border-orange-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                                   {p.type === 'service' ? 'خدمات' : 'کالا'}
+                                 </span>
+                                 {p.category && (
+                                   <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+                                     {p.category}
+                                   </span>
+                                 )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-6 font-mono text-xs text-gray-500">
+                            {p.code ? <div className="mb-0.5"><span className="text-gray-400 ml-1">کد:</span>{p.code}</div> : null}
+                            {p.barcode ? <div><span className="text-gray-400 ml-1">بارکد:</span>{p.barcode}</div> : null}
+                            {!p.code && !p.barcode && '---'}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            {p.type === 'service' ? (
+                              <span className="text-gray-400">-</span>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="font-sans font-bold text-gray-700 text-base">{calculateProductCurrentStock(p.id)}</span>
+                                {p.unit && <span className="text-[10px] text-gray-500">{p.unit}</span>}
+                                {calculateProductCurrentStock(p.id) <= (p.minStock || 0) && (p.minStock || 0) > 0 && (
+                                  <span className="text-[10px] bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded font-bold border border-rose-100 mt-1">نیاز به شارژ</span>
+                                )}
+                              </div>
                             )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 font-sans font-bold text-gray-600">
-                        {p.purchasePrice ? formatNumber(p.purchasePrice) : '---'}
-                      </td>
-                      <td className="py-4 px-6 font-sans font-black text-indigo-600 text-base">
-                        {formatNumber(p.price)}
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        <div className="flex items-center justify-center gap-1 opacity-100">
-                          <button
-                            onClick={() => { setViewingProduct(p); setActiveTab('product_view'); }}
-                            className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                            title="مشاهده کارت کالا"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDuplicateProduct(p)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
-                            title="کپی کردن کالا"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEditProduct(p)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
-                            title="ویرایش کالا"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setHistoryProductId(p.id.toString())}
-                    className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all inline-block"
-                    title="سابقه قیمت‌ها"
-                  >
-                    <Activity className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setPrintingBarcodeProduct(p)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
-                            title="چاپ بارکد"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => confirmAction('آیا از حذف این کالا اطمینان دارید؟', () => handleDeleteProduct(p.id))}
-                            className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all inline-block"
-                            title="حذف کالا"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          </td>
+                          <td className="py-4 px-6 font-sans font-bold text-gray-600">
+                            {p.purchasePrice ? formatNumber(p.purchasePrice) : '---'}
+                          </td>
+                          <td className="py-4 px-6 font-sans font-black text-indigo-600 text-base">
+                            {formatNumber(p.price)}
+                          </td>
+                          <td className="py-4 px-6 text-center">
+                            <div className="flex items-center justify-center gap-1 opacity-100">
+                              <button
+                                onClick={() => { setViewingProduct(p); setActiveTab('product_view'); }}
+                                className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                title="مشاهده کارت کالا"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDuplicateProduct(p)}
+                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
+                                title="کپی کردن کالا"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleEditProduct(p)}
+                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
+                                title="ویرایش کالا"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setHistoryProductId(p.id.toString())}
+                                className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all inline-block"
+                                title="سابقه قیمت‌ها"
+                              >
+                                <Activity className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setPrintingBarcodeProduct(p)}
+                                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all inline-block"
+                                title="چاپ بارکد"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => confirmAction('آیا از حذف این کالا اطمینان دارید؟', () => handleDeleteProduct(p.id))}
+                                className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all inline-block"
+                                title="حذف کالا"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Beautiful Pagination Footer */}
+                  {totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 rounded-xl">
+                      <div className="text-xs text-slate-500 font-bold">
+                        نمایش ردیف‌های <span className="text-slate-850 font-sans font-black">{((safeCurrentPage - 1) * productPageSize + 1).toLocaleString('fa-IR')}</span> تا <span className="text-slate-850 font-sans font-black">{Math.min(filteredProducts.length, safeCurrentPage * productPageSize).toLocaleString('fa-IR')}</span> از مجموع <span className="text-indigo-600 font-sans font-bold">{filteredProducts.length.toLocaleString('fa-IR')}</span> کالا یافت‌شده
+                      </div>
+
+                      <div className="flex items-center gap-1.5" dir="ltr">
+                        <button
+                          disabled={safeCurrentPage === 1}
+                          onClick={() => setProductCurrentPage(prev => Math.max(1, prev - 1))}
+                          className="p-2 border border-slate-200 hover:bg-slate-100 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+                          title="صفحه قبل"
+                        >
+                          <ChevronDown className="w-4 h-4 rotate-90" />
+                        </button>
+
+                        {getPaginationItems().map((pg, idx) => {
+                          if (pg === '...') {
+                            return (
+                              <span key={`ellipsis-${idx}`} className="px-2 text-slate-400 font-black tracking-widest flex items-end pb-1">
+                                ...
+                              </span>
+                            );
+                          }
+                          const isCurrent = pg === safeCurrentPage;
+                          return (
+                            <button
+                              key={pg}
+                              onClick={() => setProductCurrentPage(pg as number)}
+                              className={`w-8 h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center border cursor-pointer ${
+                                isCurrent
+                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {Number(pg).toLocaleString('fa-IR')}
+                            </button>
+                          );
+                        })}
+
+                        <button
+                          disabled={safeCurrentPage === totalPages}
+                          onClick={() => setProductCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          className="p-2 border border-slate-200 hover:bg-slate-150 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+                          title="صفحه بعد"
+                        >
+                          <ChevronDown className="w-4 h-4 -rotate-90" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               );
             })()}
           </div>
@@ -13528,6 +13795,19 @@ export default function App() {
 
               {/* Sticky bottom (No print) */}
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 no-print">
+                {(viewingInvoice.isDraft || viewingInvoice.status === 'draft') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingInvoice(null);
+                      handleEditInvoiceAction(viewingInvoice);
+                    }}
+                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-xs"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    ویرایش و ثبت نهایی پیش‌نویس
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => window.print()}

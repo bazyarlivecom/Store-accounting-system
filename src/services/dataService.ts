@@ -1070,6 +1070,10 @@ export const addInvoice = async (invoice: any) => {
   // Recalculate warehouse stocks automatically
   await recalculateAllWarehouseStocks();
 
+  if (newInvoice.isDraft || newInvoice.status === 'draft') {
+    return newInvoice;
+  }
+
   try {
      const docType = newInvoice.type;
      let title = 'فاکتور';
@@ -1385,6 +1389,7 @@ export const recalculateAllWarehouseStocks = async () => {
 
   // 2. Process all invoices
   invoices.forEach(inv => {
+    if (inv.isDraft || inv.status === 'draft') return;
     if (!inv.items || !Array.isArray(inv.items)) return;
     inv.items.forEach((i: any) => {
       const prodId = i.productId;
