@@ -211,6 +211,7 @@ export type CompanySettings = {
   taxPercent: number;
   invoiceNotes: string;
   allowNegativeStock?: boolean;
+  fontFamily?: string;
   requireWarehouse?: boolean;
   invoicePrefix?: string;
   invoiceStartNumber?: string;

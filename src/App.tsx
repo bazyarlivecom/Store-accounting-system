@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Barcode from 'react-barcode';
 import { ScanLine, Shield, Key, Maximize, Minimize, Tag, Plus, Trash2, Edit2, Image,  Save, FileText, User, ShoppingCart, Calculator, CheckCircle, AlertCircle, AlertTriangle, Info, FilePlus, Calendar, List, Receipt, Search, DollarSign, Package, X, RefreshCw, Menu, Github, CreditCard, Wallet, Store, Settings, TrendingUp, TrendingDown, BarChart3, ChevronDown, ChevronUp, Printer, Eye, ListTodo, CheckSquare, LogOut, LogIn, Database, ArrowDownToLine, ArrowUpFromLine, FileSpreadsheet, Users, BookOpen, ClipboardList, Activity, Clock, History, ArrowRightLeft, Percent, LayoutList, GripHorizontal, Box , CornerDownLeft, CornerUpRight, Banknote, PackagePlus, Copy, LayoutDashboard, Phone, MapPin, PlusCircle, MinusCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -674,6 +674,10 @@ export default function App() {
   const [invoicePaidAmount, setInvoicePaidAmount] = useState<number>(0);
 
   const [hasDraft, setHasDraft] = useState<boolean>(false);
+  const [autoSaveInvoiceId, setAutoSaveInvoiceId] = useState<string | null>(null);
+  const autoSaveDbTimer = useRef<any>(null);
+  const isAutoSavingDb = useRef<boolean>(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Inter-warehouse Auto-transfer Proposal State
   const [transferProposal, setTransferProposal] = useState<{
@@ -709,6 +713,7 @@ export default function App() {
          invoiceTitle,
          invoiceDescription,
          activeTab,
+         autoSaveInvoiceId,
        };
        if (items.length > 0 || customerId) {
          localStorage.setItem('invoice_draft', JSON.stringify(draft));
@@ -717,8 +722,70 @@ export default function App() {
          localStorage.removeItem('invoice_draft');
          setHasDraft(false);
        }
+
+       // Auto-save to database as draft if person is selected and at least one item is present
+       if (customerId && items.length > 0 && !submitting && invoiceType && !editingInvoiceId) {
+          if (autoSaveDbTimer.current) clearTimeout(autoSaveDbTimer.current);
+          autoSaveDbTimer.current = setTimeout(async () => {
+             if (isAutoSavingDb.current) return;
+             isAutoSavingDb.current = true;
+             try {
+               const cleanItems = items.filter(
+                 item => item.productName || item.productId || (item.quantity > 0 && item.unitPrice > 0)
+               );
+               
+               if (cleanItems.length === 0) {
+                  isAutoSavingDb.current = false;
+                  return;
+               }
+
+               const payload = {
+                 id: autoSaveInvoiceId || generateId(),
+                 invoiceNumber: autoSaveInvoiceId ? invoiceNumber : `پیش‌نویس-${Date.now().toString().slice(-5)}`,
+                 sellerInvoiceNumber: sellerInvoiceNumber || '',
+                 title: invoiceTitle,
+                 description: invoiceDescription,
+                 warehouseId: invoiceWarehouseId,
+                 type: invoiceType,
+                 currency: invoiceCurrency,
+                 date: typeof date?.toDate === 'function' ? date.toDate().toISOString() : new Date(date || new Date()).toISOString(),
+                 jalaliDate: new Date(date || new Date()).toLocaleDateString(storeSettings?.calendarType === 'gregorian' ? 'en-US' : 'fa-IR'),
+                 customerId,
+                 sourceInvoiceId,
+                 items: cleanItems.map(item => ({
+                   ...item,
+                   warehouseId: (storeSettings?.requireWarehouse || activeTab.includes('warehouse') || activeTab === 'create_sale' || invoiceType === 'sale') && invoiceWarehouseId ? invoiceWarehouseId : item.warehouseId
+                 })),
+                 overallDiscountPercent,
+                 totalAmount: calculateFinalTotal(),
+                 paymentStatus: invoicePaymentStatus,
+                 paidAmount: Number(invoicePaidAmount) || 0,
+                 isDraft: true,
+                 status: 'draft'
+               };
+               
+               if (autoSaveInvoiceId) {
+                 await updateInvoice(autoSaveInvoiceId, payload);
+               } else {
+                 const added = await addInvoice(payload);
+                 setAutoSaveInvoiceId(added.id);
+                 if (added.invoiceNumber) {
+                    setInvoiceNumber(added.invoiceNumber);
+                 }
+               }
+               
+               // Silent fetch to keep the list up to date in the background
+               const updatedInvoices = await getInvoices();
+               setInvoices(updatedInvoices);
+             } catch (e) {
+                console.error("Auto save to DB failed", e);
+             } finally {
+               isAutoSavingDb.current = false;
+             }
+          }, 1500);
+       }
     }
-  }, [items, customerId, invoiceNumber, sellerInvoiceNumber, sourceInvoiceId, overallDiscountPercent, invoiceCurrency, exchangeRate, invoiceMode, invoiceType, invoiceTitle, invoiceDescription, activeTab]);
+  }, [items, customerId, invoiceNumber, sellerInvoiceNumber, sourceInvoiceId, overallDiscountPercent, invoiceCurrency, exchangeRate, invoiceMode, invoiceType, invoiceTitle, invoiceDescription, activeTab, editingInvoiceId, invoiceWarehouseId, date, invoicePaymentStatus, invoicePaidAmount, autoSaveInvoiceId, submitting]);
   
   useEffect(() => {
     if (localStorage.getItem('invoice_draft')) {
@@ -743,6 +810,7 @@ export default function App() {
         setExchangeRate(parsed.exchangeRate || 1);
         setExchangeRateInput(parsed.exchangeRateInput || '1');
         setInvoiceDescription(parsed.invoiceDescription || '');
+        setAutoSaveInvoiceId(parsed.autoSaveInvoiceId || null);
         
         // Timeout to let activeTab's effect finish, then override
         setTimeout(() => {
@@ -755,7 +823,7 @@ export default function App() {
     }
   };
   
-  const clearDraft = () => {
+  const clearDraft = async () => {
     localStorage.removeItem('invoice_draft');
     setHasDraft(false);
     setCustomerId('');
@@ -765,10 +833,14 @@ export default function App() {
     setSellerInvoiceNumber('');
     if (invoiceMode === 'manual') setInvoiceNumber('');
     setEditingInvoiceId(null);
+    if (autoSaveInvoiceId) {
+       await deleteInvoice(autoSaveInvoiceId);
+       setAutoSaveInvoiceId(null);
+       const updatedInvoices = await getInvoices();
+       setInvoices(updatedInvoices);
+    }
   };
   
-  const [submitting, setSubmitting] = useState(false);
-
   // Redirect to financial_years if no active financial year is set
   useEffect(() => {
     if (hasCheckedFinancialYears && !activeFinancialYear) {
@@ -2340,21 +2412,12 @@ export default function App() {
     if (storeSettings?.storeName) {
       document.title = storeSettings.storeName;
     }
-    if (storeSettings?.fontFamily) {
-      document.documentElement.style.setProperty('--app-font', storeSettings.fontFamily);
-    } else {
-      document.documentElement.style.setProperty('--app-font', 'Vazirmatn');
-    }
-  }, [storeSettings?.storeName, storeSettings?.fontFamily]);
+  }, [storeSettings?.storeName]);
 
   useEffect(() => {
-    if (activeTab === 'settings' && settingsForm?.fontFamily) {
-      document.documentElement.style.setProperty('--app-font', settingsForm.fontFamily);
-    } else if (storeSettings?.fontFamily) {
-      document.documentElement.style.setProperty('--app-font', storeSettings.fontFamily);
-    } else {
-      document.documentElement.style.setProperty('--app-font', 'Vazirmatn');
-    }
+    const font = (activeTab === 'settings' && settingsForm?.fontFamily) ? settingsForm.fontFamily : (storeSettings?.fontFamily || 'IRANYekanXFaNum');
+    document.documentElement.style.setProperty('--font-sans', `"${font}", "Vazirmatn", ui-sans-serif, system-ui, sans-serif`);
+    document.body.style.fontFamily = `"${font}", "Vazirmatn", sans-serif`;
   }, [settingsForm?.fontFamily, activeTab, storeSettings?.fontFamily]);
 
   const fetchChecks = async () => {
@@ -2936,6 +2999,9 @@ export default function App() {
       if (editingInvoiceId) {
         await deleteInvoice(editingInvoiceId);
         setEditingInvoiceId(null);
+      } else if (autoSaveInvoiceId) {
+        await deleteInvoice(autoSaveInvoiceId);
+        setAutoSaveInvoiceId(null);
       }
       const addedInvoice = await addInvoice(payload as any);
       
@@ -14614,27 +14680,56 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setTransferProposal(null)}
-                  className="px-6 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold transition-all text-xs"
+                  className="px-6 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold transition-all text-xs shrink-0"
                 >
                   انصراف و اصلاح فاکتور
                 </button>
 
-                {transferProposal.items.some(i => i.transfers && i.transfers.length > 0) ? (
-                  <button
-                    type="button"
-                    onClick={handleExecuteTransferAndSubmit}
-                    disabled={submitting}
-                    className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-xl font-black flex items-center gap-2 transition-all shadow-md shadow-indigo-600/10 text-xs"
-                  >
-                    {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    تأیید و اجرای هوشمند انتقال و ثبت فاکتور
-                  </button>
-                ) : (
-                  <div className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4" />
-                    انتقال خودکار غیرمقدور (عدم موجودی کل کالاها)
-                  </div>
-                )}
+                {(() => {
+                  const canFullyTransfer = transferProposal.items.every((i: any) => i.remainingDeficit === 0);
+                  const hasAnyTransfer = transferProposal.items.some((i: any) => i.transfers && i.transfers.length > 0);
+                  
+                  if (canFullyTransfer) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={handleExecuteTransferAndSubmit}
+                        disabled={submitting}
+                        className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-xl font-black flex items-center gap-2 transition-all shadow-md shadow-indigo-600/10 text-xs"
+                      >
+                        {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                        تأیید و اجرای هوشمند انتقال و ثبت فاکتور
+                      </button>
+                    );
+                  } else {
+                    if (storeSettings?.allowNegativeStock) {
+                      return (
+                        <div className="flex flex-col md:flex-row gap-3 items-center w-full justify-end">
+                          <div className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2 flex-1 md:flex-auto shrink-0 whitespace-normal text-right">
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                            {hasAnyTransfer ? "موجودی ناکافی (امکان انتقال جزئی)" : "انتقال خودکار غیرمقدور (عدم موجودی کل)"}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleExecuteTransferAndSubmit}
+                            disabled={submitting}
+                            className="px-6 py-3 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-200 text-white rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md shadow-rose-600/10 text-xs shrink-0 whitespace-nowrap"
+                          >
+                            {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                            {hasAnyTransfer ? "انتقال مقادیر موجود و ثبت فاکتور" : "ثبت فاکتور (بدون انتقال مقدور)"}
+                          </button>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          {hasAnyTransfer ? "موجودی ناکافی جهت انتقال کامل. امکان ثبت فاکتور با موجودی منفی غیرفعال است." : "انتقال خودکار غیرمقدور (عدم موجودی کل کالاها)"}
+                        </div>
+                      );
+                    }
+                  }
+                })()}
               </div>
             </motion.div>
           </div>

@@ -4,6 +4,7 @@ export interface CompanySettings {
   address?: string;
   logoUrl?: string;
   currency?: string;
+  fontFamily?: string;
 }
 
 const getLocalData = async <T>(key: string, defaultValue: T): Promise<T> => {
