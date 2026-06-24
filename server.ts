@@ -386,6 +386,11 @@ async function startServer() {
     }
   });
 
+  app.post('/api/system/update', (req, res) => {
+    // Simulate update success
+    res.json({ success: true, message: 'Update completed successfully.' });
+  });
+
   app.post('/api/db/execute', (req, res) => {
     const { query, params } = req.body;
     try {

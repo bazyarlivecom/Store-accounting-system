@@ -68,23 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Helper to intercept fetch and add token (not strictly enforced everywhere yet, but available)
-  useEffect(() => {
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      let [resource, config] = args;
-      if (accessToken) {
-         config = config || {};
-         config.headers = {
-           ...config.headers,
-           'Authorization': `Bearer ${accessToken}`
-         };
-      }
-      return originalFetch(resource, config);
-    };
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, [accessToken]);
+  // Removed global fetch override due to "Cannot set property fetch of #<Window> which has only a getter"
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

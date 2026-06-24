@@ -190,7 +190,7 @@ export default function QuickPriceInquiry({ products, settings }: QuickPriceInqu
                     <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:250%_250%,100%_100%] animate-[shimmer_2s_infinite]"></div>
                     <span className="block text-indigo-200 text-xs font-bold uppercase tracking-widest mb-2 relative z-10">قیمت فروش</span>
                     <div className="flex items-center justify-center gap-2 relative z-10">
-                      <span className="text-4xl font-black tracking-tighter" dir="ltr">{addCommas(selectedProduct.salePrice || 0)}</span>
+                      <span className="text-4xl font-black tracking-tighter" dir="ltr">{addCommas(selectedProduct.price || 0)}</span>
                       <span className="text-sm font-bold text-indigo-200 mt-2">{currency}</span>
                     </div>
                  </div>
