@@ -3861,6 +3861,12 @@ export default function App() {
                 >
                   <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
                   <option value="IRANYekanXFaNum">ایران یکان (IRANYekanX)</option>
+                  <option value="Lalezar">لاله‌زار (Lalezar)</option>
+                  <option value="Readex Pro">ریدکس پرو (Readex Pro)</option>
+                  <option value="Cairo">قاهره (Cairo)</option>
+                  <option value="Amiri">امیری (Amiri)</option>
+                  <option value="Changa">چنگا (Changa)</option>
+                  <option value="Tahoma">تاهوما (Tahoma)</option>
                 </select>
               </div>
 
@@ -10385,6 +10391,12 @@ export default function App() {
                       >
                         <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
                         <option value="IRANYekanXFaNum">ایران یکان (IRANYekanX)</option>
+                        <option value="Lalezar">لاله‌زار (Lalezar)</option>
+                        <option value="Readex Pro">ریدکس پرو (Readex Pro)</option>
+                        <option value="Cairo">قاهره (Cairo)</option>
+                        <option value="Amiri">امیری (Amiri)</option>
+                        <option value="Changa">چنگا (Changa)</option>
+                        <option value="Tahoma">تاهوما (Tahoma)</option>
                       </select>
                       <p className="text-xs text-gray-500 mt-2">انتخاب فونت برای نمایش در کل سیستم.</p>
                     </div>
