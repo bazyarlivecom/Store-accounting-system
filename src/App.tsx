@@ -1641,6 +1641,7 @@ export default function App() {
   const [newPersonInitialBalance, setNewPersonInitialBalance] = useState("");
   const [newPersonInitialBalanceType, setNewPersonInitialBalanceType] =
     useState<"debtor" | "creditor" | "settled">("settled");
+  const [newPersonCreditLimit, setNewPersonCreditLimit] = useState("");
 
   const [submittingPerson, setSubmittingPerson] = useState(false);
   const [personModalActiveTab, setPersonModalActiveTab] = useState<
@@ -2217,6 +2218,7 @@ export default function App() {
         phone: newPersonPhone,
         initialBalance: Number(newPersonInitialBalance || 0),
         initialBalanceType: newPersonInitialBalanceType,
+        creditLimit: Number(newPersonCreditLimit || 0),
         group: newPersonGroup,
         province: newPersonProvince,
         city: newPersonCity,
@@ -2253,6 +2255,7 @@ export default function App() {
       setNewPersonRole("customer");
       setNewPersonInitialBalance("");
       setNewPersonInitialBalanceType("settled");
+      setNewPersonCreditLimit("");
       setPersonModalActiveTab("basic");
       setEditingPersonId(null);
       setIsPersonModalOpen(false);
@@ -2426,6 +2429,59 @@ export default function App() {
     }
   };
 
+  const checkDebtThreshold = async (personId: string | number) => {
+    if (!storeSettings?.smsDebtThresholdEnabled || storeSettings.smsDebtThresholdAmount === undefined || !storeSettings?.notify_method || storeSettings.notify_method === 'none') return;
+
+    try {
+      const [allPersons, allInvoices, allTransactions, allIssuedChecks, allReceivedChecks] = await Promise.all([
+        getPersons(),
+        getInvoices(),
+        getTransactions(),
+        getIssuedChecks(),
+        getReceivedChecks()
+      ]);
+      
+      const person = allPersons.find((p: any) => p.id.toString() === personId.toString());
+      if (!person || !person.phone) return;
+
+      let balance = 0;
+      if (person.initialBalance && person.initialBalanceType !== "settled") {
+        balance += person.initialBalanceType === "debtor" ? person.initialBalance : -person.initialBalance;
+      }
+      
+      allInvoices.filter((i: any) => i.customerId?.toString() === personId.toString() && i.type !== "warehouse_receipt" && i.type !== "warehouse_remittance" && i.type !== "proforma" && i.status !== "draft").forEach((inv: any) => {
+        const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings?.currency || "تومان");
+        if (inv.type === "sale") balance += amount;
+        else if (inv.type === "purchase") balance -= amount;
+        else if (inv.type === "sale_return") balance -= amount;
+        else if (inv.type === "purchase_return") balance += amount;
+      });
+
+      allTransactions.filter((t: any) => t.personId?.toString() === personId.toString() && t.method !== "check").forEach((t: any) => {
+        if (t.type === "receive") balance -= t.amount || 0;
+        else if (t.type === "pay") balance += t.amount || 0;
+        else if (t.type === "salary") balance -= t.amount || 0;
+      });
+
+      allIssuedChecks.filter((c: any) => c.payeeId?.toString() === personId.toString() && c.status !== "cancelled" && c.status !== "bounced" && c.status !== "cashed").forEach((c: any) => {
+        balance += c.amount || 0;
+      });
+
+      allReceivedChecks.filter((c: any) => c.payerId?.toString() === personId.toString() && c.status !== "returned" && c.status !== "bounced" && c.status !== "cashed").forEach((c: any) => {
+        balance -= c.amount || 0;
+      });
+
+      if (balance > storeSettings.smsDebtThresholdAmount) {
+        const amt = typeof formatNumber === "function" ? formatNumber(balance) : addCommas(balance);
+        let msg = storeSettings.smsDebtThresholdMessage || "مشتری گرامی، مانده بدهی شما از سقف مجاز عبور کرده است. لطفا نسبت به تسویه حساب اقدام نمایید.";
+        msg = msg.replace(/{name}/g, person.name).replace(/{amount}/g, String(amt)).replace(/{date}/g, new Date().toLocaleDateString("fa-IR"));
+        sendNotification(msg, person.phone, storeSettings.notify_method);
+      }
+    } catch (err) {
+      console.error("Error checking debt threshold:", err);
+    }
+  };
+
   const handleSubmitReceipt = (type: "receive" | "pay", e: React.FormEvent) => {
     e.preventDefault();
     if (receiptMethod === "cash") {
@@ -2449,6 +2505,24 @@ export default function App() {
       ) {
         customAlert("لطفا تمام اطلاعات الزامی فرم چک را وارد کنید.");
         return;
+      }
+    }
+
+    if (type === "pay") {
+      const person = persons.find(p => p.id.toString() === receiptPersonId.toString());
+      if (person && person.creditLimit && person.creditLimit > 0) {
+        const currentBalanceObj = calculatePersonBalance(receiptPersonId);
+        let currentDebt = currentBalanceObj.status === "بدهکار" ? currentBalanceObj.amount : -currentBalanceObj.amount;
+        
+        // type === "pay" means we are paying them, so their debt to us INCREASES.
+        const newDebt = currentDebt + Number(receiptAmount);
+        
+        if (newDebt > person.creditLimit) {
+           customAlert(
+            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`
+          );
+          return;
+        }
       }
     }
 
@@ -2671,6 +2745,8 @@ export default function App() {
           sendNotification(msg, person.phone, storeSettings?.notify_method);
         }
       }
+      
+      await checkDebtThreshold(previewReceiptData.personId);
     } catch (err: any) {
       console.error(err);
       customAlert(err.message || "خطا در ارتباط با سرور.");
@@ -2736,6 +2812,7 @@ export default function App() {
         "تغییرات با موفقیت روی رسید ذخیره گردید و اسناد مربوطه بروز شدند.",
         "success",
       );
+      await checkDebtThreshold(editingReceipt.personId);
     } catch (err) {
       console.error(err);
       customAlert("خطا در بروزرسانی سند رسید.");
@@ -3201,6 +3278,7 @@ export default function App() {
     );
     setNewPersonInitialBalance(p.initialBalance?.toString() || "");
     setNewPersonInitialBalanceType(p.initialBalanceType || "settled");
+    setNewPersonCreditLimit(p.creditLimit?.toString() || "");
     setPersonModalActiveTab("basic");
     setIsPersonModalOpen(true);
   };
@@ -4050,6 +4128,32 @@ export default function App() {
         (item.quantity > 0 && item.unitPrice > 0),
     );
 
+    const actualCustomerId = customPayload?.customerId || customerId;
+    const actualType = customPayload?.type || invoiceType;
+    if (!isDraft && actualCustomerId && (actualType === "sale" || actualType === "purchase_return")) {
+      const person = persons.find(p => p.id.toString() === actualCustomerId.toString());
+      if (person && person.creditLimit && person.creditLimit > 0) {
+        const currentBalanceObj = calculatePersonBalance(actualCustomerId);
+        let currentDebt = currentBalanceObj.status === "بدهکار" ? currentBalanceObj.amount : -currentBalanceObj.amount;
+        
+        let invTotal = 0;
+        if (customPayload) {
+          invTotal = customPayload.totalAmount || 0;
+        } else {
+          invTotal = calculateFinalTotal();
+        }
+
+        const newDebt = currentDebt + invTotal;
+        if (newDebt > person.creditLimit) {
+          customAlert(
+            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+    }
+
     const payload = customPayload
       ? {
           ...customPayload,
@@ -4363,6 +4467,7 @@ export default function App() {
         }
       }
       await fetchInvoices();
+      await checkDebtThreshold(payload.customerId);
 
       // Reset form after short delay
       clearDraft();
@@ -12301,6 +12406,7 @@ export default function App() {
                                 setNewPersonRole("customer");
                                 setNewPersonInitialBalance("");
                                 setNewPersonInitialBalanceType("settled");
+                                setNewPersonCreditLimit("");
                                 setIsPersonModalOpen(true);
                               }}
                               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] text-xs font-black shadow-md shadow-indigo-200 cursor-pointer border-none"
@@ -15365,17 +15471,26 @@ export default function App() {
 
                                 <div className="grid grid-cols-2 gap-8 text-sm">
                                   <div className="space-y-3 font-medium">
-                                    <p>
-                                      <span className="text-gray-500 w-24 inline-block font-bold">
-                                        نام طرف حساب:
-                                      </span>{" "}
-                                      <span className="font-extrabold text-lg text-gray-900">
-                                        {getPersonDisplayName(selectedPerson)}{" "}
-                                        {selectedPerson.personCode
-                                          ? `[${selectedPerson.personCode}]`
-                                          : ""}
-                                      </span>
-                                    </p>
+                                    <div className="flex items-center gap-3 mb-4">
+                                      {selectedPerson.imageUrl && (
+                                        <img 
+                                          src={selectedPerson.imageUrl} 
+                                          alt={getPersonDisplayName(selectedPerson)} 
+                                          className="w-12 h-12 rounded-full object-cover border border-gray-200 shadow-sm shrink-0" 
+                                        />
+                                      )}
+                                      <p>
+                                        <span className="text-gray-500 w-24 inline-block font-bold">
+                                          نام طرف حساب:
+                                        </span>{" "}
+                                        <span className="font-extrabold text-lg text-gray-900">
+                                          {getPersonDisplayName(selectedPerson)}{" "}
+                                          {selectedPerson.personCode
+                                            ? `[${selectedPerson.personCode}]`
+                                            : ""}
+                                        </span>
+                                      </p>
+                                    </div>
                                     <p>
                                       <span className="text-gray-500 w-24 inline-block font-bold">
                                         تلفن تماس:
@@ -15601,9 +15716,22 @@ export default function App() {
                                     )}
                                   </span>
                                 </div>
-                                <h2 className="text-lg font-extrabold text-gray-900 mb-3">
-                                  {getPersonDisplayName(selectedPerson)}
-                                </h2>
+                                <div className="flex items-center gap-4 mb-4">
+                                  {selectedPerson.imageUrl ? (
+                                    <img 
+                                      src={selectedPerson.imageUrl} 
+                                      alt={getPersonDisplayName(selectedPerson)} 
+                                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shadow-sm shrink-0" 
+                                    />
+                                  ) : (
+                                    <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 shadow-sm">
+                                      <User className="w-8 h-8 text-gray-300" />
+                                    </div>
+                                  )}
+                                  <h2 className="text-xl font-extrabold text-gray-900 leading-tight">
+                                    {getPersonDisplayName(selectedPerson)}
+                                  </h2>
+                                </div>
 
                                 <div className="space-y-2 text-sm text-gray-600">
                                   {selectedPerson.phone && (
@@ -17114,6 +17242,69 @@ export default function App() {
                                     گزارش مانده حساب (پس از هر تراکنش)
                                   </span>
                                 </label>
+                              </div>
+                            </div>
+
+                            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
+                              <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">
+                                هشدار خودکار سقف بدهی
+                              </h3>
+                              <div className="space-y-4">
+                                <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      settingsForm.smsDebtThresholdEnabled || false
+                                    }
+                                    onChange={(e) =>
+                                      setSettingsForm({
+                                        ...settingsForm,
+                                        smsDebtThresholdEnabled: e.target.checked,
+                                      })
+                                    }
+                                    className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                  />
+                                  <span className="text-gray-800 font-medium">
+                                    ارسال پیامک هشدار در صورت عبور بدهی از سقف تعیین شده
+                                  </span>
+                                </label>
+
+                                {settingsForm.smsDebtThresholdEnabled && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                    <div className="w-full text-right">
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        سقف مجاز بدهی (تومان)
+                                      </label>
+                                      <CurrencyInput
+                                        value={settingsForm.smsDebtThresholdAmount || ""}
+                                        onChange={(e: any) =>
+                                          setSettingsForm({
+                                            ...settingsForm,
+                                            smsDebtThresholdAmount: Number(e.target.value) || 0,
+                                          })
+                                        }
+                                        placeholder="مثال: 50,000,000"
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                                        currencyLabel="تومان"
+                                      />
+                                    </div>
+                                    <div className="w-full text-right md:col-span-2">
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        متن پیامک هشدار
+                                      </label>
+                                      <textarea
+                                        value={settingsForm.smsDebtThresholdMessage || "مشتری گرامی، مانده بدهی شما از سقف مجاز عبور کرده است. لطفا نسبت به تسویه حساب اقدام نمایید."}
+                                        onChange={(e) =>
+                                          setSettingsForm({
+                                            ...settingsForm,
+                                            smsDebtThresholdMessage: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all h-24"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -21143,6 +21334,32 @@ export default function App() {
                                     disabled={
                                       newPersonInitialBalanceType === "settled"
                                     }
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="w-full text-right bg-blue-50/50 p-6 rounded-3xl border border-blue-100 shadow-sm relative overflow-hidden mt-6">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                                <div className="mb-4 relative z-10 border-b border-blue-100 pb-4">
+                                  <h4 className="text-sm font-black text-blue-900 mb-2">
+                                    سقف اعتبار / بدهی
+                                  </h4>
+                                  <p className="text-xs text-blue-700/80 leading-relaxed max-w-2xl">
+                                    با تعیین سقف اعتبار، در صورتی که بدهی این شخص از مبلغ تعیین شده بیشتر شود، سیستم اجازه ثبت فاکتور یا سند جدید برای ایشان را نخواهد داد.
+                                  </p>
+                                </div>
+                                <div className="w-full relative z-10">
+                                  <label className="block text-sm font-bold text-blue-900 mb-2">
+                                    سقف مجاز (
+                                    {storeSettings?.currency || "تومان"})
+                                  </label>
+                                  <CurrencyInput
+                                    value={newPersonCreditLimit}
+                                    onChange={(e: any) =>
+                                      setNewPersonCreditLimit(e.target.value)
+                                    }
+                                    placeholder="مثلا: 50000000 (خالی به معنی بدون سقف)"
+                                    className="w-full px-4 py-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 shadow-sm transition-colors text-blue-950 font-mono text-left font-bold bg-white"
                                   />
                                 </div>
                               </div>

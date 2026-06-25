@@ -1,0 +1,109 @@
+  const [newPersonInitialBalance, setNewPersonInitialBalance] = useState("");
+  const [newPersonInitialBalanceType, setNewPersonInitialBalanceType] =
+  const [newAccountBalance, setNewAccountBalance] = useState("");
+  const [newCashboxBalance, setNewCashboxBalance] = useState("");
+        initialBalance: Number(newPersonInitialBalance || 0),
+        initialBalanceType: newPersonInitialBalanceType,
+      setNewPersonInitialBalance("");
+      setNewPersonInitialBalanceType("settled");
+        initialBalance: Number(newAccountBalance) || 0,
+        balance: Number(newAccountBalance) || 0,
+      setNewAccountBalance("");
+        initialBalance: Number(newCashboxBalance) || 0,
+        balance: Number(newCashboxBalance) || 0,
+      setNewCashboxBalance("");
+    setNewPersonInitialBalance(p.initialBalance?.toString() || "");
+    setNewPersonInitialBalanceType(p.initialBalanceType || "settled");
+    setNewAccountBalance(acc.balance.toString());
+    setNewCashboxBalance(box.balance.toString());
+  const calculatePersonBalance = (personId: string | number) => {
+    let balance = 0;
+    if (person.initialBalance && person.initialBalanceType !== "settled") {
+      balance +=
+        person.initialBalanceType === "debtor"
+          ? person.initialBalance
+          : -person.initialBalance;
+        if (inv.type === "sale") balance += amount;
+        else if (inv.type === "purchase") balance -= amount;
+        else if (inv.type === "sale_return") balance -= amount;
+        else if (inv.type === "purchase_return") balance += amount;
+        if (t.type === "receive") balance -= t.amount || 0;
+        else if (t.type === "pay") balance += t.amount || 0;
+        else if (t.type === "salary") balance -= t.amount || 0;
+    // Active/Pending Issued Checks (Supplier paid by check -> their balance goes UP because we owe them less)
+        balance += c.amount || 0;
+    // Active/Pending Received Checks (Customer pays by check -> their balance goes DOWN because they owe us less)
+        balance -= c.amount || 0;
+    if (balance > 0)
+        amount: balance,
+    if (balance < 0)
+        amount: Math.abs(balance),
+    const bal = calculatePersonBalance(personId);
+                    const paginatedPersonBalances: Record<string, number> = {};
+                      const balResult = calculatePersonBalance(p.id);
+                      paginatedPersonBalances[pid] = b;
+                                setNewPersonInitialBalance("");
+                                setNewPersonInitialBalanceType("settled");
+                                          paginatedPersonBalances[
+                          setNewAccountBalance("");
+                                  {formatNumber(acc.balance)}{" "}
+                          setNewCashboxBalance("");
+                                  {formatNumber(box.balance)}{" "}
+                              (sum, acc) => sum + (acc.balance || 0),
+                                (sum, cb) => sum + (cb.balance || 0),
+                                    {formatNumber(acc.balance || 0)}
+                                    (sum, acc) => sum + (acc.balance || 0),
+                                    {formatNumber(cb.balance || 0)}
+                                    (sum, cb) => sum + (cb.balance || 0),
+                      // Inject initial balance as the very first theoretical entry
+                        selectedPerson.initialBalance &&
+                        selectedPerson.initialBalanceType !== "settled"
+                        const ibAmount = selectedPerson.initialBalance;
+                          selectedPerson.initialBalanceType === "debtor";
+                          id: "opening-balance",
+                      // Running progressive balance
+                          runningBalance: runningSum,
+                      const finalBalance = totalDebits - totalCredits;
+                      const isOwed = finalBalance > 0;
+                      const isClr = finalBalance === 0;
+                                                Math.abs(finalBalance),
+                                      const isDeb = entry.runningBalance > 0;
+                                        entry.runningBalance === 0;
+                                                          entry.runningBalance,
+                            {/* Net Balanced Status Card */}
+                                const isOwedToUs = finalBalance > 0;
+                                const isClear = finalBalance === 0;
+                                          {formatNumber(Math.abs(finalBalance))}{" "}
+                                      const isDeb = entry.runningBalance > 0;
+                                      const isCred = entry.runningBalance < 0;
+                                        entry.runningBalance === 0;
+                                                          entry.runningBalance,
+                                      settingsForm.notify_on_balance || false
+                                        notify_on_balance: e.target.checked,
+                                        setNewPersonInitialBalanceType("debtor")
+                                        newPersonInitialBalanceType === "debtor"
+                                        setNewPersonInitialBalanceType(
+                                        newPersonInitialBalanceType ===
+                                        setNewPersonInitialBalanceType(
+                                        newPersonInitialBalanceType ===
+                                  className={`w-full relative z-10 transition-opacity duration-300 ${newPersonInitialBalanceType === "settled" ? "opacity-40 pointer-events-none" : "opacity-100"}`}
+                                    value={newPersonInitialBalance}
+                                      setNewPersonInitialBalance(e.target.value)
+                                      newPersonInitialBalanceType === "settled"
+                              value={newAccountBalance}
+                                setNewAccountBalance(e.target.value)
+                              value={newCashboxBalance}
+                                setNewCashboxBalance(e.target.value)
+                      selectedPerson.initialBalance &&
+                      selectedPerson.initialBalanceType !== "settled"
+                      const ibAmount = selectedPerson.initialBalance;
+                        selectedPerson.initialBalanceType === "debtor";
+                        id: "opening-balance",
+                        runningBalance: runningSum,
+                    const finalBalance = totalDebits - totalCredits;
+                    const isOwedToUs = finalBalance > 0;
+                    const isClear = finalBalance === 0;
+                                    {formatNumber(Math.abs(finalBalance))}{" "}
+                                            entry.runningBalance === 0;
+                                            entry.runningBalance > 0;
+                                                          entry.runningBalance,

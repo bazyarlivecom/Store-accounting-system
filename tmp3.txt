@@ -1,0 +1,132 @@
+322:  const [activeTab, setActiveTab] = useState<
+877:    if (activeTab === "create_sale") {
+880:    } else if (activeTab === "create_sale_return") {
+883:    } else if (activeTab === "create_purchase_return") {
+886:    } else if (activeTab === "create_purchase") {
+889:    } else if (activeTab === "create_warehouse_doc") {
+895:  }, [activeTab]);
+1322:      ].includes(activeTab)
+1338:        activeTab,
+1398:                    activeTab.includes("warehouse") ||
+1399:                    activeTab === "create_sale" ||
+1447:    activeTab,
+1468:        if (parsed.activeTab) setActiveTab(parsed.activeTab);
+1482:        // Timeout to let activeTab's effect finish, then override
+1514:      if (activeTab !== "financial_years" && activeTab !== "settings") {
+1518:  }, [hasCheckedFinancialYears, activeFinancialYear, activeTab]);
+1522:    if (activeTab === "financial_years") {
+1525:  }, [activeTab]);
+1987:            activeTab,
+3322:      if (activeTab === "create_warehouse_doc") {
+3337:          activeTab === "create_warehouse_doc" &&
+3408:      activeTab === "settings" && settingsForm?.fontFamily
+3416:  }, [settingsForm?.fontFamily, activeTab, storeSettings?.fontFamily]);
+3529:      activeTab === "create_purchase" ||
+3530:      (activeTab === "create_warehouse_doc" &&
+3610:                activeTab === "create_purchase" ||
+3611:                (activeTab === "create_warehouse_doc" &&
+3671:            const isWarehouseTab = activeTab === "create_warehouse_doc";
+3874:      (activeTab === "create_warehouse_doc" &&
+3876:      activeTab === "list_warehouse_docs";
+3909:        (activeTab === "create_warehouse_doc" &&
+3915:        (activeTab === "create_warehouse_doc" &&
+3920:      else if (activeTab === "create_purchase" || invoiceType === "purchase")
+3924:        activeTab === "create_sale_return" ||
+3929:        activeTab === "create_purchase_return" ||
+4007:    if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
+4017:      (activeTab === "create_sale" || invoiceType === "sale") &&
+4032:      !activeTab.includes("warehouse") &&
+4033:      activeTab !== "create_sale" &&
+4090:                activeTab.includes("warehouse") ||
+4091:                activeTab === "create_sale" ||
+4403:        if (activeTab === "create_sale") {
+4408:        } else if (activeTab === "create_sale_return") {
+4413:        } else if (activeTab === "create_purchase_return") {
+4418:        } else if (activeTab === "create_purchase") {
+4423:        } else if (activeTab === "create_warehouse_doc") {
+4693:    if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
+4699:      !activeTab.includes("warehouse") &&
+4723:    if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
+4730:      !activeTab.includes("warehouse") &&
+4776:              activeTab.includes("warehouse")) &&
+5122:    activeTab === "create_sale" ||
+5123:    activeTab === "create_purchase" ||
+5124:    activeTab === "create_warehouse_doc" ||
+5125:    activeTab === "create_sale_return" ||
+5126:    activeTab === "create_purchase_return"
+5464:    switch (activeTab) {
+7965:                  {!activeTab.includes("warehouse") && (
+8618:                  {!activeTab.includes("warehouse") && (
+8789:            if (activeTab === "list_sale") {
+8791:            } else if (activeTab === "list_purchase") {
+8801:            } else if (activeTab === "list_warehouse_docs") {
+8810:            } else if (activeTab === "list_sale_return") {
+8812:            } else if (activeTab === "list_purchase_return") {
+8894:                  {activeTab === "list_sale"
+8896:                    : activeTab === "list_purchase"
+8913:                {(activeTab === "list_sale" ||
+8914:                  activeTab === "list_purchase") && (
+8939:                {activeTab === "list_warehouse_docs" && (
+8973:                      ].includes(activeTab) && (
+8976:                      {activeTab.includes("warehouse") && (
+8981:                      {activeTab.includes("warehouse") ? (
+8991:                      ].includes(activeTab) && (
+9071:                            ].includes(activeTab) && (
+9076:                                  (activeTab === "list_sale"
+9083:                                    (activeTab === "list_sale"
+9100:                            {activeTab.includes("warehouse") && (
+9134:                            {activeTab.includes("warehouse") ? (
+9159:                            ].includes(activeTab) && (
+9206:                                  ].includes(activeTab) ? (
+9239:                              {activeTab === "list_purchase" && (
+9327:        const isReceive = activeTab === "create_receive_receipt";
+10003:        const isReceive = activeTab === "list_receive_receipt";
+11350:                            activeTab === item.id
+11378:        const isActiveGroup = group.items.some((i) => i.id === activeTab);
+11394:                  className={`text-right w-full px-3 py-2.5 rounded-lg text-xs font-bold transition-colors ${activeTab === item.id ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+11700:                {activeTab === "products" ? (
+12184:                ) : activeTab === "persons" ? (
+12847:                ) : activeTab === "person_groups" ? (
+13021:                ) : activeTab === "person_roles" ? (
+13154:                ) : activeTab === "accounts" ? (
+13309:                ) : activeTab === "cashboxes" ? (
+13429:                ) : activeTab === "warehouses" ? (
+13794:                ) : activeTab === "financial_report" ? (
+14756:                ) : activeTab === "person_ledger" ? (
+16097:                ) : activeTab === "debts_credits" ? (
+16099:                ) : activeTab === "checkbooks" ? (
+16105:                      activeTab="checkbooks"
+16113:                ) : activeTab === "issued_checks" ? (
+16119:                      activeTab="issued_checks"
+16127:                ) : activeTab === "received_checks" ? (
+16133:                      activeTab="received_checks"
+16141:                ) : activeTab === "check_calendar" ? (
+16147:                      activeTab="check_calendar"
+16155:                ) : activeTab === "check_charts" ? (
+16161:                      activeTab="check_charts"
+16169:                ) : activeTab === "transfer" ? (
+16176:                ) : activeTab === "invoice_allocation" ? (
+16187:                ) : activeTab === "quick_refund" ? (
+16197:                ) : activeTab === "loans" ? (
+16209:                ) : activeTab === "users_manager" ? (
+16211:                ) : activeTab === "settings" ? (
+17161:                ) : activeTab === "inventory_report" ? (
+17163:                ) : activeTab === "analytical_dashboard" ? (
+17165:                ) : activeTab === "sms_panel" ? (
+17436:                ) : activeTab === "system_logs" ? (
+17443:                ) : activeTab === "database" ? (
+17445:                ) : activeTab === "update" ? (
+17767:                ) : activeTab === "quick_price_inquiry" ? (
+17772:                ) : activeTab === "product_view" ? (
+17818:                ) : activeTab === "checklist" ? (
+17820:                ) : activeTab === "stocktaking" ? (
+17828:                ) : activeTab === "financial_years" ? (
+17830:                ) : activeTab === "chart_of_accounts" ? (
+17835:                ) : activeTab === "accounting_docs_list" ? (
+17846:                ) : activeTab === "accounting_doc_create" ? (
+17851:                ) : activeTab === "accounting_doc_view" &&
+17858:                ) : activeTab === "accounting_auto_sync" ? (
+17860:                ) : activeTab === "accounting_verification" ? (
+17892:                ].includes(activeTab) && renderTabContent()}
+23719:                          {activeTab.includes("warehouse")
+24378:                        {activeTab.includes("warehouse")

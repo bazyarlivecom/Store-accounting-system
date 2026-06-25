@@ -48,6 +48,7 @@ export type Person = {
   registrationDate?: string;
   initialBalance?: number; // مانده اولیه (افتتاحیه)
   initialBalanceType?: 'debtor' | 'creditor' | 'settled';
+  creditLimit?: number; // سقف اعتبار
 };
 
 export type Checkbook = {
@@ -224,6 +225,9 @@ export type CompanySettings = {
   smsTemplateInvoice?: string;
   smsTemplateReceipt?: string;
   smsTemplateCheck?: string;
+  smsDebtThresholdEnabled?: boolean;
+  smsDebtThresholdAmount?: number;
+  smsDebtThresholdMessage?: string;
   [key: string]: any; // Allow custom numbering properties
 };
 
