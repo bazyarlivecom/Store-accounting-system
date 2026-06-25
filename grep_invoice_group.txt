@@ -1,0 +1,10 @@
+962:  }, [activeTab, invoiceGroupMode, listFilter, invoiceSearchQuery, purchaseFilter]);
+1180:  const [invoiceGroupMode, setInvoiceGroupMode] = useState<
+8987:        if (invoiceGroupMode === "none") {
+8999:                if (invoiceGroupMode === "month") {
+9015:                } else if (invoiceGroupMode === "season") {
+9073:                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${invoiceGroupMode === "none" ? "bg-indigo-100 text-indigo-700 shadow-sm" : "text-slate-600 hover:bg-slate-50"}`}
+9079:                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${invoiceGroupMode === "month" ? "bg-indigo-100 text-indigo-700 shadow-sm" : "text-slate-600 hover:bg-slate-50"}`}
+9085:                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${invoiceGroupMode === "season" ? "bg-indigo-100 text-indigo-700 shadow-sm" : "text-slate-600 hover:bg-slate-50"}`}
+9157:                        {invoiceGroupMode !== "none" &&
+9164:                                      {invoiceGroupMode === "month" ? (

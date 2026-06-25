@@ -1,0 +1,747 @@
+6256-                          <td className="p-4 text-center">
+6257-                            <button
+6258-                              onClick={() => handleRemoveItem(item.id)}
+6259-                              className="p-2.5 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-xl transition-colors"
+6260-                            >
+6261-                              <Trash2 className="w-5 h-5" />
+6262-                            </button>
+6263-                          </td>
+6264-                        </tr>
+6265-                      ))}
+6266:                    </tbody>
+6267-                  </table>
+6268-                </div>
+6269-                <div className="p-4 bg-gray-50 flex justify-end">
+6270-                  <button
+6271-                    onClick={handleInvoicePreviewTrigger}
+6272-                    disabled={submitting || items.length === 0}
+6273-                    className="px-10 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-colors shadow-sm focus:ring-4 focus:ring-indigo-500/20"
+6274-                  >
+6275-                    {submitting ? (
+6276-                      <RefreshCw className="w-5 h-5 animate-spin" />
+--
+6798-                              سبد خرید خالی است
+6799-                            </p>
+6800-                            <p className="text-sm font-bold text-slate-400">
+6801-                              یک کالا از نوار جستجو انتخاب کنید یا سطر جدید
+6802-                              بسازید.
+6803-                            </p>
+6804-                          </div>
+6805-                        </td>
+6806-                      </tr>
+6807-                    )}
+6808:                  </tbody>
+6809-                </table>
+6810-              </div>
+6811-            </div>
+6812-
+6813-            {/* Totals & Submit */}
+6814-            <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+6815-              <div className="p-8">
+6816-                <div className="flex flex-col lg:flex-row justify-between gap-10">
+6817-                  <div className="flex-1 space-y-4">
+6818-                    <div>
+--
+7462-                              سبد خرید خالی است
+7463-                            </p>
+7464-                            <p className="text-sm font-bold text-slate-400">
+7465-                              یک کالا از نوار جستجو انتخاب کنید یا سطر جدید
+7466-                              بسازید.
+7467-                            </p>
+7468-                          </div>
+7469-                        </td>
+7470-                      </tr>
+7471-                    )}
+7472:                  </tbody>
+7473-                </table>
+7474-              </div>
+7475-            </div>
+7476-
+7477-            {/* Totals & Submit */}
+7478-            <div className="bg-white rounded-3xl shadow-sm border-2 border-emerald-50 overflow-hidden">
+7479-              <div className="p-8">
+7480-                <div className="flex flex-col lg:flex-row justify-between gap-10">
+7481-                  <div className="flex-1 space-y-4">
+7482-                    <div>
+--
+8087-                              لیست کالاها خالی است
+8088-                            </p>
+8089-                            <p className="text-sm font-bold text-slate-400">
+8090-                              یک کالا از نوار جستجو انتخاب کنید یا سطر جدید
+8091-                              بسازید.
+8092-                            </p>
+8093-                          </div>
+8094-                        </td>
+8095-                      </tr>
+8096-                    )}
+8097:                  </tbody>
+8098-                </table>
+8099-              </div>
+8100-            </div>
+8101-
+8102-            {/* Totals & Submit */}
+8103-            <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
+8104-              <div className="p-8">
+8105-                <div className="flex flex-col lg:flex-row justify-between gap-10">
+8106-                  {!activeTab.includes("warehouse") && (
+8107-                    <div className="flex w-full flex-col lg:flex-row justify-between gap-10">
+--
+8740-                              لیست کالاها خالی است
+8741-                            </p>
+8742-                            <p className="text-sm font-bold text-slate-400">
+8743-                              یک کالا از نوار جستجو انتخاب کنید یا سطر جدید
+8744-                              بسازید.
+8745-                            </p>
+8746-                          </div>
+8747-                        </td>
+8748-                      </tr>
+8749-                    )}
+8750:                  </tbody>
+8751-                </table>
+8752-              </div>
+8753-            </div>
+8754-
+8755-            {/* Totals & Submit */}
+8756-            <div className="bg-white rounded-3xl shadow-sm border-2 border-indigo-50 overflow-hidden">
+8757-              <div className="p-8">
+8758-                <div className="flex flex-col lg:flex-row justify-between gap-10">
+8759-                  {!activeTab.includes("warehouse") && (
+8760-                    <div className="flex w-full flex-col lg:flex-row justify-between gap-10">
+--
+9455-                    {filteredInvoicesList.length === 0 && (
+9456-                      <tr>
+9457-                        <td
+9458-                          colSpan={10}
+9459-                          className="p-8 text-center text-gray-400"
+9460-                        >
+9461-                          هیچ سندی یافت نشد.
+9462-                        </td>
+9463-                      </tr>
+9464-                    )}
+9465:                  </tbody>
+9466-                </table>
+9467-              </div>
+9468-            </div>
+9469-          </motion.div>
+9470-        );
+9471-      }
+9472-
+9473-      case "create_receive_receipt":
+9474-      case "create_pay_receipt": {
+9475-        const isReceive = activeTab === "create_receive_receipt";
+--
+10099-                                              );
+10100-                                            }}
+10101-                                            min={0}
+10102-                                            max={remainder}
+10103-                                          />
+10104-                                        </div>
+10105-                                      </td>
+10106-                                    </tr>
+10107-                                  );
+10108-                                })}
+10109:                              </tbody>
+10110-                            </table>
+10111-                          </div>
+10112-                          <div className="mt-3 text-xs font-bold text-slate-600 flex justify-end gap-2 items-center">
+10113-                            جمع مبالغ تخصیص یافته:
+10114-                            <span className="font-mono text-sm text-indigo-700">
+10115-                              {formatCurrency(
+10116-                                Object.values(receiptLinkedInvoices).reduce(
+10117-                                  (a, b) => a + b,
+10118-                                  0,
+10119-                                ),
+--
+10330-                    }).length === 0 && (
+10331-                      <tr>
+10332-                        <td
+10333-                          colSpan={6}
+10334-                          className="p-8 text-center text-slate-400 font-bold"
+10335-                        >
+10336-                          هیچ سند یا رسیدی در این بخش یافت نشد.
+10337-                        </td>
+10338-                      </tr>
+10339-                    )}
+10340:                  </tbody>
+10341-                </table>
+10342-              </div>
+10343-            </div>
+10344-          </motion.div>
+10345-        );
+10346-      }
+10347-
+10348-      case "create_salary_payroll": {
+10349-        return (
+10350-          <motion.div
+--
+10940-                    {salaryTxs.length === 0 && (
+10941-                      <tr>
+10942-                        <td
+10943-                          colSpan={6}
+10944-                          className="p-8 text-center text-gray-400 font-medium"
+10945-                        >
+10946-                          هیچ فیش حقوقی یافت نشد.
+10947-                        </td>
+10948-                      </tr>
+10949-                    )}
+10950:                  </tbody>
+10951-                </table>
+10952-              </div>
+10953-            </div>
+10954-          </motion.div>
+10955-        );
+10956-      }
+10957-
+10958-      case "product_categories": {
+10959-        // Filter search results
+10960-        const filteredCats = productCategories.filter(
+--
+11431-                            colSpan={4}
+11432-                            className="p-12 text-center text-gray-400 font-medium"
+11433-                          >
+11434-                            <div className="flex flex-col items-center justify-center gap-2">
+11435-                              <Tag className="w-8 h-8 text-gray-300" />
+11436-                              <span>هیچ گروه کالایی یافت نشد.</span>
+11437-                            </div>
+11438-                          </td>
+11439-                        </tr>
+11440-                      )}
+11441:                    </tbody>
+11442-                  </table>
+11443-                </div>
+11444-              </div>
+11445-            </div>
+11446-          </motion.div>
+11447-        );
+11448-      }
+11449-      default:
+11450-        return (
+11451-          <div className="text-center p-8 bg-white rounded-xl">
+--
+12254-                                            }
+12255-                                            className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all inline-block"
+12256-                                            title="حذف کالا"
+12257-                                          >
+12258-                                            <Trash2 className="w-4 h-4" />
+12259-                                          </button>
+12260-                                        </div>
+12261-                                      </td>
+12262-                                    </tr>
+12263-                                  ))}
+12264:                                </tbody>
+12265-                              </table>
+12266-                            </div>
+12267-
+12268-                            {/* Beautiful Pagination Footer */}
+12269-                            {totalPages > 1 && (
+12270-                              <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 rounded-xl">
+12271-                                <div className="text-xs text-slate-500 font-bold">
+12272-                                  نمایش ردیف‌های{" "}
+12273-                                  <span className="text-slate-850 font-sans font-black">
+12274-                                    {(
+--
+13068-                                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+13069-                                        title="حذف گروه"
+13070-                                      >
+13071-                                        <Trash2 className="w-4 h-4" />
+13072-                                      </button>
+13073-                                    </div>
+13074-                                  </td>
+13075-                                </tr>
+13076-                              );
+13077-                            })}
+13078:                          </tbody>
+13079-                        </table>
+13080-                      )}
+13081-                    </div>
+13082-                  </motion.div>
+13083-                ) : activeTab === "person_roles" ? (
+13084-                  <motion.div
+13085-                    initial={{ opacity: 0, y: 10 }}
+13086-                    animate={{ opacity: 1, y: 0 }}
+13087-                    className="space-y-6 text-right"
+13088-                  >
+--
+13201-                                      }
+13202-                                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+13203-                                      title="حذف نقش"
+13204-                                    >
+13205-                                      <Trash2 className="w-4 h-4" />
+13206-                                    </button>
+13207-                                  </div>
+13208-                                </td>
+13209-                              </tr>
+13210-                            ))}
+13211:                          </tbody>
+13212-                        </table>
+13213-                      )}
+13214-                    </div>
+13215-                  </motion.div>
+13216-                ) : activeTab === "accounts" ? (
+13217-                  <motion.div
+13218-                    initial={{ opacity: 0, y: 10 }}
+13219-                    animate={{ opacity: 1, y: 0 }}
+13220-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+13221-                  >
+--
+13356-                                      }
+13357-                                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+13358-                                      title="حذف حساب"
+13359-                                    >
+13360-                                      <Trash2 className="w-4 h-4" />
+13361-                                    </button>
+13362-                                  </div>
+13363-                                </td>
+13364-                              </tr>
+13365-                            ))}
+13366:                          </tbody>
+13367-                        </table>
+13368-                      )}
+13369-                    </div>
+13370-                  </motion.div>
+13371-                ) : activeTab === "cashboxes" ? (
+13372-                  <motion.div
+13373-                    initial={{ opacity: 0, y: 10 }}
+13374-                    animate={{ opacity: 1, y: 0 }}
+13375-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+13376-                  >
+--
+13476-                                      }
+13477-                                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+13478-                                      title="حذف صندوق"
+13479-                                    >
+13480-                                      <Trash2 className="w-4 h-4" />
+13481-                                    </button>
+13482-                                  </div>
+13483-                                </td>
+13484-                              </tr>
+13485-                            ))}
+13486:                          </tbody>
+13487-                        </table>
+13488-                      )}
+13489-                    </div>
+13490-                  </motion.div>
+13491-                ) : activeTab === "warehouses" ? (
+13492-                  <motion.div
+13493-                    initial={{ opacity: 0, y: 10 }}
+13494-                    animate={{ opacity: 1, y: 0 }}
+13495-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+13496-                  >
+--
+13646-                                        }
+13647-                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block cursor-pointer"
+13648-                                        title="حذف انبار"
+13649-                                      >
+13650-                                        <Trash2 className="w-4 h-4" />
+13651-                                      </button>
+13652-                                    </div>
+13653-                                  </td>
+13654-                                </tr>
+13655-                              ))}
+13656:                            </tbody>
+13657-                          </table>
+13658-                        )}
+13659-                      </div>
+13660-                    ) : (
+13661-                      <div>
+13662-                        {/* Search Stocks bar */}
+13663-                        <div className="p-5 border-b border-gray-100 bg-gray-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+13664-                          <div className="flex-1 max-w-md relative">
+13665-                            <span className="absolute inset-y-0 right-3 flex items-center pr-1 text-gray-400 pointer-events-none">
+13666-                              <Search className="w-4 h-4" />
+--
+13838-                                              </span>
+13839-                                            )}
+13840-                                          </span>
+13841-                                        </td>
+13842-                                        <td className="py-4 px-6 text-center text-xs text-gray-500">
+13843-                                          {associatedProd?.unit || "عدد"}
+13844-                                        </td>
+13845-                                      </tr>
+13846-                                    );
+13847-                                  })}
+13848:                                </tbody>
+13849-                              </table>
+13850-                            );
+13851-                          })()}
+13852-                        </div>
+13853-                      </div>
+13854-                    )}
+13855-                  </motion.div>
+13856-                ) : activeTab === "financial_report" ? (
+13857-                  /* Financial Report & Treasury View */
+13858-                  <motion.div
+--
+15636-                                                      ? "بدهکار"
+15637-                                                      : "بستانکار"}
+15638-                                                  </span>
+15639-                                                </>
+15640-                                              )}
+15641-                                            </div>
+15642-                                          </td>
+15643-                                        </tr>
+15644-                                      );
+15645-                                    })}
+15646:                                  </tbody>
+15647-                                </table>
+15648-                                <div className="mt-8 text-center text-xs text-gray-500 border-t border-gray-200 pt-4">
+15649-                                  امضاء و مهر (صرفاً جهت اطلاع)
+15650-                                </div>
+15651-                              </div>
+15652-                            </div>
+15653-                          )}
+15654-
+15655-                          {/* Person Summary KPI Panel */}
+15656-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
+--
+16139-                                                      ? "بدهکار به ما"
+16140-                                                      : "بستانکار (طلبکار)"}
+16141-                                                  </span>
+16142-                                                </>
+16143-                                              )}
+16144-                                            </div>
+16145-                                          </td>
+16146-                                        </tr>
+16147-                                      );
+16148-                                    })}
+16149:                                  </tbody>
+16150-                                </table>
+16151-                              )}
+16152-                            </div>
+16153-                          </div>
+16154-                          )}
+16155-                        </div>
+16156-                      );
+16157-                    })()}
+16158-                  </motion.div>
+16159-                ) : activeTab === "debts_credits" ? (
+--
+16879-                                                    "",
+16880-                                                })
+16881-                                              }
+16882-                                              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
+16883-                                              dir="ltr"
+16884-                                              placeholder="6"
+16885-                                            />
+16886-                                          </td>
+16887-                                        </tr>
+16888-                                      ))}
+16889:                                    </tbody>
+16890-                                  </table>
+16891-                                </div>
+16892-                              ))}
+16893-                            </div>
+16894-                          </div>
+16895-                        )}
+16896-
+16897-                        {settingsTab === "printing" && (
+16898-                          <div className="flex flex-col gap-6">
+16899-                            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
+--
+17461-                                        className="p-4 text-gray-500"
+17462-                                        dir="ltr"
+17463-                                      >
+17464-                                        {new Date(msg.timestamp).toLocaleString(
+17465-                                          "fa-IR",
+17466-                                        )}
+17467-                                      </td>
+17468-                                    </tr>
+17469-                                  ))
+17470-                              )}
+17471:                            </tbody>
+17472-                          </table>
+17473-                        </div>
+17474-                      </div>
+17475-                    </div>
+17476-                    ) : (
+17477-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+17478-                        <div className="flex items-center justify-between mb-6">
+17479-                          <h3 className="font-bold text-gray-800">
+17480-                            قالب‌های متنی پیامک
+17481-                          </h3>
+--
+18174-                                <td
+18175-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18176-                                  dir="ltr"
+18177-                                >
+18178-                                  {formatNumber(
+18179-                                    viewingPayslip.parsed?.allowances?.other ||
+18180-                                      0,
+18181-                                  )}
+18182-                                </td>
+18183-                              </tr>
+18184:                            </tbody>
+18185-                            <tfoot>
+18186-                              <tr className="bg-emerald-50/50 font-extrabold text-emerald-950 border-t border-emerald-100">
+18187-                                <td className="py-3 px-4 text-right">
+18188-                                  جمع مبالغ ناخالص:
+18189-                                </td>
+18190-                                <td
+18191-                                  className="py-3 px-4 font-mono text-left text-sm text-emerald-800"
+18192-                                  dir="ltr"
+18193-                                >
+18194-                                  {formatNumber(
+--
+18261-                                <td className="py-2.5 px-4 text-gray-400/50 text-[10px] text-right">
+18262-                                  ---
+18263-                                </td>
+18264-                                <td
+18265-                                  className="py-2.5 px-4 font-bold text-gray-400/50 font-mono text-left text-[10px]"
+18266-                                  dir="ltr"
+18267-                                >
+18268-                                  ۰
+18269-                                </td>
+18270-                              </tr>
+18271:                            </tbody>
+18272-                            <tfoot>
+18273-                              <tr className="bg-rose-50/50 font-extrabold text-rose-950 border-t border-rose-100">
+18274-                                <td className="py-3 px-4 text-right">
+18275-                                  جمع مبالغ کسورات:
+18276-                                </td>
+18277-                                <td
+18278-                                  className="py-3 px-4 font-mono text-left text-sm text-rose-800"
+18279-                                  dir="ltr"
+18280-                                >
+18281-                                  {formatNumber(
+--
+18584-                                      />
+18585-                                    </div>
+18586-                                  ) : (
+18587-                                    <span className="text-gray-400 text-xs font-bold">
+18588-                                      ---
+18589-                                    </span>
+18590-                                  )}
+18591-                                </td>
+18592-                              </tr>
+18593-                            ))}
+18594:                        </tbody>
+18595-                      </table>
+18596-                    </div>
+18597-                  </div>
+18598-                </div>
+18599-              )}
+18600-
+18601-              {isGroupPriceModalOpen && (
+18602-                <div
+18603-                  className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm"
+18604-                  dir="rtl"
+--
+19462-                                          </td>
+19463-                                          <td className="px-4 py-3 text-sm font-bold text-gray-900">
+19464-                                            {addCommas(h.buyPrice)}
+19465-                                          </td>
+19466-                                          <td className="px-4 py-3 text-sm font-bold text-gray-900">
+19467-                                            {addCommas(h.sellPrice)}
+19468-                                          </td>
+19469-                                        </tr>
+19470-                                      ));
+19471-                                  })()}
+19472:                                </tbody>
+19473-                              </table>
+19474-                            </div>
+19475-                          </div>
+19476-                        )}
+19477-
+19478-                        {/* Hidden required fields for HTML5 validation validation to still work across tabs */}
+19479-                        <div className="hidden">
+19480-                          <input
+19481-                            type="text"
+19482-                            required
+--
+20547-                                                    )}
+20548-                                                  </td>
+20549-                                                ))}
+20550-                                              {row.length > 7 && (
+20551-                                                <td className="py-2 px-3 text-slate-400">
+20552-                                                  ...
+20553-                                                </td>
+20554-                                              )}
+20555-                                            </tr>
+20556-                                          ))}
+20557:                                      </tbody>
+20558-                                    </table>
+20559-                                  </div>
+20560-                                </div>
+20561-                              </div>
+20562-                            )}
+20563-
+20564-                          {/* Preview Table for JSON (Standard Backups) */}
+20565-                          {parsedHeaders.length > 0 &&
+20566-                            personsIOFileType === "json" && (
+20567-                              <div className="bg-emerald-50/50 border border-emerald-150/50 p-4 rounded-xl space-y-2 text-emerald-950">
+--
+22284-                                      "warehouse",
+22285-                                    ) && (
+22286-                                      <>
+22287-                                        <td className="border-l border-slate-100 print:border-slate-400"></td>
+22288-                                        <td className="border-l border-slate-100 print:border-slate-400"></td>
+22289-                                        <td></td>
+22290-                                      </>
+22291-                                    )}
+22292-                                  </tr>
+22293-                                ))}
+22294:                            </tbody>
+22295-                          </table>
+22296-                        </div>
+22297-
+22298-                        {/* Summary Section */}
+22299-                        {!viewingInvoice.type?.includes("warehouse") && (
+22300-                          <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8 font-sans">
+22301-                            <div className="w-full md:w-[50%] flex flex-col justify-between self-stretch">
+22302-                              <div className="border border-slate-200 print:border-slate-300 rounded-xl p-5 bg-slate-50/50 print:bg-transparent">
+22303-                                <span className="text-xs text-slate-500 font-bold block mb-2">
+22304-                                  جمع مبلغ به حروف (تومان)
+--
+22445-                                            {toPersianDigits(
+22446-                                              formatCurrency(
+22447-                                                tx.linkedInvoices![
+22448-                                                  viewingInvoice.id
+22449-                                                ],
+22450-                                              ),
+22451-                                            )}
+22452-                                          </td>
+22453-                                        </tr>
+22454-                                      ))}
+22455:                                    </tbody>
+22456-                                    <tfoot className="bg-slate-50 border-t border-slate-200">
+22457-                                      <tr>
+22458-                                        <td
+22459-                                          colSpan={3}
+22460-                                          className="py-2.5 px-3 text-left font-black text-slate-700 border-l border-slate-200"
+22461-                                        >
+22462-                                          مجموع پرداختی:
+22463-                                        </td>
+22464-                                        <td className="py-2.5 px-3 text-center font-sans font-black text-slate-800">
+22465-                                          {toPersianDigits(
+--
+23286-                                                      ? "تسویه"
+23287-                                                      : isTxDeb
+23288-                                                        ? "بدهکار"
+23289-                                                        : "بستانکار"}
+23290-                                                  </span>
+23291-                                                </div>
+23292-                                              </td>
+23293-                                            </tr>
+23294-                                          );
+23295-                                        })}
+23296:                                    </tbody>
+23297-                                  </table>
+23298-                                )}
+23299-                              </div>
+23300-                            </div>
+23301-                          </div>
+23302-                          <div className="p-4 bg-gray-50 border-t border-gray-200 shrink-0 flex justify-end gap-3 z-10">
+23303-                            <button
+23304-                              onClick={() => {
+23305-                                setLedgerPersonId(selectedPerson.id);
+23306-                                setActiveTab("person_ledger");
+--
+23591-                                            dir="ltr"
+23592-                                          >
+23593-                                            {formatCurrency(amt as number)}{" "}
+23594-                                            <span className="text-[10px] font-sans text-gray-400">
+23595-                                              {storeSettings.currency}
+23596-                                            </span>
+23597-                                          </td>
+23598-                                        </tr>
+23599-                                      );
+23600-                                    })}
+23601:                                </tbody>
+23602-                              </table>
+23603-                            </div>
+23604-                          )}
+23605-                        </div>
+23606-
+23607-                        <div className="px-6 py-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 no-print">
+23608-                          <button
+23609-                            type="button"
+23610-                            onClick={() => setPreviewReceiptData(null)}
+23611-                            className="px-6 py-3 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-bold text-sm transition-colors shadow-sm"
+--
+24228-                                            dir="ltr"
+24229-                                          >
+24230-                                            {formatCurrency(
+24231-                                              item.totalPrice || 0,
+24232-                                            )}
+24233-                                          </td>
+24234-                                        </>
+24235-                                      )}
+24236-                                    </tr>
+24237-                                  ))}
+24238:                              </tbody>
+24239-                            </table>
+24240-                          </div>
+24241-
+24242-                          {/* Summary Section */}
+24243-                          {!previewInvoiceData.type?.includes("warehouse") && (
+24244-                            <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8">
+24245-                              <div className="w-full md:w-1/2 mt-2">
+24246-                                <div className="border border-gray-200 print:border-gray-400 rounded-xl p-4 bg-gray-50/50 print:bg-transparent">
+24247-                                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-2">
+24248-                                    مبلغ فاکتور به حروف:
+--
+24411-                                                ],
+24412-                                              )}{" "}
+24413-                                              <span className="text-[9px] text-gray-400">
+24414-                                                {showInvoiceCurrency(
+24415-                                                  previewInvoiceData.currency,
+24416-                                                )}
+24417-                                              </span>
+24418-                                            </td>
+24419-                                          </tr>
+24420-                                        ))}
+24421:                                      </tbody>
+24422-                                      <tfoot className="bg-gray-50 print:bg-white border-t-2 border-gray-300">
+24423-                                        <tr>
+24424-                                          <td
+24425-                                            colSpan={3}
+24426-                                            className="p-3 text-left font-black text-gray-900 border-l border-gray-200 print:border-gray-300"
+24427-                                          >
+24428-                                            جمع کل دریافتی‌ها و پرداختی‌ها:
+24429-                                          </td>
+24430-                                          <td
+24431-                                            className="p-3 text-left font-sans font-black text-gray-900"
+--
+25099-                    {pricingWizardItems.length === 0 && (
+25100-                      <tr>
+25101-                        <td
+25102-                          colSpan={5}
+25103-                          className="p-8 text-center text-slate-500 font-bold"
+25104-                        >
+25105-                          هیچ کالایی برای تعیین قیمت وجود ندارد.
+25106-                        </td>
+25107-                      </tr>
+25108-                    )}
+25109:                  </tbody>
+25110-                </table>
+25111-              </div>
+25112-            </div>
+25113-
+25114-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+25115-              <span className="text-xs font-bold text-slate-500">
+25116-                با درج حاشیه سود یا تغییر مستقیم، قیمت فروش کالاها به‌روز
+25117-                می‌شود.
+25118-              </span>
+25119-              <div className="flex gap-3">
+--
+25235-                        <td
+25236-                          className="p-4 border border-slate-300 text-center font-black text-2xl text-slate-900"
+25237-                          dir="ltr"
+25238-                        >
+25239-                          {item.salePrice
+25240-                            ? toPersianDigits(formatNumber(item.salePrice))
+25241-                            : "---"}
+25242-                        </td>
+25243-                      </tr>
+25244-                    ))}
+25245:                  </tbody>
+25246-                </table>
+25247-              </>
+25248-            )}
+25249-
+25250-            {pricingPrintMode === "labels" && (
+25251-              <div className="flex flex-wrap gap-4 items-start justify-start">
+25252-                {pricingWizardItems.map((item, idx) => {
+25253-                  const prod = products.find((p) => p.id === item.productId);
+25254-                  return (
+25255-                    <div

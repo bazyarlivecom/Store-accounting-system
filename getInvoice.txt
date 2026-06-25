@@ -1,0 +1,101 @@
+4015:  const getInvoiceNumber = (typeOverride?: string) => {
+4016-    let typeKey = typeOverride || "sale";
+4017-    if (!typeOverride) {
+4018-      if (
+4019-        (activeTab === "create_warehouse_doc" &&
+4020-          invoiceType === "warehouse_receipt") ||
+4021-        invoiceType === "warehouse_receipt"
+4022-      )
+4023-        typeKey = "warehouse_receipt";
+4024-      else if (
+4025-        (activeTab === "create_warehouse_doc" &&
+4026-          invoiceType === "warehouse_remittance") ||
+4027-        invoiceType === "warehouse_remittance"
+4028-      )
+4029-        typeKey = "warehouse_remittance";
+4030-      else if (activeTab === "create_purchase" || invoiceType === "purchase")
+4031-        typeKey = "purchase";
+4032-      else if (invoiceType === "proforma") typeKey = "proforma";
+4033-      else if (
+4034-        activeTab === "create_sale_return" ||
+4035-        invoiceType === "sale_return"
+4036-      )
+4037-        typeKey = "sale_return";
+4038-      else if (
+4039-        activeTab === "create_purchase_return" ||
+4040-        invoiceType === "purchase_return"
+4041-      )
+4042-        typeKey = "purchase_return";
+4043-    }
+4044-
+4045-    // Default prefixes if not configured
+4046-    const defaultPrefixes: Record<string, string> = {
+4047-      sale: "INV-",
+4048-      purchase: "PUR-",
+4049-      proforma: "PF-",
+4050-      warehouse_receipt: "REC-",
+4051-      warehouse_remittance: "REM-",
+4052-      sale_return: "RTN-S-",
+4053-      purchase_return: "RTN-P-",
+4054-    };
+4055-
+4056-    const prefix =
+4057-      (storeSettings as any)["prefix_" + typeKey] !== undefined &&
+4058-      (storeSettings as any)["prefix_" + typeKey] !== null
+4059-        ? String((storeSettings as any)["prefix_" + typeKey])
+4060-        : defaultPrefixes[typeKey] || "";
+4061-
+4062-    // Calculate sequential number based on settings
+4063-    const startNumStr =
+4064-      (storeSettings as any)["start_" + typeKey] ||
+4065-      storeSettings.invoiceStartNumber ||
+4066-      "1000";
+4067-    const lenStr =
+4068-      (storeSettings as any)["len_" + typeKey] ||
+4069-      storeSettings.invoiceNumberLength ||
+4070-      "6";
+4071-
+4072-    const startNum = parseInt(startNumStr, 10);
+4073-    const numLength = Math.max(1, parseInt(lenStr, 10));
+4074-
+4075-    let maxNum = startNum - 1;
+4076-
+4077-    invoices.forEach((inv) => {
+4078-      // Determine this invoice type
+4079-      let invType = "sale";
+4080-      if (inv.type) invType = inv.type;
+4081-
+4082-      if (invType === typeKey && inv.invoiceNumber) {
+4083-        let numStr = String(inv.invoiceNumber);
+4084-        if (prefix && numStr.startsWith(prefix)) {
+4085-          numStr = numStr.substring(prefix.length);
+4086-        }
+4087-        const num = parseInt(numStr.replace(/\D/g, ""), 10);
+4088-        if (!isNaN(num) && num > maxNum) {
+4089-          maxNum = num;
+4090-        }
+4091-      }
+4092-    });
+4093-
+4094-    const nextNum = maxNum + 1;
+4095-    const formattedNum = String(nextNum).padStart(numLength, "0");
+4096-    return prefix + formattedNum;
+4097-  };
+4098-
+4099-  const saveInvoiceData = async (
+4100-    customPayload?: any,
+4101-    isDraftOverride?: boolean,
+4102-  ) => {
+4103-    setSubmitting(true);
+4104-    setSuccessMsg("");
+4105-
+4106-    const isDraft =
+4107-      isDraftOverride ||
+4108-      (customPayload &&
+4109-        (customPayload.isDraft || customPayload.status === "draft"));
+4110-
+4111-    const finalInvoiceNumber = isDraft
+4112-      ? `پیش‌نویس-${Date.now().toString().slice(-5)}`
+4113-      : invoiceMode === "auto"
+4114-        ? getInvoiceNumber(invoiceType)
+4115-        : invoiceNumber;

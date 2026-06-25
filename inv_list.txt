@@ -1,0 +1,131 @@
+9158-                                      {group.groupName}
+9159-                                    </span>
+9160-                                  </div>
+9161-                                  <div className="flex items-center gap-2">
+9162-                                    <span className="bg-white/80 text-slate-500 text-[11px] font-bold px-2 py-1 rounded shadow-sm border border-slate-200">
+9163-                                      مجموع:{" "}
+9164-                                      <span className="text-slate-800 tabular-nums">
+9165-                                        {toPersianDigits(group.invoices.length)}
+9166-                                      </span>
+9167-                                    </span>
+9168-                                    <span className="bg-indigo-50 text-indigo-700 text-[11px] font-bold px-2 py-1 rounded shadow-sm border border-indigo-100">
+9169-                                      مبلغ کل:{" "}
+9170-                                      <span className="tabular-nums">
+9171-                                        {toPersianDigits(
+9172-                                          formatCurrency(
+9173-                                            group.invoices.reduce(
+9174-                                              (a, b) =>
+9175-                                                a + (b.totalAmount || 0),
+9176-                                              0,
+9177-                                            ),
+9178-                                          ),
+9179-                                        )}
+9180-                                      </span>{" "}
+9181-                                      تومان
+9182-                                    </span>
+9183-                                  </div>
+9184-                                </div>
+9185-                              </td>
+9186-                            </tr>
+9187-                          )}
+9188:                        {group.invoices.map((inv) => (
+9189-                          <tr
+9190-                            key={inv.id}
+9191-                            className="hover:bg-gray-50/80 transition-colors"
+9192-                          >
+9193-                            <td className="p-4 font-sans text-right font-black text-slate-705 text-sm whitespace-nowrap">
+9194-                              <div className="flex items-center gap-1.5">
+9195-                                <span>
+9196-                                  #{toPersianDigits(inv.invoiceNumber)}
+9197-                                </span>
+9198-                                {(inv.isDraft || inv.status === "draft") && (
+9199-                                  <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-amber-200">
+9200-                                    پیش‌نویس
+9201-                                  </span>
+9202-                                )}
+9203-                              </div>
+9204-                            </td>
+9205-                            {[
+9206-                              "list_purchase",
+9207-                              "list_sale",
+9208-                              "list_sale_return",
+9209-                              "list_purchase_return",
+9210-                            ].includes(activeTab) && (
+9211-                              <td
+9212-                                className="p-4 font-bold text-slate-800 text-xs truncate max-w-[150px]"
+9213-                                title={
+9214-                                  inv.title ||
+9215-                                  (activeTab === "list_sale"
+9216-                                    ? "فاکتور فروش"
+9217-                                    : "فاکتور خرید")
+9218-                                }
+9219-                              >
+9220-                                <div>
+9221-                                  {inv.title ||
+9222-                                    (activeTab === "list_sale"
+9223-                                      ? "فاکتور فروش"
+9224-                                      : "فاکتور خرید")}
+9225-                                </div>
+9226-                                {(inv.type === "purchase" ||
+9227-                                  inv.type === "purchase_return") &&
+9228-                                  inv.sellerInvoiceNumber && (
+9229-                                    <div
+9230-                                      className="text-[10px] text-emerald-600 font-mono mt-1"
+9231-                                      dir="rtl"
+9232-                                    >
+9233-                                      ش.فروشنده:{" "}
+9234-                                      {toPersianDigits(inv.sellerInvoiceNumber)}
+9235-                                    </div>
+9236-                                  )}
+9237-                              </td>
+9238-                            )}
+9239-                            {activeTab.includes("warehouse") && (
+9240-                              <td className="p-4">
+9241-                                {inv.type === "warehouse_receipt" ? (
+9242-                                  <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">
+9243-                                    رسید ورود
+9244-                                  </span>
+9245-                                ) : (
+9246-                                  <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">
+9247-                                    حواله خروج
+9248-                                  </span>
+9249-                                )}
+9250-                              </td>
+9251-                            )}
+9252-                            <td className="p-4">
+9253-                              {renderPersonLink(
+9254-                                inv.customerId,
+9255-                                persons.find(
+9256-                                  (p) =>
+9257-                                    p.id.toString() ===
+9258-                                    inv.customerId?.toString(),
+9259-                                )?.name,
+9260-                              )}
+9261-                            </td>
+9262-                            <td className="p-4">
+9263-                              <div
+9264-                                className="flex items-center gap-1.5 justify-start text-xs font-bold text-slate-650"
+9265-                                dir="rtl"
+9266-                              >
+9267-                                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+9268-                                <span className="font-sans font-black text-xs text-slate-700">
+9269-                                  {toPersianDigits(inv.jalaliDate)}
+9270-                                </span>
+9271-                              </div>
+9272-                            </td>
+9273-                            {activeTab.includes("warehouse") ? (
+9274-                              <td className="p-4 font-bold text-indigo-900 text-center">
+9275-                                {warehouses.find(
+9276-                                  (w) =>
+9277-                                    w.id?.toString() ===
+9278-                                    inv.warehouseId?.toString(),
+9279-                                )?.name || "نامشخص"}
+9280-                              </td>
+9281-                            ) : (
+9282-                              <td className="p-4 text-left">
+9283-                                <span className="font-sans font-black text-sm text-indigo-950 bg-indigo-50 px-2.5 py-1.5 rounded-xl border border-indigo-100/30 inline-block transition-all shadow-2xs">
+9284-                                  {toPersianDigits(
+9285-                                    formatCurrency(inv.totalAmount || 0),
+9286-                                  )}{" "}
+9287-                                  <span className="text-[10px] text-indigo-605 font-extrabold mr-1">
+9288-                                    {inv.currency || storeSettings.currency}

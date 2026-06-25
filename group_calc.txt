@@ -1,0 +1,31 @@
+8965-            ).toLowerCase();
+8966-            const invNum = (inv.invoiceNumber || "").toLowerCase();
+8967-            const sellNum = (inv.sellerInvoiceNumber || "").toLowerCase();
+8968-            return (
+8969-              pName.includes(term) ||
+8970-              invNum.includes(term) ||
+8971-              sellNum.includes(term)
+8972-            );
+8973-          });
+8974-
+8975:        let groupedInvoices: { groupName: string; invoices: any[] }[] = [];
+8976-        if (invoiceGroupMode === "none") {
+8977-          groupedInvoices = [
+8978-            { groupName: "همه", invoices: filteredInvoicesList },
+8979-          ];
+8980-        } else {
+8981-          const groupMap = new Map<string, any[]>();
+8982-          filteredInvoicesList.forEach((inv) => {
+8983-            let gName = "نامشخص";
+8984-            if (inv.jalaliDate) {
+8985-              const parts = inv.jalaliDate.split("/");
+8986-              if (parts.length === 3) {
+8987-                const m = parseInt(parts[1], 10);
+8988-                if (invoiceGroupMode === "month") {
+8989-                  const months = [
+8990-                    "فروردین",
+8991-                    "اردیبهشت",
+8992-                    "خرداد",
+8993-                    "تیر",
+8994-                    "مرداد",
+8995-                    "شهریور",

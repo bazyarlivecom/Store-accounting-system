@@ -1,0 +1,131 @@
+939-  const [installments, setInstallments] = useState<
+940-    import("./types").Installment[]
+941-  >([]);
+942-  const [warehouseSubTab, setWarehouseSubTab] = useState<"list" | "stocks">(
+943-    "list",
+944-  );
+945-  const [recalculating, setRecalculating] = useState(false);
+946-  const [personSearchTerm, setPersonSearchTerm] = useState("");
+947-  const [productSearchTerm, setProductSearchTerm] = useState("");
+948-  const [whStockSearch, setWhStockSearch] = useState("");
+949:  const [selectedProductCategory, setSelectedProductCategory] =
+950-    useState<string>("all");
+951-  const [selectedPersonGroup, setSelectedPersonGroup] = useState<string>("all");
+952-  const [selectedPersonRole, setSelectedPersonRole] = useState<string>("all");
+953-  const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
+954-  const [personPageSize, setPersonPageSize] = useState<number>(10);
+955-  const [productCurrentPage, setProductCurrentPage] = useState<number>(1);
+956-  const [productPageSize, setProductPageSize] = useState<number>(10);
+957-  const [newPersonGroupName, setNewPersonGroupName] = useState("");
+958-  const [newPersonGroupColor, setNewPersonGroupColor] = useState("indigo");
+959-  const [editingPersonGroupId, setEditingPersonGroupId] = useState<
+960-    string | null
+961-  >(null);
+962-
+963-  const [newPersonRoleName, setNewPersonRoleName] = useState("");
+964-  const [newPersonRoleCode, setNewPersonRoleCode] = useState("");
+965-  const [editingPersonRoleId, setEditingPersonRoleId] = useState<string | null>(
+966-    null,
+967-  );
+968-
+969-  const getRoleName = (roleId?: string) => {
+--
+1026-    return terms.every((term) => searchable.includes(term));
+1027-  });
+1028-
+1029-  // Reset page when filters change
+1030-  useEffect(() => {
+1031-    setPersonCurrentPage(1);
+1032-  }, [personSearchTerm, selectedPersonGroup, personPageSize]);
+1033-
+1034-  useEffect(() => {
+1035-    setProductCurrentPage(1);
+1036:  }, [productSearchTerm, selectedProductCategory, productPageSize]);
+1037-  const [transactions, setTransactions] = useState<any[]>([]);
+1038-  const [checkbooks, setCheckbooks] = useState<any[]>([]);
+1039-  const [issuedChecks, setIssuedChecks] = useState<any[]>([]);
+1040-  const [receivedChecks, setReceivedChecks] = useState<any[]>([]);
+1041-  const [smsMessages, setSmsMessages] = useState<any[]>([]);
+1042-
+1043-  const [storeSettings, setStoreSettings] = useState<any>({
+1044-    storeName: "فروشگاه پیش‌فرض",
+1045-    address: "",
+1046-    phone: "",
+1047-    logoUrl: "",
+1048-    currency: "تومان",
+1049-    isSetup: false,
+1050-    fontFamily: "Vazirmatn",
+1051-  });
+1052-  const [loading, setLoading] = useState(false);
+1053-  const [requiresInitSetup, setRequiresInitSetup] = useState(false);
+1054-
+1055-  // Notification Utility
+1056-  const sendNotification = async (message, personPhone, method) => {
+--
+11942-                          onChange={(e) => setProductSearchTerm(e.target.value)}
+11943-                        />
+11944-                      </div>
+11945-                      <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex-row-reverse justify-end">
+11946-                        <span className="text-xs font-black text-slate-500 flex items-center gap-1">
+11947-                          <Tag className="w-3.5 h-3.5 text-indigo-500" />
+11948-                          فیلتر گروه:
+11949-                        </span>
+11950-                        <button
+11951-                          onClick={() => setSelectedProductCategory("all")}
+11952:                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedProductCategory === "all" ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+11953-                        >
+11954-                          همه گروه‌ها
+11955-                        </button>
+11956-                        {productCategories.map((cat) => (
+11957-                          <button
+11958-                            key={cat.id}
+11959-                            onClick={() =>
+11960-                              setSelectedProductCategory(cat.id.toString())
+11961-                            }
+11962:                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedProductCategory === cat.id.toString() ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+11963-                          >
+11964-                            {cat.name}
+11965-                          </button>
+11966-                        ))}
+11967-                      </div>
+11968-                    </div>
+11969-
+11970-                    <div className="p-0 overflow-x-auto mt-6">
+11971-                      {(() => {
+11972-                        const filteredProducts = products.filter((p) => {
+11973-                          const matchString = (
+11974-                            p.name +
+11975-                            " " +
+11976-                            (p.code || "") +
+11977-                            " " +
+11978-                            (p.barcode || "") +
+11979-                            " " +
+11980-                            (p.description || "")
+11981-                          ).toLowerCase();
+11982-                          const matchesSearch = matchString.includes(
+11983-                            productSearchTerm.toLowerCase(),
+11984-                          );
+11985-                          const matchesCat =
+11986:                            selectedProductCategory === "all" ||
+11987-                            p.categoryId?.toString() ===
+11988:                              selectedProductCategory.toString();
+11989-                          return matchesSearch && matchesCat;
+11990-                        });
+11991-
+11992-                        const totalPages = Math.ceil(
+11993-                          filteredProducts.length / productPageSize,
+11994-                        );
+11995-                        const safeCurrentPage = Math.max(
+11996-                          1,
+11997-                          Math.min(productCurrentPage, totalPages),
+11998-                        );
+11999-                        const paginatedProducts = filteredProducts.slice(
+12000-                          (safeCurrentPage - 1) * productPageSize,
+12001-                          safeCurrentPage * productPageSize,
+12002-                        );
+12003-
+12004-                        const getPaginationItems = () => {
+12005-                          const items: (number | string)[] = [];
+12006-                          if (totalPages <= 7) {
+12007-                            for (let i = 1; i <= totalPages; i++) items.push(i);
+12008-                          } else {

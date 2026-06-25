@@ -1,0 +1,263 @@
+1404-
+1405-            const payload = {
+1406-              id: autoSaveInvoiceId || generateId(),
+1407-              invoiceNumber: autoSaveInvoiceId
+1408-                ? invoiceNumber
+1409:                : `پیش‌نویس-${Date.now().toString().slice(-5)}`,
+1410-              sellerInvoiceNumber: sellerInvoiceNumber || "",
+1411-              title: invoiceTitle,
+1412-              description: invoiceDescription,
+1413-              warehouseId: invoiceWarehouseId,
+1414-              type: invoiceType,
+--
+3937-          "آیا می‌خواهید این فاکتور را ویرایش کنید؟ نسخه قبلی پس از ذخیره نهایی حذف و با نسخه جدید جایگزین خواهد شد.",
+3938-        )
+3939-      )
+3940-        return;
+3941-    } else {
+3942:      if (!confirm("آیا می‌خواهید این فاکتور پیش‌نویس را ویرایش کنید؟")) return;
+3943-    }
+3944-
+3945-    setEditingInvoiceId(inv.id);
+3946-    setInvoiceMode("manual");
+3947-    setInvoiceNumber(inv.invoiceNumber);
+--
+4108-      (customPayload &&
+4109-        (customPayload.isDraft || customPayload.status === "draft"));
+4110-
+4111-    const finalInvoiceNumber =
+4112-      invoiceMode === "auto" ||
+4113:      String(invoiceNumber || "").startsWith("پیش‌نویس-")
+4114-        ? getInvoiceNumber(invoiceType)
+4115-        : invoiceNumber;
+4116-
+4117-    if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
+4118-      customAlert(
+--
+4193-          status: isDraft ? "draft" : "final",
+4194-          invoiceNumber:
+4195-            customPayload.invoiceNumber &&
+4196-            (customPayload.invoiceNumber.includes("خودکار") ||
+4197-              customPayload.invoiceNumber.includes("تولید خودکار") ||
+4198:              customPayload.invoiceNumber.includes("پیش‌نویس"))
+4199-              ? getInvoiceNumber(customPayload.type)
+4200-              : customPayload.invoiceNumber ||
+4201-                getInvoiceNumber(customPayload.type),
+4202-        }
+4203-      : {
+--
+4462-            ? "حواله انبار"
+4463-            : "فاکتور";
+4464-
+4465-      setSuccessMsg(
+4466-        isDraft
+4467:          ? `پیش‌نویس ${successTypeName} با موفقیت ذخیره شد!`
+4468-          : `${successTypeName} با موفقیت ثبت شد!`,
+4469-      );
+4470-      if (
+4471-        storeSettings?.notify_on_invoice &&
+4472-        (payload.type === "sale" || payload.type === "purchase") &&
+--
+6320-            {editingInvoiceId && (
+6321-              <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+6322-                <div className="flex items-center gap-2.5">
+6323-                  <Info className="w-5 h-5 text-amber-600 shrink-0" />
+6324-                  <span>
+6325:                    شما در حال ویرایش فاکتور برگشت از خرید پیش‌نویس/ثبت‌شده
+6326-                    شماره{" "}
+6327-                    <strong className="text-amber-950">
+6328-                      #{toPersianDigits(invoiceNumber)}
+6329-                    </strong>{" "}
+6330-                    هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.
+--
+6902-                  type="button"
+6903-                  disabled={submitting || items.length === 0 || !customerId}
+6904-                  onClick={() => {
+6905-                    if (
+6906-                      confirm(
+6907:                        "آیا از ذخیره این فاکتور برگشت از خرید به عنوان پیش‌نویس اطمینان دارید؟",
+6908-                      )
+6909-                    ) {
+6910-                      saveInvoiceData(null, true);
+6911-                    }
+6912-                  }}
+6913-                  className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+6914-                >
+6915-                  <FileText className="w-5 h-5" />
+6916:                  ذخیره به عنوان پیش‌نویس
+6917-                </button>
+6918-                <button
+6919-                  onClick={handleInvoicePreviewTrigger}
+6920-                  disabled={submitting || items.length === 0 || !customerId}
+6921-                  className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20 cursor-pointer"
+--
+6971-            {editingInvoiceId && (
+6972-              <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+6973-                <div className="flex items-center gap-2.5">
+6974-                  <Info className="w-5 h-5 text-amber-600 shrink-0" />
+6975-                  <span>
+6976:                    شما در حال ویرایش فاکتور خرید پیش‌نویس/ثبت‌شده شماره{" "}
+6977-                    <strong className="text-amber-950">
+6978-                      #{toPersianDigits(invoiceNumber)}
+6979-                    </strong>{" "}
+6980-                    هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.
+6981-                  </span>
+--
+7566-                  type="button"
+7567-                  disabled={submitting || items.length === 0 || !customerId}
+7568-                  onClick={() => {
+7569-                    if (
+7570-                      confirm(
+7571:                        "آیا از ذخیره این فاکتور خرید به عنوان پیش‌نویس اطمینان دارید؟",
+7572-                      )
+7573-                    ) {
+7574-                      saveInvoiceData(null, true);
+7575-                    }
+7576-                  }}
+7577-                  className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+7578-                >
+7579-                  <FileText className="w-5 h-5" />
+7580:                  ذخیره به عنوان پیش‌نویس
+7581-                </button>
+7582-                <button
+7583-                  onClick={handleInvoicePreviewTrigger}
+7584-                  disabled={submitting || items.length === 0 || !customerId}
+7585-                  className="px-10 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-emerald-500/20 cursor-pointer"
+--
+7634-            {editingInvoiceId && (
+7635-              <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+7636-                <div className="flex items-center gap-2.5">
+7637-                  <Info className="w-5 h-5 text-amber-600 shrink-0" />
+7638-                  <span>
+7639:                    شما در حال ویرایش فاکتور برگشت از فروش پیش‌نویس/ثبت‌شده
+7640-                    شماره{" "}
+7641-                    <strong className="text-amber-950">
+7642-                      #{toPersianDigits(invoiceNumber)}
+7643-                    </strong>{" "}
+7644-                    هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.
+--
+8201-                  type="button"
+8202-                  disabled={submitting || items.length === 0 || !customerId}
+8203-                  onClick={() => {
+8204-                    if (
+8205-                      confirm(
+8206:                        "آیا از ذخیره این فاکتور به عنوان پیش‌نویس اطمینان دارید؟",
+8207-                      )
+8208-                    ) {
+8209-                      saveInvoiceData(null, true);
+8210-                    }
+8211-                  }}
+8212-                  className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+8213-                >
+8214-                  <FileText className="w-5 h-5" />
+8215:                  ذخیره به عنوان پیش‌نویس
+8216-                </button>
+8217-                <button
+8218-                  onClick={handleInvoicePreviewTrigger}
+8219-                  disabled={submitting || items.length === 0 || !customerId}
+8220-                  className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20 cursor-pointer"
+--
+8270-            {editingInvoiceId && (
+8271-              <div className="bg-amber-50 text-amber-900 px-5 py-4 rounded-2xl flex items-center justify-between gap-3 border border-amber-200/60 font-bold shadow-xs">
+8272-                <div className="flex items-center gap-2.5">
+8273-                  <Info className="w-5 h-5 text-amber-600 shrink-0" />
+8274-                  <span>
+8275:                    شما در حال ویرایش فاکتور پیش‌نویس/ثبت‌شده شماره{" "}
+8276-                    <strong className="text-amber-950">
+8277-                      #{toPersianDigits(invoiceNumber)}
+8278-                    </strong>{" "}
+8279-                    هستید. تغییرات جدید جایگزین نسخه قبلی خواهد شد.
+8280-                  </span>
+--
+8854-                  type="button"
+8855-                  disabled={submitting || items.length === 0 || !customerId}
+8856-                  onClick={() => {
+8857-                    if (
+8858-                      confirm(
+8859:                        "آیا از ذخیره این فاکتور به عنوان پیش‌نویس اطمینان دارید؟",
+8860-                      )
+8861-                    ) {
+8862-                      saveInvoiceData(null, true);
+8863-                    }
+8864-                  }}
+8865-                  className="px-6 py-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-200 text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm outline-none cursor-pointer"
+8866-                >
+8867-                  <FileText className="w-5 h-5" />
+8868:                  ذخیره به عنوان پیش‌نویس
+8869-                </button>
+8870-                <button
+8871-                  onClick={handleInvoicePreviewTrigger}
+8872-                  disabled={submitting || items.length === 0 || !customerId}
+8873-                  className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white rounded-2xl font-black flex items-center justify-center gap-3 transition-colors shadow-sm outline-none focus:ring-4 focus:ring-indigo-500/20 cursor-pointer"
+--
+9191-                                <span>
+9192-                                  #{toPersianDigits(inv.invoiceNumber)}
+9193-                                </span>
+9194-                                {(inv.isDraft || inv.status === "draft") && (
+9195-                                  <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-amber-200">
+9196:                                    پیش‌نویس
+9197-                                  </span>
+9198-                                )}
+9199-                              </div>
+9200-                            </td>
+9201-                            {[
+--
+9421-                                <Eye className="w-4 h-4" />
+9422-                              </button>
+9423-                              <button
+9424-                                onClick={() => handleEditInvoiceAction(inv)}
+9425-                                className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none"
+9426:                                title="ویرایش (بازگشت به پیش‌نویس)"
+9427-                              >
+9428-                                <Edit2 className="w-4 h-4" />
+9429-                              </button>
+9430-                              <button
+9431-                                onClick={() => handleDeleteInvoice(inv.id)}
+--
+15840-                            </button>
+15841-                            <button
+15842-                              onClick={() => setLedgerTab("drafts")}
+15843-                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "drafts" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+15844-                            >
+15845:                              پیش‌نویس‌ها
+15846-                            </button>
+15847-                            <button
+15848-                              onClick={() => setLedgerTab("notes")}
+15849-                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "notes" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+15850-                            >
+--
+22498-                            handleEditInvoiceAction(viewingInvoice);
+22499-                          }}
+22500-                          className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-xs"
+22501-                        >
+22502-                          <Edit2 className="w-4 h-4" />
+22503:                          ویرایش و ثبت نهایی پیش‌نویس
+22504-                        </button>
+22505-                      )}
+22506-                      <button
+22507-                        type="button"
+22508-                        onClick={() => window.print()}
+--
+23847-                    <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 text-gray-800 text-sm print:overflow-visible print:p-0">
+23848-                      {/* Visual A4 structure inside dialog */}
+23849-                      <div className="border-2 border-indigo-400/50 p-6 rounded-2xl bg-white shadow-xs space-y-6 relative border-dashed print:border-none print:shadow-none print:p-0">
+23850-                        {/* Top draft watermark */}
+23851-                        <span className="absolute left-6 top-6 no-print text-[10px] bg-amber-100 text-amber-850 font-black px-2.5 py-1 rounded-sm tracking-widest leading-none border border-amber-200">
+23852:                          پیش‌نویس غیررسمی
+23853-                        </span>
+23854-
+23855-                        {/* Header info */}
+23856-                        {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
+23857-
+--
+24494-                          setTimeout(() => window.print(), 100);
+24495-                        }}
+24496-                        className="px-5 py-2.5 bg-indigo-50 border border-indigo-150 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+24497-                      >
+24498-                        <Printer className="w-4 h-4" />
+24499:                        چاپ مستقیم پیش‌نویس
+24500-                      </button>
+24501-                      <button
+24502-                        type="button"
+24503-                        disabled={submitting}
+24504-                        onClick={async () => {

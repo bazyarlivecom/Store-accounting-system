@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Barcode from "react-barcode";
-import {
+import { Building,
   ScanLine,
   Shield,
   Key,
@@ -954,6 +954,8 @@ export default function App() {
   const [personPageSize, setPersonPageSize] = useState<number>(10);
   const [productCurrentPage, setProductCurrentPage] = useState<number>(1);
   const [productPageSize, setProductPageSize] = useState<number>(10);
+  const [invoiceCurrentPage, setInvoiceCurrentPage] = useState<number>(1);
+  const [invoicePageSize, setInvoicePageSize] = useState<number>(10);
   const [newPersonGroupName, setNewPersonGroupName] = useState("");
   const [newPersonGroupColor, setNewPersonGroupColor] = useState("indigo");
   const [editingPersonGroupId, setEditingPersonGroupId] = useState<
@@ -1174,6 +1176,10 @@ export default function App() {
   const [invoiceGroupMode, setInvoiceGroupMode] = useState<
     "none" | "month" | "season"
   >("none");
+
+  useEffect(() => {
+    setInvoiceCurrentPage(1);
+  }, [activeTab, invoiceGroupMode, listFilter, invoiceSearchQuery, purchaseFilter]);
 
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
@@ -1402,11 +1408,12 @@ export default function App() {
               return;
             }
 
+            const existingDraft = autoSaveInvoiceId ? invoices.find(i => i.id === autoSaveInvoiceId) : null;
             const payload = {
               id: autoSaveInvoiceId || generateId(),
-              invoiceNumber: autoSaveInvoiceId
-                ? invoiceNumber
-                : `پیش‌نویس-${Date.now().toString().slice(-5)}`,
+              invoiceNumber: existingDraft?.invoiceNumber || ((invoiceMode === "auto" && !invoiceNumber) || String(invoiceNumber || "").startsWith("پیش‌نویس-") || !invoiceNumber
+                ? getInvoiceNumber(invoiceType)
+                : invoiceNumber),
               sellerInvoiceNumber: sellerInvoiceNumber || "",
               title: invoiceTitle,
               description: invoiceDescription,
@@ -4108,9 +4115,10 @@ export default function App() {
       (customPayload &&
         (customPayload.isDraft || customPayload.status === "draft"));
 
-    const finalInvoiceNumber = isDraft
-      ? `پیش‌نویس-${Date.now().toString().slice(-5)}`
-      : invoiceMode === "auto"
+    const finalInvoiceNumber =
+      (invoiceMode === "auto" && !autoSaveInvoiceId) ||
+      String(invoiceNumber || "").startsWith("پیش‌نویس-") ||
+      !invoiceNumber
         ? getInvoiceNumber(invoiceType)
         : invoiceNumber;
 
@@ -4193,12 +4201,10 @@ export default function App() {
           status: isDraft ? "draft" : "final",
           invoiceNumber:
             customPayload.invoiceNumber &&
-            (customPayload.invoiceNumber.includes("پیش‌نویس") ||
-              customPayload.invoiceNumber.includes("خودکار") ||
-              customPayload.invoiceNumber.includes("تولید خودکار"))
-              ? isDraft
-                ? `پیش‌نویس-${Date.now().toString().slice(-5)}`
-                : getInvoiceNumber(customPayload.type)
+            (customPayload.invoiceNumber.includes("خودکار") ||
+              customPayload.invoiceNumber.includes("تولید خودکار") ||
+              customPayload.invoiceNumber.includes("پیش‌نویس"))
+              ? getInvoiceNumber(customPayload.type)
               : customPayload.invoiceNumber ||
                 getInvoiceNumber(customPayload.type),
         }
@@ -4877,7 +4883,9 @@ export default function App() {
     }
 
     const finalInvoiceNumber =
-      invoiceMode === "auto" ? "تولید خودکار پس از ثبت نهایی" : invoiceNumber;
+      invoiceMode === "auto" || !invoiceNumber
+        ? getInvoiceNumber(invoiceType)
+        : invoiceNumber;
     const selectedCustomer = persons.find((p) => p.id === customerId);
 
     const tempPayload = {
@@ -8968,14 +8976,21 @@ export default function App() {
             );
           });
 
+        const invoiceTotalPages = Math.ceil(filteredInvoicesList.length / invoicePageSize);
+        const invoiceSafeCurrentPage = Math.max(1, Math.min(invoiceCurrentPage, invoiceTotalPages));
+        const paginatedFilteredInvoicesList = filteredInvoicesList.slice(
+            (invoiceSafeCurrentPage - 1) * invoicePageSize,
+            invoiceSafeCurrentPage * invoicePageSize
+        );
+
         let groupedInvoices: { groupName: string; invoices: any[] }[] = [];
         if (invoiceGroupMode === "none") {
           groupedInvoices = [
-            { groupName: "همه", invoices: filteredInvoicesList },
+            { groupName: "همه", invoices: paginatedFilteredInvoicesList },
           ];
         } else {
           const groupMap = new Map<string, any[]>();
-          filteredInvoicesList.forEach((inv) => {
+          paginatedFilteredInvoicesList.forEach((inv) => {
             let gName = "نامشخص";
             if (inv.jalaliDate) {
               const parts = inv.jalaliDate.split("/");
@@ -9455,6 +9470,104 @@ export default function App() {
                 </table>
               </div>
             </div>
+            {/* Beautiful Pagination Footer */}
+            {invoiceTotalPages > 1 && (
+              <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 rounded-b-2xl border-x border-b border-gray-100">
+                <div className="text-xs text-slate-500 font-bold">
+                  نمایش ردیف‌های{" "}
+                  <span className="text-slate-850 font-sans font-black">
+                    {(
+                      (invoiceSafeCurrentPage - 1) * invoicePageSize +
+                      1
+                    ).toLocaleString("fa-IR")}
+                  </span>{" "}
+                  تا{" "}
+                  <span className="text-slate-850 font-sans font-black">
+                    {Math.min(
+                      filteredInvoicesList.length,
+                      invoiceSafeCurrentPage * invoicePageSize
+                    ).toLocaleString("fa-IR")}
+                  </span>{" "}
+                  از مجموع{" "}
+                  <span className="text-indigo-600 font-sans font-bold">
+                    {filteredInvoicesList.length.toLocaleString("fa-IR")}
+                  </span>{" "}
+                  سند یافت‌شده
+                </div>
+
+                <div className="flex items-center gap-1.5" dir="ltr">
+                  <button
+                    disabled={invoiceSafeCurrentPage === 1}
+                    onClick={() =>
+                      setInvoiceCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    className="p-2 border border-slate-200 hover:bg-slate-100 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+                    title="صفحه قبل"
+                  >
+                    <ChevronDown className="w-4 h-4 rotate-90" />
+                  </button>
+
+                  <div className="flex items-center gap-1 px-2 font-sans font-black text-sm">
+                    {Array.from({ length: invoiceTotalPages })
+                      .map((_, i) => i + 1)
+                      .filter(
+                        (p) =>
+                          p === 1 ||
+                          p === invoiceTotalPages ||
+                          Math.abs(p - invoiceSafeCurrentPage) <= 1
+                      )
+                      .map((p, i, arr) => (
+                        <React.Fragment key={p}>
+                          {i > 0 && arr[i - 1] !== p - 1 && (
+                            <span className="text-slate-300 px-1">...</span>
+                          )}
+                          <button
+                            onClick={() => setInvoiceCurrentPage(p)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-3xs cursor-pointer ${
+                              invoiceSafeCurrentPage === p
+                                ? "bg-indigo-600 text-white border border-indigo-700 shadow-indigo-600/30"
+                                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {p.toLocaleString("fa-IR")}
+                          </button>
+                        </React.Fragment>
+                      ))}
+                  </div>
+
+                  <button
+                    disabled={invoiceSafeCurrentPage === invoiceTotalPages}
+                    onClick={() =>
+                      setInvoiceCurrentPage((prev) =>
+                        Math.min(invoiceTotalPages, prev + 1)
+                      )
+                    }
+                    className="p-2 border border-slate-200 hover:bg-slate-100 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+                    title="صفحه بعد"
+                  >
+                    <ChevronDown className="w-4 h-4 -rotate-90" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-bold">نمایش:</span>
+                  <select
+                    value={invoicePageSize}
+                    onChange={(e) => {
+                      setInvoicePageSize(Number(e.target.value));
+                      setInvoiceCurrentPage(1);
+                    }}
+                    className="bg-white border border-slate-200 text-slate-700 text-xs font-sans font-bold rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer"
+                    dir="ltr"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </motion.div>
         );
       }
@@ -11940,28 +12053,57 @@ export default function App() {
                           onChange={(e) => setProductSearchTerm(e.target.value)}
                         />
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 p-2 rounded-2xl border border-slate-100 flex-row-reverse justify-end">
-                        <span className="text-xs font-black text-slate-500 flex items-center gap-1">
+                      <div className="flex flex-wrap items-center gap-1.5 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100 flex-row-reverse justify-end">
+                        <span className="text-xs font-black text-slate-500 flex items-center gap-1 pl-2">
                           <Tag className="w-3.5 h-3.5 text-indigo-500" />
                           فیلتر گروه:
                         </span>
                         <button
                           onClick={() => setSelectedProductCategory("all")}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedProductCategory === "all" ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer ${
+                            selectedProductCategory === "all"
+                              ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                              : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                          }`}
                         >
                           همه گروه‌ها
                         </button>
-                        {productCategories.map((cat) => (
+
+                        {productCategories.slice(0, 4).map((cat) => (
                           <button
                             key={cat.id}
-                            onClick={() =>
-                              setSelectedProductCategory(cat.id.toString())
-                            }
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedProductCategory === cat.id.toString() ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+                            onClick={() => setSelectedProductCategory(cat.id.toString())}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer ${
+                              selectedProductCategory === cat.id.toString()
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                                : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                            }`}
                           >
                             {cat.name}
                           </button>
                         ))}
+
+                        {productCategories.length > 4 && (
+                          <select
+                            value={
+                              selectedProductCategory !== "all" &&
+                              productCategories.find((c) => c.id.toString() === selectedProductCategory)
+                                ? selectedProductCategory
+                                : ""
+                            }
+                            onChange={(e) => {
+                              if (e.target.value) setSelectedProductCategory(e.target.value);
+                            }}
+                            className="bg-transparent border-none font-bold text-xs text-slate-600 rounded-xl px-2 py-1.5 focus:ring-0 cursor-pointer outline-none hover:text-slate-900"
+                          >
+                            <option value="" disabled>بیشتر...</option>
+                            {productCategories.slice(4).map((cat) => (
+                              <option key={cat.id} value={cat.id.toString()}>
+                                {cat.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     </div>
 
@@ -12381,25 +12523,29 @@ export default function App() {
 
                     return (
                       <motion.div
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="bg-white rounded-[24px] shadow-sm border border-slate-200/60 overflow-hidden flex flex-col"
                       >
-                        <div className="bg-gradient-to-l from-indigo-50/50 to-white px-8 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div>
-                            <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                              <User className="w-6 h-6 text-indigo-500" />
-                              لیست اشخاص
+                        <div className="bg-gradient-to-l from-indigo-50/80 via-white to-white px-6 sm:px-8 py-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+                          <div className="relative z-10">
+                            <h1 className="text-2xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
+                              <div className="p-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200/50 text-white">
+                                <User className="w-6 h-6" strokeWidth={2.5} />
+                              </div>
+                              مدیریت اشخاص
                             </h1>
-                            <p className="text-xs text-slate-500 font-bold mt-1">
-                              پرونده‌ی اطلاعاتی جامع مشتریان و همکاران
+                            <p className="text-sm text-slate-500 font-semibold mt-2 tracking-tight">
+                              پرونده‌ی اطلاعاتی جامع مشتریان، تامین‌کنندگان و همکاران
                             </p>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-3 relative z-10">
                             <button
                               onClick={handleGenerateMissingAccountingCodes}
                               disabled={isGeneratingCodes}
-                              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 bg-white rounded-xl flex items-center gap-2 transition-all text-xs font-black shadow-xs cursor-pointer disabled:opacity-50"
+                              className="px-4 py-2.5 border border-slate-200/80 hover:bg-slate-50 text-slate-700 bg-white rounded-xl flex items-center gap-2 transition-all text-xs font-black shadow-xs cursor-pointer disabled:opacity-50"
                               title="صدور کد حسابداری برای اشخاصی که کد حسابداری ندارند"
                             >
                               {isGeneratingCodes ? (
@@ -12407,17 +12553,17 @@ export default function App() {
                               ) : (
                                 <Key className="w-4 h-4 text-indigo-500" />
                               )}
-                              صدور کد حسابداری
+                              تخصیص کد حسابداری
                             </button>
                             <button
                               onClick={() => {
                                 setPersonIOAction("export");
                                 setIsPersonIOModalOpen(true);
                               }}
-                              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 bg-white rounded-xl flex items-center gap-2 transition-all text-xs font-black shadow-xs cursor-pointer"
+                              className="px-4 py-2.5 border border-slate-200/80 hover:bg-slate-50 text-slate-700 bg-white rounded-xl flex items-center gap-2 transition-all text-xs font-black shadow-xs cursor-pointer"
                             >
-                              <ArrowRightLeft className="w-4 h-4 text-indigo-500" />
-                              اکسل
+                              <ArrowRightLeft className="w-4 h-4 text-emerald-500" />
+                              ورود / خروج اکسل
                             </button>
 
                             <button
@@ -12441,118 +12587,106 @@ export default function App() {
                                 setNewPersonCreditLimit("");
                                 setIsPersonModalOpen(true);
                               }}
-                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] text-xs font-black shadow-md shadow-indigo-200 cursor-pointer border-none"
+                              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-600/30 active:translate-y-0 text-sm font-black cursor-pointer border-none"
                             >
-                              <Plus className="w-4 h-4" />
+                              <Plus className="w-4 h-4" strokeWidth={3} />
                               شخص جدید
                             </button>
                           </div>
                         </div>
 
                         {successMsg && (
-                          <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100">
-                            <CheckCircle className="w-5 h-5" />
-                            {successMsg}
-                          </div>
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mx-6 sm:mx-8 mt-6">
+                            <div className="bg-emerald-50/80 text-emerald-700 px-5 py-4 rounded-2xl flex items-center gap-3 border border-emerald-100/50 shadow-sm">
+                              <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+                              <span className="font-bold text-sm">{successMsg}</span>
+                            </div>
+                          </motion.div>
                         )}
 
-                        <div className="flex border-b border-gray-100 mx-6 mt-6 overflow-x-auto">
-                          <button
-                            onClick={() => {
-                              setSelectedPersonRole("all");
-                              setPersonCurrentPage(1);
-                            }}
-                            className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === "all" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
-                          >
-                            همه اشخاص
-                          </button>
-                          {personRoles.map((r) => (
-                            <button
-                              key={r.id}
-                              onClick={() => {
-                                setSelectedPersonRole(r.id);
-                                setPersonCurrentPage(1);
-                              }}
-                              className={`px-6 py-3 border-b-2 font-bold text-sm transition-colors cursor-pointer whitespace-nowrap outline-none ${selectedPersonRole === r.id ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
-                            >
-                              {r.name}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="mx-6 mt-6 flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between animate-fade-in">
-                          {/* Search Bar */}
-                          <div className="relative flex-1">
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                              <Search className="w-5 h-5 text-gray-400" />
+                        <div className="mx-6 sm:mx-8 mt-8 flex flex-col xl:flex-row gap-4 xl:items-center justify-between animate-fade-in">
+                          {/* Search */}
+                          <div className="relative w-full xl:max-w-md">
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                              <Search className="w-5 h-5 text-slate-400" />
                             </div>
                             <input
                               type="text"
-                              className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm text-gray-950 font-bold"
-                              placeholder="جستجوی سریع شخص (نام، شماره تماس، کد ملی، شماره شخص، کد حسابداری، گروه)..."
+                              className="w-full pl-4 pr-12 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all text-sm text-slate-900 font-bold outline-none"
+                              placeholder="جستجوی نام، تلفن، کد ملی، شماره شخص..."
                               value={personSearchTerm}
-                              onChange={(e) =>
-                                setPersonSearchTerm(e.target.value)
-                              }
+                              onChange={(e) => setPersonSearchTerm(e.target.value)}
                             />
                           </div>
 
-                          {/* Group Filter Pills */}
-                          <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 p-2 rounded-2xl border border-slate-100">
-                            <span className="text-xs font-black text-slate-500 flex items-center gap-1">
-                              <Tag className="w-3.5 h-3.5 text-indigo-500" />
-                              فیلتر گروه:
-                            </span>
+                          {/* Filters Layout */}
+                          <div className="flex flex-wrap items-center gap-3">
+                             <div className="flex bg-slate-100/70 p-1.5 rounded-2xl overflow-x-auto hide-scrollbar">
+                                <button
+                                  onClick={() => {
+                                    setSelectedPersonRole("all");
+                                    setPersonCurrentPage(1);
+                                  }}
+                                  className={`px-4 py-2 rounded-xl font-black text-xs transition-all whitespace-nowrap ${selectedPersonRole === "all" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border-transparent cursor-pointer"}`}
+                                >
+                                  همه نقش‌ها
+                                </button>
+                                {personRoles.map((r) => (
+                                  <button
+                                    key={r.id}
+                                    onClick={() => {
+                                      setSelectedPersonRole(r.id);
+                                      setPersonCurrentPage(1);
+                                    }}
+                                    className={`px-4 py-2 rounded-xl font-black text-xs transition-all whitespace-nowrap ${selectedPersonRole === r.id ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border-transparent cursor-pointer"}`}
+                                  >
+                                    {r.name}
+                                  </button>
+                                ))}
+                             </div>
 
-                            <div className="flex flex-wrap gap-1 bg-white p-1 rounded-xl shadow-xs border border-slate-200/65">
+                             <div className="h-8 w-px bg-slate-200 hidden xl:block" />
+
+                             <div className="flex flex-wrap gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
                               <button
                                 onClick={() => setSelectedPersonGroup("all")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border-none cursor-pointer ${
                                   selectedPersonGroup === "all"
-                                    ? "bg-indigo-600 text-white shadow-xs"
-                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                    ? "bg-slate-800 text-white shadow-md shadow-slate-800/20"
+                                    : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
                                 }`}
                               >
-                                همه ({persons.length.toLocaleString("fa-IR")})
+                                همه گروه‌ها
                               </button>
 
                               <button
                                 onClick={() => setSelectedPersonGroup("none")}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border-none cursor-pointer ${
                                   selectedPersonGroup === "none"
-                                    ? "bg-amber-600 text-white shadow-xs"
-                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                                    ? "bg-amber-500 text-white shadow-md shadow-amber-500/20"
+                                    : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
                                 }`}
                               >
-                                بدون گروه (
-                                {persons
-                                  .filter(
-                                    (p) => !p.group || p.group.trim() === "",
-                                  )
-                                  .length.toLocaleString("fa-IR")}
-                                )
+                                بدون گروه
                               </button>
 
-                              {personGroups.slice(0, 4).map((g) => {
-                                const count = persons.filter(
-                                  (p) => p.group === g.id,
-                                ).length;
+                              {personGroups.slice(0, 3).map((g) => {
                                 return (
                                   <button
                                     key={g.id}
                                     onClick={() => setSelectedPersonGroup(g.id)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all border-none cursor-pointer ${
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border-none cursor-pointer ${
                                       selectedPersonGroup === g.id
-                                        ? "bg-indigo-600 text-white shadow-xs"
-                                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                                        ? "bg-slate-800 text-white shadow-md shadow-slate-800/20"
+                                        : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
                                     }`}
                                   >
-                                    {g.name} ({count.toLocaleString("fa-IR")})
+                                    {g.name}
                                   </button>
                                 );
                               })}
 
-                              {personGroups.length > 4 && (
+                              {personGroups.length > 3 && (
                                 <select
                                   value={
                                     selectedPersonGroup !== "all" &&
@@ -12568,19 +12702,15 @@ export default function App() {
                                       setSelectedPersonGroup(e.target.value);
                                     }
                                   }}
-                                  className="bg-slate-50 border border-slate-200 font-extrabold text-xs text-slate-800 rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                                  className="bg-transparent border-none font-black text-xs text-slate-600 rounded-xl px-2 focus:ring-0 cursor-pointer outline-none hover:text-slate-900"
                                 >
                                   <option value="" disabled>
-                                    گروه‌های بیشتر...
+                                    بیشتر...
                                   </option>
-                                  {personGroups.slice(4).map((g) => {
-                                    const count = persons.filter(
-                                      (p) => p.group === g.id,
-                                    ).length;
+                                  {personGroups.slice(3).map((g) => {
                                     return (
                                       <option key={g.id} value={g.id}>
-                                        {g.name} (
-                                        {count.toLocaleString("fa-IR")} نفر)
+                                        {g.name}
                                       </option>
                                     );
                                   })}
@@ -12590,288 +12720,184 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="p-0 overflow-x-auto mt-4">
+                        <div className="px-6 sm:px-8 mt-8 pb-8 flex-1">
                           {filteredPersons.length === 0 ? (
-                            <div className="p-12 text-center text-gray-500">
-                              <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                              <p>هیچ شخصی یافت نشد.</p>
+                            <div className="py-20 flex flex-col items-center justify-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+                              <div className="w-20 h-20 bg-white rounded-full shadow-sm border border-slate-100 flex items-center justify-center mb-6">
+                                <User className="w-10 h-10 text-slate-300" />
+                              </div>
+                              <h3 className="text-lg font-black text-slate-700 mb-2">هیچ شخصی یافت نشد</h3>
+                              <p className="text-sm font-semibold text-slate-400">با تغییر فیلترها جستجو را تکرار کنید یا شخص جدیدی ایجاد نمایید.</p>
                             </div>
                           ) : (
-                            <table className="w-full text-right whitespace-nowrap min-w-[800px]">
-                              <thead>
-                                <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
-                                  <th className="py-4 px-6 text-right">ردیف</th>
-                                  <th className="py-4 px-6 text-center">
-                                    کد شخص
-                                  </th>
-                                  <th className="py-4 px-6 text-center">
-                                    کد حسابداری
-                                  </th>
-                                  <th className="py-4 px-6 text-right">
-                                    نام / عنوان
-                                  </th>
-                                  <th className="py-4 px-6 text-right">
-                                    گروه شخص
-                                  </th>
-                                  <th className="py-4 px-6 text-right">
-                                    نوع کاربر
-                                  </th>
-                                  <th className="py-4 px-6 text-right">
-                                    کد / شناسه ملی
-                                  </th>
-                                  <th className="py-4 px-6 text-right">نقش</th>
-                                  <th className="py-4 px-6 text-right">
-                                    شماره تماس
-                                  </th>
-                                  <th className="py-4 px-6 text-right">
-                                    در حساب / مانده
-                                  </th>
-                                  <th className="py-4 px-6 w-24">عملیات</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-50">
-                                {paginatedPersons.map((p, index) => (
-                                  <tr
+                            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+                              {paginatedPersons.map((p, index) => {
+                                const bal = paginatedPersonBalances[p.id.toString()] || 0;
+                                const isDebtor = bal > 0;
+                                const isCreditor = bal < 0;
+                                
+                                return (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: index * 0.03 }}
                                     key={p.id}
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
                                     onClick={() => setDrawerPersonId(p.id)}
+                                    className="group relative bg-white border border-slate-200 hover:border-indigo-300 rounded-3xl p-5 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
                                   >
-                                    <td className="py-4 px-6 text-gray-500 w-16 text-center font-sans font-bold text-xs">
-                                      {(
-                                        (safeCurrentPage - 1) * personPageSize +
-                                        index +
-                                        1
-                                      ).toLocaleString("fa-IR")}
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                      {p.personCode ? (
-                                        <span className="font-sans font-black bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-xl text-xs">
-                                          {toPersianDigits(p.personCode)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-gray-300">-</span>
-                                      )}
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                      {p.accountingCode ? (
-                                        <span className="font-mono text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200 px-2 py-1 rounded-md">
-                                          {toPersianDigits(p.accountingCode)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-gray-300">-</span>
-                                      )}
-                                    </td>
-                                    <td className="py-4 px-6 font-semibold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
-                                      <div className="flex items-center gap-3">
+                                    <div className="flex items-start gap-4">
+                                      <div className="relative">
                                         {p.imageUrl ? (
-                                          <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+                                          <img src={p.imageUrl} alt={p.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md ring-1 ring-slate-100 group-hover:ring-indigo-100 transition-all z-10 relative" />
                                         ) : (
-                                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                                            <User className="w-5 h-5 text-gray-400" />
+                                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-white shadow-sm ring-1 ring-slate-100 group-hover:ring-indigo-100 flex items-center justify-center transition-all z-10 relative">
+                                            <span className="text-2xl font-black text-slate-300">
+                                              {p.name.substring(0, 1)}
+                                            </span>
                                           </div>
                                         )}
-                                        <div className="flex flex-col">
-                                          <span>{p.alias || p.name}</span>
-                                          {p.alias && p.alias !== p.name && (
-                                            <span className="text-[10px] text-gray-400 font-normal">
-                                              {p.name}
-                                            </span>
-                                          )}
+                                        <div className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shadow-sm z-20 border-2 border-white ${
+                                          p.personType === "legal" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                                        }`}>
+                                          {p.personType === "legal" ? <Building className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                                         </div>
                                       </div>
-                                    </td>
-                                    <td className="py-4 px-6 text-sm">
-                                      {p.group ? (
-                                        (() => {
-                                          const g = personGroups.find(
-                                            (grp) => grp.id === p.group,
-                                          );
-                                          if (!g)
-                                            return (
-                                              <span className="text-slate-350 select-none text-xs font-bold">
-                                                بدون گروه
-                                              </span>
-                                            );
 
-                                          let bg = "bg-slate-100";
-                                          let text = "text-slate-600";
-                                          let border = "border-slate-200";
-                                          if (g.color === "indigo") {
-                                            bg = "bg-indigo-50";
-                                            text = "text-indigo-800";
-                                            border = "border-indigo-100";
-                                          } else if (g.color === "emerald") {
-                                            bg = "bg-emerald-50";
-                                            text = "text-emerald-800";
-                                            border = "border-emerald-100";
-                                          } else if (g.color === "amber") {
-                                            bg = "bg-amber-50";
-                                            text = "text-amber-800";
-                                            border = "border-amber-100";
-                                          } else if (g.color === "rose") {
-                                            bg = "bg-rose-50";
-                                            text = "text-rose-800";
-                                            border = "border-rose-100";
-                                          } else if (g.color === "purple") {
-                                            bg = "bg-purple-50";
-                                            text = "text-purple-800";
-                                            border = "border-purple-100";
-                                          } else if (g.color === "cyan") {
-                                            bg = "bg-cyan-50";
-                                            text = "text-cyan-800";
-                                            border = "border-cyan-100";
-                                          }
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div>
+                                            <h3 className="text-base font-black text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
+                                              {p.name}
+                                            </h3>
+                                            {p.alias && p.alias !== p.name && (
+                                              <p className="text-xs font-bold text-slate-400 mt-0.5 truncate">
+                                                {p.alias}
+                                              </p>
+                                            )}
+                                          </div>
+                                          <div className="flex flex-col items-end gap-1 shrink-0">
+                                            {p.personCode && (
+                                              <span className="text-[10px] font-black font-sans bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg border border-slate-200/50 shadow-3xs">
+                                                ID: {toPersianDigits(p.personCode)}
+                                              </span>
+                                            )}
+                                            {p.accountingCode && (
+                                              <span className="text-[10px] font-black font-mono bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg border border-indigo-100/50 shadow-3xs">
+                                                ACC: {toPersianDigits(p.accountingCode)}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
 
-                                          return (
-                                            <span
-                                              className={`inline-flex items-center gap-1 ${bg} ${text} border ${border} px-2.5 py-1 rounded-xl text-xs font-black shadow-3xs`}
-                                            >
-                                              <Tag
-                                                className={`w-3 h-3 ${g.color ? `text-${g.color}-500` : "text-slate-500"}`}
-                                              />
-                                              {g.name}
-                                            </span>
-                                          );
-                                        })()
-                                      ) : (
-                                        <span className="text-slate-350 select-none text-xs font-bold">
-                                          بدون گروه
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="py-4 px-6 text-gray-600 text-sm">
-                                      {p.personType === "legal"
-                                        ? "حقوقی"
-                                        : "حقیقی"}
-                                    </td>
-                                    <td className="py-4 px-6 text-slate-700 font-sans font-bold text-xs">
-                                      {p.nationalId
-                                        ? toPersianDigits(p.nationalId)
-                                        : "-"}
-                                    </td>
-                                    <td className="py-4 px-6 text-gray-600 text-sm">
-                                      <span
-                                        className={`px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 font-bold text-xs ${getRoleBadgeClasses(p.role)}`}
-                                      >
-                                        {getRoleName(p.role)}
-                                      </span>
-                                    </td>
-                                    <td className="py-4 px-6 text-slate-700 font-sans font-bold text-xs">
-                                      {p.phone ? toPersianDigits(p.phone) : "-"}
-                                    </td>
-                                    <td className="py-4 px-6 text-sm" dir="rtl">
-                                      {(() => {
-                                        const bal =
-                                          paginatedPersonBalances[
-                                            p.id.toString()
-                                          ] || 0;
-                                        if (bal === 0) {
-                                          return (
-                                            <span className="text-slate-400 font-sans font-black text-xs bg-slate-50 border border-slate-100 px-2 py-1 rounded-xl">
-                                              تسویه (۰)
-                                            </span>
-                                          );
-                                        } else if (bal > 0) {
-                                          return (
-                                            <span className="text-rose-600 font-black tracking-tight inline-flex items-center gap-1 bg-rose-50 border border-rose-100/40 px-2 py-1 rounded-xl">
-                                              <span className="font-sans text-xs">
-                                                {toPersianDigits(
-                                                  formatNumber(bal),
-                                                )}
-                                              </span>{" "}
-                                              <span className="text-[9px] text-rose-500 font-bold">
-                                                بدهکار
-                                              </span>
-                                            </span>
-                                          );
-                                        } else {
-                                          return (
-                                            <span className="text-emerald-600 font-black tracking-tight inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100/40 px-2 py-1 rounded-xl">
-                                              <span className="font-sans text-xs">
-                                                {toPersianDigits(
-                                                  formatNumber(Math.abs(bal)),
-                                                )}
-                                              </span>{" "}
-                                              <span className="text-[9px] text-emerald-500 font-bold">
-                                                بستانکار
-                                              </span>
-                                            </span>
-                                          );
-                                        }
-                                      })()}
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setDrawerPersonId(p.id);
-                                          }}
-                                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
-                                          title="پیش‌نمایش سریع حساب"
-                                        >
-                                          <Eye className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setLedgerPersonId(p.id);
-                                            setActiveTab("person_ledger");
-                                          }}
-                                          className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors inline-block"
-                                          title="مشاهده کارت حساب تخصصی"
-                                        >
-                                          <FileText className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPersonExtraId(p.id);
-                                            setPersonBankName(p.bankName || "");
-                                            setPersonBankAcc(
-                                              p.bankAccountNumber || "",
-                                            );
-                                            setPersonCard(p.cardNumber || "");
-                                            setPersonSheba(p.shebaNumber || "");
-                                            setPersonNotes(
-                                              p.additionalNotes || "",
-                                            );
-                                            setIsPersonExtraModalOpen(true);
-                                          }}
-                                          className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors inline-block"
-                                          title="اطلاعات تکمیلی بانکی"
-                                        >
-                                          <Info className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditPerson(p);
-                                          }}
-                                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
-                                          title="ویرایش شخص"
-                                        >
-                                          <Edit2 className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            confirmAction(
-                                              "آیا از حذف این شخص اطمینان دارید؟",
-                                              () => handleDeletePerson(p.id),
-                                            );
-                                          }}
-                                          className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-block"
-                                          title="حذف شخص"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${getRoleBadgeClasses(p.role)}`}>
+                                            {getRoleName(p.role)}
+                                          </span>
+                                          
+                                          {p.group ? (
+                                            (() => {
+                                              const g = personGroups.find(grp => grp.id === p.group);
+                                              if (!g) return null;
+                                              let bg = "bg-slate-100", text = "text-slate-600";
+                                              if (g.color === "indigo") { bg = "bg-indigo-50"; text = "text-indigo-700"; }
+                                              else if (g.color === "emerald") { bg = "bg-emerald-50"; text = "text-emerald-700"; }
+                                              else if (g.color === "amber") { bg = "bg-amber-50"; text = "text-amber-700"; }
+                                              else if (g.color === "rose") { bg = "bg-rose-50"; text = "text-rose-700"; }
+                                              else if (g.color === "purple") { bg = "bg-purple-50"; text = "text-purple-700"; }
+                                              else if (g.color === "cyan") { bg = "bg-cyan-50"; text = "text-cyan-700"; }
+                                              return (
+                                                <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${bg} ${text}`}>
+                                                  {g.name}
+                                                </span>
+                                              );
+                                            })()
+                                          ) : null}
+                                        </div>
                                       </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                    </div>
+
+                                    <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
+                                        <div className="text-[10px] font-black text-slate-400 mb-1 flex items-center gap-1.5">
+                                          <Phone className="w-3.5 h-3.5" />
+                                          شماره تماس
+                                        </div>
+                                        <div className="font-bold text-slate-700 font-sans tracking-wide text-xs">
+                                          {p.phone ? toPersianDigits(p.phone) : <span className="text-slate-300">-</span>}
+                                        </div>
+                                      </div>
+                                      <div className={`rounded-2xl p-3 border ${isDebtor ? 'bg-rose-50/50 border-rose-100/50' : isCreditor ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-slate-50 border-slate-100/50'}`}>
+                                        <div className={`text-[10px] font-black mb-1 flex items-center gap-1.5 ${isDebtor ? 'text-rose-500' : isCreditor ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                          <Wallet className="w-3.5 h-3.5" />
+                                          وضعیت مانده
+                                        </div>
+                                        <div className={`font-black font-sans text-xs flex items-center gap-1 ${isDebtor ? 'text-rose-700' : isCreditor ? 'text-emerald-700' : 'text-slate-600'}`} dir="ltr">
+                                          {bal === 0 ? "تسویه (۰)" : toPersianDigits(formatNumber(Math.abs(bal)))}
+                                          {bal !== 0 && <span className="text-[9px]">{storeSettings.currency}</span>}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                       <span className="text-[10px] font-black text-indigo-500 px-2">عملیات حساب:</span>
+                                       <div className="flex items-center gap-1" dir="ltr">
+                                         <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              confirmAction(
+                                                "آیا از حذف این شخص اطمینان دارید؟",
+                                                () => handleDeletePerson(p.id),
+                                              );
+                                            }}
+                                            className="p-2 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all shadow-sm"
+                                            title="حذف شخص"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleEditPerson(p);
+                                            }}
+                                            className="p-2 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-all shadow-sm"
+                                            title="ویرایش شخص"
+                                          >
+                                            <Edit2 className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setPersonExtraId(p.id);
+                                              setPersonBankName(p.bankName || "");
+                                              setPersonBankAcc(p.bankAccountNumber || "");
+                                              setPersonCard(p.cardNumber || "");
+                                              setPersonSheba(p.shebaNumber || "");
+                                              setPersonNotes(p.additionalNotes || "");
+                                              setIsPersonExtraModalOpen(true);
+                                            }}
+                                            className="p-2 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-xl transition-all shadow-sm"
+                                            title="اطلاعات تکمیلی بانکی"
+                                          >
+                                            <Info className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setLedgerPersonId(p.id);
+                                              setActiveTab("person_ledger");
+                                            }}
+                                            className="px-3 py-1.5 h-8 flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] shadow-sm"
+                                            title="مشاهده کارت حساب"
+                                          >
+                                            <FileText className="w-3.5 h-3.5" />
+                                            صورت‌حساب
+                                          </button>
+                                       </div>
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
 

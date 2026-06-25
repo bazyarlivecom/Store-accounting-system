@@ -1,0 +1,167 @@
+8933-                (wh) =>
+8934-                  wh.type === "warehouse_receipt" &&
+8935-                  wh.sourceInvoiceId?.toString() === i.id.toString(),
+8936-              );
+8937-              if (purchaseFilter === "received") return isReceived;
+8938-              if (purchaseFilter === "pending") return !isReceived;
+8939-              return true;
+8940-            } else if (activeTab === "list_warehouse_docs") {
+8941-              return typeof listFilter !== "undefined" &&
+8942-                listFilter === "receipt"
+8943-                ? i.type === "warehouse_receipt"
+8944-                : typeof listFilter !== "undefined" &&
+8945-                    listFilter === "remittance"
+8946-                  ? i.type === "warehouse_remittance"
+8947-                  : i.type === "warehouse_receipt" ||
+8948-                    i.type === "warehouse_remittance";
+8949-            } else if (activeTab === "list_sale_return") {
+8950-              return i.type === "sale_return";
+8951-            } else if (activeTab === "list_purchase_return") {
+8952-              return i.type === "purchase_return";
+8953-            }
+8954-            return false;
+8955-          })
+8956-          .filter((inv) => {
+8957-            if (!invoiceSearchQuery) return true;
+8958-            const term = invoiceSearchQuery.toLowerCase();
+8959-            const pName = (
+8960-              persons.find(
+8961-                (p) => p.id.toString() === inv.customerId?.toString(),
+8962-              )?.name || "نامشخص"
+8963-            ).toLowerCase();
+8964-            const invNum = (inv.invoiceNumber || "").toLowerCase();
+8965-            const sellNum = (inv.sellerInvoiceNumber || "").toLowerCase();
+8966-            return (
+8967-              pName.includes(term) ||
+8968-              invNum.includes(term) ||
+8969-              sellNum.includes(term)
+8970-            );
+8971-          });
+8972-
+8973:        let groupedInvoices: { groupName: string; invoices: any[] }[] = [];
+8974-        if (invoiceGroupMode === "none") {
+8975:          groupedInvoices = [
+8976-            { groupName: "همه", invoices: filteredInvoicesList },
+8977-          ];
+8978-        } else {
+8979-          const groupMap = new Map<string, any[]>();
+8980-          filteredInvoicesList.forEach((inv) => {
+8981-            let gName = "نامشخص";
+8982-            if (inv.jalaliDate) {
+8983-              const parts = inv.jalaliDate.split("/");
+8984-              if (parts.length === 3) {
+8985-                const m = parseInt(parts[1], 10);
+8986-                if (invoiceGroupMode === "month") {
+8987-                  const months = [
+8988-                    "فروردین",
+8989-                    "اردیبهشت",
+8990-                    "خرداد",
+8991-                    "تیر",
+8992-                    "مرداد",
+8993-                    "شهریور",
+8994-                    "مهر",
+8995-                    "آبان",
+8996-                    "آذر",
+8997-                    "دی",
+8998-                    "بهمن",
+8999-                    "اسفند",
+9000-                  ];
+9001-                  gName = `${months[m - 1] || m} ${parts[0]}`;
+9002-                } else if (invoiceGroupMode === "season") {
+9003-                  const seasons = [
+9004-                    "فصل بهار",
+9005-                    "فصل تابستان",
+9006-                    "فصل پاییز",
+9007-                    "فصل زمستان",
+9008-                  ];
+9009-                  const sIdx = Math.floor((m - 1) / 3);
+9010-                  gName = `${seasons[sIdx] || "نامشخص"} ${parts[0]}`;
+9011-                }
+9012-              }
+9013-            }
+9014-            if (!groupMap.has(gName)) groupMap.set(gName, []);
+9015-            groupMap.get(gName)!.push(inv);
+9016-          });
+9017:          groupedInvoices = Array.from(groupMap.entries()).map(([k, v]) => ({
+9018-            groupName: k,
+9019-            invoices: v,
+9020-          }));
+9021-        }
+9022-
+9023-        return (
+9024-          <motion.div
+9025-            initial={{ opacity: 0, y: 10 }}
+9026-            animate={{ opacity: 1, y: 0 }}
+9027-            className="space-y-6"
+9028-          >
+9029-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col items-center justify-between gap-4">
+9030-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+9031-                <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+9032-                  <List className="w-6 h-6 text-indigo-600" />
+9033-                  {activeTab === "list_sale"
+9034-                    ? "لیست فاکتورهای فروش"
+9035-                    : activeTab === "list_purchase"
+9036-                      ? "لیست فاکتورهای خرید"
+9037-                      : "اسناد انبار (رسید و حواله)"}
+--
+9102-              <div className="w-full overflow-x-auto rounded-xl border border-gray-200 bg-white">
+9103-                <table className="w-full text-sm text-right">
+9104-                  <thead className="bg-slate-50 text-slate-600 border-b border-gray-200 uppercase font-black text-xs">
+9105-                    <tr>
+9106-                      <th className="p-4">شماره</th>
+9107-                      {[
+9108-                        "list_purchase",
+9109-                        "list_sale",
+9110-                        "list_sale_return",
+9111-                        "list_purchase_return",
+9112-                      ].includes(activeTab) && (
+9113-                        <th className="p-4">عنوان / شرح</th>
+9114-                      )}
+9115-                      {activeTab.includes("warehouse") && (
+9116-                        <th className="p-4">نوع سند</th>
+9117-                      )}
+9118-                      <th className="p-4">طرف حساب</th>
+9119-                      <th className="p-4">تاریخ</th>
+9120-                      {activeTab.includes("warehouse") ? (
+9121-                        <th className="p-4 text-center">انبار</th>
+9122-                      ) : (
+9123-                        <th className="p-4 text-left">مبلغ کل</th>
+9124-                      )}
+9125-                      {[
+9126-                        "list_purchase",
+9127-                        "list_sale",
+9128-                        "list_sale_return",
+9129-                        "list_purchase_return",
+9130-                      ].includes(activeTab) && (
+9131-                        <>
+9132-                          <th className="p-4 text-left">دریافتی/پرداختی</th>
+9133-                          <th className="p-4 text-left">مانده فاکتور</th>
+9134-                          <th className="p-4 text-center">وضعیت تسویه</th>
+9135-                          <th className="p-4 text-center">وضعیت انبار</th>
+9136-                        </>
+9137-                      )}
+9138-                      <th className="p-4 text-center">عملیات</th>
+9139-                    </tr>
+9140-                  </thead>
+9141-                  <tbody className="divide-y divide-gray-100">
+9142:                    {groupedInvoices.map((group) => (
+9143-                      <React.Fragment key={group.groupName}>
+9144-                        {invoiceGroupMode !== "none" &&
+9145-                          group.invoices.length > 0 && (
+9146-                            <tr className="bg-slate-100/60 border-y border-slate-200 shadow-sm relative z-10">
+9147-                              <td colSpan={10} className="p-3 text-right">
+9148-                                <div className="flex justify-between items-center px-2">
+9149-                                  <div className="flex items-center gap-3">
+9150-                                    <div className="bg-white text-indigo-600 p-1.5 rounded-lg shadow-sm border border-indigo-100">
+9151-                                      {invoiceGroupMode === "month" ? (
+9152-                                        <Calendar className="w-4 h-4" />
+9153-                                      ) : (
+9154-                                        <List className="w-4 h-4" />
+9155-                                      )}
+9156-                                    </div>
+9157-                                    <span className="font-extrabold text-sm text-slate-800">
+9158-                                      {group.groupName}
+9159-                                    </span>
+9160-                                  </div>
+9161-                                  <div className="flex items-center gap-2">
+9162-                                    <span className="bg-white/80 text-slate-500 text-[11px] font-bold px-2 py-1 rounded shadow-sm border border-slate-200">

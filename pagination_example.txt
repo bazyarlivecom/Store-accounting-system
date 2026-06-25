@@ -1,0 +1,83 @@
+12268:                            {/* Beautiful Pagination Footer */}
+12269-                            {totalPages > 1 && (
+12270-                              <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 rounded-xl">
+12271-                                <div className="text-xs text-slate-500 font-bold">
+12272-                                  نمایش ردیف‌های{" "}
+12273-                                  <span className="text-slate-850 font-sans font-black">
+12274-                                    {(
+12275-                                      (safeCurrentPage - 1) * productPageSize +
+12276-                                      1
+12277-                                    ).toLocaleString("fa-IR")}
+12278-                                  </span>{" "}
+12279-                                  تا{" "}
+12280-                                  <span className="text-slate-850 font-sans font-black">
+12281-                                    {Math.min(
+12282-                                      filteredProducts.length,
+12283-                                      safeCurrentPage * productPageSize,
+12284-                                    ).toLocaleString("fa-IR")}
+12285-                                  </span>{" "}
+12286-                                  از مجموع{" "}
+12287-                                  <span className="text-indigo-600 font-sans font-bold">
+12288-                                    {filteredProducts.length.toLocaleString(
+12289-                                      "fa-IR",
+12290-                                    )}
+12291-                                  </span>{" "}
+12292-                                  کالا یافت‌شده
+12293-                                </div>
+12294-
+12295-                                <div
+12296-                                  className="flex items-center gap-1.5"
+12297-                                  dir="ltr"
+12298-                                >
+12299-                                  <button
+12300-                                    disabled={safeCurrentPage === 1}
+12301-                                    onClick={() =>
+12302-                                      setProductCurrentPage((prev) =>
+12303-                                        Math.max(1, prev - 1),
+12304-                                      )
+12305-                                    }
+12306-                                    className="p-2 border border-slate-200 hover:bg-slate-100 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+12307-                                    title="صفحه قبل"
+12308-                                  >
+--
+12802:                        {/* Beautiful Pagination Footer */}
+12803-                        {totalPages > 1 && (
+12804-                          <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+12805-                            <div className="text-xs text-slate-500 font-bold">
+12806-                              نمایش ردیف‌های{" "}
+12807-                              <span className="text-slate-850 font-sans font-black">
+12808-                                {(
+12809-                                  (safeCurrentPage - 1) * personPageSize +
+12810-                                  1
+12811-                                ).toLocaleString("fa-IR")}
+12812-                              </span>{" "}
+12813-                              تا{" "}
+12814-                              <span className="text-slate-850 font-sans font-black">
+12815-                                {Math.min(
+12816-                                  filteredPersons.length,
+12817-                                  safeCurrentPage * personPageSize,
+12818-                                ).toLocaleString("fa-IR")}
+12819-                              </span>{" "}
+12820-                              از مجموع{" "}
+12821-                              <span className="text-indigo-600 font-sans font-bold">
+12822-                                {filteredPersons.length.toLocaleString("fa-IR")}
+12823-                              </span>{" "}
+12824-                              شخص یافت‌شده
+12825-                            </div>
+12826-
+12827-                            <div
+12828-                              className="flex items-center gap-1.5"
+12829-                              dir="ltr"
+12830-                            >
+12831-                              <button
+12832-                                disabled={safeCurrentPage === 1}
+12833-                                onClick={() =>
+12834-                                  setPersonCurrentPage((prev) =>
+12835-                                    Math.max(1, prev - 1),
+12836-                                  )
+12837-                                }
+12838-                                className="p-2 border border-slate-200 hover:bg-slate-100 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
+12839-                                title="صفحه قبل"
+12840-                              >
+12841-                                <ChevronDown className="w-4 h-4 rotate-90" />
+12842-                              </button>

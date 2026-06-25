@@ -1,0 +1,101 @@
+11839:                {activeTab === "products" ? (
+11840-                  <motion.div
+11841-                    initial={{ opacity: 0, y: 10 }}
+11842-                    animate={{ opacity: 1, y: 0 }}
+11843-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+11844-                  >
+11845-                    <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+11846-                      <div>
+11847-                        <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+11848-                          <Package className="w-6 h-6 text-indigo-600" />
+11849-                          مدیریت کالا / خدمات
+11850-                        </h1>
+11851-                        <p className="text-sm text-gray-500 font-medium mt-1">
+11852-                          تعریف و بروزرسانی بارکد، قیمت و اطلاعات پایه کلیه
+11853-                          محصولات و سرویس‌ها
+11854-                        </p>
+11855-                      </div>
+11856-                      <div className="flex gap-2">
+11857-                        <button
+11858-                          onClick={handleGenerateDemoData}
+11859-                          disabled={submittingProduct}
+11860-                          className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold"
+11861-                        >
+11862-                          <Database className="w-4 h-4" />
+11863-                          ایجاد دیتای نمونه
+11864-                        </button>
+11865-                        <div className="flex gap-1 border-l border-gray-200 pl-2 ml-2">
+11866-                          <button
+11867-                            onClick={handleExportProductsData}
+11868-                            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
+11869-                            title="خروجی کالاها به فایل اکسل"
+11870-                          >
+11871-                            <ArrowDownToLine className="w-4 h-4" />
+11872-                            صدور
+11873-                          </button>
+11874-                          <button
+11875-                            onClick={handleImportProductsData}
+11876-                            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
+11877-                            title="ورود اطلاعات کالاها از فایل اکسل"
+11878-                          >
+11879-                            <ArrowUpFromLine className="w-4 h-4" />
+11880-                            ورود
+11881-                          </button>
+11882-                        </div>
+11883-                        <button
+11884-                          onClick={() => setShowProductBarcodesList(true)}
+11885-                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold border border-slate-200"
+11886-                        >
+11887-                          <Printer className="w-4 h-4" />
+11888-                          چاپ بارکد کالاها
+11889-                        </button>
+11890-                        <button
+11891-                          onClick={() => setIsGroupPriceModalOpen(true)}
+11892-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
+11893-                        >
+11894-                          <Percent className="w-4 h-4" />
+11895-                          بروزرسانی گروهی قیمت
+11896-                        </button>
+11897-                        <button
+11898-                          onClick={() => {
+11899-                            setEditingProductId(null);
+11900-                            setNewProductName("");
+11901-                            setNewProductPrice("");
+11902-                            setNewProductType("product");
+11903-                            setNewProductCategoryId("");
+11904-                            setNewProductCode("");
+11905-                            setNewProductBarcode("");
+11906-                            setNewProductPurchasePrice("");
+11907-                            setNewProductStock("");
+11908-                            setNewProductMinStock("");
+11909-                            setNewProductUnit("");
+11910-                            setNewProductSecondaryUnit("");
+11911-                            setNewProductUnitRatio("");
+11912-                            setNewProductDesc("");
+11913-                            setProductFormTab("general");
+11914-                            setIsProductModalOpen(true);
+11915-                          }}
+11916-                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
+11917-                        >
+11918-                          <Plus className="w-4 h-4" />
+11919-                          ثبت جدید
+11920-                        </button>
+11921-                      </div>
+11922-                    </div>
+11923-
+11924-                    {successMsg && (
+11925-                      <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100">
+11926-                        <CheckCircle className="w-5 h-5" />
+11927-                        {successMsg}
+11928-                      </div>
+11929-                    )}
+11930-
+11931-                    {/* Product Search & Filter */}
+11932-                    <div className="mx-6 mt-6 space-y-4">
+11933-                      <div className="relative">
+11934-                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+11935-                          <Search className="w-5 h-5 text-gray-400" />
+11936-                        </div>
+11937-                        <input
+11938-                          type="text"
+11939-                          className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm text-gray-950 font-bold"

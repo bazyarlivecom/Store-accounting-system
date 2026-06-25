@@ -1,0 +1,2537 @@
+6085:                  <table className="w-full text-right min-w-[800px]">
+6086-                    <thead>
+6087-                      <tr className="bg-white text-sm text-gray-500 border-b border-gray-100">
+6088-                        <th className="p-4 font-bold w-12 text-center">ردیف</th>
+6089-                        <th className="p-4 font-bold min-w-[200px] w-[50%] text-right">
+6090-                          شرح کالا
+6091-                        </th>
+6092-                        <th className="p-4 font-bold w-32 text-center">
+6093-                          تعداد
+6094-                        </th>
+6095-                        <th className="p-4 font-bold w-32 text-center border-r border-gray-100">
+6096-                          واحد
+6097-                        </th>
+6098-                        <th className="p-4 font-bold w-12 text-center border-r border-gray-100">
+6099-                          حذف
+6100-                        </th>
+6101-                      </tr>
+6102-                    </thead>
+6103-                    <tbody className="divide-y divide-gray-50">
+6104-                      {items.length === 0 && (
+6105-                        <tr>
+6106-                          <td
+6107-                            colSpan={5}
+6108-                            className="p-8 text-center text-gray-400 font-bold text-sm bg-gray-50/50"
+6109-                          >
+6110-                            <div className="flex flex-col items-center justify-center space-y-2">
+6111-                              <Package className="w-8 h-8 text-indigo-200" />
+6112-                              <span>هیچ کالایی به این سند اضافه نشده است.</span>
+6113-                            </div>
+6114-                          </td>
+6115-                        </tr>
+6116-                      )}
+6117-                      {items.map((item, index) => (
+6118-                        <tr
+6119-                          key={item.id}
+6120-                          className="hover:bg-slate-50/50 transition-colors"
+6121-                        >
+6122-                          <td className="p-4 text-center font-bold text-gray-400">
+6123-                            {index + 1}
+6124-                          </td>
+6125-                          <td className="p-4">
+6126-                            {item.productId ? (
+6127-                              <div className="font-extrabold text-slate-800 flex flex-col gap-1">
+6128-                                <span>{item.productName}</span>
+6129-                                {(() => {
+6130-                                  const p = products.find(
+6131-                                    (prod) => prod.id === item.productId,
+6132-                                  );
+6133-                                  return (
+6134-                                    <span className="text-xs text-slate-400 font-normal flex gap-2">
+6135-                                      کالای سیستمی{" "}
+6136-                                      {p?.code ? (
+6137-                                        <span className="font-mono bg-slate-100 px-1 rounded">
+6138-                                          کد: {p.code}
+6139-                                        </span>
+6140-                                      ) : (
+6141-                                        ""
+6142-                                      )}{" "}
+6143-                                      {p?.barcode ? (
+6144-                                        <span className="font-mono bg-slate-100 px-1 rounded">
+6145-                                          بارکد: {p.barcode}
+6146-                                        </span>
+6147-                                      ) : (
+6148-                                        ""
+6149-                                      )}
+6150-                                    </span>
+6151-                                  );
+6152-                                })()}
+6153-                              </div>
+6154-                            ) : (
+6155-                              <input
+6156-                                type="text"
+6157-                                placeholder="نام کالا دلخواه..."
+6158-                                value={item.productName}
+6159-                                onChange={(e) =>
+6160-                                  handleItemChange(
+6161-                                    item.id,
+6162-                                    "productName",
+6163-                                    e.target.value,
+6164-                                  )
+6165-                                }
+6166-                                className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
+6167-                              />
+6168-                            )}
+6169-                          </td>
+6170-                          <td className="p-4">
+6171-                            <div className="flex flex-col gap-1.5">
+6172-                              <input
+6173-                                type="number"
+6174-                                min="0"
+6175-                                step="any"
+6176-                                value={item.quantity}
+6177-                                onChange={(e) =>
+6178-                                  handleItemChange(
+6179-                                    item.id,
+6180-                                    "quantity",
+6181-                                    e.target.value,
+6182-                                  )
+6183-                                }
+6184-                                className="w-full p-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-sans text-center font-bold text-indigo-900 outline-none"
+6185-                                dir="ltr"
+--
+6568:                <table className="w-full text-right min-w-[1000px]">
+6569-                  <thead>
+6570-                    <tr className="bg-white text-xs font-black text-slate-400 border-b border-emerald-50">
+6571-                      <th className="p-5 w-12 text-center">ردیف</th>
+6572-                      <th className="p-5 min-w-[200px] w-[30%] text-right">
+6573-                        شرح کالا / خدمات
+6574-                      </th>
+6575-                      <th className="p-5 w-32 text-center border-r border-emerald-50/50">
+6576-                        تعداد
+6577-                      </th>
+6578-                      <th className="p-5 w-32 text-center border-r border-emerald-50/50">
+6579-                        واحد
+6580-                      </th>
+6581-                      <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">
+6582-                        فی ({invoiceCurrency})
+6583-                      </th>
+6584-                      <th className="p-5 w-28 text-center border-r border-emerald-50/50">
+6585-                        تخفیف %
+6586-                      </th>
+6587-                      <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">
+6588-                        مبلغ کل ({invoiceCurrency})
+6589-                      </th>
+6590-                      <th className="p-5 w-12 text-center border-r border-emerald-50/50">
+6591-                        عملیات
+6592-                      </th>
+6593-                    </tr>
+6594-                  </thead>
+6595-                  <tbody className="divide-y divide-emerald-50/50">
+6596-                    {items.length === 0 && (
+6597-                      <tr>
+6598-                        <td
+6599-                          colSpan={8}
+6600-                          className="p-8 text-center text-emerald-400 font-bold text-sm bg-emerald-50/30"
+6601-                        >
+6602-                          <div className="flex flex-col items-center justify-center space-y-2">
+6603-                            <Box className="w-8 h-8 text-emerald-200" />
+6604-                            <span>
+6605-                              هیچ کالا یا خدماتی به این سند اضافه نشده است.
+6606-                              لطفاً جستجو کرده یا محصول جدیدی تعریف کنید.
+6607-                            </span>
+6608-                          </div>
+6609-                        </td>
+6610-                      </tr>
+6611-                    )}
+6612-                    {items.map((item, index) => (
+6613-                      <tr
+6614-                        key={item.id}
+6615-                        className="hover:bg-emerald-50/20 transition-colors"
+6616-                        data-row-type="purchase-return-row"
+6617-                      >
+6618-                        <td className="p-5 text-center font-bold text-slate-300">
+6619-                          {index + 1}
+6620-                        </td>
+6621-                        <td className="p-5">
+6622-                          {item.productId ? (
+6623-                            <div className="font-black text-slate-800 flex flex-col gap-1">
+6624-                              <span>{item.productName}</span>
+6625-                              {(() => {
+6626-                                const p = products.find(
+6627-                                  (prod) => prod.id === item.productId,
+6628-                                );
+6629-                                return (
+6630-                                  <div className="flex items-center gap-2">
+6631-                                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 self-start px-2 py-0.5 rounded-md">
+6632-                                      کالای سیستمی
+6633-                                    </span>
+6634-                                    {(p?.code || p?.barcode) && (
+6635-                                      <span className="text-[10px] text-emerald-500 font-mono flex gap-2">
+6636-                                        {p.code ? (
+6637-                                          <span>کد: {p.code}</span>
+6638-                                        ) : null}
+6639-                                        {p.barcode ? (
+6640-                                          <span>بارکد: {p.barcode}</span>
+6641-                                        ) : null}
+6642-                                      </span>
+6643-                                    )}
+6644-                                  </div>
+6645-                                );
+6646-                              })()}
+6647-                            </div>
+6648-                          ) : (
+6649-                            <input
+6650-                              type="text"
+6651-                              placeholder="شرح دلخواه وارد کنید..."
+6652-                              value={item.productName}
+6653-                              onChange={(e) =>
+6654-                                handleItemChange(
+6655-                                  item.id,
+6656-                                  "productName",
+6657-                                  e.target.value,
+6658-                                )
+6659-                              }
+6660-                              className="w-full p-2.5 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-slate-800 outline-none"
+6661-                            />
+6662-                          )}
+6663-                        </td>
+6664-                        <td className="p-5">
+6665-                          <div className="flex flex-col gap-1.5">
+6666-                            <input
+6667-                              type="number"
+6668-                              min="0"
+--
+7232:                <table className="w-full text-right min-w-[1000px]">
+7233-                  <thead>
+7234-                    <tr className="bg-white text-xs font-black text-slate-400 border-b border-emerald-50">
+7235-                      <th className="p-5 w-12 text-center">ردیف</th>
+7236-                      <th className="p-5 min-w-[200px] w-[30%] text-right">
+7237-                        شرح کالا / خدمات
+7238-                      </th>
+7239-                      <th className="p-5 w-32 text-center border-r border-emerald-50/50">
+7240-                        تعداد
+7241-                      </th>
+7242-                      <th className="p-5 w-32 text-center border-r border-emerald-50/50">
+7243-                        واحد
+7244-                      </th>
+7245-                      <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">
+7246-                        فی ({invoiceCurrency})
+7247-                      </th>
+7248-                      <th className="p-5 w-28 text-center border-r border-emerald-50/50">
+7249-                        تخفیف %
+7250-                      </th>
+7251-                      <th className="p-5 w-48 border-r border-emerald-50/50 text-left text-emerald-800">
+7252-                        مبلغ کل ({invoiceCurrency})
+7253-                      </th>
+7254-                      <th className="p-5 w-12 text-center border-r border-emerald-50/50">
+7255-                        عملیات
+7256-                      </th>
+7257-                    </tr>
+7258-                  </thead>
+7259-                  <tbody className="divide-y divide-emerald-50/50">
+7260-                    {items.length === 0 && (
+7261-                      <tr>
+7262-                        <td
+7263-                          colSpan={8}
+7264-                          className="p-8 text-center text-emerald-400 font-bold text-sm bg-emerald-50/30"
+7265-                        >
+7266-                          <div className="flex flex-col items-center justify-center space-y-2">
+7267-                            <Box className="w-8 h-8 text-emerald-200" />
+7268-                            <span>
+7269-                              هیچ کالا یا خدماتی به این سند اضافه نشده است.
+7270-                              لطفاً جستجو کرده یا محصول جدیدی تعریف کنید.
+7271-                            </span>
+7272-                          </div>
+7273-                        </td>
+7274-                      </tr>
+7275-                    )}
+7276-                    {items.map((item, index) => (
+7277-                      <tr
+7278-                        key={item.id}
+7279-                        className="hover:bg-emerald-50/20 transition-colors"
+7280-                        data-row-type="purchase-row"
+7281-                      >
+7282-                        <td className="p-5 text-center font-bold text-slate-300">
+7283-                          {index + 1}
+7284-                        </td>
+7285-                        <td className="p-5">
+7286-                          {item.productId ? (
+7287-                            <div className="font-black text-slate-800 flex flex-col gap-1">
+7288-                              <span>{item.productName}</span>
+7289-                              {(() => {
+7290-                                const p = products.find(
+7291-                                  (prod) => prod.id === item.productId,
+7292-                                );
+7293-                                return (
+7294-                                  <div className="flex items-center gap-2">
+7295-                                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 self-start px-2 py-0.5 rounded-md">
+7296-                                      کالای سیستمی
+7297-                                    </span>
+7298-                                    {(p?.code || p?.barcode) && (
+7299-                                      <span className="text-[10px] text-emerald-500 font-mono flex gap-2">
+7300-                                        {p.code ? (
+7301-                                          <span>کد: {p.code}</span>
+7302-                                        ) : null}
+7303-                                        {p.barcode ? (
+7304-                                          <span>بارکد: {p.barcode}</span>
+7305-                                        ) : null}
+7306-                                      </span>
+7307-                                    )}
+7308-                                  </div>
+7309-                                );
+7310-                              })()}
+7311-                            </div>
+7312-                          ) : (
+7313-                            <input
+7314-                              type="text"
+7315-                              placeholder="شرح دلخواه وارد کنید..."
+7316-                              value={item.productName}
+7317-                              onChange={(e) =>
+7318-                                handleItemChange(
+7319-                                  item.id,
+7320-                                  "productName",
+7321-                                  e.target.value,
+7322-                                )
+7323-                              }
+7324-                              className="w-full p-2.5 bg-white border border-emerald-100 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-slate-800 outline-none"
+7325-                            />
+7326-                          )}
+7327-                        </td>
+7328-                        <td className="p-5">
+7329-                          <div className="flex flex-col gap-1.5">
+7330-                            <input
+7331-                              type="number"
+7332-                              min="0"
+--
+7857:                <table className="w-full text-right min-w-[1000px]">
+7858-                  <thead>
+7859-                    <tr className="bg-white text-xs font-black text-slate-400 border-b border-indigo-50">
+7860-                      <th className="p-5 w-12 text-center">ردیف</th>
+7861-                      <th className="p-5 min-w-[200px] w-[30%] text-right">
+7862-                        شرح کالا / خدمات
+7863-                      </th>
+7864-                      <th className="p-5 w-32 text-center border-r border-indigo-50/50">
+7865-                        تعداد
+7866-                      </th>
+7867-                      <th className="p-5 w-32 text-center border-r border-indigo-50/50">
+7868-                        واحد
+7869-                      </th>
+7870-                      <th className="p-5 w-48 border-r border-indigo-50/50 text-left text-indigo-800">
+7871-                        فی ({invoiceCurrency})
+7872-                      </th>
+7873-                      <th className="p-5 w-28 text-center border-r border-indigo-50/50">
+7874-                        تخفیف %
+7875-                      </th>
+7876-                      <th className="p-5 w-48 border-r border-indigo-50/50 text-left text-indigo-800">
+7877-                        مبلغ کل ({invoiceCurrency})
+7878-                      </th>
+7879-                      <th className="p-5 w-12 text-center border-r border-indigo-50/50">
+7880-                        عملیات
+7881-                      </th>
+7882-                    </tr>
+7883-                  </thead>
+7884-                  <tbody className="divide-y divide-indigo-50/50">
+7885-                    {items.length === 0 && (
+7886-                      <tr>
+7887-                        <td
+7888-                          colSpan={8}
+7889-                          className="p-8 text-center text-indigo-400 font-bold text-sm bg-indigo-50/30"
+7890-                        >
+7891-                          <div className="flex flex-col items-center justify-center space-y-2">
+7892-                            <Box className="w-8 h-8 text-indigo-200" />
+7893-                            <span>
+7894-                              هیچ کالا یا خدماتی به این سند اضافه نشده است.
+7895-                              لطفاً جستجو کرده یا محصول جدیدی تعریف کنید.
+7896-                            </span>
+7897-                          </div>
+7898-                        </td>
+7899-                      </tr>
+7900-                    )}
+7901-                    {items.map((item, index) => (
+7902-                      <tr
+7903-                        key={item.id}
+7904-                        className="hover:bg-indigo-50/20 transition-colors"
+7905-                        data-row-type="sale-return-row"
+7906-                      >
+7907-                        <td className="p-5 text-center font-bold text-slate-300">
+7908-                          {index + 1}
+7909-                        </td>
+7910-                        <td className="p-5">
+7911-                          {item.productId ? (
+7912-                            <div className="font-black text-slate-800 flex flex-col gap-1">
+7913-                              <span>{item.productName}</span>
+7914-                              {(() => {
+7915-                                const p = products.find(
+7916-                                  (prod) => prod.id === item.productId,
+7917-                                );
+7918-                                return (
+7919-                                  <div className="flex items-center gap-2">
+7920-                                    <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 self-start px-2 py-0.5 rounded-md">
+7921-                                      کالای سیستمی
+7922-                                    </span>
+7923-                                    {(p?.code || p?.barcode) && (
+7924-                                      <span className="text-[10px] text-indigo-500 font-mono flex gap-2">
+7925-                                        {p.code ? (
+7926-                                          <span>کد: {p.code}</span>
+7927-                                        ) : null}
+7928-                                        {p.barcode ? (
+7929-                                          <span>بارکد: {p.barcode}</span>
+7930-                                        ) : null}
+7931-                                      </span>
+7932-                                    )}
+7933-                                  </div>
+7934-                                );
+7935-                              })()}
+7936-                            </div>
+7937-                          ) : (
+7938-                            <input
+7939-                              type="text"
+7940-                              placeholder="شرح دلخواه وارد کنید..."
+7941-                              value={item.productName}
+7942-                              onChange={(e) =>
+7943-                                handleItemChange(
+7944-                                  item.id,
+7945-                                  "productName",
+7946-                                  e.target.value,
+7947-                                )
+7948-                              }
+7949-                              className="w-full p-2.5 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-800 outline-none"
+7950-                            />
+7951-                          )}
+7952-                        </td>
+7953-                        <td className="p-5">
+7954-                          <div className="flex flex-col gap-1.5">
+7955-                            <input
+7956-                              type="number"
+7957-                              min="0"
+--
+8510:                <table className="w-full text-right min-w-[1000px]">
+8511-                  <thead>
+8512-                    <tr className="bg-white text-xs font-black text-slate-400 border-b border-indigo-50">
+8513-                      <th className="p-5 w-12 text-center">ردیف</th>
+8514-                      <th className="p-5 min-w-[200px] w-[30%] text-right">
+8515-                        شرح کالا / خدمات
+8516-                      </th>
+8517-                      <th className="p-5 w-32 text-center border-r border-indigo-50/50">
+8518-                        تعداد
+8519-                      </th>
+8520-                      <th className="p-5 w-32 text-center border-r border-indigo-50/50">
+8521-                        واحد
+8522-                      </th>
+8523-                      <th className="p-5 w-48 border-r border-indigo-50/50 text-left text-indigo-800">
+8524-                        فی ({invoiceCurrency})
+8525-                      </th>
+8526-                      <th className="p-5 w-28 text-center border-r border-indigo-50/50">
+8527-                        تخفیف %
+8528-                      </th>
+8529-                      <th className="p-5 w-48 border-r border-indigo-50/50 text-left text-indigo-800">
+8530-                        مبلغ کل ({invoiceCurrency})
+8531-                      </th>
+8532-                      <th className="p-5 w-12 text-center border-r border-indigo-50/50">
+8533-                        عملیات
+8534-                      </th>
+8535-                    </tr>
+8536-                  </thead>
+8537-                  <tbody className="divide-y divide-indigo-50/50">
+8538-                    {items.length === 0 && (
+8539-                      <tr>
+8540-                        <td
+8541-                          colSpan={8}
+8542-                          className="p-8 text-center text-indigo-400 font-bold text-sm bg-indigo-50/30"
+8543-                        >
+8544-                          <div className="flex flex-col items-center justify-center space-y-2">
+8545-                            <Box className="w-8 h-8 text-indigo-200" />
+8546-                            <span>
+8547-                              هیچ کالا یا خدماتی به این سند اضافه نشده است.
+8548-                              لطفاً جستجو کرده یا محصول جدیدی تعریف کنید.
+8549-                            </span>
+8550-                          </div>
+8551-                        </td>
+8552-                      </tr>
+8553-                    )}
+8554-                    {items.map((item, index) => (
+8555-                      <tr
+8556-                        key={item.id}
+8557-                        className="hover:bg-indigo-50/20 transition-colors"
+8558-                        data-row-type="sale-row"
+8559-                      >
+8560-                        <td className="p-5 text-center font-bold text-slate-300">
+8561-                          {index + 1}
+8562-                        </td>
+8563-                        <td className="p-5">
+8564-                          {item.productId ? (
+8565-                            <div className="font-black text-slate-800 flex flex-col gap-1">
+8566-                              <span>{item.productName}</span>
+8567-                              {(() => {
+8568-                                const p = products.find(
+8569-                                  (prod) => prod.id === item.productId,
+8570-                                );
+8571-                                return (
+8572-                                  <div className="flex items-center gap-2">
+8573-                                    <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 self-start px-2 py-0.5 rounded-md">
+8574-                                      کالای سیستمی
+8575-                                    </span>
+8576-                                    {(p?.code || p?.barcode) && (
+8577-                                      <span className="text-[10px] text-indigo-500 font-mono flex gap-2">
+8578-                                        {p.code ? (
+8579-                                          <span>کد: {p.code}</span>
+8580-                                        ) : null}
+8581-                                        {p.barcode ? (
+8582-                                          <span>بارکد: {p.barcode}</span>
+8583-                                        ) : null}
+8584-                                      </span>
+8585-                                    )}
+8586-                                  </div>
+8587-                                );
+8588-                              })()}
+8589-                            </div>
+8590-                          ) : (
+8591-                            <input
+8592-                              type="text"
+8593-                              placeholder="شرح دلخواه وارد کنید..."
+8594-                              value={item.productName}
+8595-                              onChange={(e) =>
+8596-                                handleItemChange(
+8597-                                  item.id,
+8598-                                  "productName",
+8599-                                  e.target.value,
+8600-                                )
+8601-                              }
+8602-                              className="w-full p-2.5 bg-white border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold text-slate-800 outline-none"
+8603-                            />
+8604-                          )}
+8605-                        </td>
+8606-                        <td className="p-5">
+8607-                          <div className="flex flex-col gap-1.5">
+8608-                            <input
+8609-                              type="number"
+8610-                              min="0"
+--
+10190:                <table className="w-full text-right divide-y divide-slate-100">
+10191-                  <thead>
+10192-                    <tr className="bg-slate-50 text-sm text-slate-500 border-b border-slate-200 text-right">
+10193-                      <th className="p-4 font-black">شناسه سند</th>
+10194-                      <th className="p-4 font-black">طرف حساب</th>
+10195-                      <th className="p-4 font-black">تاریخ سند</th>
+10196-                      <th className="p-4 font-black">منبع مالی</th>
+10197-                      <th className="p-4 font-black">مبلغ تراکنش</th>
+10198-                      <th className="p-4 font-black text-center">عملیات</th>
+10199-                    </tr>
+10200-                  </thead>
+10201-                  <tbody className="divide-y divide-slate-50">
+10202-                    {filteredTxs
+10203-                      .filter((tx) => {
+10204-                        if (!invoiceSearchQuery) return true;
+10205-                        const term = invoiceSearchQuery.toLowerCase();
+10206-                        const personName = (
+10207-                          persons.find(
+10208-                            (p) => p.id.toString() === tx.personId?.toString(),
+10209-                          )?.name || "نامشخص"
+10210-                        ).toLowerCase();
+10211-                        const receiptNum = (
+10212-                          tx.receiptNumber || `#${tx.id}`
+10213-                        ).toLowerCase();
+10214-                        return (
+10215-                          personName.includes(term) || receiptNum.includes(term)
+10216-                        );
+10217-                      })
+10218-                      .map((tx) => {
+10219-                        const person = persons.find(
+10220-                          (p) => p.id.toString() === tx.personId?.toString(),
+10221-                        );
+10222-                        const resourceLabel =
+10223-                          tx.method === "check"
+10224-                            ? `چک (${toPersianDigits(tx.checkNumber || "")})`
+10225-                            : tx.resourceType === "bank"
+10226-                              ? `حساب بانکی: ${accounts.find((a) => a.id.toString() === tx.resourceId?.toString())?.bankName || "نامشخص"}`
+10227-                              : `صندوق: ${cashboxes.find((cb) => cb.id.toString() === tx.resourceId?.toString())?.name || "نامشخص"}`;
+10228-                        return (
+10229-                          <tr
+10230-                            key={tx.id}
+10231-                            className={`${themeRowHover} transition-colors`}
+10232-                          >
+10233-                            <td
+10234-                              className={`p-4 font-sans font-bold text-sm ${themeHighlightTxt}`}
+10235-                            >
+10236-                              {toPersianDigits(tx.receiptNumber) ||
+10237-                                `#${toPersianDigits(tx.id)}`}
+10238-                            </td>
+10239-                            <td className="p-4 font-bold text-slate-800">
+10240-                              {renderPersonLink(person?.id, person?.name)}
+10241-                            </td>
+10242-                            <td className="p-4 font-sans text-slate-600 font-bold text-xs">
+10243-                              {toPersianDigits(
+10244-                                tx.jalaliDate || tx.date?.split("T")[0],
+10245-                              )}
+10246-                            </td>
+10247-                            <td className="p-4 text-xs font-black text-slate-600 text-right">
+10248-                              {resourceLabel}
+10249-                            </td>
+10250-                            <td className="p-4 text-right">
+10251-                              <div
+10252-                                className={`font-sans font-black ${themeNum} text-sm`}
+10253-                              >
+10254-                                {toPersianDigits(formatNumber(tx.amount))}{" "}
+10255-                                {storeSettings.currency}
+10256-                              </div>
+10257-                              <div className="text-[10px] text-slate-400 font-bold mt-0.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+10258-                                {numToPersianWords(tx.amount)}{" "}
+10259-                                {storeSettings.currency}
+10260-                              </div>
+10261-                            </td>
+10262-                            <td className="p-4 text-center flex items-center justify-center gap-1.5">
+10263-                              <button
+10264-                                type="button"
+10265-                                onClick={() => {
+10266-                                  if (tx.type === "salary") openPayslip(tx);
+10267-                                  else setPrintingTransaction(tx);
+10268-                                }}
+10269-                                className={`px-3 py-2 ${isReceive ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700" : "bg-rose-50 hover:bg-rose-100 text-rose-700"} rounded-lg text-xs font-black flex items-center gap-1.5 cursor-pointer border-none transition-colors`}
+10270-                              >
+10271-                                <Printer className="w-3.5 h-3.5" />
+10272-                                پیش‌نمایش و چاپ رسید
+10273-                              </button>
+10274-                              <button
+10275-                                type="button"
+10276-                                onClick={() => {
+10277-                                  setEditingReceipt(tx);
+10278-                                  setIsEditReceiptModalOpen(true);
+10279-                                }}
+10280-                                className={`p-2 text-slate-400 ${isReceive ? "hover:bg-emerald-50 hover:text-emerald-600" : "hover:bg-rose-50 hover:text-rose-600"} rounded-lg cursor-pointer border-none bg-transparent transition-colors`}
+10281-                                title="ویرایش رسید"
+10282-                              >
+10283-                                <Edit2 className="w-4 h-4" />
+10284-                              </button>
+10285-                              <button
+10286-                                type="button"
+10287-                                onClick={() =>
+10288-                                  confirmAction(
+10289-                                    "حذف این مورد غیرقابل بازگشت است.",
+10290-                                    () =>
+--
+10810:                <table className="w-full text-right divide-y divide-gray-150">
+10811-                  <thead>
+10812-                    <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
+10813-                      <th className="p-4 font-bold text-right">شناسه سند</th>
+10814-                      <th className="p-4 font-bold text-right">نام کارمند</th>
+10815-                      <th className="p-4 font-bold text-right">تاریخ سند</th>
+10816-                      <th className="p-4 font-bold text-right">تسویه مستقیم</th>
+10817-                      <th className="p-4 font-bold text-right">حقوق خالص</th>
+10818-                      <th className="p-4 font-bold text-center">عملیات</th>
+10819-                    </tr>
+10820-                  </thead>
+10821-                  <tbody className="divide-y divide-gray-50">
+10822-                    {salaryTxs.map((tx) => {
+10823-                      const person = persons.find(
+10824-                        (p) => p.id.toString() === tx.personId?.toString(),
+10825-                      );
+10826-                      const isDirectPay = tx.resourceType !== "none";
+10827-                      return (
+10828-                        <tr
+10829-                          key={tx.id}
+10830-                          className="hover:bg-gray-50 transition-colors"
+10831-                        >
+10832-                          <td className="p-4 font-mono font-bold text-indigo-600">
+10833-                            #{toPersianDigits(tx.id)}
+10834-                          </td>
+10835-                          <td className="p-4 font-bold text-gray-800">
+10836-                            {renderPersonLink(person?.id, person?.name)}
+10837-                          </td>
+10838-                          <td className="p-4 text-gray-500 text-right">
+10839-                            <div className="font-mono text-sm mb-1" dir="ltr">
+10840-                              {toPersianDigits(
+10841-                                tx.jalaliDate || tx.date?.split("T")[0],
+10842-                              )}
+10843-                            </div>
+10844-                            {(() => {
+10845-                              try {
+10846-                                const parsed =
+10847-                                  typeof tx.description === "string" &&
+10848-                                  tx.description.includes("isPayslip")
+10849-                                    ? JSON.parse(tx.description)
+10850-                                    : null;
+10851-                                if (
+10852-                                  parsed &&
+10853-                                  parsed.periodMonth &&
+10854-                                  parsed.periodYear
+10855-                                ) {
+10856-                                  const pMonthName = [
+10857-                                    "فروردین",
+10858-                                    "اردیبهشت",
+10859-                                    "خرداد",
+10860-                                    "تیر",
+10861-                                    "مرداد",
+10862-                                    "شهریور",
+10863-                                    "مهر",
+10864-                                    "آبان",
+10865-                                    "آذر",
+10866-                                    "دی",
+10867-                                    "بهمن",
+10868-                                    "اسفند",
+10869-                                  ][Number(parsed.periodMonth) - 1];
+10870-                                  return (
+10871-                                    <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">
+10872-                                      {pMonthName} {parsed.periodYear}
+10873-                                    </span>
+10874-                                  );
+10875-                                }
+10876-                              } catch (e) {}
+10877-                              return null;
+10878-                            })()}
+10879-                          </td>
+10880-                          <td className="p-4 text-xs font-semibold text-gray-600 text-right">
+10881-                            {isDirectPay ? (
+10882-                              <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg">
+10883-                                بله، تسویه شده
+10884-                              </span>
+10885-                            ) : (
+10886-                              <span className="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg">
+10887-                                خیر، ثبت بدهی
+10888-                              </span>
+10889-                            )}
+10890-                          </td>
+10891-                          <td className="p-4 text-right">
+10892-                            <div
+10893-                              className="font-mono font-black text-indigo-950 text-sm"
+10894-                              dir="ltr"
+10895-                            >
+10896-                              {formatCurrency(tx.amount)}{" "}
+10897-                              {storeSettings.currency}
+10898-                            </div>
+10899-                            <div className="text-[10px] text-gray-400 font-bold mt-0.5 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+10900-                              {numToPersianWords(tx.amount)}{" "}
+10901-                              {storeSettings.currency}
+10902-                            </div>
+10903-                          </td>
+10904-                          <td className="p-4 text-center flex items-center justify-center gap-2">
+10905-                            <button
+10906-                              onClick={() => openPayslip(tx)}
+10907-                              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-1 text-xs font-bold transition-all cursor-pointer border border-transparent bg-transparent"
+10908-                            >
+10909-                              <Eye className="w-4 h-4" /> مشاهده فیش حقوقی
+10910-                            </button>
+--
+12042:                              <table className="w-full text-right min-w-[1000px]">
+12043-                                <thead>
+12044-                                  <tr className="text-xs font-bold text-gray-500 border-b border-gray-100 bg-gray-50/50 uppercase tracking-wider">
+12045-                                    <th className="py-4 px-6 text-center w-16">
+12046-                                      ردیف
+12047-                                    </th>
+12048-                                    <th className="py-4 px-6 text-right">
+12049-                                      عنوان کالا / خدمات
+12050-                                    </th>
+12051-                                    <th className="py-4 px-6 text-right">
+12052-                                      کد / بارکد
+12053-                                    </th>
+12054-                                    <th className="py-4 px-6 text-center">
+12055-                                      موجودی
+12056-                                    </th>
+12057-                                    <th className="py-4 px-6 text-right">
+12058-                                      قیمت خرید
+12059-                                    </th>
+12060-                                    <th className="py-4 px-6 text-right">
+12061-                                      قیمت فروش
+12062-                                    </th>
+12063-                                    <th className="py-4 px-6 text-center w-28">
+12064-                                      عملیات
+12065-                                    </th>
+12066-                                  </tr>
+12067-                                </thead>
+12068-                                <tbody className="divide-y divide-gray-50 text-sm">
+12069-                                  {paginatedProducts.map((p, index) => (
+12070-                                    <tr
+12071-                                      key={p.id}
+12072-                                      className="hover:bg-slate-50/80 transition-colors group"
+12073-                                    >
+12074-                                      <td className="py-4 px-6 text-gray-400 font-sans text-center">
+12075-                                        <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm">
+12076-                                          {(
+12077-                                            (safeCurrentPage - 1) *
+12078-                                              productPageSize +
+12079-                                            index +
+12080-                                            1
+12081-                                          ).toLocaleString("fa-IR")}
+12082-                                        </div>
+12083-                                      </td>
+12084-                                      <td className="py-4 px-6">
+12085-                                        <div className="flex flex-col gap-1.5">
+12086-                                          <span className="font-extrabold text-gray-800">
+12087-                                            {p.name}
+12088-                                          </span>
+12089-                                          <div className="flex items-center gap-2">
+12090-                                            <span
+12091-                                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center ${p.type === "service" ? "bg-orange-50 text-orange-700 border border-orange-100" : "bg-blue-50 text-blue-700 border border-blue-100"}`}
+12092-                                            >
+12093-                                              {p.type === "service"
+12094-                                                ? "خدمات"
+12095-                                                : "کالا"}
+12096-                                            </span>
+12097-                                            {p.category && (
+12098-                                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
+12099-                                                {p.category}
+12100-                                              </span>
+12101-                                            )}
+12102-                                          </div>
+12103-                                        </div>
+12104-                                      </td>
+12105-                                      <td className="py-4 px-6 font-mono text-xs text-gray-500">
+12106-                                        {p.code ? (
+12107-                                          <div className="mb-0.5">
+12108-                                            <span className="text-gray-400 ml-1">
+12109-                                              کد:
+12110-                                            </span>
+12111-                                            {p.code}
+12112-                                          </div>
+12113-                                        ) : null}
+12114-                                        {p.barcode ? (
+12115-                                          <div>
+12116-                                            <span className="text-gray-400 ml-1">
+12117-                                              بارکد:
+12118-                                            </span>
+12119-                                            {p.barcode}
+12120-                                          </div>
+12121-                                        ) : null}
+12122-                                        {!p.code && !p.barcode && "---"}
+12123-                                      </td>
+12124-                                      <td className="py-4 px-6 text-center">
+12125-                                        {p.type === "service" ? (
+12126-                                          <span className="text-gray-400">
+12127-                                            -
+12128-                                          </span>
+12129-                                        ) : (
+12130-                                          <div className="flex flex-col items-center gap-1">
+12131-                                            <span className="font-sans font-bold text-gray-700 text-base">
+12132-                                              {calculateProductCurrentStock(
+12133-                                                p.id,
+12134-                                              )}
+12135-                                            </span>
+12136-                                            {p.unit && (
+12137-                                              <span className="text-[10px] text-gray-500">
+12138-                                                {p.unit}
+12139-                                              </span>
+12140-                                            )}
+12141-                                            {calculateProductCurrentStock(
+12142-                                              p.id,
+--
+12600:                            <table className="w-full text-right whitespace-nowrap min-w-[800px]">
+12601-                              <thead>
+12602-                                <tr className="text-sm font-medium text-gray-500 border-b border-gray-100 bg-gray-50/30">
+12603-                                  <th className="py-4 px-6 text-right">ردیف</th>
+12604-                                  <th className="py-4 px-6 text-center">
+12605-                                    کد شخص
+12606-                                  </th>
+12607-                                  <th className="py-4 px-6 text-center">
+12608-                                    کد حسابداری
+12609-                                  </th>
+12610-                                  <th className="py-4 px-6 text-right">
+12611-                                    نام / عنوان
+12612-                                  </th>
+12613-                                  <th className="py-4 px-6 text-right">
+12614-                                    گروه شخص
+12615-                                  </th>
+12616-                                  <th className="py-4 px-6 text-right">
+12617-                                    نوع کاربر
+12618-                                  </th>
+12619-                                  <th className="py-4 px-6 text-right">
+12620-                                    کد / شناسه ملی
+12621-                                  </th>
+12622-                                  <th className="py-4 px-6 text-right">نقش</th>
+12623-                                  <th className="py-4 px-6 text-right">
+12624-                                    شماره تماس
+12625-                                  </th>
+12626-                                  <th className="py-4 px-6 text-right">
+12627-                                    در حساب / مانده
+12628-                                  </th>
+12629-                                  <th className="py-4 px-6 w-24">عملیات</th>
+12630-                                </tr>
+12631-                              </thead>
+12632-                              <tbody className="divide-y divide-gray-50">
+12633-                                {paginatedPersons.map((p, index) => (
+12634-                                  <tr
+12635-                                    key={p.id}
+12636-                                    className="hover:bg-gray-50 transition-colors cursor-pointer group"
+12637-                                    onClick={() => setDrawerPersonId(p.id)}
+12638-                                  >
+12639-                                    <td className="py-4 px-6 text-gray-500 w-16 text-center font-sans font-bold text-xs">
+12640-                                      {(
+12641-                                        (safeCurrentPage - 1) * personPageSize +
+12642-                                        index +
+12643-                                        1
+12644-                                      ).toLocaleString("fa-IR")}
+12645-                                    </td>
+12646-                                    <td className="py-4 px-6 text-center">
+12647-                                      {p.personCode ? (
+12648-                                        <span className="font-sans font-black bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-xl text-xs">
+12649-                                          {toPersianDigits(p.personCode)}
+12650-                                        </span>
+12651-                                      ) : (
+12652-                                        <span className="text-gray-300">-</span>
+12653-                                      )}
+12654-                                    </td>
+12655-                                    <td className="py-4 px-6 text-center">
+12656-                                      {p.accountingCode ? (
+12657-                                        <span className="font-mono text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200 px-2 py-1 rounded-md">
+12658-                                          {toPersianDigits(p.accountingCode)}
+12659-                                        </span>
+12660-                                      ) : (
+12661-                                        <span className="text-gray-300">-</span>
+12662-                                      )}
+12663-                                    </td>
+12664-                                    <td className="py-4 px-6 font-semibold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
+12665-                                      <div className="flex items-center gap-3">
+12666-                                        {p.imageUrl ? (
+12667-                                          <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+12668-                                        ) : (
+12669-                                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+12670-                                            <User className="w-5 h-5 text-gray-400" />
+12671-                                          </div>
+12672-                                        )}
+12673-                                        <div className="flex flex-col">
+12674-                                          <span>{p.alias || p.name}</span>
+12675-                                          {p.alias && p.alias !== p.name && (
+12676-                                            <span className="text-[10px] text-gray-400 font-normal">
+12677-                                              {p.name}
+12678-                                            </span>
+12679-                                          )}
+12680-                                        </div>
+12681-                                      </div>
+12682-                                    </td>
+12683-                                    <td className="py-4 px-6 text-sm">
+12684-                                      {p.group ? (
+12685-                                        (() => {
+12686-                                          const g = personGroups.find(
+12687-                                            (grp) => grp.id === p.group,
+12688-                                          );
+12689-                                          if (!g)
+12690-                                            return (
+12691-                                              <span className="text-slate-350 select-none text-xs font-bold">
+12692-                                                بدون گروه
+12693-                                              </span>
+12694-                                            );
+12695-
+12696-                                          let bg = "bg-slate-100";
+12697-                                          let text = "text-slate-600";
+12698-                                          let border = "border-slate-200";
+12699-                                          if (g.color === "indigo") {
+12700-                                            bg = "bg-indigo-50";
+--
+13071:                        <table className="w-full text-right whitespace-nowrap">
+13072-                          <thead>
+13073-                            <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-black">
+13074-                              <th className="py-4 px-6 w-16">رنگبندی</th>
+13075-                              <th className="py-4 px-6 w-full">نام گروه</th>
+13076-                              <th className="py-4 px-6 text-center">
+13077-                                تعداد اشخاص
+13078-                              </th>
+13079-                              <th className="py-4 px-6 text-center">عملیات</th>
+13080-                            </tr>
+13081-                          </thead>
+13082-                          <tbody className="divide-y divide-slate-50">
+13083-                            {personGroups.map((g) => {
+13084-                              const count = persons.filter(
+13085-                                (p) => p.group === g.id,
+13086-                              ).length;
+13087-                              let bg = "bg-slate-100";
+13088-                              let text = "text-slate-600";
+13089-                              if (g.color === "indigo") {
+13090-                                bg = "bg-indigo-100";
+13091-                                text = "text-indigo-600";
+13092-                              } else if (g.color === "emerald") {
+13093-                                bg = "bg-emerald-100";
+13094-                                text = "text-emerald-600";
+13095-                              } else if (g.color === "amber") {
+13096-                                bg = "bg-amber-100";
+13097-                                text = "text-amber-600";
+13098-                              } else if (g.color === "rose") {
+13099-                                bg = "bg-rose-100";
+13100-                                text = "text-rose-600";
+13101-                              } else if (g.color === "purple") {
+13102-                                bg = "bg-purple-100";
+13103-                                text = "text-purple-600";
+13104-                              } else if (g.color === "cyan") {
+13105-                                bg = "bg-cyan-100";
+13106-                                text = "text-cyan-600";
+13107-                              }
+13108-
+13109-                              return (
+13110-                                <tr
+13111-                                  key={g.id}
+13112-                                  className="hover:bg-slate-50/50 transition-colors"
+13113-                                >
+13114-                                  <td className="py-4 px-6">
+13115-                                    <div
+13116-                                      className={`w-6 h-6 rounded-lg ${bg} shadow-inner`}
+13117-                                    ></div>
+13118-                                  </td>
+13119-                                  <td className="py-4 px-6 font-bold text-sm text-slate-900">
+13120-                                    {g.name}
+13121-                                  </td>
+13122-                                  <td className="py-4 px-6 text-center font-black text-xs text-slate-500">
+13123-                                    {count} نفر
+13124-                                  </td>
+13125-                                  <td className="py-4 px-6 text-center">
+13126-                                    <div className="flex items-center justify-center gap-1">
+13127-                                      <button
+13128-                                        onClick={() => {
+13129-                                          setEditingPersonGroupId(g.id);
+13130-                                          setNewPersonGroupName(g.name);
+13131-                                          setNewPersonGroupColor(
+13132-                                            g.color || "indigo",
+13133-                                          );
+13134-                                        }}
+13135-                                        className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+13136-                                        title="ویرایش گروه"
+13137-                                      >
+13138-                                        <Edit2 className="w-4 h-4" />
+13139-                                      </button>
+13140-                                      <button
+13141-                                        onClick={() =>
+13142-                                          handleDeletePersonGroup(g.id)
+13143-                                        }
+13144-                                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+13145-                                        title="حذف گروه"
+13146-                                      >
+13147-                                        <Trash2 className="w-4 h-4" />
+13148-                                      </button>
+13149-                                    </div>
+13150-                                  </td>
+13151-                                </tr>
+13152-                              );
+13153-                            })}
+13154-                          </tbody>
+13155-                        </table>
+13156-                      )}
+13157-                    </div>
+13158-                  </motion.div>
+13159-                ) : activeTab === "person_roles" ? (
+13160-                  <motion.div
+13161-                    initial={{ opacity: 0, y: 10 }}
+13162-                    animate={{ opacity: 1, y: 0 }}
+13163-                    className="space-y-6 text-right"
+13164-                  >
+13165-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+13166-                      <div className="bg-gradient-to-l from-indigo-50/50 to-white px-8 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+13167-                        <div>
+13168-                          <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+13169-                            <Tag className="w-6 h-6 text-indigo-500" />
+13170-                            مدیریت نقش‌های ارتباطی اشخاص
+13171-                          </h1>
+--
+13239:                        <table className="w-full text-right whitespace-nowrap">
+13240-                          <thead>
+13241-                            <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-black">
+13242-                              <th className="py-4 px-6 w-full">عنوان نقش</th>
+13243-                              <th className="py-4 px-6 text-center">
+13244-                                کد پایه (Prefix)
+13245-                              </th>
+13246-                              <th className="py-4 px-6 text-center">عملیات</th>
+13247-                            </tr>
+13248-                          </thead>
+13249-                          <tbody className="divide-y divide-slate-50">
+13250-                            {personRoles.map((g) => (
+13251-                              <tr
+13252-                                key={g.id}
+13253-                                className="hover:bg-slate-50/50 transition-colors"
+13254-                              >
+13255-                                <td className="py-4 px-6 font-bold text-sm text-slate-900">
+13256-                                  {g.name}
+13257-                                </td>
+13258-                                <td className="py-4 px-6 text-center font-mono font-black text-xs text-indigo-600">
+13259-                                  {g.code}
+13260-                                </td>
+13261-                                <td className="py-4 px-6 text-center">
+13262-                                  <div className="flex items-center justify-center gap-1">
+13263-                                    <button
+13264-                                      onClick={() => {
+13265-                                        setEditingPersonRoleId(g.id);
+13266-                                        setNewPersonRoleName(g.name);
+13267-                                        setNewPersonRoleCode(g.code);
+13268-                                      }}
+13269-                                      className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+13270-                                      title="ویرایش نقش"
+13271-                                    >
+13272-                                      <Edit2 className="w-4 h-4" />
+13273-                                    </button>
+13274-                                    <button
+13275-                                      onClick={() =>
+13276-                                        handleDeletePersonRole(g.id)
+13277-                                      }
+13278-                                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+13279-                                      title="حذف نقش"
+13280-                                    >
+13281-                                      <Trash2 className="w-4 h-4" />
+13282-                                    </button>
+13283-                                  </div>
+13284-                                </td>
+13285-                              </tr>
+13286-                            ))}
+13287-                          </tbody>
+13288-                        </table>
+13289-                      )}
+13290-                    </div>
+13291-                  </motion.div>
+13292-                ) : activeTab === "accounts" ? (
+13293-                  <motion.div
+13294-                    initial={{ opacity: 0, y: 10 }}
+13295-                    animate={{ opacity: 1, y: 0 }}
+13296-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+13297-                  >
+13298-                    <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+13299-                      <div>
+13300-                        <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+13301-                          <CreditCard className="w-6 h-6 text-indigo-600" />
+13302-                          مدیریت حساب‌های بانکی
+13303-                        </h1>
+13304-                        <p className="text-sm text-gray-500 font-medium mt-1">
+13305-                          فهرست و نظارت بر موجودی و گردش شبای درگاه‌های بانکی
+13306-                        </p>
+13307-                      </div>
+13308-                      <button
+13309-                        onClick={() => {
+13310-                          setEditingAccountId(null);
+13311-                          setNewAccountBankName("");
+13312-                          setNewAccountBranchName("");
+13313-                          setNewAccountNumber("");
+13314-                          setNewAccountCardNumber("");
+13315-                          setNewAccountShebaNumber("");
+13316-                          setNewAccountBalance("");
+13317-                          setNewAccountHolder("");
+13318-                          setIsAccountModalOpen(true);
+13319-                        }}
+13320-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
+13321-                      >
+13322-                        <Plus className="w-4 h-4" />
+13323-                        ثبت حساب جدید
+13324-                      </button>
+13325-                    </div>
+13326-
+13327-                    {successMsg && (
+13328-                      <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100">
+13329-                        <CheckCircle className="w-5 h-5" />
+13330-                        {successMsg}
+13331-                      </div>
+13332-                    )}
+13333-
+13334-                    <div className="p-0 overflow-x-auto">
+13335-                      {accounts.length === 0 ? (
+13336-                        <div className="py-12 text-center text-gray-500 font-medium">
+13337-                          هیچ حساب بانکی ثبت نشده است. برای شروع یک حساب جدید
+13338-                          تعریف کنید.
+13339-                        </div>
+--
+13341:                        <table className="w-full text-right border-collapse">
+13342-                          <thead>
+13343-                            <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+13344-                              <th className="py-4 px-6 font-semibold">ردیف</th>
+13345-                              <th className="py-4 px-6 font-semibold">
+13346-                                نام بانک
+13347-                              </th>
+13348-                              <th className="py-4 px-6 font-semibold">
+13349-                                صاحب حساب
+13350-                              </th>
+13351-                              <th className="py-4 px-6 font-semibold">
+13352-                                شماره حساب
+13353-                              </th>
+13354-                              <th className="py-4 px-6 font-semibold">
+13355-                                شماره کارت
+13356-                              </th>
+13357-                              <th className="py-4 px-6 font-semibold">
+13358-                                شماره شبا
+13359-                              </th>
+13360-                              <th className="py-4 px-6 font-semibold">شعبه</th>
+13361-                              <th className="py-4 px-6 font-semibold">
+13362-                                موجودی (تومان)
+13363-                              </th>
+13364-                              <th className="py-4 px-6 font-semibold text-center w-24">
+13365-                                عملیات
+13366-                              </th>
+13367-                            </tr>
+13368-                          </thead>
+13369-                          <tbody className="divide-y divide-gray-50">
+13370-                            {accounts.map((acc, index) => (
+13371-                              <tr
+13372-                                key={acc.id}
+13373-                                className="hover:bg-gray-50/50 transition-colors text-gray-700"
+13374-                              >
+13375-                                <td className="py-4 px-6 font-medium text-gray-400">
+13376-                                  {index + 1}
+13377-                                </td>
+13378-                                <td className="py-4 px-6 font-semibold text-gray-950">
+13379-                                  <span className="flex items-center gap-2">
+13380-                                    <CreditCard className="w-4 h-4 text-indigo-500" />
+13381-                                    {acc.bankName}
+13382-                                  </span>
+13383-                                </td>
+13384-                                <td className="py-4 px-6 text-sm">
+13385-                                  {acc.accountHolder || "-"}
+13386-                                </td>
+13387-                                <td
+13388-                                  className="py-4 px-6 text-sm font-mono text-left"
+13389-                                  dir="ltr"
+13390-                                >
+13391-                                  {acc.accountNumber || "-"}
+13392-                                </td>
+13393-                                <td
+13394-                                  className="py-4 px-6 text-sm font-mono text-left"
+13395-                                  dir="ltr"
+13396-                                >
+13397-                                  {acc.cardNumber || "-"}
+13398-                                </td>
+13399-                                <td
+13400-                                  className="py-4 px-6 text-sm font-mono text-left"
+13401-                                  dir="ltr"
+13402-                                >
+13403-                                  {acc.shebaNumber || "-"}
+13404-                                </td>
+13405-                                <td className="py-4 px-6 text-sm">
+13406-                                  {acc.branchName || "-"}
+13407-                                </td>
+13408-                                <td
+13409-                                  className="py-4 px-6 text-sm font-semibold text-indigo-600 font-mono text-left"
+13410-                                  dir="ltr"
+13411-                                >
+13412-                                  {formatNumber(acc.balance)}{" "}
+13413-                                  <span className="text-xs font-normal font-sans ml-1">
+13414-                                    {storeSettings.currency}
+13415-                                  </span>
+13416-                                </td>
+13417-                                <td className="py-4 px-6 text-center">
+13418-                                  <div className="flex items-center justify-center gap-2">
+13419-                                    <button
+13420-                                      onClick={() => handleEditAccount(acc)}
+13421-                                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+13422-                                      title="ویرایش حساب"
+13423-                                    >
+13424-                                      <Edit2 className="w-4 h-4" />
+13425-                                    </button>
+13426-                                    <button
+13427-                                      onClick={() =>
+13428-                                        confirmAction(
+13429-                                          "آیا از حذف این حساب بانکی اطمینان دارید؟",
+13430-                                          () => handleDeleteAccount(acc.id),
+13431-                                        )
+13432-                                      }
+13433-                                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+13434-                                      title="حذف حساب"
+13435-                                    >
+13436-                                      <Trash2 className="w-4 h-4" />
+13437-                                    </button>
+13438-                                  </div>
+13439-                                </td>
+13440-                              </tr>
+13441-                            ))}
+--
+13492:                        <table className="w-full text-right border-collapse">
+13493-                          <thead>
+13494-                            <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+13495-                              <th className="py-4 px-6 font-semibold">ردیف</th>
+13496-                              <th className="py-4 px-6 font-semibold">
+13497-                                نام صندوق / تنخواه
+13498-                              </th>
+13499-                              <th className="py-4 px-6 font-semibold">
+13500-                                مسئول صندوق
+13501-                              </th>
+13502-                              <th className="py-4 px-6 font-semibold">
+13503-                                موجودی فعلی (تومان)
+13504-                              </th>
+13505-                              <th className="py-4 px-6 font-semibold text-center w-24">
+13506-                                عملیات
+13507-                              </th>
+13508-                            </tr>
+13509-                          </thead>
+13510-                          <tbody className="divide-y divide-gray-50">
+13511-                            {cashboxes.map((box, index) => (
+13512-                              <tr
+13513-                                key={box.id}
+13514-                                className="hover:bg-gray-50/50 transition-colors text-gray-700"
+13515-                              >
+13516-                                <td className="py-4 px-6 font-medium text-gray-400">
+13517-                                  {index + 1}
+13518-                                </td>
+13519-                                <td className="py-4 px-6 font-semibold text-gray-950">
+13520-                                  <span className="flex items-center gap-2">
+13521-                                    <Wallet className="w-4 h-4 text-indigo-500" />
+13522-                                    {box.name}
+13523-                                  </span>
+13524-                                </td>
+13525-                                <td className="py-4 px-6 text-sm">
+13526-                                  {box.manager || "نامشخص"}
+13527-                                </td>
+13528-                                <td
+13529-                                  className="py-4 px-6 text-sm font-semibold text-teal-600 font-mono text-left"
+13530-                                  dir="ltr"
+13531-                                >
+13532-                                  {formatNumber(box.balance)}{" "}
+13533-                                  <span className="text-xs font-normal font-sans ml-1">
+13534-                                    {storeSettings.currency}
+13535-                                  </span>
+13536-                                </td>
+13537-                                <td className="py-4 px-6 text-center">
+13538-                                  <div className="flex items-center justify-center gap-2">
+13539-                                    <button
+13540-                                      onClick={() => handleEditCashbox(box)}
+13541-                                      className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block"
+13542-                                      title="ویرایش صندوق"
+13543-                                    >
+13544-                                      <Edit2 className="w-4 h-4" />
+13545-                                    </button>
+13546-                                    <button
+13547-                                      onClick={() =>
+13548-                                        confirmAction(
+13549-                                          "آیا از حذف این صندوق اطمینان دارید؟",
+13550-                                          () => handleDeleteCashbox(box.id),
+13551-                                        )
+13552-                                      }
+13553-                                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block"
+13554-                                      title="حذف صندوق"
+13555-                                    >
+13556-                                      <Trash2 className="w-4 h-4" />
+13557-                                    </button>
+13558-                                  </div>
+13559-                                </td>
+13560-                              </tr>
+13561-                            ))}
+13562-                          </tbody>
+13563-                        </table>
+13564-                      )}
+13565-                    </div>
+13566-                  </motion.div>
+13567-                ) : activeTab === "warehouses" ? (
+13568-                  <motion.div
+13569-                    initial={{ opacity: 0, y: 10 }}
+13570-                    animate={{ opacity: 1, y: 0 }}
+13571-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+13572-                  >
+13573-                    {/* Header with Switcher Tab */}
+13574-                    <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+13575-                      <div className="flex flex-col md:flex-row md:items-center gap-6">
+13576-                        <div>
+13577-                          <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+13578-                            <Box className="w-6 h-6 text-indigo-600" />
+13579-                            {warehouseSubTab === "list"
+13580-                              ? "مدیریت و شعب انبارها"
+13581-                              : "موجودی و موازنه کالاها"}
+13582-                          </h1>
+13583-                          <p className="text-sm text-gray-500 font-medium mt-1">
+13584-                            {warehouseSubTab === "list"
+13585-                              ? "مدیریت انبارهای فیزیکی، شعبه‌ها و مسیرهای نگهداری کالا"
+13586-                              : "مشاهده و موازنه دقیق‌ترین موجودی لحظه‌ای فیزیکی، رزرو شده و آماده فروش کالاها"}
+13587-                          </p>
+13588-                        </div>
+13589-
+13590-                        {/* Sub-tab segment bar */}
+13591-                        <div className="flex gap-1.5 bg-indigo-150 p-1.5 rounded-xl border border-indigo-150/40">
+13592-                          <button
+--
+13650:                          <table className="w-full text-right border-collapse">
+13651-                            <thead>
+13652-                              <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+13653-                                <th className="py-4 px-6 font-semibold">
+13654-                                  ردیف
+13655-                                </th>
+13656-                                <th className="py-4 px-6 font-semibold">
+13657-                                  نام انبار
+13658-                                </th>
+13659-                                <th className="py-4 px-6 font-semibold">
+13660-                                  مسئول انبار
+13661-                                </th>
+13662-                                <th className="py-4 px-6 font-semibold">
+13663-                                  موقعیت / مکان
+13664-                                </th>
+13665-                                <th className="py-4 px-6 font-semibold">
+13666-                                  وضعیت فعالیت
+13667-                                </th>
+13668-                                <th className="py-4 px-6 font-semibold text-center w-24">
+13669-                                  عملیات
+13670-                                </th>
+13671-                              </tr>
+13672-                            </thead>
+13673-                            <tbody className="divide-y divide-gray-50">
+13674-                              {warehouses.map((wh, index) => (
+13675-                                <tr
+13676-                                  key={wh.id}
+13677-                                  className="hover:bg-gray-50/50 transition-colors text-gray-700"
+13678-                                >
+13679-                                  <td className="py-4 px-6 font-medium text-gray-400">
+13680-                                    {index + 1}
+13681-                                  </td>
+13682-                                  <td className="py-4 px-6 font-semibold text-gray-950">
+13683-                                    <span className="flex items-center gap-2">
+13684-                                      <Box className="w-4 h-4 text-indigo-500" />
+13685-                                      {wh.name}
+13686-                                    </span>
+13687-                                  </td>
+13688-                                  <td className="py-4 px-6 text-sm">
+13689-                                    {wh.manager || "-"}
+13690-                                  </td>
+13691-                                  <td className="py-4 px-6 text-sm">
+13692-                                    {wh.location || "-"}
+13693-                                  </td>
+13694-                                  <td className="py-4 px-6 text-sm">
+13695-                                    {wh.isActive ? (
+13696-                                      <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs font-bold">
+13697-                                        فعال
+13698-                                      </span>
+13699-                                    ) : (
+13700-                                      <span className="bg-rose-100 text-rose-800 px-2 py-1 rounded text-xs font-bold">
+13701-                                        غیرفعال
+13702-                                      </span>
+13703-                                    )}
+13704-                                  </td>
+13705-                                  <td className="py-4 px-6 text-center">
+13706-                                    <div className="flex items-center justify-center gap-2">
+13707-                                      <button
+13708-                                        type="button"
+13709-                                        onClick={() => handleEditWarehouse(wh)}
+13710-                                        className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors inline-block cursor-pointer"
+13711-                                        title="ویرایش انبار"
+13712-                                      >
+13713-                                        <Edit2 className="w-4 h-4" />
+13714-                                      </button>
+13715-                                      <button
+13716-                                        type="button"
+13717-                                        onClick={() =>
+13718-                                          confirmAction(
+13719-                                            "آیا از حذف این انبار اطمینان دارید؟",
+13720-                                            () => handleDeleteWarehouse(wh.id),
+13721-                                          )
+13722-                                        }
+13723-                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors inline-block cursor-pointer"
+13724-                                        title="حذف انبار"
+13725-                                      >
+13726-                                        <Trash2 className="w-4 h-4" />
+13727-                                      </button>
+13728-                                    </div>
+13729-                                  </td>
+13730-                                </tr>
+13731-                              ))}
+13732-                            </tbody>
+13733-                          </table>
+13734-                        )}
+13735-                      </div>
+13736-                    ) : (
+13737-                      <div>
+13738-                        {/* Search Stocks bar */}
+13739-                        <div className="p-5 border-b border-gray-100 bg-gray-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+13740-                          <div className="flex-1 max-w-md relative">
+13741-                            <span className="absolute inset-y-0 right-3 flex items-center pr-1 text-gray-400 pointer-events-none">
+13742-                              <Search className="w-4 h-4" />
+13743-                            </span>
+13744-                            <input
+13745-                              type="text"
+13746-                              value={whStockSearch}
+13747-                              onChange={(e) => setWhStockSearch(e.target.value)}
+13748-                              placeholder="جستجوی سریع بر اساس کالا یا انبار..."
+13749-                              className="w-full pr-10 pl-4 py-2.5 text-xs bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-bold"
+13750-                            />
+--
+13823:                              <table className="w-full text-right border-collapse">
+13824-                                <thead>
+13825-                                  <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-100">
+13826-                                    <th className="py-4 px-6 font-semibold w-16 text-center">
+13827-                                      ردیف
+13828-                                    </th>
+13829-                                    <th className="py-4 px-6 font-semibold">
+13830-                                      نام کالا
+13831-                                    </th>
+13832-                                    <th className="py-4 px-6 font-semibold">
+13833-                                      انبار ذخیره‌سازی
+13834-                                    </th>
+13835-                                    <th className="py-4 px-6 font-semibold text-center bg-gray-100/30">
+13836-                                      موجودی فیزیکی
+13837-                                    </th>
+13838-                                    <th className="py-4 px-6 font-semibold text-center bg-amber-50/20">
+13839-                                      رزرو شده
+13840-                                    </th>
+13841-                                    <th className="py-4 px-6 font-semibold text-center bg-emerald-50/20 text-emerald-900">
+13842-                                      آماده فروش و تحویل
+13843-                                    </th>
+13844-                                    <th className="py-4 px-6 font-semibold text-center w-28">
+13845-                                      واحد
+13846-                                    </th>
+13847-                                  </tr>
+13848-                                </thead>
+13849-                                <tbody className="divide-y divide-gray-50 font-sans font-bold">
+13850-                                  {filteredStocks.map((stock, index) => {
+13851-                                    const associatedProd = products.find(
+13852-                                      (p) =>
+13853-                                        p.id?.toString() ===
+13854-                                        stock.productId?.toString(),
+13855-                                    );
+13856-                                    const associatedWh = warehouses.find(
+13857-                                      (w) =>
+13858-                                        w.id?.toString() ===
+13859-                                        stock.warehouseId?.toString(),
+13860-                                    );
+13861-
+13862-                                    // Highlight low stock
+13863-                                    const isNegative = stock.availableStock < 0;
+13864-                                    const isZero = stock.availableStock === 0;
+13865-
+13866-                                    return (
+13867-                                      <tr
+13868-                                        key={`${stock.productId}-${stock.warehouseId}`}
+13869-                                        className="hover:bg-slate-50/50 transition-colors text-gray-700"
+13870-                                      >
+13871-                                        <td className="py-4 px-6 text-center text-gray-400 font-medium">
+13872-                                          {index + 1}
+13873-                                        </td>
+13874-                                        <td className="py-4 px-6 text-gray-950 font-semibold">
+13875-                                          <span className="flex flex-col">
+13876-                                            <span className="font-extrabold text-slate-900">
+13877-                                              {associatedProd?.name ||
+13878-                                                "کالای ناشناخته"}
+13879-                                            </span>
+13880-                                            {associatedProd?.code && (
+13881-                                              <span className="text-[10px] text-gray-400 mt-0.5">
+13882-                                                کد کالا: {associatedProd.code}
+13883-                                              </span>
+13884-                                            )}
+13885-                                          </span>
+13886-                                        </td>
+13887-                                        <td className="py-4 px-6 text-indigo-900">
+13888-                                          <span className="flex items-center gap-1.5 text-xs text-indigo-950">
+13889-                                            <Box className="w-3.5 h-3.5 text-indigo-500" />
+13890-                                            {associatedWh?.name ||
+13891-                                              "انبار صادرکننده"}
+13892-                                          </span>
+13893-                                        </td>
+13894-                                        <td className="py-4 px-6 text-center bg-gray-100/10 font-bold text-gray-800 text-sm">
+13895-                                          {formatNumber(stock.physicalStock)}
+13896-                                        </td>
+13897-                                        <td className="py-4 px-6 text-center bg-amber-50/10 font-bold text-amber-700 text-sm">
+13898-                                          {formatNumber(stock.reservedStock)}
+13899-                                        </td>
+13900-                                        <td
+13901-                                          className={`py-4 px-6 text-center font-black text-sm bg-emerald-50/10 ${
+13902-                                            isNegative
+13903-                                              ? "text-red-650 bg-rose-50/30"
+13904-                                              : isZero
+13905-                                                ? "text-gray-400"
+13906-                                                : "text-emerald-700"
+13907-                                          }`}
+13908-                                        >
+13909-                                          <span className="inline-flex items-center gap-1.5">
+13910-                                            {formatNumber(stock.availableStock)}
+13911-                                            {isNegative && (
+13912-                                              <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-bold">
+13913-                                                کسری موجودی
+13914-                                              </span>
+13915-                                            )}
+13916-                                          </span>
+13917-                                        </td>
+13918-                                        <td className="py-4 px-6 text-center text-xs text-gray-500">
+13919-                                          {associatedProd?.unit || "عدد"}
+13920-                                        </td>
+13921-                                      </tr>
+13922-                                    );
+13923-                                  })}
+--
+15602:                                <table className="w-full text-right min-w-[0px] text-[11px] print:text-[11px] mb-8">
+15603-                                  <thead>
+15604-                                    <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-400 font-bold text-[10px] uppercase tracking-wider print:bg-slate-100">
+15605-                                      <th className="py-3 px-2 text-center w-8 print:border-b-2 print:border-gray-500">
+15606-                                        ردیف
+15607-                                      </th>
+15608-                                      <th className="py-3 px-2 text-right w-24 print:border-b-2 print:border-gray-500">
+15609-                                        تاریخ و ارجاع
+15610-                                      </th>
+15611-                                      <th className="py-3 px-2 text-right print:border-b-2 print:border-gray-500">
+15612-                                        عنوان و شرح جزئیات رویداد مالی
+15613-                                      </th>
+15614-                                      <th className="py-3 px-2 text-left w-28 print:border-b-2 print:border-gray-500">
+15615-                                        بدهکار
+15616-                                      </th>
+15617-                                      <th className="py-3 px-2 text-left w-28 print:border-b-2 print:border-gray-500">
+15618-                                        بستانکار
+15619-                                      </th>
+15620-                                      <th className="py-3 px-2 text-left w-32 print:border-b-2 print:border-gray-500">
+15621-                                        مانده نهایی
+15622-                                      </th>
+15623-                                    </tr>
+15624-                                  </thead>
+15625-                                  <tbody className="divide-y divide-gray-200 font-medium font-sans">
+15626-                                    {ledgerEntries.map((entry, index) => {
+15627-                                      const isDeb = entry.runningBalance > 0;
+15628-                                      const isBalZero =
+15629-                                        entry.runningBalance === 0;
+15630-                                      return (
+15631-                                        <tr
+15632-                                          key={index}
+15633-                                          className="break-inside-avoid border-b border-gray-100"
+15634-                                        >
+15635-                                          <td className="py-3 px-2 text-center align-top pt-4">
+15636-                                            <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center mx-auto text-[9px] font-bold shrink-0">
+15637-                                              {toPersianDigits(index + 1)}
+15638-                                            </div>
+15639-                                          </td>
+15640-                                          <td className="py-3 px-2 align-top pt-3">
+15641-                                            <div className="flex flex-col gap-1.5 text-right relative">
+15642-                                              <span
+15643-                                                className="text-gray-800 font-bold flex items-center justify-end gap-1 text-xs pr-0"
+15644-                                                dir="ltr"
+15645-                                              >
+15646-                                                <span className="whitespace-nowrap">
+15647-                                                  {toPersianDigits(
+15648-                                                    entry.jalaliDate,
+15649-                                                  )}
+15650-                                                </span>
+15651-                                              </span>
+15652-                                              <span className="text-[10px] text-gray-600 border border-gray-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+15653-                                                {toPersianDigits(entry.refId)}
+15654-                                              </span>
+15655-                                            </div>
+15656-                                          </td>
+15657-                                          <td className="py-3 px-2 align-top pt-3 max-w-sm">
+15658-                                            <div className="flex flex-col items-start gap-1">
+15659-                                              <span className="font-extrabold text-[10px] bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+15660-                                                {entry.type}
+15661-                                              </span>
+15662-                                              <p className="text-gray-800 text-[11px] whitespace-normal leading-relaxed break-words text-justify">
+15663-                                                {toPersianDigits(entry.desc)}
+15664-                                              </p>
+15665-                                            </div>
+15666-                                          </td>
+15667-                                          <td className="py-3 px-2 text-left align-top pt-4">
+15668-                                            <span
+15669-                                              className={`font-black text-[12px] ${entry.debit > 0 ? "text-black" : "text-gray-400 font-medium"}`}
+15670-                                            >
+15671-                                              {entry.debit > 0
+15672-                                                ? toPersianDigits(
+15673-                                                    formatNumber(entry.debit),
+15674-                                                  )
+15675-                                                : "---"}
+15676-                                            </span>
+15677-                                          </td>
+15678-                                          <td className="py-3 px-2 text-left align-top pt-4">
+15679-                                            <span
+15680-                                              className={`font-black text-[12px] ${entry.credit > 0 ? "text-black" : "text-gray-400 font-medium"}`}
+15681-                                            >
+15682-                                              {entry.credit > 0
+15683-                                                ? toPersianDigits(
+15684-                                                    formatNumber(entry.credit),
+15685-                                                  )
+15686-                                                : "---"}
+15687-                                            </span>
+15688-                                          </td>
+15689-                                          <td className="py-3 px-2 text-left align-top pt-3">
+15690-                                            <div
+15691-                                              className={`flex flex-col items-end gap-1 font-extrabold ${isBalZero ? "text-gray-600" : "text-black"}`}
+15692-                                            >
+15693-                                              {isBalZero ? (
+15694-                                                <span className="border border-gray-300 px-2 py-1 rounded text-xs mt-0.5">
+15695-                                                  صفر (تسویه)
+15696-                                                </span>
+15697-                                              ) : (
+15698-                                                <>
+15699-                                                  <span className="text-[13px] tracking-tight">
+15700-                                                    {toPersianDigits(
+15701-                                                      formatNumber(
+15702-                                                        Math.abs(
+--
+15997:                                <table className="w-full text-right min-w-[950px] print:min-w-[0px] print:text-[12px] text-sm">
+15998-                                  <thead>
+15999-                                    <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider print:text-[10px]">
+16000-                                      <th className="py-5 px-4 text-center w-10 print:w-8 print:px-2">
+16001-                                        ردیف
+16002-                                      </th>
+16003-                                      <th className="py-5 px-4 text-right w-36 print:w-28 print:px-2">
+16004-                                        تاریخ و ارجاع
+16005-                                      </th>
+16006-                                      <th className="py-5 px-6 text-right print:px-2">
+16007-                                        عنوان و شرح جزئیات رویداد مالی
+16008-                                      </th>
+16009-                                      <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
+16010-                                        بدهکار (افزایش بدهی)
+16011-                                      </th>
+16012-                                      <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
+16013-                                        بستانکار (کاهش بدهی)
+16014-                                      </th>
+16015-                                      <th className="py-5 px-6 text-left w-44 print:w-32 print:px-2">
+16016-                                        مانده نهایی حساب
+16017-                                      </th>
+16018-                                    </tr>
+16019-                                  </thead>
+16020-                                  <tbody className="divide-y divide-gray-100 font-medium">
+16021-                                    {ledgerEntries.filter((entry) => {
+16022-                                      if (ledgerTab === 'transactions' || ledgerTab === 'detailed') {
+16023-                                        return entry.rawItem?.type !== 'proforma';
+16024-                                      } else if (ledgerTab === 'items') {
+16025-                                        return entry.entryType === 'invoice' && entry.rawItem?.type !== 'proforma';
+16026-                                      } else if (ledgerTab === 'checks') {
+16027-                                        return entry.entryType === 'issued_check' || entry.entryType === 'received_check';
+16028-                                      } else if (ledgerTab === 'drafts') {
+16029-                                        return entry.rawItem?.type === 'proforma';
+16030-                                      }
+16031-                                      return true;
+16032-                                    }).map((entry, index) => {
+16033-                                      const isDeb = entry.runningBalance > 0;
+16034-                                      const isCred = entry.runningBalance < 0;
+16035-                                      const isBalZero =
+16036-                                        entry.runningBalance === 0;
+16037-
+16038-                                      const isSale =
+16039-                                        entry.type.includes("فروش");
+16040-                                      const isPurchase =
+16041-                                        entry.type.includes("خرید");
+16042-                                      const isReceive =
+16043-                                        entry.type.includes("دریافت");
+16044-                                      const isPay =
+16045-                                        entry.type.includes("پرداخت");
+16046-                                      const isCheck =
+16047-                                        entry.entryType === "issued_check" ||
+16048-                                        entry.entryType === "received_check";
+16049-
+16050-                                      const badgeColor = isSale
+16051-                                        ? "bg-sky-50 text-sky-700 border-sky-200"
+16052-                                        : isPurchase
+16053-                                          ? "bg-amber-50 text-amber-700 border-amber-200"
+16054-                                          : isReceive
+16055-                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+16056-                                            : isPay
+16057-                                              ? "bg-rose-50 text-rose-700 border-rose-200"
+16058-                                              : isCheck
+16059-                                                ? "bg-violet-50 text-violet-700 border-violet-200"
+16060-                                                : "bg-slate-50 text-slate-700 border-slate-200";
+16061-
+16062-                                      return (
+16063-                                        <tr
+16064-                                          key={entry.id}
+16065-                                          className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+16066-                                          onClick={() => {
+16067-                                            if (
+16068-                                              entry.entryType === "invoice" &&
+16069-                                              entry.rawItem
+16070-                                            ) {
+16071-                                              setViewingInvoice(entry.rawItem);
+16072-                                            } else if (
+16073-                                              entry.entryType ===
+16074-                                                "transaction" &&
+16075-                                              entry.rawItem
+16076-                                            ) {
+16077-                                              if (
+16078-                                                entry.rawItem.type === "salary"
+16079-                                              ) {
+16080-                                                try {
+16081-                                                  const parsedDesc = JSON.parse(
+16082-                                                    entry.rawItem.description,
+16083-                                                  );
+16084-                                                  if (parsedDesc.isPayslip) {
+16085-                                                    setViewingPayslip({
+16086-                                                      ...entry.rawItem,
+16087-                                                      parsed: parsedDesc,
+16088-                                                      computedPersonName:
+16089-                                                        selectedPerson.name,
+16090-                                                    });
+16091-                                                    return;
+16092-                                                  }
+16093-                                                } catch (e) {}
+16094-                                              }
+16095-                                              setPreviewReceiptData({
+16096-                                                ...entry.rawItem,
+16097-                                                jalaliDate: entry.jalaliDate,
+--
+17471:                            <table className="w-full text-right text-sm">
+17472-                              <thead>
+17473-                                <tr className="bg-gray-50 border-b border-gray-100 text-gray-500">
+17474-                                  <th className="p-4 font-semibold">گیرنده</th>
+17475-                                  <th className="p-4 font-semibold">متن پیام</th>
+17476-                                  <th className="p-4 font-semibold">وضعیت</th>
+17477-                                  <th className="p-4 font-semibold">توسط</th>
+17478-                                  <th className="p-4 font-semibold">
+17479-                                    تاریخ و زمان
+17480-                                  </th>
+17481-                                </tr>
+17482-                              </thead>
+17483-                              <tbody className="divide-y divide-gray-50">
+17484-                              {smsMessages.length === 0 ? (
+17485-                                <tr>
+17486-                                  <td
+17487-                                    colSpan={5}
+17488-                                    className="p-8 text-center text-gray-500"
+17489-                                  >
+17490-                                    هیچ پیامکی در سیستم ثبت نشده است.
+17491-                                  </td>
+17492-                                </tr>
+17493-                              ) : (
+17494-                                [...smsMessages]
+17495-                                  .sort((a, b) => b.timestamp - a.timestamp)
+17496-                                  .map((msg) => (
+17497-                                    <tr
+17498-                                      key={msg.id}
+17499-                                      className="hover:bg-gray-50/50 transition-colors"
+17500-                                    >
+17501-                                      <td
+17502-                                        className="p-4 font-bold text-gray-800"
+17503-                                        dir="ltr"
+17504-                                      >
+17505-                                        {msg.recipient}
+17506-                                      </td>
+17507-                                      <td
+17508-                                        className="p-4 text-gray-600 max-w-xs truncate"
+17509-                                        title={msg.message}
+17510-                                      >
+17511-                                        {msg.message}
+17512-                                      </td>
+17513-                                      <td className="p-4">
+17514-                                        <span
+17515-                                          className={`px-2.5 py-1 rounded-full text-xs font-bold ${msg.status === "sent" ? "bg-emerald-100 text-emerald-700" : msg.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}
+17516-                                        >
+17517-                                          {msg.status === "sent"
+17518-                                            ? "ارسال شده"
+17519-                                            : msg.status === "pending"
+17520-                                              ? "در انتظار"
+17521-                                              : "خطا"}
+17522-                                        </span>
+17523-                                      </td>
+17524-                                      <td className="p-4">
+17525-                                        <span
+17526-                                          className={`px-2.5 py-1 rounded-full text-xs font-bold ${msg.provider === "online" || msg.provider === "sms" ? "bg-blue-100 text-blue-700" : msg.provider === "gsm" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"}`}
+17527-                                        >
+17528-                                          {msg.provider === "sms" ||
+17529-                                          msg.provider === "online"
+17530-                                            ? "وب‌سرویس"
+17531-                                            : msg.provider === "gsm"
+17532-                                              ? "دستگاه GSM"
+17533-                                              : "نامشخص"}
+17534-                                        </span>
+17535-                                      </td>
+17536-                                      <td
+17537-                                        className="p-4 text-gray-500"
+17538-                                        dir="ltr"
+17539-                                      >
+17540-                                        {new Date(msg.timestamp).toLocaleString(
+17541-                                          "fa-IR",
+17542-                                        )}
+17543-                                      </td>
+17544-                                    </tr>
+17545-                                  ))
+17546-                              )}
+17547-                            </tbody>
+17548-                          </table>
+17549-                        </div>
+17550-                      </div>
+17551-                    </div>
+17552-                    ) : (
+17553-                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+17554-                        <div className="flex items-center justify-between mb-6">
+17555-                          <h3 className="font-bold text-gray-800">
+17556-                            قالب‌های متنی پیامک
+17557-                          </h3>
+17558-                          <button
+17559-                            onClick={async () => {
+17560-                              await saveStoreSettings(storeSettings);
+17561-                              setSuccessMsg("قالب‌های پیامک با موفقیت ذخیره شدند.");
+17562-                            }}
+17563-                            className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-colors flex items-center gap-2"
+17564-                          >
+17565-                            <Save className="w-4 h-4" />
+17566-                            ذخیره قالب‌ها
+17567-                          </button>
+17568-                        </div>
+17569-                        
+17570-                        <div className="space-y-8">
+17571-                          <div>
+--
+18203:                          <table className="w-full text-right divide-y divide-gray-100 text-xs text-right">
+18204-                            <tbody>
+18205-                              <tr className="hover:bg-gray-50 transition-colors">
+18206-                                <td className="py-2.5 px-4 text-gray-600 font-medium text-right">
+18207-                                  حقوق پایه و کارکرد ماهانه
+18208-                                </td>
+18209-                                <td
+18210-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18211-                                  dir="ltr"
+18212-                                >
+18213-                                  {formatNumber(
+18214-                                    viewingPayslip.parsed?.base || 0,
+18215-                                  )}
+18216-                                </td>
+18217-                              </tr>
+18218-                              <tr className="hover:bg-gray-50 transition-colors">
+18219-                                <td className="py-2.5 px-4 text-gray-600 font-medium text-right">
+18220-                                  حق مسکن و معیشت رفاهی
+18221-                                </td>
+18222-                                <td
+18223-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18224-                                  dir="ltr"
+18225-                                >
+18226-                                  {formatNumber(
+18227-                                    viewingPayslip.parsed?.allowances
+18228-                                      ?.housing || 0,
+18229-                                  )}
+18230-                                </td>
+18231-                              </tr>
+18232-                              <tr className="hover:bg-gray-50 transition-colors">
+18233-                                <td className="py-2.5 px-4 text-gray-600 font-medium text-right">
+18234-                                  حق بن و خواربار رفاهی
+18235-                                </td>
+18236-                                <td
+18237-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18238-                                  dir="ltr"
+18239-                                >
+18240-                                  {formatNumber(
+18241-                                    viewingPayslip.parsed?.allowances
+18242-                                      ?.grocery || 0,
+18243-                                  )}
+18244-                                </td>
+18245-                              </tr>
+18246-                              <tr className="hover:bg-gray-50 transition-colors">
+18247-                                <td className="py-2.5 px-4 text-gray-600 font-medium text-right">
+18248-                                  اضافه کار و سایر مزایا
+18249-                                </td>
+18250-                                <td
+18251-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18252-                                  dir="ltr"
+18253-                                >
+18254-                                  {formatNumber(
+18255-                                    viewingPayslip.parsed?.allowances?.other ||
+18256-                                      0,
+18257-                                  )}
+18258-                                </td>
+18259-                              </tr>
+18260-                            </tbody>
+18261-                            <tfoot>
+18262-                              <tr className="bg-emerald-50/50 font-extrabold text-emerald-950 border-t border-emerald-100">
+18263-                                <td className="py-3 px-4 text-right">
+18264-                                  جمع مبالغ ناخالص:
+18265-                                </td>
+18266-                                <td
+18267-                                  className="py-3 px-4 font-mono text-left text-sm text-emerald-800"
+18268-                                  dir="ltr"
+18269-                                >
+18270-                                  {formatNumber(
+18271-                                    (viewingPayslip.parsed?.base || 0) +
+18272-                                      (viewingPayslip.parsed?.allowances
+18273-                                        ?.housing || 0) +
+18274-                                      (viewingPayslip.parsed?.allowances
+18275-                                        ?.grocery || 0) +
+18276-                                      (viewingPayslip.parsed?.allowances
+18277-                                        ?.other || 0),
+18278-                                  )}
+18279-                                </td>
+18280-                              </tr>
+18281-                            </tfoot>
+18282-                          </table>
+18283-                        </div>
+18284-
+18285-                        {/* Deductions */}
+18286-                        <div className="border border-rose-100 rounded-xl overflow-hidden shadow-sm">
+18287-                          <div className="bg-rose-600 text-white font-extrabold px-4 py-2.5 text-center flex justify-between items-center text-xs">
+18288-                            <span>
+18289-                              حق بیمه سهم کارمند و مالیات (ریال/تومان)
+18290-                            </span>
+18291-                            <span>بدهکار</span>
+18292-                          </div>
+18293:                          <table className="w-full text-right divide-y divide-gray-100 text-xs text-right">
+18294-                            <tbody>
+18295-                              <tr className="hover:bg-gray-50 transition-colors">
+18296-                                <td className="py-2.5 px-4 text-gray-600 font-medium text-right">
+18297-                                  بیمه تامین اجتماعی سهم کارمند
+18298-                                </td>
+18299-                                <td
+18300-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18301-                                  dir="ltr"
+18302-                                >
+18303-                                  {formatNumber(
+18304-                                    viewingPayslip.parsed?.deductions
+18305-                                      ?.insurance || 0,
+18306-                                  )}
+18307-                                </td>
+18308-                              </tr>
+18309-                              <tr className="hover:bg-gray-50 transition-colors">
+18310-                                <td className="py-2.5 px-4 text-gray-600 font-medium text-right">
+18311-                                  مالیات حقوق و درآمد معین
+18312-                                </td>
+18313-                                <td
+18314-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18315-                                  dir="ltr"
+18316-                                >
+18317-                                  {formatNumber(
+18318-                                    viewingPayslip.parsed?.deductions?.tax || 0,
+18319-                                  )}
+18320-                                </td>
+18321-                              </tr>
+18322-                              <tr className="hover:bg-gray-50 transition-colors">
+18323-                                <td className="py-2.5 px-4 text-gray-600 font-medium text-right">
+18324-                                  مساعده دریافتی و سایر کسورات
+18325-                                </td>
+18326-                                <td
+18327-                                  className="py-2.5 px-4 font-bold text-gray-900 font-mono text-left"
+18328-                                  dir="ltr"
+18329-                                >
+18330-                                  {formatNumber(
+18331-                                    viewingPayslip.parsed?.deductions
+18332-                                      ?.penalty || 0,
+18333-                                  )}
+18334-                                </td>
+18335-                              </tr>
+18336-                              <tr className="hover:bg-gray-50 transition-colors">
+18337-                                <td className="py-2.5 px-4 text-gray-400/50 text-[10px] text-right">
+18338-                                  ---
+18339-                                </td>
+18340-                                <td
+18341-                                  className="py-2.5 px-4 font-bold text-gray-400/50 font-mono text-left text-[10px]"
+18342-                                  dir="ltr"
+18343-                                >
+18344-                                  ۰
+18345-                                </td>
+18346-                              </tr>
+18347-                            </tbody>
+18348-                            <tfoot>
+18349-                              <tr className="bg-rose-50/50 font-extrabold text-rose-950 border-t border-rose-100">
+18350-                                <td className="py-3 px-4 text-right">
+18351-                                  جمع مبالغ کسورات:
+18352-                                </td>
+18353-                                <td
+18354-                                  className="py-3 px-4 font-mono text-left text-sm text-rose-800"
+18355-                                  dir="ltr"
+18356-                                >
+18357-                                  {formatNumber(
+18358-                                    (viewingPayslip.parsed?.deductions
+18359-                                      ?.insurance || 0) +
+18360-                                      (viewingPayslip.parsed?.deductions?.tax ||
+18361-                                        0) +
+18362-                                      (viewingPayslip.parsed?.deductions
+18363-                                        ?.penalty || 0),
+18364-                                  )}
+18365-                                </td>
+18366-                              </tr>
+18367-                            </tfoot>
+18368-                          </table>
+18369-                        </div>
+18370-                      </div>
+18371-
+18372-                      {/* Grand Total Net Salary */}
+18373-                      <div className="bg-indigo-950 text-white rounded-2xl p-5 border border-indigo-950 flex flex-col gap-3 shadow">
+18374-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-right w-full">
+18375-                          <div>
+18376-                            <h4 className="text-sm font-bold text-indigo-200">
+18377-                              مبلغ خالص دریافتی پرداختنی کارمند
+18378-                            </h4>
+18379-                            <p className="text-xs text-indigo-300 mt-1">
+18380-                              حقوق پرداختی حاصل از کسر حقوق و مزایا از کسورات
+18381-                              معین
+18382-                            </p>
+18383-                          </div>
+18384-                          <div>
+18385-                            <span className="text-2xl font-black text-amber-300 tracking-tight block">
+18386-                              {formatNumber(
+18387-                                viewingPayslip.parsed?.netSalary ||
+18388-                                  viewingPayslip.amount,
+18389-                              )}{" "}
+18390-                              <span className="text-xs text-indigo-200">
+18391-                                {storeSettings.currency}
+18392-                              </span>
+18393-                            </span>
+--
+22238:                          <table className="w-full text-right text-sm border-collapse bg-white font-sans">
+22239-                            <thead className="bg-slate-100 print:bg-slate-100 border-b-2 border-slate-200 print:border-slate-800">
+22240-                              <tr>
+22241-                                <th className="py-3 px-3 w-12 text-center font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
+22242-                                  ردیف
+22243-                                </th>
+22244-                                <th className="py-3 px-4 font-bold text-slate-700 text-sm border-l border-slate-200 print:border-slate-400">
+22245-                                  شرح کالا یا خدمات
+22246-                                </th>
+22247-                                <th className="py-3 px-3 w-24 text-center font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
+22248-                                  مقدار
+22249-                                </th>
+22250-                                {!viewingInvoice.type?.includes(
+22251-                                  "warehouse",
+22252-                                ) && (
+22253-                                  <>
+22254-                                    <th className="py-3 px-3 text-center w-36 font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
+22255-                                      فی (
+22256-                                      {showInvoiceCurrency(
+22257-                                        viewingInvoice.currency,
+22258-                                      )}
+22259-                                      )
+22260-                                    </th>
+22261-                                    <th className="py-3 px-3 text-center w-20 font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
+22262-                                      تخفیف
+22263-                                    </th>
+22264-                                    <th className="py-3 px-3 w-44 text-center font-bold text-slate-700 text-xs">
+22265-                                      مبلغ کل (
+22266-                                      {showInvoiceCurrency(
+22267-                                        viewingInvoice.currency,
+22268-                                      )}
+22269-                                      )
+22270-                                    </th>
+22271-                                  </>
+22272-                                )}
+22273-                              </tr>
+22274-                            </thead>
+22275-                            <tbody className="divide-y divide-slate-100 print:divide-slate-300 text-slate-800 text-sm">
+22276-                              {viewingInvoice.items
+22277-                                ?.filter(
+22278-                                  (it: any) =>
+22279-                                    it.productName ||
+22280-                                    it.productId ||
+22281-                                    (it.quantity > 0 && it.unitPrice > 0),
+22282-                                )
+22283-                                .map((item: any, idx: number) => (
+22284-                                  <tr
+22285-                                    key={idx}
+22286-                                    className="group print:hover:bg-transparent"
+22287-                                  >
+22288-                                    <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-slate-500">
+22289-                                      {toPersianDigits(idx + 1)}
+22290-                                    </td>
+22291-                                    <td className="py-3 px-4 border-l border-slate-100 print:border-slate-400">
+22292-                                      <div className="flex flex-col gap-1">
+22293-                                        <span className="text-slate-900 font-bold tracking-tight">
+22294-                                          {item.productName || "تحریر نشده"}
+22295-                                        </span>
+22296-                                        {item.warehouseId && (
+22297-                                          <span className="text-[10px] text-slate-400 font-bold">
+22298-                                            از انبار:{" "}
+22299-                                            {warehouses.find(
+22300-                                              (w) =>
+22301-                                                w.id?.toString() ===
+22302-                                                item.warehouseId?.toString(),
+22303-                                            )?.name || "-"}
+22304-                                          </span>
+22305-                                        )}
+22306-                                      </div>
+22307-                                    </td>
+22308-                                    <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400">
+22309-                                      <span className="font-bold text-slate-900 ml-1.5 text-base">
+22310-                                        {toPersianDigits(
+22311-                                          formatNumber(item.quantity || 1),
+22312-                                        )}
+22313-                                      </span>
+22314-                                      <span className="text-xs text-slate-500 font-bold hidden md:inline-block">
+22315-                                        {item.selectedUnit || ""}
+22316-                                      </span>
+22317-                                    </td>
+22318-                                    {!viewingInvoice.type?.includes(
+22319-                                      "warehouse",
+22320-                                    ) && (
+22321-                                      <>
+22322-                                        <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-slate-700 text-base">
+22323-                                          {toPersianDigits(
+22324-                                            formatCurrency(item.unitPrice || 0),
+22325-                                          )}
+22326-                                        </td>
+22327-                                        <td
+22328-                                          className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-rose-600 text-base"
+22329-                                          dir="ltr"
+22330-                                        >
+22331-                                          {item.discountPercent > 0
+22332-                                            ? `${toPersianDigits(item.discountPercent)}٪`
+22333-                                            : "-"}
+22334-                                        </td>
+22335-                                        <td className="py-3 px-3 text-center font-black text-slate-900 bg-slate-50/50 print:bg-transparent text-base">
+22336-                                          {toPersianDigits(
+22337-                                            formatCurrency(
+22338-                                              item.totalPrice || 0,
+--
+22479:                                  <table className="w-full text-right text-xs font-bold text-slate-600 bg-white">
+22480-                                    <thead className="border-b border-slate-200 bg-slate-50/50">
+22481-                                      <tr>
+22482-                                        <th className="py-2 px-3 border-l border-slate-200 font-extrabold w-28">
+22483-                                          شماره پیگیری
+22484-                                        </th>
+22485-                                        <th className="py-2 px-3 border-l border-slate-200 font-extrabold w-28">
+22486-                                          تاریخ واریز
+22487-                                        </th>
+22488-                                        <th className="py-2 px-3 border-l border-slate-200 font-extrabold">
+22489-                                          جزئیات حساب/صندوق
+22490-                                        </th>
+22491-                                        <th className="py-2 px-3 text-center font-extrabold w-40">
+22492-                                          ارزش ثبت شده
+22493-                                        </th>
+22494-                                      </tr>
+22495-                                    </thead>
+22496-                                    <tbody className="divide-y divide-slate-100">
+22497-                                      {allocatedTxs.map((tx) => (
+22498-                                        <tr key={tx.id}>
+22499-                                          <td className="py-2 px-3 font-sans font-bold text-slate-500 border-l border-slate-200">
+22500-                                            {toPersianDigits(
+22501-                                              tx.receiptNumber,
+22502-                                            ) || `#${toPersianDigits(tx.id)}`}
+22503-                                          </td>
+22504-                                          <td className="py-2 px-3 font-sans font-bold border-l border-slate-200">
+22505-                                            {toPersianDigits(tx.jalaliDate)}
+22506-                                          </td>
+22507-                                          <td className="py-2 px-3 border-l border-slate-200">
+22508-                                            {accounts.find(
+22509-                                              (a) =>
+22510-                                                a.id.toString() ===
+22511-                                                tx.accountId?.toString(),
+22512-                                            )?.title ||
+22513-                                              cashboxes.find(
+22514-                                                (c) =>
+22515-                                                  c.id.toString() ===
+22516-                                                  tx.cashboxId?.toString(),
+22517-                                              )?.name ||
+22518-                                              "نامشخص"}
+22519-                                          </td>
+22520-                                          <td className="py-2 px-3 text-center font-sans font-black text-slate-800">
+22521-                                            {toPersianDigits(
+22522-                                              formatCurrency(
+22523-                                                tx.linkedInvoices![
+22524-                                                  viewingInvoice.id
+22525-                                                ],
+22526-                                              ),
+22527-                                            )}
+22528-                                          </td>
+22529-                                        </tr>
+22530-                                      ))}
+22531-                                    </tbody>
+22532-                                    <tfoot className="bg-slate-50 border-t border-slate-200">
+22533-                                      <tr>
+22534-                                        <td
+22535-                                          colSpan={3}
+22536-                                          className="py-2.5 px-3 text-left font-black text-slate-700 border-l border-slate-200"
+22537-                                        >
+22538-                                          مجموع پرداختی:
+22539-                                        </td>
+22540-                                        <td className="py-2.5 px-3 text-center font-sans font-black text-slate-800">
+22541-                                          {toPersianDigits(
+22542-                                            formatCurrency(
+22543-                                              viewingInvoice.paidAmount || 0,
+22544-                                            ),
+22545-                                          )}
+22546-                                        </td>
+22547-                                      </tr>
+22548-                                      <tr>
+22549-                                        <td
+22550-                                          colSpan={3}
+22551-                                          className="py-2 px-3 text-left font-black text-rose-500 border-l border-slate-200"
+22552-                                        >
+22553-                                          بدهی باقیمانده مانده (تراز):
+22554-                                        </td>
+22555-                                        <td className="py-2 px-3 text-center font-sans font-black text-rose-600">
+22556-                                          {toPersianDigits(
+22557-                                            formatCurrency(
+22558-                                              Math.max(
+22559-                                                (viewingInvoice.totalAmount ||
+22560-                                                  0) -
+22561-                                                  (viewingInvoice.paidAmount ||
+22562-                                                    0),
+22563-                                                0,
+22564-                                              ),
+22565-                                            ),
+22566-                                          )}
+22567-                                        </td>
+22568-                                      </tr>
+22569-                                    </tfoot>
+22570-                                  </table>
+22571-                                </div>
+22572-                              );
+22573-                            }
+22574-                            return null;
+22575-                          })()}
+22576-
+22577-                        {/* Footer Notes & Signature Block */}
+22578-                        {storeSettings.print_footer_note && (
+22579-                          <div className="mb-6 text-[10px] font-bold text-slate-500 text-center leading-relaxed">
+--
+23209:                                  <table className="w-full text-right text-xs whitespace-nowrap min-w-[600px]">
+23210-                                    <thead>
+23211-                                      <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
+23212-                                        <th className="py-3 px-4 font-bold">
+23213-                                          تاریخ / ردیف
+23214-                                        </th>
+23215-                                        <th className="py-3 px-4 font-bold">
+23216-                                          نوع سند
+23217-                                        </th>
+23218-                                        <th className="py-3 px-4 font-bold text-left">
+23219-                                          مبلغ رویداد
+23220-                                        </th>
+23221-                                        <th className="py-3 px-4 font-bold text-left">
+23222-                                          مانده نهایی
+23223-                                        </th>
+23224-                                      </tr>
+23225-                                    </thead>
+23226-                                    <tbody className="divide-y divide-gray-50 text-gray-700">
+23227-                                      {ledgerEntries
+23228-                                        .slice(-50)
+23229-                                        .reverse()
+23230-                                        .map((entry, idx) => {
+23231-                                          const isDeb = entry.debit > 0;
+23232-                                          const isCred = entry.credit > 0;
+23233-                                          const isTxBalZero =
+23234-                                            entry.runningBalance === 0;
+23235-                                          const isTxDeb =
+23236-                                            entry.runningBalance > 0;
+23237-
+23238-                                          return (
+23239-                                            <tr
+23240-                                              key={entry.id}
+23241-                                              className="hover:bg-slate-50 cursor-pointer transition-colors"
+23242-                                              onClick={() => {
+23243-                                                if (
+23244-                                                  entry.entryType ===
+23245-                                                    "invoice" &&
+23246-                                                  entry.rawItem
+23247-                                                ) {
+23248-                                                  setViewingInvoice(
+23249-                                                    entry.rawItem,
+23250-                                                  );
+23251-                                                } else if (
+23252-                                                  entry.entryType ===
+23253-                                                    "transaction" &&
+23254-                                                  entry.rawItem
+23255-                                                ) {
+23256-                                                  if (
+23257-                                                    entry.rawItem.type ===
+23258-                                                    "salary"
+23259-                                                  ) {
+23260-                                                    try {
+23261-                                                      const parsedDesc =
+23262-                                                        JSON.parse(
+23263-                                                          entry.rawItem
+23264-                                                            .description,
+23265-                                                        );
+23266-                                                      if (
+23267-                                                        parsedDesc.isPayslip
+23268-                                                      ) {
+23269-                                                        setViewingPayslip({
+23270-                                                          ...entry.rawItem,
+23271-                                                          parsed: parsedDesc,
+23272-                                                          computedPersonName:
+23273-                                                            selectedPerson.name,
+23274-                                                        });
+23275-                                                        return;
+23276-                                                      }
+23277-                                                    } catch (e) {}
+23278-                                                  }
+23279-                                                  setPreviewReceiptData({
+23280-                                                    ...entry.rawItem,
+23281-                                                    jalaliDate:
+23282-                                                      entry.jalaliDate,
+23283-                                                    personId: selectedPerson.id,
+23284-                                                    _isReadOnly: true,
+23285-                                                  });
+23286-                                                } else if (
+23287-                                                  entry.entryType ===
+23288-                                                  "issued_check"
+23289-                                                ) {
+23290-                                                  setDrawerPersonId("");
+23291-                                                  setActiveTab("issued_checks");
+23292-                                                } else if (
+23293-                                                  entry.entryType ===
+23294-                                                  "received_check"
+23295-                                                ) {
+23296-                                                  setDrawerPersonId("");
+23297-                                                  setActiveTab(
+23298-                                                    "received_checks",
+23299-                                                  );
+23300-                                                }
+23301-                                              }}
+23302-                                            >
+23303-                                              <td className="py-3 px-4">
+23304-                                                <div className="font-mono text-gray-500 font-bold">
+23305-                                                  {entry.jalaliDate}
+23306-                                                </div>
+23307-                                                <div className="text-[10px] text-gray-400 mt-0.5">
+23308-                                                  {entry.refId}
+23309-                                                </div>
+--
+24202:                            <table className="w-full text-right text-sm border-collapse">
+24203-                              <thead className="bg-gray-100 print:bg-gray-100 text-gray-900">
+24204-                                <tr>
+24205-                                  <th className="py-4 px-3 w-12 text-center font-black border-l border-gray-200 print:border-gray-400">
+24206-                                    ردیف
+24207-                                  </th>
+24208-                                  <th className="py-4 px-4 font-black border-l border-gray-200 print:border-gray-400">
+24209-                                    شرح کالا یا خدمات
+24210-                                  </th>
+24211-                                  <th className="py-4 px-3 w-28 text-center font-black border-l border-gray-200 print:border-gray-400">
+24212-                                    مقدار
+24213-                                  </th>
+24214-                                  {!previewInvoiceData.type?.includes(
+24215-                                    "warehouse",
+24216-                                  ) && (
+24217-                                    <>
+24218-                                      <th className="py-4 px-3 text-left w-40 font-black border-l border-gray-200 print:border-gray-400">
+24219-                                        فی (
+24220-                                        {showInvoiceCurrency(
+24221-                                          previewInvoiceData.currency,
+24222-                                        )}
+24223-                                        )
+24224-                                      </th>
+24225-                                      <th className="py-4 px-3 text-center w-24 font-black border-l border-gray-200 print:border-gray-400">
+24226-                                        تخفیف
+24227-                                      </th>
+24228-                                      <th className="py-4 px-3 text-left w-44 font-black">
+24229-                                        مبلغ کل (
+24230-                                        {showInvoiceCurrency(
+24231-                                          previewInvoiceData.currency,
+24232-                                        )}
+24233-                                        )
+24234-                                      </th>
+24235-                                    </>
+24236-                                  )}
+24237-                                </tr>
+24238-                              </thead>
+24239-                              <tbody className="divide-y divide-gray-200 print:divide-gray-400 text-gray-800 font-bold">
+24240-                                {previewInvoiceData.items
+24241-                                  ?.filter(
+24242-                                    (it: any) =>
+24243-                                      it.productName ||
+24244-                                      it.productId ||
+24245-                                      (it.quantity > 0 && it.unitPrice > 0),
+24246-                                  )
+24247-                                  .map((item: any, idx: number) => (
+24248-                                    <tr
+24249-                                      key={idx}
+24250-                                      className="hover:bg-gray-50 print:hover:bg-transparent"
+24251-                                    >
+24252-                                      <td className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 text-gray-500">
+24253-                                        {idx + 1}
+24254-                                      </td>
+24255-                                      <td className="py-3 px-4 border-l border-gray-200 print:border-gray-400">
+24256-                                        <div className="flex flex-col gap-1">
+24257-                                          <span className="text-gray-900 font-extrabold">
+24258-                                            {item.productName || "کالا/خدمات"}
+24259-                                          </span>
+24260-                                          {item.warehouseId && (
+24261-                                            <span className="text-[10px] text-gray-500 font-bold block">
+24262-                                              انبار:{" "}
+24263-                                              {warehouses.find(
+24264-                                                (w) =>
+24265-                                                  w.id?.toString() ===
+24266-                                                  item.warehouseId?.toString(),
+24267-                                              )?.name || "نامشخص"}
+24268-                                            </span>
+24269-                                          )}
+24270-                                        </div>
+24271-                                      </td>
+24272-                                      <td
+24273-                                        className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 font-mono text-base"
+24274-                                        dir="rtl"
+24275-                                      >
+24276-                                        {formatNumber(item.quantity || 1)}{" "}
+24277-                                        <span className="text-[10px] text-gray-500 font-sans">
+24278-                                          {item.selectedUnit || "-"}
+24279-                                        </span>
+24280-                                      </td>
+24281-                                      {!previewInvoiceData.type?.includes(
+24282-                                        "warehouse",
+24283-                                      ) && (
+24284-                                        <>
+24285-                                          <td
+24286-                                            className="py-3 px-3 text-left border-l border-gray-200 print:border-gray-400 font-mono"
+24287-                                            dir="ltr"
+24288-                                          >
+24289-                                            {formatCurrency(
+24290-                                              item.unitPrice || 0,
+24291-                                            )}
+24292-                                          </td>
+24293-                                          <td
+24294-                                            className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 text-red-600 font-mono"
+24295-                                            dir="ltr"
+24296-                                          >
+24297-                                            {toPersianDigits(
+24298-                                              item.discountPercent || 0,
+24299-                                            )}
+24300-                                            ٪
+24301-                                          </td>
+24302-                                          <td
+--
+24438:                                    <table className="w-full text-right text-xs font-bold text-gray-600">
+24439-                                      <thead>
+24440-                                        <tr className="bg-white print:bg-white border-b border-gray-200 print:border-gray-300">
+24441-                                          <th className="p-3 w-32 border-l border-gray-200 print:border-gray-300">
+24442-                                            شماره سند پرداختی
+24443-                                          </th>
+24444-                                          <th className="p-3 w-32 border-l border-gray-200 print:border-gray-300">
+24445-                                            تاریخ پرداخت
+24446-                                          </th>
+24447-                                          <th className="p-3 border-l border-gray-200 print:border-gray-300">
+24448-                                            حساب / صندوق مرتبط
+24449-                                          </th>
+24450-                                          <th className="p-3 text-left w-64">
+24451-                                            مبلغ دریافتی/پرداختی مربوط به این
+24452-                                            فاکتور
+24453-                                          </th>
+24454-                                        </tr>
+24455-                                      </thead>
+24456-                                      <tbody className="divide-y divide-gray-100 print:divide-gray-200 bg-white">
+24457-                                        {allocatedTxs.map((tx) => (
+24458-                                          <tr key={tx.id}>
+24459-                                            <td className="p-3 font-mono text-gray-500 border-l border-gray-200 print:border-gray-300">
+24460-                                              {toPersianDigits(
+24461-                                                tx.receiptNumber,
+24462-                                              ) || `#${toPersianDigits(tx.id)}`}
+24463-                                            </td>
+24464-                                            <td className="p-3 font-mono border-l border-gray-200 print:border-gray-300">
+24465-                                              {tx.jalaliDate}
+24466-                                            </td>
+24467-                                            <td className="p-3 border-l border-gray-200 print:border-gray-300">
+24468-                                              {accounts.find(
+24469-                                                (a) =>
+24470-                                                  a.id.toString() ===
+24471-                                                  tx.accountId?.toString(),
+24472-                                              )?.title ||
+24473-                                                cashboxes.find(
+24474-                                                  (c) =>
+24475-                                                    c.id.toString() ===
+24476-                                                    tx.cashboxId?.toString(),
+24477-                                                )?.name ||
+24478-                                                "نامشخص"}
+24479-                                            </td>
+24480-                                            <td
+24481-                                              className="p-3 text-left font-sans font-black text-gray-900"
+24482-                                              dir="ltr"
+24483-                                            >
+24484-                                              {formatCurrency(
+24485-                                                tx.linkedInvoices![
+24486-                                                  previewInvoiceData.id
+24487-                                                ],
+24488-                                              )}{" "}
+24489-                                              <span className="text-[9px] text-gray-400">
+24490-                                                {showInvoiceCurrency(
+24491-                                                  previewInvoiceData.currency,
+24492-                                                )}
+24493-                                              </span>
+24494-                                            </td>
+24495-                                          </tr>
+24496-                                        ))}
+24497-                                      </tbody>
+24498-                                      <tfoot className="bg-gray-50 print:bg-white border-t-2 border-gray-300">
+24499-                                        <tr>
+24500-                                          <td
+24501-                                            colSpan={3}
+24502-                                            className="p-3 text-left font-black text-gray-900 border-l border-gray-200 print:border-gray-300"
+24503-                                          >
+24504-                                            جمع کل دریافتی‌ها و پرداختی‌ها:
+24505-                                          </td>
+24506-                                          <td
+24507-                                            className="p-3 text-left font-sans font-black text-gray-900"
+24508-                                            dir="ltr"
+24509-                                          >
+24510-                                            {formatCurrency(
+24511-                                              previewInvoiceData.paidAmount ||
+24512-                                                0,
+24513-                                            )}{" "}
+24514-                                            <span className="text-[9px] text-gray-500">
+24515-                                              {showInvoiceCurrency(
+24516-                                                previewInvoiceData.currency,
+24517-                                              )}
+24518-                                            </span>
+24519-                                          </td>
+24520-                                        </tr>
+24521-                                        <tr>
+24522-                                          <td
+24523-                                            colSpan={3}
+24524-                                            className="p-3 text-left font-black text-rose-600 border-l border-gray-200 print:border-gray-300"
+24525-                                          >
+24526-                                            باقیمانده حساب (بدهی فاکتور):
+24527-                                          </td>
+24528-                                          <td
+24529-                                            className="p-3 text-left font-mono font-black text-rose-600"
+24530-                                            dir="ltr"
+24531-                                          >
+24532-                                            {formatCurrency(
+24533-                                              Math.max(
+24534-                                                (previewInvoiceData.totalAmount ||
+24535-                                                  0) -
+24536-                                                  (previewInvoiceData.paidAmount ||
+24537-                                                    0),
+24538-                                                0,
