@@ -1177,10 +1177,6 @@ export default function App() {
     "none" | "month" | "season"
   >("none");
 
-  useEffect(() => {
-    setInvoiceCurrentPage(1);
-  }, [activeTab, invoiceGroupMode, listFilter, invoiceSearchQuery, purchaseFilter]);
-
   const [previewInvoiceData, setPreviewInvoiceData] = useState<any>(null);
   const [previewReceiptData, setPreviewReceiptData] = useState<any>(null);
   const [editingReceipt, setEditingReceipt] = useState<any>(null);
@@ -1288,6 +1284,11 @@ export default function App() {
   const [purchaseFilter, setPurchaseFilter] = useState<
     "all" | "received" | "pending"
   >("all");
+
+  useEffect(() => {
+    setInvoiceCurrentPage(1);
+  }, [activeTab, invoiceGroupMode, listFilter, invoiceSearchQuery, purchaseFilter]);
+
   const [invoiceMode, setInvoiceMode] = useState<"auto" | "manual">("auto");
   const [invoiceTitle, setInvoiceTitle] = useState("فاکتور فروش کالا");
   const [warehouseWizardStep, setWarehouseWizardStep] = useState(1);
