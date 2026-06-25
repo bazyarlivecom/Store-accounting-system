@@ -96,8 +96,8 @@ import {
   showInvoiceCurrency,
   numToPersianWords,
 } from "./utils/format";
-import DatePickerModule from "react-multi-date-picker";
-const DatePicker = (DatePickerModule as any).default || DatePickerModule;
+import CustomDatePicker from "./components/ui/CustomDatePicker";
+const DatePicker = CustomDatePicker;
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import Select from "react-select";
@@ -180,6 +180,7 @@ import SystemLogs from "./components/admin/SystemLogs";
 import ProductCardModal from "./components/modals/ProductCardModal";
 import QuickPriceInquiry from "./components/inventory/QuickPriceInquiry";
 import CheckManagement from "./components/financial/CheckManagement";
+import PersonNotesAndAttachments from "./components/financial/PersonNotesAndAttachments";
 import InvoiceAllocation from "./components/financial/InvoiceAllocation";
 
 import SearchableSelect from "./components/ui/SearchableSelect";
@@ -966,6 +967,7 @@ export default function App() {
       " (" +
       getRoleName(p.role) +
       ")",
+    imageUrl: p.imageUrl,
     searchStr: `${p.alias || ""} ${p.name || ""} ${p.title || ""} ${p.firstName || ""} ${p.lastName || ""} ${p.phone || ""} ${p.nationalId || ""} ${p.personCode || ""} ${p.companyName || ""}`,
   });
 
@@ -1122,6 +1124,7 @@ export default function App() {
   const [ledgerPersonId, setLedgerPersonId] = useState<string | number | "">(
     "",
   );
+  const [ledgerTab, setLedgerTab] = useState<'transactions' | 'detailed' | 'items' | 'checks' | 'drafts' | 'notes'>('transactions');
   const [drawerPersonId, setDrawerPersonId] = useState<string | number | "">(
     "",
   );
@@ -1624,6 +1627,7 @@ export default function App() {
   const [newPersonFatherName, setNewPersonFatherName] = useState("");
   const [newPersonNationalId, setNewPersonNationalId] = useState("");
   const [newPersonAddress, setNewPersonAddress] = useState("");
+  const [newPersonImage, setNewPersonImage] = useState("");
   const [newPersonRole, setNewPersonRole] = useState<string>("");
   const [newPersonAccountingCode, setNewPersonAccountingCode] = useState("");
   const [newPersonPhone, setNewPersonPhone] = useState("");
@@ -2208,6 +2212,7 @@ export default function App() {
         nationalId: newPersonNationalId,
         accountingCode: newPersonAccountingCode,
         address: newPersonAddress,
+        imageUrl: newPersonImage,
         role: newPersonRole,
         phone: newPersonPhone,
         initialBalance: Number(newPersonInitialBalance || 0),
@@ -2238,6 +2243,7 @@ export default function App() {
       setNewPersonNationalId("");
       setNewPersonAccountingCode("");
       setNewPersonAddress("");
+      setNewPersonImage("");
       setNewPersonPhone("");
       setNewPersonGroup("");
       setNewPersonProvince("");
@@ -3183,6 +3189,7 @@ export default function App() {
     setNewPersonNationalId(p.nationalId || "");
     setNewPersonAccountingCode(p.accountingCode || "");
     setNewPersonAddress(p.address || "");
+    setNewPersonImage(p.imageUrl || "");
     setNewPersonPhone(p.phone || "");
     setNewPersonGroup(p.group || "");
     setNewPersonRole(p.role);
@@ -5865,6 +5872,7 @@ export default function App() {
                         label: p.alias || p.name,
                         subLabel: p.phone || undefined,
                         badge: getRoleName(p.role),
+                        imageUrl: p.imageUrl,
                       }))}
                       value={String(customerId || "")}
                       onChange={(val) => setCustomerId(val)}
@@ -6286,6 +6294,7 @@ export default function App() {
                         label: p.alias || p.name,
                         subLabel: p.phone || undefined,
                         badge: getRoleName(p.role),
+                        imageUrl: p.imageUrl,
                       }))}
                       value={customerId}
                       onChange={(val) => setCustomerId(val)}
@@ -6949,6 +6958,7 @@ export default function App() {
                         label: p.alias || p.name,
                         subLabel: p.phone || undefined,
                         badge: getRoleName(p.role),
+                        imageUrl: p.imageUrl,
                       }))}
                       value={customerId}
                       onChange={(val) => setCustomerId(val)}
@@ -7604,6 +7614,7 @@ export default function App() {
                         label: p.alias || p.name,
                         subLabel: p.phone || undefined,
                         badge: getRoleName(p.role),
+                        imageUrl: p.imageUrl,
                       }))}
                       value={customerId}
                       onChange={(val) => setCustomerId(val)}
@@ -8255,6 +8266,7 @@ export default function App() {
                         label: p.alias || p.name,
                         subLabel: p.phone || undefined,
                         badge: getRoleName(p.role),
+                        imageUrl: p.imageUrl,
                       }))}
                       value={customerId}
                       onChange={(val) => setCustomerId(val)}
@@ -10213,6 +10225,7 @@ export default function App() {
                           ? `کد: ${p.personCode} | ${getRoleName(p.role)}`
                           : getRoleName(p.role),
                         badge: getRoleName(p.role),
+                        imageUrl: p.imageUrl,
                       }))}
                       value={salaryPersonId}
                       onChange={(val) => setSalaryPersonId(val)}
@@ -12283,6 +12296,7 @@ export default function App() {
                                 setNewPersonNationalId("");
                                 setNewPersonAccountingCode("");
                                 setNewPersonAddress("");
+                                setNewPersonImage("");
                                 setNewPersonPhone("");
                                 setNewPersonRole("customer");
                                 setNewPersonInitialBalance("");
@@ -12510,13 +12524,22 @@ export default function App() {
                                       )}
                                     </td>
                                     <td className="py-4 px-6 font-semibold text-gray-900 border-r-2 border-transparent hover:border-indigo-500">
-                                      <div className="flex flex-col">
-                                        <span>{p.alias || p.name}</span>
-                                        {p.alias && p.alias !== p.name && (
-                                          <span className="text-[10px] text-gray-400 font-normal">
-                                            {p.name}
-                                          </span>
+                                      <div className="flex items-center gap-3">
+                                        {p.imageUrl ? (
+                                          <img src={p.imageUrl} alt={p.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+                                        ) : (
+                                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                            <User className="w-5 h-5 text-gray-400" />
+                                          </div>
                                         )}
+                                        <div className="flex flex-col">
+                                          <span>{p.alias || p.name}</span>
+                                          {p.alias && p.alias !== p.name && (
+                                            <span className="text-[10px] text-gray-400 font-normal">
+                                              {p.name}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                     </td>
                                     <td className="py-4 px-6 text-sm">
@@ -15747,7 +15770,54 @@ export default function App() {
                             </div>
                           </div>
 
+                          {/* Ledger Detail Tabs */}
+                          <div className="flex border-b border-gray-200 mb-6 gap-6 print:hidden">
+                            <button
+                              onClick={() => setLedgerTab("transactions")}
+                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "transactions" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                            >
+                              تراکنش‌ها
+                            </button>
+                            <button
+                              onClick={() => setLedgerTab("detailed")}
+                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "detailed" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                            >
+                              تراکنش‌ها با جزئیات
+                            </button>
+                            <button
+                              onClick={() => setLedgerTab("items")}
+                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "items" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                            >
+                              خرید و فروش کالا
+                            </button>
+                            <button
+                              onClick={() => setLedgerTab("checks")}
+                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "checks" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                            >
+                              چک‌ها
+                            </button>
+                            <button
+                              onClick={() => setLedgerTab("drafts")}
+                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "drafts" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                            >
+                              پیش‌نویس‌ها
+                            </button>
+                            <button
+                              onClick={() => setLedgerTab("notes")}
+                              className={`py-3 px-1 font-bold text-sm border-b-2 transition-all ${ledgerTab === "notes" ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                            >
+                              یادداشت‌ها و پیوست‌ها
+                            </button>
+                          </div>
+
                           {/* Ledger Detail Table */}
+                          {ledgerTab === 'notes' ? (
+                            <PersonNotesAndAttachments
+                              person={selectedPerson}
+                              onDataChange={fetchPersons}
+                              showNotification={showNotification}
+                            />
+                          ) : (
                           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden print:overflow-visible">
                             <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                               <h3 className="font-extrabold text-gray-800 flex items-center gap-2">
@@ -15788,7 +15858,18 @@ export default function App() {
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-100 font-medium">
-                                    {ledgerEntries.map((entry, index) => {
+                                    {ledgerEntries.filter((entry) => {
+                                      if (ledgerTab === 'transactions' || ledgerTab === 'detailed') {
+                                        return entry.rawItem?.type !== 'proforma';
+                                      } else if (ledgerTab === 'items') {
+                                        return entry.entryType === 'invoice' && entry.rawItem?.type !== 'proforma';
+                                      } else if (ledgerTab === 'checks') {
+                                        return entry.entryType === 'issued_check' || entry.entryType === 'received_check';
+                                      } else if (ledgerTab === 'drafts') {
+                                        return entry.rawItem?.type === 'proforma';
+                                      }
+                                      return true;
+                                    }).map((entry, index) => {
                                       const isDeb = entry.runningBalance > 0;
                                       const isCred = entry.runningBalance < 0;
                                       const isBalZero =
@@ -15903,6 +15984,21 @@ export default function App() {
                                               <p className="text-gray-700 text-[13px] print:text-xs whitespace-normal leading-loose font-medium break-words text-justify">
                                                 {toPersianDigits(entry.desc)}
                                               </p>
+                                              {ledgerTab === 'detailed' && entry.entryType === 'invoice' && entry.rawItem?.items && entry.rawItem.items.length > 0 && (
+                                                <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 w-full text-right shadow-sm">
+                                                  <div className="font-bold mb-1.5 text-gray-700">اقلام رویداد مالی (جزئیات کالا/خدمات):</div>
+                                                  <ul className="list-disc list-inside space-y-1.5 marker:text-gray-400">
+                                                    {entry.rawItem.items.map((item: any, i: number) => (
+                                                      <li key={i} className="flex justify-between items-center border-b border-gray-200/60 pb-1 last:border-0 last:pb-0">
+                                                        <span className="font-medium text-gray-800">{item.name}</span>
+                                                        <span className="font-sans font-bold text-gray-500 text-[11px]" dir="ltr">
+                                                          {toPersianDigits(item.quantity)} {item.unit || "عدد"}
+                                                        </span>
+                                                      </li>
+                                                    ))}
+                                                  </ul>
+                                                </div>
+                                              )}
                                             </div>
                                           </td>
                                           <td className="py-5 px-4 text-left align-top pt-6 print:py-3 print:px-2 print:pt-4">
@@ -15971,6 +16067,7 @@ export default function App() {
                               )}
                             </div>
                           </div>
+                          )}
                         </div>
                       );
                     })()}
@@ -20616,7 +20713,34 @@ export default function App() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           {personModalActiveTab === "basic" && (
                             <>
-                              <div className="w-full text-right md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                              <div className="w-full text-right md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-5 bg-slate-50 p-4 rounded-xl border border-slate-100 items-center">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <div className="relative w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-white">
+                                    {newPersonImage ? (
+                                      <img src={newPersonImage} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                      <User className="w-8 h-8 text-gray-300" />
+                                    )}
+                                    <input 
+                                      type="file" 
+                                      className="absolute inset-0 opacity-0 cursor-pointer"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        if (e.target.files && e.target.files.length > 0) {
+                                          const file = e.target.files[0];
+                                          const reader = new FileReader();
+                                          reader.onload = (event) => {
+                                            if (event.target && event.target.result) {
+                                              setNewPersonImage(event.target.result as string);
+                                            }
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-xs text-gray-500">تصویر پروفایل</span>
+                                </div>
                                 <div className="w-full text-right">
                                   <label className="block text-sm font-bold text-slate-700 mb-2">
                                     نوع موجودیت

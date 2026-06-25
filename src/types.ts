@@ -31,6 +31,7 @@ export type Person = {
   fatherName?: string;
   nationalId?: string;
   address?: string;
+  imageUrl?: string;
   personType: 'real' | 'legal';
   role: 'customer' | 'employee' | 'supplier'; 
   phone: string; 
@@ -39,6 +40,7 @@ export type Person = {
   cardNumber?: string;
   shebaNumber?: string;
   additionalNotes?: string;
+  attachments?: { name: string; url: string; size?: number; type?: string; }[];
   group?: string;
   province?: string;
   city?: string;
