@@ -1,0 +1,9 @@
+161:  addInvoice,
+1455:              const added = await addInvoice(payload);
+4372:      const addedInvoice = await addInvoice(payload as any);
+4419:        await addInvoice(autoDocPayload as any);
+4464:        await addInvoice(remittancePayload as any);
+4716:          await addInvoice(remittancePayload as any);
+4717:          await addInvoice(receiptPayload as any);
+4726:      const addedInvoice = await addInvoice(originalPayload);
+4770:      await addInvoice(remittancePayload as any);

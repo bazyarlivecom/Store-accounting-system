@@ -7,6 +7,7 @@ interface Option {
   label: string;
   subLabel?: React.ReactNode;
   badge?: string;
+  imageUrl?: string;
 }
 
 interface SearchableSelectProps {
@@ -71,9 +72,14 @@ export default function SearchableSelect({
           disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:border-indigo-400'
         }`}
       >
-        <span className={`truncate ${!selectedOption ? 'text-gray-400' : 'text-gray-900 font-medium'}`}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
+        <div className="flex items-center gap-2 truncate">
+          {selectedOption?.imageUrl && (
+             <img src={selectedOption.imageUrl} alt={selectedOption.label} className="w-5 h-5 rounded-full object-cover border border-slate-200" />
+          )}
+          <span className={`truncate ${!selectedOption ? 'text-gray-400' : 'text-gray-900 font-medium'}`}>
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -114,11 +120,16 @@ export default function SearchableSelect({
                           isSelected ? 'bg-indigo-50' : 'hover:bg-gray-50'
                         }`}
                       >
-                        <div className="flex flex-col">
-                           <span className={`text-sm ${isSelected ? 'font-bold text-indigo-900' : 'text-gray-800'}`}>
-                             {opt.label}
-                           </span>
-                           {opt.subLabel && <span className="text-xs text-gray-500 mt-0.5">{opt.subLabel}</span>}
+                        <div className="flex items-center gap-3">
+                           {opt.imageUrl && (
+                              <img src={opt.imageUrl} alt={opt.label} className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm" />
+                           )}
+                           <div className="flex flex-col">
+                             <span className={`text-sm ${isSelected ? 'font-bold text-indigo-900' : 'text-gray-800'}`}>
+                               {opt.label}
+                             </span>
+                             {opt.subLabel && <span className="text-xs text-gray-500 mt-0.5">{opt.subLabel}</span>}
+                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                            {opt.badge && (

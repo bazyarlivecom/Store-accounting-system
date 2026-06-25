@@ -1,52 +1,88 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/App.tsx', 'utf8');
+let code = fs.readFileSync('src/App.tsx', 'utf-8');
 
-const targetStr1 = `const receivedAmounts: Record<string, number> = {};
-        pastReceipts.forEach(receipt => {
-          if (receipt.items) {
-            receipt.items.forEach((rt: any) => {
-               if (!receivedAmounts[rt.productId]) receivedAmounts[rt.productId] = 0;
-               receivedAmounts[rt.productId] += Number(rt.quantity) || 0;
-            });
-          }
-        });
-        
-        const remainingItems = sourceInv.items.map((it: any) => {
-          const received = receivedAmounts[it.productId] || 0;
-          const remaining = (Number(it.quantity) || 0) - received;
-          return {
-            ...it,
-            id: Math.random().toString(36).substring(2, 9),
-            quantity: remaining > 0 ? remaining : 0,
-            warehouseId: '', // User will select destination warehouse
-          };
-        }).filter((it: any) => it.quantity > 0);`;
+const targetGetInvoiceNumber = `    invoices.forEach((inv) => {
+      // Determine this invoice type
+      let invType = "sale";
+      if (inv.type) invType = inv.type;
 
-const repStr1 = `const receivedAmounts: Record<string, number> = {};
-        pastReceipts.forEach(receipt => {
-          if (receipt.items) {
-            receipt.items.forEach((rt: any) => {
-               const key = rt.productId || rt.productName;
-               if (!key) return;
-               if (!receivedAmounts[key]) receivedAmounts[key] = 0;
-               receivedAmounts[key] += Number(rt.quantity) || 0;
-            });
-          }
-        });
-        
-        const remainingItems = sourceInv.items.map((it: any) => {
-          const key = it.productId || it.productName;
-          const received = key ? (receivedAmounts[key] || 0) : 0;
-          const remaining = (Number(it.quantity) || 0) - received;
-          return {
-            ...it,
-            id: Math.random().toString(36).substring(2, 9),
-            maxQuantity: remaining > 0 ? remaining : 0, // Save max
-            quantity: remaining > 0 ? remaining : 0,
-            warehouseId: '', // User will select destination warehouse
-          };
-        }).filter((it: any) => it.quantity > 0);`;
+      if (invType === typeKey && inv.invoiceNumber) {
+        let numStr = String(inv.invoiceNumber);
+        if (prefix && numStr.startsWith(prefix)) {
+          numStr = numStr.substring(prefix.length);
+        }
+        const num = parseInt(numStr.replace(/\\D/g, ""), 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });`;
 
-code = code.replace(targetStr1, repStr1);
-fs.writeFileSync('src/App.tsx', code);
-console.log('done modifying logic 1');
+const replacementGetInvoiceNumber = `    invoices.forEach((inv) => {
+      // Determine this invoice type
+      let invType = "sale";
+      if (inv.type) invType = inv.type;
+
+      if (invType === typeKey && inv.invoiceNumber) {
+        let numStr = String(inv.invoiceNumber);
+        if (numStr.startsWith("پیش‌نویس-")) {
+          numStr = numStr.substring("پیش‌نویس-".length);
+        }
+        if (prefix && numStr.startsWith(prefix)) {
+          numStr = numStr.substring(prefix.length);
+        }
+        const num = parseInt(numStr.replace(/\\D/g, ""), 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });`;
+
+code = code.replace(targetGetInvoiceNumber, replacementGetInvoiceNumber);
+
+const targetFinalInvoiceNumber = `    const finalInvoiceNumber =
+      (invoiceMode === "auto" && !autoSaveInvoiceId) ||
+      String(invoiceNumber || "").startsWith("پیش‌نویس-") ||
+      !invoiceNumber
+        ? getInvoiceNumber(invoiceType)
+        : invoiceNumber;`;
+
+const replacementFinalInvoiceNumber = `    let finalInvoiceNumber = invoiceNumber;
+    if ((invoiceMode === "auto" && !autoSaveInvoiceId && !editingInvoiceId) || !invoiceNumber) {
+      finalInvoiceNumber = getInvoiceNumber(invoiceType);
+    } else if (String(invoiceNumber || "").startsWith("پیش‌نویس-")) {
+      finalInvoiceNumber = String(invoiceNumber || "").replace("پیش‌نویس-", "");
+    }
+
+    if (isDraft && !finalInvoiceNumber.startsWith("پیش‌نویس-")) {
+      finalInvoiceNumber = "پیش‌نویس-" + finalInvoiceNumber;
+    }`;
+
+code = code.replace(targetFinalInvoiceNumber, replacementFinalInvoiceNumber);
+
+const targetCustomPayload = `          invoiceNumber:
+            customPayload.invoiceNumber &&
+            (customPayload.invoiceNumber.includes("خودکار") ||
+              customPayload.invoiceNumber.includes("تولید خودکار") ||
+              customPayload.invoiceNumber.includes("پیش‌نویس"))
+              ? getInvoiceNumber(customPayload.type)
+              : customPayload.invoiceNumber ||
+                getInvoiceNumber(customPayload.type),`;
+
+const replacementCustomPayload = `          invoiceNumber: (function() {
+            let num = customPayload.invoiceNumber || getInvoiceNumber(customPayload.type);
+            if (num.includes("خودکار") || num.includes("تولید خودکار")) {
+              num = getInvoiceNumber(customPayload.type);
+            } else if (num.startsWith("پیش‌نویس-")) {
+              num = num.replace("پیش‌نویس-", "");
+            }
+            if (isDraft && !num.startsWith("پیش‌نویس-")) {
+              num = "پیش‌نویس-" + num;
+            }
+            return num;
+          })(),`;
+
+code = code.replace(targetCustomPayload, replacementCustomPayload);
+
+fs.writeFileSync('src/App.tsx', code, 'utf-8');
+console.log("Replaced logic.");

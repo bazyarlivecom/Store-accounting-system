@@ -1,0 +1,58 @@
+import Barcode from "react-barcode";
+import BarcodeScannerModal from "./components/modals/BarcodeScannerModal";
+const FastBarcodeScanner = ({ onScan }: { onScan: (code: string) => void }) => {
+  const [printingBarcodeProduct, setPrintingBarcodeProduct] = useState<
+  const [showProductBarcodesList, setShowProductBarcodesList] = useState(false);
+  const handleBarcodeScan = (code: string) => {
+  const [isGenerateBarcodesModalOpen, setIsGenerateBarcodesModalOpen] = useState(false);
+  const [barcodePrefix, setBarcodePrefix] = useState("PRD-");
+  const [barcodeLength, setBarcodeLength] = useState(6);
+  const [barcodeStartNumber, setBarcodeStartNumber] = useState(1000);
+  const [newProductBarcode, setNewProductBarcode] = useState("");
+        barcode: newProductBarcode,
+      setNewProductBarcode("");
+  const handleGenerateBarcodes = async () => {
+      setIsGenerateBarcodesModalOpen(false);
+    const existingBarcodes = new Set(products.map(p => p.barcode).filter(Boolean));
+        let newBarcode = "";
+           newBarcode = `${barcodePrefix}${String(currentNumber).padStart(Number(barcodeLength), "0")}`;
+        } while (existingBarcodes.has(newBarcode));
+        existingBarcodes.add(newBarcode);
+        await updateProduct(p.id.toString(), { ...p, barcode: newBarcode });
+      setIsGenerateBarcodesModalOpen(false);
+    setNewProductBarcode(p.barcode || "");
+    setNewProductBarcode("");
+  const handleFastBarcodeScan = (code: string) => {
+                    <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                          onClick={() => setShowProductBarcodesList(true)}
+                            setNewProductBarcode("");
+                                              setPrintingBarcodeProduct(p)
+              {showProductBarcodesList && (
+                        onClick={() => setShowProductBarcodesList(false)}
+                                      <Barcode
+                <BarcodeScannerModal
+                  onScan={handleBarcodeScan}
+              {printingBarcodeProduct && (
+                        onClick={() => setPrintingBarcodeProduct(null)}
+                          {printingBarcodeProduct.name}
+                          {printingBarcodeProduct.barcode &&
+                          printingBarcodeProduct.barcode.length > 0 ? (
+                            <Barcode
+                              value={printingBarcodeProduct.barcode}
+                          ) : printingBarcodeProduct.code &&
+                            printingBarcodeProduct.code.length > 0 ? (
+                            <Barcode
+                              value={printingBarcodeProduct.code}
+                              ? formatNumber(printingBarcodeProduct.price)
+                              : printingBarcodeProduct.price}{" "}
+                              ? formatNumber(printingBarcodeProduct.price)
+                              : printingBarcodeProduct.price}{" "}
+                        onClick={() => setPrintingBarcodeProduct(null)}
+                            printingBarcodeProduct.barcode ||
+                            printingBarcodeProduct.code
+                                    value={newProductBarcode}
+                                      setNewProductBarcode(e.target.value)

@@ -71,6 +71,7 @@ import { Building,
   MapPin,
   PlusCircle,
   MinusCircle,
+  Barcode as BarcodeIcon
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -1599,6 +1600,11 @@ export default function App() {
     }
   };
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isGenerateBarcodesModalOpen, setIsGenerateBarcodesModalOpen] = useState(false);
+  const [barcodeFormat, setBarcodeFormat] = useState("prefix_serial");
+  const [barcodePrefix, setBarcodePrefix] = useState("PRD-");
+  const [barcodeLength, setBarcodeLength] = useState(6);
+  const [barcodeStartNumber, setBarcodeStartNumber] = useState(1000);
   const [isGroupPriceModalOpen, setIsGroupPriceModalOpen] = useState(false);
   const [groupUpdateType, setGroupUpdateType] = useState<"category" | "single">(
     "category",
@@ -2136,6 +2142,66 @@ export default function App() {
       await fetchProducts();
     } catch (error) {
       console.error("Error deleting product", error);
+    }
+  };
+
+  const handleGenerateBarcodes = async () => {
+    const productsToUpdate = products.filter(p => !p.barcode || p.barcode.trim() === "");
+    if (productsToUpdate.length === 0) {
+      customAlert("تمامی کالاها دارای بارکد هستند.");
+      setIsGenerateBarcodesModalOpen(false);
+      return;
+    }
+
+    let currentNumber = Number(barcodeStartNumber) || 1000;
+    
+    // To ensure unique barcodes with what's already existing:
+    const existingBarcodes = new Set(products.map(p => p.barcode).filter(Boolean));
+
+    let updatedCount = 0;
+    setSubmittingProduct(true);
+    try {
+      for (const p of productsToUpdate) {
+        let newBarcode = "";
+        let attempts = 0;
+        do {
+          if (barcodeFormat === "prefix_serial") {
+            newBarcode = `${barcodePrefix}${String(currentNumber).padStart(Number(barcodeLength), "0")}`;
+            currentNumber++;
+          } else if (barcodeFormat === "numeric_only") {
+            newBarcode = `${String(currentNumber).padStart(Number(barcodeLength), "0")}`;
+            currentNumber++;
+          } else if (barcodeFormat === "date_prefix") {
+            const yy = new Date().getFullYear().toString().substring(2);
+            const mm = String(new Date().getMonth() + 1).padStart(2, "0");
+            newBarcode = `${yy}${mm}-${String(currentNumber).padStart(Number(barcodeLength), "0")}`;
+            currentNumber++;
+          } else if (barcodeFormat === "random_alphanumeric") {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let randStr = "";
+            for (let i = 0; i < Number(barcodeLength); i++) {
+              randStr += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            newBarcode = `${barcodePrefix}${randStr}`;
+          }
+          attempts++;
+          if (attempts > 1000) {
+            newBarcode += "-" + Math.floor(Math.random() * 1000);
+          }
+        } while (existingBarcodes.has(newBarcode));
+
+        existingBarcodes.add(newBarcode);
+        await updateProduct(p.id.toString(), { ...p, barcode: newBarcode });
+        updatedCount++;
+      }
+      showNotification(`${updatedCount} کالا با موفقیت بارکدگذاری شدند.`, "success");
+    } catch (e) {
+      console.error(e);
+      showNotification("خطا در بارکدگذاری کالاها", "error");
+    } finally {
+      setSubmittingProduct(false);
+      setIsGenerateBarcodesModalOpen(false);
+      fetchProducts();
     }
   };
 
@@ -4089,6 +4155,9 @@ export default function App() {
 
       if (invType === typeKey && inv.invoiceNumber) {
         let numStr = String(inv.invoiceNumber);
+        if (numStr.startsWith("پیش‌نویس-")) {
+          numStr = numStr.substring("پیش‌نویس-".length);
+        }
         if (prefix && numStr.startsWith(prefix)) {
           numStr = numStr.substring(prefix.length);
         }
@@ -4116,12 +4185,16 @@ export default function App() {
       (customPayload &&
         (customPayload.isDraft || customPayload.status === "draft"));
 
-    const finalInvoiceNumber =
-      (invoiceMode === "auto" && !autoSaveInvoiceId) ||
-      String(invoiceNumber || "").startsWith("پیش‌نویس-") ||
-      !invoiceNumber
-        ? getInvoiceNumber(invoiceType)
-        : invoiceNumber;
+    let finalInvoiceNumber = invoiceNumber;
+    if ((invoiceMode === "auto" && !autoSaveInvoiceId && !editingInvoiceId) || !invoiceNumber) {
+      finalInvoiceNumber = getInvoiceNumber(invoiceType);
+    } else if (String(invoiceNumber || "").startsWith("پیش‌نویس-")) {
+      finalInvoiceNumber = String(invoiceNumber || "").replace("پیش‌نویس-", "");
+    }
+
+    if (isDraft && !finalInvoiceNumber.startsWith("پیش‌نویس-")) {
+      finalInvoiceNumber = "پیش‌نویس-" + finalInvoiceNumber;
+    }
 
     if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
       customAlert(
@@ -4200,14 +4273,18 @@ export default function App() {
           ...customPayload,
           isDraft,
           status: isDraft ? "draft" : "final",
-          invoiceNumber:
-            customPayload.invoiceNumber &&
-            (customPayload.invoiceNumber.includes("خودکار") ||
-              customPayload.invoiceNumber.includes("تولید خودکار") ||
-              customPayload.invoiceNumber.includes("پیش‌نویس"))
-              ? getInvoiceNumber(customPayload.type)
-              : customPayload.invoiceNumber ||
-                getInvoiceNumber(customPayload.type),
+          invoiceNumber: (function() {
+            let num = customPayload.invoiceNumber || getInvoiceNumber(customPayload.type);
+            if (num.includes("خودکار") || num.includes("تولید خودکار")) {
+              num = getInvoiceNumber(customPayload.type);
+            } else if (num.startsWith("پیش‌نویس-")) {
+              num = num.replace("پیش‌نویس-", "");
+            }
+            if (isDraft && !num.startsWith("پیش‌نویس-")) {
+              num = "پیش‌نویس-" + num;
+            }
+            return num;
+          })(),
         }
       : {
           invoiceNumber: finalInvoiceNumber,
@@ -4968,7 +5045,7 @@ export default function App() {
     const saleReturnQtys: Record<string, number> = {};
 
     invoices.forEach((inv) => {
-      if (!inv.items) return;
+      if (!inv.items || inv.isDraft || inv.status === "draft" || inv.type === "proforma") return;
       inv.items.forEach((i: any) => {
         if (i.productId?.toString() === productId.toString()) {
           let q = Number(i.quantity) || 0;
@@ -5114,7 +5191,9 @@ export default function App() {
           i.customerId?.toString() === personId.toString() &&
           i.type !== "warehouse_receipt" &&
           i.type !== "warehouse_remittance" &&
-          i.type !== "proforma",
+          i.type !== "proforma" &&
+          !i.isDraft &&
+          i.status !== "draft",
       )
       .forEach((inv) => {
         const amount =
@@ -9742,6 +9821,22 @@ export default function App() {
                       }}
                       options={persons.map(mapPersonToOption) as any}
                       filterOption={customPersonFilter}
+                      formatOptionLabel={(option: any) => (
+                        <div className="flex items-center gap-3">
+                          {option.imageUrl ? (
+                            <img
+                              src={option.imageUrl}
+                              alt={option.label}
+                              className="w-8 h-8 rounded-full object-cover shadow-sm border border-slate-200"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center">
+                              <User className="w-4 h-4 text-slate-400" />
+                            </div>
+                          )}
+                          <span className="font-bold text-slate-700">{option.label}</span>
+                        </div>
+                      )}
                       placeholder="انتخاب یا جستجوی نام شخص..."
                       noOptionsMessage={() => "شخصی یافت نشد"}
                       isClearable
@@ -10098,6 +10193,9 @@ export default function App() {
                     (() => {
                       const personInvoices = invoices.filter(
                         (inv) =>
+                          !inv.isDraft &&
+                          inv.status !== "draft" &&
+                          inv.type !== "proforma" &&
                           inv.customerId?.toString() ===
                             receiptPersonId.toString() &&
                           inv.paymentStatus !== "paid" &&
@@ -11965,71 +12063,77 @@ export default function App() {
                           محصولات و سرویس‌ها
                         </p>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleGenerateDemoData}
-                          disabled={submittingProduct}
-                          className="px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold"
-                        >
-                          <Database className="w-4 h-4" />
-                          ایجاد دیتای نمونه
-                        </button>
-                        <div className="flex gap-1 border-l border-gray-200 pl-2 ml-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+                           <button
+                             onClick={handleExportProductsData}
+                             className="px-3 py-1.5 hover:bg-slate-50 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-xs font-bold"
+                             title="خروجی کالاها به فایل اکسل"
+                           >
+                             <ArrowDownToLine className="w-4 h-4" />
+                             صدور اکسل
+                           </button>
+                           <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                           <button
+                             onClick={handleImportProductsData}
+                             className="px-3 py-1.5 hover:bg-slate-50 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-xs font-bold"
+                             title="ورود اطلاعات کالاها از فایل اکسل"
+                           >
+                             <ArrowUpFromLine className="w-4 h-4" />
+                             ورود اکسل
+                           </button>
+                        </div>
+
+                        <div className="flex gap-2 border-r border-gray-200 pr-2 mr-1">
                           <button
-                            onClick={handleExportProductsData}
-                            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
-                            title="خروجی کالاها به فایل اکسل"
+                            onClick={() => setIsGenerateBarcodesModalOpen(true)}
+                            className="px-3 py-2 bg-white hover:bg-indigo-50 text-indigo-700 rounded-xl flex items-center gap-1.5 transition-colors text-xs font-bold border border-indigo-200 shadow-sm"
                           >
-                            <ArrowDownToLine className="w-4 h-4" />
-                            صدور
+                            <BarcodeIcon className="w-4 h-4" />
+                            تولید گروهی بارکد
                           </button>
+
                           <button
-                            onClick={handleImportProductsData}
-                            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors text-sm font-bold border border-slate-200"
-                            title="ورود اطلاعات کالاها از فایل اکسل"
+                            onClick={() => setShowProductBarcodesList(true)}
+                            className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl flex items-center gap-1.5 transition-colors text-xs font-bold border border-slate-200 shadow-sm"
                           >
-                            <ArrowUpFromLine className="w-4 h-4" />
-                            ورود
+                            <Printer className="w-4 h-4" />
+                            چاپ بارکد
+                          </button>
+                          
+                          <button
+                            onClick={() => setIsGroupPriceModalOpen(true)}
+                            className="px-3 py-2 bg-white hover:bg-emerald-50 text-emerald-700 rounded-xl flex items-center gap-1.5 transition-colors text-xs font-bold border border-emerald-200 shadow-sm"
+                          >
+                            <Percent className="w-4 h-4" />
+                            بروزرسانی قیمت
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setEditingProductId(null);
+                              setNewProductName("");
+                              setNewProductPrice("");
+                              setNewProductType("product");
+                              setNewProductCategoryId("");
+                              setNewProductCode("");
+                              setNewProductBarcode("");
+                              setNewProductPurchasePrice("");
+                              setNewProductStock("");
+                              setNewProductMinStock("");
+                              setNewProductUnit("");
+                              setNewProductSecondaryUnit("");
+                              setNewProductUnitRatio("");
+                              setNewProductDesc("");
+                              setProductFormTab("general");
+                              setIsProductModalOpen(true);
+                            }}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-colors text-sm font-bold shadow-sm"
+                          >
+                            <Plus className="w-4 h-4" />
+                            ثبت کالا/خدمات
                           </button>
                         </div>
-                        <button
-                          onClick={() => setShowProductBarcodesList(true)}
-                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg flex items-center gap-2 transition-colors text-sm font-bold border border-slate-200"
-                        >
-                          <Printer className="w-4 h-4" />
-                          چاپ بارکد کالاها
-                        </button>
-                        <button
-                          onClick={() => setIsGroupPriceModalOpen(true)}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
-                        >
-                          <Percent className="w-4 h-4" />
-                          بروزرسانی گروهی قیمت
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingProductId(null);
-                            setNewProductName("");
-                            setNewProductPrice("");
-                            setNewProductType("product");
-                            setNewProductCategoryId("");
-                            setNewProductCode("");
-                            setNewProductBarcode("");
-                            setNewProductPurchasePrice("");
-                            setNewProductStock("");
-                            setNewProductMinStock("");
-                            setNewProductUnit("");
-                            setNewProductSecondaryUnit("");
-                            setNewProductUnitRatio("");
-                            setNewProductDesc("");
-                            setProductFormTab("general");
-                            setIsProductModalOpen(true);
-                          }}
-                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm font-medium"
-                        >
-                          <Plus className="w-4 h-4" />
-                          ثبت جدید
-                        </button>
                       </div>
                     </div>
 
@@ -12040,71 +12144,154 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Product Search & Filter */}
-                    <div className="mx-6 mt-6 space-y-4">
-                      <div className="relative">
-                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                          <Search className="w-5 h-5 text-gray-400" />
+                    {/* Premium Product Statistics Cards */}
+                    <div className="mx-6 mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100/50 flex items-center justify-center text-indigo-600">
+                            <Package className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-400">کل کالاها و خدمات</p>
+                            <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                              {products.length.toLocaleString("fa-IR")}
+                            </h4>
+                          </div>
                         </div>
-                        <input
-                          type="text"
-                          className="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-colors text-sm text-gray-950 font-bold"
-                          placeholder="جستجوی پیشرفته کالا (نام، کد، بارکد)..."
-                          value={productSearchTerm}
-                          onChange={(e) => setProductSearchTerm(e.target.value)}
-                        />
+                        <div className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg font-bold">
+                          {products.filter(p => p.type === "service").length.toLocaleString("fa-IR")} خدمات
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1.5 bg-slate-50/50 p-1.5 rounded-2xl border border-slate-100 flex-row-reverse justify-end">
-                        <span className="text-xs font-black text-slate-500 flex items-center gap-1 pl-2">
-                          <Tag className="w-3.5 h-3.5 text-indigo-500" />
-                          فیلتر گروه:
-                        </span>
-                        <button
-                          onClick={() => setSelectedProductCategory("all")}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer ${
-                            selectedProductCategory === "all"
-                              ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                              : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
-                          }`}
-                        >
-                          همه گروه‌ها
-                        </button>
 
-                        {productCategories.slice(0, 4).map((cat) => (
+                      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100/50 flex items-center justify-center text-amber-600">
+                            <BarcodeIcon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-400">کالاهای بدون بارکد</p>
+                            <h4 className="text-lg font-black text-amber-600 mt-0.5 animate-pulse">
+                              {products.filter(p => !p.barcode || p.barcode.trim() === "").length.toLocaleString("fa-IR")}
+                            </h4>
+                          </div>
+                        </div>
+                        {products.filter(p => !p.barcode || p.barcode.trim() === "").length > 0 && (
                           <button
-                            key={cat.id}
-                            onClick={() => setSelectedProductCategory(cat.id.toString())}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border-none cursor-pointer ${
-                              selectedProductCategory === cat.id.toString()
-                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                                : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                            onClick={() => setIsGenerateBarcodesModalOpen(true)}
+                            className="text-[10px] bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-xl font-bold transition-all shadow-sm shadow-amber-500/10 cursor-pointer"
+                          >
+                            تولید بارکد
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100/50 flex items-center justify-center text-emerald-600">
+                            <Tag className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-400 font-bold">گروه‌های تعریف‌شده</p>
+                            <h4 className="text-lg font-black text-slate-800 mt-0.5">
+                              {productCategories.length.toLocaleString("fa-IR")}
+                            </h4>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab("product_categories")}
+                          className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-xl font-bold transition-all cursor-pointer"
+                        >
+                          مدیریت گروه‌ها
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Beautifully Crafted Advanced Filters and Search Box */}
+                    <div className="mx-6 mt-6 p-5 rounded-2xl border border-slate-100 bg-slate-50/30 shadow-sm space-y-4">
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                          <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                            <Search className="w-5 h-5 text-indigo-500/80" />
+                          </div>
+                          <input
+                            type="text"
+                            className="w-full pl-10 pr-11 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 bg-white text-slate-900 font-bold text-sm transition-all placeholder:text-slate-400 placeholder:font-normal"
+                            placeholder="جستجوی پیشرفته بر اساس نام، بارکد، کد کالا یا توضیحات..."
+                            value={productSearchTerm}
+                            onChange={(e) => setProductSearchTerm(e.target.value)}
+                          />
+                          {productSearchTerm && (
+                            <button
+                              onClick={() => setProductSearchTerm("")}
+                              className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-slate-600 text-xs font-bold"
+                            >
+                              پاک کردن
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100/80">
+                        <span className="text-xs font-black text-slate-500 flex items-center gap-1.5 ml-2">
+                          <Tag className="w-3.5 h-3.5 text-indigo-500" />
+                          فیلتر بر اساس گروه کالا:
+                        </span>
+
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          <button
+                            onClick={() => setSelectedProductCategory("all")}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                              selectedProductCategory === "all"
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/10"
+                                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
                             }`}
                           >
-                            {cat.name}
+                            همه کالاها
                           </button>
-                        ))}
 
-                        {productCategories.length > 4 && (
-                          <select
-                            value={
-                              selectedProductCategory !== "all" &&
-                              productCategories.find((c) => c.id.toString() === selectedProductCategory)
-                                ? selectedProductCategory
-                                : ""
-                            }
-                            onChange={(e) => {
-                              if (e.target.value) setSelectedProductCategory(e.target.value);
-                            }}
-                            className="bg-transparent border-none font-bold text-xs text-slate-600 rounded-xl px-2 py-1.5 focus:ring-0 cursor-pointer outline-none hover:text-slate-900"
-                          >
-                            <option value="" disabled>بیشتر...</option>
-                            {productCategories.slice(4).map((cat) => (
-                              <option key={cat.id} value={cat.id.toString()}>
-                                {cat.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                          {productCategories.slice(0, 5).map((cat) => (
+                            <button
+                              key={cat.id}
+                              onClick={() => setSelectedProductCategory(cat.id.toString())}
+                              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                selectedProductCategory === cat.id.toString()
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/10"
+                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                              }`}
+                            >
+                              {cat.name}
+                            </button>
+                          ))}
+
+                          {productCategories.length > 5 && (
+                            <div className="relative">
+                              <select
+                                value={
+                                  selectedProductCategory !== "all" &&
+                                  productCategories.find((c) => c.id.toString() === selectedProductCategory)
+                                    ? selectedProductCategory
+                                    : ""
+                                }
+                                onChange={(e) => {
+                                  if (e.target.value) setSelectedProductCategory(e.target.value);
+                                }}
+                                className="appearance-none bg-white border border-slate-200 font-bold text-xs text-slate-600 rounded-xl pl-8 pr-4 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer outline-none hover:bg-slate-50 hover:text-slate-900 transition-all"
+                              >
+                                <option value="" disabled>سایر گروه‌ها...</option>
+                                {productCategories.slice(5).map((cat) => (
+                                  <option key={cat.id} value={cat.id.toString()}>
+                                    {cat.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -14141,8 +14328,7 @@ export default function App() {
                             {formatNumber(
                               invoices
                                 .filter(
-                                  (inv) =>
-                                    (inv.type === "sale" ||
+                                  (inv) => (!inv.isDraft && inv.status !== "draft") && (inv.type === "sale" ||
                                       inv.type === "sale_return") &&
                                     (!reportDateRange ||
                                       reportDateRange.length !== 2 ||
@@ -14186,8 +14372,7 @@ export default function App() {
                           <span className="text-xs text-indigo-600 font-bold mt-1 block">
                             {formatNumber(
                               invoices.filter(
-                                (inv) =>
-                                  inv.type === "sale" &&
+                                (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "sale" &&
                                   (!reportDateRange ||
                                     reportDateRange.length !== 2 ||
                                     (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -14225,8 +14410,7 @@ export default function App() {
                             {formatNumber(
                               invoices
                                 .filter(
-                                  (inv) =>
-                                    (inv.type === "purchase" ||
+                                  (inv) => (!inv.isDraft && inv.status !== "draft") && (inv.type === "purchase" ||
                                       inv.type === "purchase_return") &&
                                     (!reportDateRange ||
                                       reportDateRange.length !== 2 ||
@@ -14270,8 +14454,7 @@ export default function App() {
                           <span className="text-xs text-amber-600 font-bold mt-1 block">
                             {formatNumber(
                               invoices.filter(
-                                (inv) =>
-                                  inv.type === "purchase" &&
+                                (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "purchase" &&
                                   (!reportDateRange ||
                                     reportDateRange.length !== 2 ||
                                     (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -14299,8 +14482,7 @@ export default function App() {
                       {(() => {
                         const salesValRaw = invoices
                           .filter(
-                            (inv) =>
-                              inv.type === "sale" &&
+                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "sale" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -14330,8 +14512,7 @@ export default function App() {
                           );
                         const salesReturnVal = invoices
                           .filter(
-                            (inv) =>
-                              inv.type === "sale_return" &&
+                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "sale_return" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -14364,8 +14545,7 @@ export default function App() {
                          */
                         const purchasesValRaw = invoices
                           .filter(
-                            (inv) =>
-                              inv.type === "purchase" &&
+                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "purchase" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -14395,8 +14575,7 @@ export default function App() {
                           );
                         const purchasesReturnVal = invoices
                           .filter(
-                            (inv) =>
-                              inv.type === "purchase_return" &&
+                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "purchase_return" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -15040,6 +15219,22 @@ export default function App() {
                           }
                           options={persons.map(mapPersonToOption) as any}
                           filterOption={customPersonFilter}
+                          formatOptionLabel={(option: any) => (
+                            <div className="flex items-center gap-3">
+                              {option.imageUrl ? (
+                                <img
+                                  src={option.imageUrl}
+                                  alt={option.label}
+                                  className="w-8 h-8 rounded-full object-cover shadow-sm border border-slate-200"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-violet-50 border border-violet-100 flex items-center justify-center">
+                                  <User className="w-4 h-4 text-violet-400" />
+                                </div>
+                              )}
+                              <span className="font-bold text-slate-700">{option.label}</span>
+                            </div>
+                          )}
                           placeholder="انتخاب یا جستجوی نام شخص..."
                           noOptionsMessage={() => "شخصی یافت نشد"}
                           isClearable
@@ -18698,6 +18893,168 @@ export default function App() {
                       </table>
                     </div>
                   </div>
+                </div>
+              )}
+
+                            {isGenerateBarcodesModalOpen && (
+                <div
+                  className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+                  dir="rtl"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white rounded-3xl w-full max-w-lg flex flex-col shadow-2xl border border-slate-100"
+                  >
+                    <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
+                      <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800">
+                        <BarcodeIcon className="w-5 h-5 text-indigo-600 animate-pulse" />{" "}
+                        تولید خودکار بارکد برای کالاها
+                      </h3>
+                      <button
+                        onClick={() => setIsGenerateBarcodesModalOpen(false)}
+                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="p-6 space-y-6 overflow-y-auto max-h-[85vh]">
+                      <div className="bg-indigo-50/70 text-indigo-800 text-xs font-medium p-4 rounded-2xl leading-relaxed border border-indigo-100/50 flex items-start gap-2.5">
+                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">ℹ</div>
+                        <span>
+                          این بخش برای تمام کالاهایی که فاقد بارکد هستند، بر اساس فرمت انتخابی شما بارکد کاملاً یکتا و خودکار ایجاد می‌کند.
+                        </span>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-2">
+                            انتخاب فرمت بارکدساز
+                          </label>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            {[
+                              { id: "prefix_serial", label: "پیشوند + سریال", desc: "PRD-000100" },
+                              { id: "numeric_only", label: "فقط عددی", desc: "10000001" },
+                              { id: "date_prefix", label: "سال و ماه + سریال", desc: "2606-0001" },
+                              { id: "random_alphanumeric", label: "کاراکتر تصادفی", desc: "PRD-X7H2K" }
+                            ].map((fmt) => (
+                              <button
+                                key={fmt.id}
+                                type="button"
+                                onClick={() => setBarcodeFormat(fmt.id)}
+                                className={`p-3 rounded-2xl border text-right transition-all cursor-pointer flex flex-col gap-1 ${
+                                  barcodeFormat === fmt.id
+                                    ? "bg-indigo-50/80 border-indigo-500 ring-2 ring-indigo-500/20"
+                                    : "bg-white border-slate-200 hover:bg-slate-50"
+                                }`}
+                              >
+                                <span className={`text-xs font-black ${barcodeFormat === fmt.id ? "text-indigo-900" : "text-slate-800"}`}>
+                                  {fmt.label}
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-400 font-bold" dir="ltr">
+                                  {fmt.desc}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {(barcodeFormat === "prefix_serial" || barcodeFormat === "random_alphanumeric") && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                          >
+                            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                              پیشوند بارکد (Prefix)
+                            </label>
+                            <input
+                              type="text"
+                              value={barcodePrefix}
+                              onChange={(e) => setBarcodePrefix(e.target.value)}
+                              dir="ltr"
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 text-slate-900 font-sans font-bold"
+                              placeholder="مثال: PRD-"
+                            />
+                          </motion.div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          {barcodeFormat !== "random_alphanumeric" && (
+                            <div>
+                              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                                شروع شماره سریال از
+                              </label>
+                              <input
+                                type="number"
+                                value={barcodeStartNumber}
+                                onChange={(e) => setBarcodeStartNumber(Number(e.target.value))}
+                                dir="ltr"
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 text-slate-900 font-sans font-bold"
+                              />
+                            </div>
+                          )}
+
+                          <div className={barcodeFormat === "random_alphanumeric" ? "col-span-2" : ""}>
+                            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                              {barcodeFormat === "random_alphanumeric" ? "طول کاراکترهای تصادفی" : "طول سریال عددی (Padding)"}
+                            </label>
+                            <input
+                              type="number"
+                              value={barcodeLength}
+                              onChange={(e) => setBarcodeLength(Number(e.target.value))}
+                              dir="ltr"
+                              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 text-slate-900 font-sans font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 p-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/20 flex flex-col items-center justify-center gap-2">
+                           <span className="text-[11px] font-bold text-slate-500">پیش‌نمایش اولین بارکد تولیدی با این فرمت:</span>
+                           <span className="text-xl font-black font-mono text-indigo-700 tracking-widest" dir="ltr">
+                              {(() => {
+                                if (barcodeFormat === "prefix_serial") {
+                                  return `${barcodePrefix}${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
+                                } else if (barcodeFormat === "numeric_only") {
+                                  return `${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
+                                } else if (barcodeFormat === "date_prefix") {
+                                  const yy = new Date().getFullYear().toString().substring(2);
+                                  const mm = String(new Date().getMonth() + 1).padStart(2, "0");
+                                  return `${yy}${mm}-${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
+                                } else {
+                                  return `${barcodePrefix}${"X".repeat(barcodeLength)}`;
+                                }
+                              })()}
+                           </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 rounded-b-3xl">
+                      <button
+                        onClick={() => setIsGenerateBarcodesModalOpen(false)}
+                        className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-all font-bold text-xs shadow-sm cursor-pointer"
+                        disabled={submittingProduct}
+                      >
+                        انصراف
+                      </button>
+                      <button
+                        onClick={handleGenerateBarcodes}
+                        disabled={submittingProduct}
+                        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-bold text-xs shadow-md shadow-indigo-600/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                      >
+                        {submittingProduct ? (
+                           <>
+                             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                             در حال پردازش...
+                           </>
+                        ) : (
+                          "تولید و تخصیص بارکدها"
+                        )}
+                      </button>
+                    </div>
+                  </motion.div>
                 </div>
               )}
 
