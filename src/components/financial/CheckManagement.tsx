@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ca
 const DatePicker = (DatePickerModule as any).default || DatePickerModule;
 import { 
   CreditCard, Plus, Edit2, Trash2, CheckCircle, Clock, X, Save, 
-  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart as BarChartIcon, ChevronDown, Printer, History, Activity, User
+  ArrowDownLeft, ArrowUpRight, Calendar, Building2, HelpCircle, AlertTriangle, Search, TrendingUp, DollarSign, Percent, BarChart as BarChartIcon, ChevronDown, Printer, History, Activity, User, Send
 } from 'lucide-react';
 import { 
   getCheckbooks, addCheckbook, updateCheckbook, deleteCheckbook, 
@@ -17,7 +17,7 @@ import {
 } from '../../services/dataService';
 import { Checkbook, IssuedCheck, ReceivedCheck, Account, Person } from '../../types';
 
-export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange, currentUser = 'کاربر سیستم' }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts', onDataChange?: () => void, currentUser?: string }) {
+export default function CheckManagement({ showNotification, activeTab = 'checkbooks', onDataChange, currentUser = 'کاربر سیستم', sendNotification, storeSettings }: { showNotification?: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void, activeTab?: 'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts', onDataChange?: () => void, currentUser?: string, sendNotification?: any, storeSettings?: any }) {
   const [activeSubTab, setActiveSubTab] = useState<'checkbooks' | 'issued_checks' | 'received_checks' | 'check_calendar' | 'check_charts'>(activeTab as any);
   
   const toPersianDigits = (str: string | number | undefined | null) => {
@@ -908,6 +908,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                           </td>
                           <td className="px-4 py-3.5 print:hidden">
                             <div className="flex items-center justify-center gap-1.5">
+                              {sendNotification && payer?.phone && storeSettings?.smsTemplateCheck && (
+                                <button
+                                  onClick={async () => {
+                                    let msg = storeSettings.smsTemplateCheck
+                                      .replace(/{name}/g, payer.name)
+                                      .replace(/{amount}/g, Number(c.amount).toLocaleString())
+                                      .replace(/{check_number}/g, c.checkNumber)
+                                      .replace(/{due_date}/g, c.dueDate);
+                                    await sendNotification(msg, payer.phone, storeSettings?.notify_method);
+                                    if(showNotification) showNotification('پیامک یادآوری با موفقیت ارسال شد', 'success');
+                                  }}
+                                  className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100 inline-block"
+                                  title="ارسال پیامک یادآوری"
+                                >
+                                  <Send className="w-4 h-4" />
+                                </button>
+                              )}
                               <button 
                                 onClick={() => {
                                   setHistoryCheck({ ...c, checkType: 'received' });

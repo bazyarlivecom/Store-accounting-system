@@ -216,8 +216,23 @@ export type CompanySettings = {
   invoicePrefix?: string;
   invoiceStartNumber?: string;
   invoiceNumberLength?: number;
+  smsProvider?: 'online' | 'gsm';
+  smsApiKey?: string;
+  smsSenderNumber?: string;
+  smsTemplateInvoice?: string;
+  smsTemplateReceipt?: string;
+  smsTemplateCheck?: string;
   [key: string]: any; // Allow custom numbering properties
 };
+
+export interface SmsMessage {
+  id: string;
+  recipient: string;
+  message: string;
+  status: 'pending' | 'sent' | 'failed';
+  provider: 'online' | 'gsm';
+  timestamp: number;
+}
 
 export interface WarehouseStock {
   id: string;

@@ -1659,3 +1659,19 @@ export const addSystemLog = async (action, details, entityType, entityId) => {
   await saveLocalData('system_logs', logs);
   return newLog;
 };
+
+// --- SMS Messages ---
+export const getSmsMessages = async (): Promise<any[]> => {
+  return await getLocalData('sms_messages', []);
+};
+
+export const addSmsMessage = async (message: any): Promise<void> => {
+  const messages = await getSmsMessages();
+  messages.push(message);
+  await saveLocalData('sms_messages', messages);
+};
+
+export const deleteSmsMessage = async (id: string): Promise<void> => {
+  const messages = await getSmsMessages();
+  await saveLocalData('sms_messages', messages.filter(m => m.id !== id));
+};
