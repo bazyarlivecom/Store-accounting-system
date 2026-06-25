@@ -319,7 +319,7 @@ export default function App() {
     setConfirmState({ isOpen: true, message, onConfirm });
   };
   const { user, loading: authLoading, signIn, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<
+  const [activeTab, setRawActiveTab] = useState<
     | "create_sale"
     | "debts_credits"
     | "create_purchase"
@@ -375,6 +375,37 @@ export default function App() {
     | "accounting_auto_sync"
     | "accounting_verification"
   >("financial_report");
+
+  const setActiveTab = (tab: any, force: boolean = false) => {
+    if (tab === activeTab) return;
+
+    if (!force) {
+      const isInvoiceTab = activeTab === "create_sale" || activeTab === "create_purchase" || activeTab === "create_warehouse_doc";
+      if (isInvoiceTab && items && items.length > 0) {
+        confirmAction("فاکتور/سند در حال ثبت است. در صورت خروج از این صفحه، اطلاعات وارد شده حذف خواهد شد. آیا مطمئن هستید؟", () => {
+          setItems([]);
+          setCustomerId("");
+          setInvoicePaidAmount(0);
+          setOverallDiscountPercent(0);
+          setRawActiveTab(tab);
+        });
+        return;
+      }
+
+      const isReceiptTab = activeTab === "create_receive_receipt" || activeTab === "create_pay_receipt";
+      if (isReceiptTab && receiptLinkedInvoices && Object.keys(receiptLinkedInvoices).length > 0) {
+        confirmAction("رسید در حال ثبت است. در صورت خروج از این صفحه، اطلاعات وارد شده حذف خواهد شد. آیا مطمئن هستید؟", () => {
+          setReceiptLinkedInvoices({});
+          setReceiptPersonId("");
+          setReceiptAmount("");
+          setRawActiveTab(tab);
+        });
+        return;
+      }
+    }
+
+    setRawActiveTab(tab);
+  };
   const [systemModule, setSystemModule] = useState<
     "selector" | "all" | "commerce" | "inventory" | "accounting" | "admin"
   >(() => {
@@ -3939,6 +3970,7 @@ export default function App() {
             : inv.type === "purchase"
               ? "create_purchase"
               : "create_warehouse_doc",
+      true
     );
   };
 
@@ -4776,7 +4808,7 @@ export default function App() {
         setPreviewInvoiceData(null);
       }, 1500);
 
-      setActiveTab("list_sale");
+      setActiveTab("list_sale", true);
     } catch (err: any) {
       console.error(err);
       customAlert(err.message || "خطایی در اجرای انتقال و ثبت فاکتور پیش آمد.");
@@ -6188,10 +6220,10 @@ export default function App() {
                                       className="w-full p-2 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-slate-400"
                                     >
                                       <option value="false">
-                                        {product.unit} (اصلی)
+                                        {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
                                       </option>
                                       <option value="true">
-                                        {product.secondaryUnit} (فرعی)
+                                        {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
                                       </option>
                                     </select>
                                   ) : product ? (
@@ -6674,10 +6706,10 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-emerald-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی)
+                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی)
+                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
                                     </option>
                                   </select>
                                 ) : product ? (
@@ -7338,10 +7370,10 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-emerald-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی)
+                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی)
+                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
                                     </option>
                                   </select>
                                 ) : product ? (
@@ -7963,10 +7995,10 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-indigo-800 bg-indigo-50 border border-indigo-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-indigo-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی)
+                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی)
+                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
                                     </option>
                                   </select>
                                 ) : product ? (
@@ -8616,10 +8648,10 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-indigo-800 bg-indigo-50 border border-indigo-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-indigo-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی)
+                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی)
+                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
                                     </option>
                                   </select>
                                 ) : product ? (

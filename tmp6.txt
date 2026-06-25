@@ -1,0 +1,292 @@
+1881-        buyPrice: 20000,
+1882-        sellPrice: 25000,
+1883-        stock: 50,
+1884-        unit: "بطری",
+1885-        secondaryUnit: "باکس",
+1886:        unitRatio: 6,
+1887-      });
+1888-
+1889-      await addProduct({
+1890-        name: "آب معدنی کوچک دماوند",
+1891-        type: "product",
+1892-        categoryId: cat1.id,
+1893-        category: "نوشیدنی‌ها",
+1894-        price: 5000,
+1895-        purchasePrice: 3500,
+1896-        buyPrice: 3500,
+1897-        sellPrice: 5000,
+1898-        stock: 120,
+1899-        unit: "بطری",
+1900-        secondaryUnit: "باکس",
+1901:        unitRatio: 12,
+1902-      });
+1903-
+1904-      await addProduct({
+1905-        name: "چیپس نمکی مزمز",
+1906-        type: "product",
+1907-        categoryId: cat2.id,
+1908-        category: "تنقلات",
+1909-        price: 35000,
+1910-        purchasePrice: 28000,
+1911-        buyPrice: 28000,
+1912-        sellPrice: 35000,
+1913-        stock: 45,
+1914-        unit: "بسته",
+1915-        secondaryUnit: "کارتن",
+1916:        unitRatio: 10,
+1917-      });
+1918-
+1919-      await fetchProducts();
+1920-    } catch (err) {
+1921-      console.error("Error generating demo data", err);
+1922-      alert("خطا در ایجاد دیتای نمونه");
+1923-    } finally {
+1924-      setSubmittingProduct(false);
+1925-    }
+1926-  };
+1927-
+1928-  const handleSubmitProduct = async (e: React.FormEvent) => {
+1929-    e.preventDefault();
+1930-    if (!newProductName) return;
+1931-
+--
+1970-        stock: Number(newProductStock || 0),
+1971-        warehouseId: newProductWarehouseId,
+1972-        minStock: Number(newProductMinStock || 0),
+1973-        unit: newProductUnit || "عدد",
+1974-        secondaryUnit: newProductSecondaryUnit,
+1975:        unitRatio: Number(newProductUnitRatio || 1),
+1976-        description: newProductDesc,
+1977-      };
+1978-
+1979-      if (isEdit) {
+1980-        await updateProduct(editingProductId.toString(), payload);
+1981-        setSuccessMsg("کالا با موفقیت ویرایش شد.");
+1982-      } else {
+1983-        const addedProduct = await addProduct(payload);
+1984-        setSuccessMsg("کالای جدید با موفقیت ثبت شد.");
+1985-
+1986-        if (
+1987-          ["create_sale", "create_purchase", "create_warehouse_doc"].includes(
+1988-            activeTab,
+1989-          )
+1990-        ) {
+--
+3137-    setNewProductWarehouseId(p.warehouseId?.toString() || "");
+3138-    setNewProductStock(p.stock?.toString() || "");
+3139-    setNewProductMinStock(p.minStock?.toString() || "");
+3140-    setNewProductUnit(p.unit || "");
+3141-    setNewProductSecondaryUnit(p.secondaryUnit || "");
+3142:    setNewProductUnitRatio(p.unitRatio?.toString() || "");
+3143-    setNewProductDesc(p.description || "");
+3144-    setProductFormTab("general");
+3145-    setIsProductModalOpen(true);
+3146-  };
+3147-
+3148-  const handleDuplicateProduct = (p: Product | any) => {
+3149-    setEditingProductId(null);
+3150-    setNewProductName(p.name + " (کپی)");
+3151-    setNewProductPrice(p.price.toString());
+3152-    setNewProductPurchasePrice(p.purchasePrice?.toString() || "");
+3153-    setNewProductType(p.type);
+3154-    setNewProductCategoryId(p.categoryId || "");
+3155-    setNewProductCode("");
+3156-    setNewProductBarcode("");
+3157-    setNewProductWarehouseId(p.warehouseId?.toString() || "");
+3158-    setNewProductStock(p.stock?.toString() || "");
+3159-    setNewProductMinStock(p.minStock?.toString() || "");
+3160-    setNewProductUnit(p.unit || "");
+3161-    setNewProductSecondaryUnit(p.secondaryUnit || "");
+3162:    setNewProductUnitRatio(p.unitRatio?.toString() || "");
+3163-    setNewProductDesc(p.description || "");
+3164-    setProductFormTab("general");
+3165-    setIsProductModalOpen(true);
+3166-  };
+3167-
+3168-  const handleSavePersonRole = async () => {
+3169-    if (!newPersonRoleName.trim() || !newPersonRoleCode.trim()) {
+3170-      alert("تمامی فیلدها الزامی است");
+3171-      return;
+3172-    }
+3173-    try {
+3174-      if (editingPersonRoleId) {
+3175-        await updatePersonRole(editingPersonRoleId, {
+3176-          name: newPersonRoleName,
+3177-          code: newPersonRoleCode,
+--
+3643-            quantity: 1,
+3644-            unitPrice: unitPriceRounded,
+3645-            discountPercent: 0,
+3646-            totalPrice: unitPriceRounded,
+3647-            selectedUnit: product.unit || "",
+3648:            unitRatio: product.unitRatio || 1,
+3649-            isSecondaryUnit: false,
+3650-          },
+3651-        ];
+3652-      }
+3653-    });
+3654-  };
+3655-
+3656-  const handleFastBarcodeScan = (code: string) => {
+3657-    const product = products.find((p) => p.barcode === code || p.code === code);
+3658-    if (product) {
+3659-      handleFastAddProduct(String(product.id), product);
+3660-      showNotification(`کالا "${product.name}" اضافه شد`, "success");
+3661-    } else {
+3662-      showNotification("کالایی با این بارکد/کد یافت نشد", "error");
+3663-    }
+--
+3679-              (p) => p.id.toString() === String(value),
+3680-            );
+3681-            if (product) {
+3682-              updatedItem.productName = product.name;
+3683-              updatedItem.selectedUnit = product.unit || "";
+3684:              updatedItem.unitRatio = product.unitRatio || 1;
+3685-              updatedItem.isSecondaryUnit = false;
+3686-
+3687-              const isPurchase =
+3688-                activeTab === "create_purchase" ||
+3689-                (activeTab === "create_warehouse_doc" &&
+3690-                  invoiceType === "warehouse_receipt");
+3691-              let pPrice =
+3692-                isPurchase && product.purchasePrice
+3693-                  ? product.purchasePrice
+3694-                  : product.price;
+3695-              if (!pPrice || pPrice === 0) {
+3696-                pPrice = getLastPriceForProduct(product.id, isPurchase);
+3697-              }
+3698-              const convertedPrice =
+3699-                exchangeRate > 0 ? pPrice / exchangeRate : pPrice;
+--
+3723-            if (field === "isSecondaryUnit" && updatedItem.productId) {
+3724-              const product = products.find(
+3725-                (p) => p.id.toString() === String(updatedItem.productId),
+3726-              );
+3727-              if (product) {
+3728:                const ratio = product.unitRatio || 1;
+3729-                const prevSec = Boolean(item.isSecondaryUnit);
+3730-                if (prevSec === false && isSec === true) {
+3731-                  updatedItem.unitPrice = Number(
+3732-                    (Number(item.unitPrice) * ratio).toFixed(4),
+3733-                  );
+3734-                } else if (prevSec === true && isSec === false) {
+3735-                  updatedItem.unitPrice = Number(
+3736-                    (Number(item.unitPrice) / ratio).toFixed(4),
+3737-                  );
+3738-                }
+3739-                updatedItem.selectedUnit = isSec
+3740-                  ? product.secondaryUnit || ""
+3741-                  : product.unit || "";
+3742-              }
+3743-            }
+--
+4215-        if (!item.productId) continue;
+4216-        const productObj = products.find((p) => p.id === item.productId);
+4217-        if (productObj?.type === "service") continue;
+4218-        const q =
+4219-          (Number(item.quantity) || 0) *
+4220:          (item.isSecondaryUnit && item.unitRatio ? Number(item.unitRatio) : 1);
+4221-        requiredQty[item.productId] = (requiredQty[item.productId] || 0) + q;
+4222-      }
+4223-
+4224-      for (const productId of Object.keys(requiredQty)) {
+4225-        const q = requiredQty[productId];
+4226-        const stockInfo = getProductStockInfo(productId);
+4227-        const targetWhId = invoiceWarehouseId
+4228-          ? invoiceWarehouseId.toString()
+4229-          : "";
+4230-        const physicalInWh = targetWhId
+4231-          ? stockInfo.warehouses[targetWhId]?.physical || 0
+4232-          : 0;
+4233-
+4234-        if (physicalInWh < q) {
+4235-          const deficit = q - physicalInWh;
+--
+4299-        if (!item.productId) continue;
+4300-        const productObj = products.find((p) => p.id === item.productId);
+4301-        if (productObj?.type === "service") continue;
+4302-        const q =
+4303-          (Number(item.quantity) || 0) *
+4304:          (item.isSecondaryUnit && item.unitRatio ? Number(item.unitRatio) : 1);
+4305-        const key = item.productId + "_" + (item.warehouseId || "global");
+4306-        requiredQty[key] = (requiredQty[key] || 0) + q;
+4307-      }
+4308-
+4309-      for (const key of Object.keys(requiredQty)) {
+4310-        const [productId, whId] = key.split("_");
+4311-        const q = requiredQty[key];
+4312-        const stockInfo = getProductStockInfo(productId);
+4313-
+4314-        const avail = stockInfo.warehouses[whId]?.physical || 0;
+4315-        if (avail < q) {
+4316-          alert(
+4317-            `موجودی فیزیکی در انبار انتخاب شده کافی نیست. (موجودی: ${avail})`,
+4318-          );
+4319-          setSubmitting(false);
+--
+4632-                quantity: tr.qty,
+4633-                unitPrice: product?.price || 0,
+4634-                discountPercent: 0,
+4635-                totalPrice: (product?.price || 0) * tr.qty,
+4636-                selectedUnit: product?.unit || "",
+4637:                unitRatio: product?.unitRatio || 1,
+4638-                isSecondaryUnit: false,
+4639-                warehouseId: tr.fromWarehouseId,
+4640-              },
+4641-            ],
+4642-            overallDiscountPercent: 0,
+4643-            totalAmount: 0,
+4644-          };
+4645-
+4646-          // 2. Warehouse Receipt (ورود به انبار مقصد/فروش)
+4647-          const receiptPayload = {
+4648-            isAutoGenerated: true,
+4649-            invoiceNumber: recNumber,
+4650-            title: `رسید انتقال کالا به انبار فروش (خودکار بابت فاکتور فروش ${originalPayload.invoiceNumber})`,
+4651-            description: `انتقال خودکار کالا از انبار مبدا (${tr.fromWarehouseName}) بابت کسر موجودی`,
+4652-            type: "warehouse_receipt",
+--
+4663-                quantity: tr.qty,
+4664-                unitPrice: product?.price || 0,
+4665-                discountPercent: 0,
+4666-                totalPrice: (product?.price || 0) * tr.qty,
+4667-                selectedUnit: product?.unit || "",
+4668:                unitRatio: product?.unitRatio || 1,
+4669-                isSecondaryUnit: false,
+4670-                warehouseId: tr.toWarehouseId,
+4671-              },
+4672-            ],
+4673-            overallDiscountPercent: 0,
+4674-            totalAmount: 0,
+4675-          };
+4676-
+4677-          await addInvoice(remittancePayload as any);
+4678-          await addInvoice(receiptPayload as any);
+4679-        }
+4680-      }
+4681-
+4682-      // Recalculate stock
+4683-      await recalculateAllWarehouseStocks();
+--
+4929-    invoices.forEach((inv) => {
+4930-      if (!inv.items) return;
+4931-      inv.items.forEach((i: any) => {
+4932-        if (i.productId?.toString() === productId.toString()) {
+4933-          let q = Number(i.quantity) || 0;
+4934:          if (i.isSecondaryUnit && product?.unitRatio) {
+4935:            q = q * product.unitRatio;
+4936-          }
+4937-
+4938-          const whId = (
+4939-            i.warehouseId ||
+4940-            inv.warehouseId ||
+4941-            defaultWhId
+4942-          ).toString();
+4943-          if (!info.warehouses[whId]) {
+4944-            info.warehouses[whId] = { physical: 0, reserved: 0, available: 0 };
+4945-          }
+4946-
+4947-          if (inv.type === "warehouse_receipt") {
+4948-            info.totalPhysical += q;
+4949-            info.warehouses[whId].physical += q;
+4950-          } else if (inv.type === "warehouse_remittance") {

@@ -1,0 +1,71 @@
+2657:  const confirmReceiptSubmit = async () => {
+2658-    if (!previewReceiptData) return;
+2659-    setSubmittingReceipt(true);
+2660-    try {
+2661-      const txPayload = {
+2662-        ...previewReceiptData,
+2663-        linkedInvoices: receiptLinkedInvoices,
+2664-      };
+2665-      let createdReceiptObj: any = { ...previewReceiptData };
+2666-      if (previewReceiptData.method === "check") {
+2667-        if (previewReceiptData.type === "receive") {
+2668-          const savedCheck = await addReceivedCheck({
+2669-            checkNumber: previewReceiptData.checkNumber,
+2670-            bankName: previewReceiptData.checkBankName,
+2671-            branchName: "",
+2672-            amount: previewReceiptData.amount,
+2673-            payerId: previewReceiptData.personId,
+2674-            receiveDate: previewReceiptData.jalaliDate,
+2675-            dueDate: previewReceiptData.checkDueDate,
+2676-            status: "received",
+2677-            description:
+2678-              previewReceiptData.description ||
+2679-              `چک دریافتی شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`,
+2680-            receiptNumber: previewReceiptData.receiptNumber,
+2681-          });
+2682-          createdReceiptObj.id = savedCheck.id;
+2683-        } else {
+2684-          const savedCheck = await addIssuedCheck({
+2685-            checkbookId: previewReceiptData.checkbookId,
+2686-            checkNumber: previewReceiptData.checkNumber,
+2687-            amount: previewReceiptData.amount,
+2688-            payeeId: previewReceiptData.personId,
+2689-            issueDate: previewReceiptData.jalaliDate,
+2690-            dueDate: previewReceiptData.checkDueDate,
+2691-            status: "issued",
+2692-            description:
+2693-              previewReceiptData.description ||
+2694-              `چک صادره شماره ${previewReceiptData.checkNumber} (سررسید ${previewReceiptData.checkDueDate}) بابت رسید ${previewReceiptData.receiptNumber}`,
+2695-            receiptNumber: previewReceiptData.receiptNumber,
+2696-          });
+2697-        }
+2698-        const savedTx = await addTransaction(txPayload as any);
+2699-        createdReceiptObj = savedTx;
+2700-      } else {
+2701-        const savedTx = await addTransaction(txPayload as any);
+2702-        createdReceiptObj = savedTx;
+2703-      }
+2704-
+2705-      // Update actual invoices payment status and paid amount out of linkedInvoices
+2706-      for (const [invId, amount] of Object.entries(receiptLinkedInvoices)) {
+2707-        const inv = invoices.find((i) => i.id.toString() === invId);
+2708-        if (inv && amount > 0) {
+2709-          const newPaid = (inv.paidAmount || 0) + amount;
+2710-          const newStatus =
+2711-            newPaid >= (inv.totalAmount || 0) ? "paid" : "partial";
+2712-          await updateInvoice(inv.id, {
+2713-            ...inv,
+2714-            paidAmount: newPaid,
+2715-            paymentStatus: newStatus,
+2716-          });
+2717-        }
+2718-      }
+2719-
+2720-      const typeTmp = previewReceiptData.type;
+2721-
+2722-      setReceiptPersonId("");
+2723-      setReceiptAmount("");
+2724-      setReceiptResourceType("bank");
+2725-      setReceiptResourceId("");
+2726-      setReceiptCheckNumber("");
+2727-      setReceiptCheckBankName("");

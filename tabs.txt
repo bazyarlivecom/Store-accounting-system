@@ -1,0 +1,29 @@
+1258:            setActiveTab("update");
+1497:        if (parsed.activeTab) setActiveTab(parsed.activeTab);
+1544:        setActiveTab("financial_years");
+3880:          setActiveTab("person_ledger");
+3961:    setActiveTab(
+4808:      setActiveTab("list_sale");
+11480:                            setActiveTab(item.id as any);
+11527:                  onClick={() => setActiveTab(item.id as any)}
+11616:            if (sel === "commerce") setActiveTab("analytical_dashboard");
+11617:            else if (sel === "inventory") setActiveTab("inventory_report");
+11618:            else if (sel === "accounting") setActiveTab("financial_report");
+11619:            else if (sel === "admin") setActiveTab("settings");
+11620:            else setActiveTab("financial_report");
+12162:                                              setActiveTab("product_view");
+12816:                                            setActiveTab("person_ledger");
+14065:                            onClick={() => setActiveTab("check_calendar")}
+14455:                            onClick={() => setActiveTab("check_calendar")}
+16101:                                              setActiveTab("issued_checks");
+16106:                                              setActiveTab("received_checks");
+17381:                            setActiveTab("settings");
+18023:                      setActiveTab("create_warehouse_doc")
+18037:                      setActiveTab("accounting_doc_create")
+18041:                      setActiveTab("accounting_doc_view");
+18047:                    onBack={() => setActiveTab("accounting_docs_list")}
+18054:                    onBack={() => setActiveTab("accounting_docs_list")}
+21462:                                      setActiveTab("person_groups" as any);
+23288:                                                  setActiveTab("issued_checks");
+23294:                                                  setActiveTab(
+23379:                                setActiveTab("person_ledger");
