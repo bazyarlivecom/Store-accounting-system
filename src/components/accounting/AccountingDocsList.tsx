@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Plus, Search, Eye } from 'lucide-react';
-import { getAccountingDocuments, getLedgerAccounts, getStoreSettings } from '../../services/dataService';
+import { FileText, Plus, Search, Eye, Edit2, Trash2 } from 'lucide-react';
+import { getAccountingDocuments, getLedgerAccounts, getStoreSettings, deleteAccountingDocument } from '../../services/dataService';
 import { AccountingDocument, LedgerAccount, CompanySettings } from '../../types';
 
-export default function AccountingDocsList({ onNavigateToCreate, onNavigateToView }: any) {
+export default function AccountingDocsList({ onNavigateToCreate, onNavigateToView, onNavigateToEdit, showNotification }: any) {
   const [docs, setDocs] = useState<AccountingDocument[]>([]);
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [storeSettings, setStoreSettings] = useState<any | null>(null);
@@ -31,6 +31,18 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
     setAccounts(fetchedAccs);
     setStoreSettings(fetchedSettings);
     setIsLoading(false);
+  };
+
+  const handleDelete = async (id: string | number) => {
+    if (window.confirm('آیا از حذف این سند حسابداری اطمینان دارید؟')) {
+      try {
+        await deleteAccountingDocument(id);
+        if (showNotification) showNotification('سند با موفقیت حذف شد.', 'success');
+        loadData();
+      } catch (err: any) {
+        if (showNotification) showNotification(err.message || 'خطا در حذف سند.', 'error');
+      }
+    }
   };
 
   const filteredDocs = docs.filter(d => {
@@ -185,13 +197,29 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
                       {total.toLocaleString()}
                     </td>
                     <td className="p-4 text-center">
-                      <button
-                        onClick={() => onNavigateToView?.(doc)}
-                        className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors cursor-pointer"
-                        title="مشاهده و چاپ"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => onNavigateToView?.(doc)}
+                          className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                          title="مشاهده و چاپ"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => onNavigateToEdit?.(doc)}
+                          className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-colors cursor-pointer"
+                          title="ویرایش سند"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(doc.id)}
+                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors cursor-pointer"
+                          title="حذف سند"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )})

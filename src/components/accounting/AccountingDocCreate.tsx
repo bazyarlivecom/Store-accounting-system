@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calculator, Save, Plus, Trash2, ArrowRight } from 'lucide-react';
-import { getLedgerAccounts, addAccountingDocument, getPersons, getProducts } from '../../services/dataService';
+import { getLedgerAccounts, addAccountingDocument, updateAccountingDocument, getPersons, getProducts } from '../../services/dataService';
 import { LedgerAccount } from '../../types';
 
-export default function AccountingDocCreate({ showNotification, onBack }: any) {
+export default function AccountingDocCreate({ showNotification, onBack, initialDoc }: any) {
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
   const [persons, setPersons] = useState<any[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]); // Simple date for now
-  const [description, setDescription] = useState('');
-  const [items, setItems] = useState<any[]>([
+  const [date, setDate] = useState(initialDoc?.date ? new Date(initialDoc.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [description, setDescription] = useState(initialDoc?.description || '');
+  const [items, setItems] = useState<any[]>(initialDoc?.items?.length > 0 ? initialDoc.items : [
     { ledgerAccountId: '', detailedAccountId: '', description: '', debit: 0, credit: 0 },
     { ledgerAccountId: '', detailedAccountId: '', description: '', debit: 0, credit: 0 }
   ]);
@@ -77,14 +77,25 @@ export default function AccountingDocCreate({ showNotification, onBack }: any) {
 
     setIsSubmitting(true);
     try {
-      await addAccountingDocument({
-        date,
-        description,
-        status,
-        items,
-        sourceType: 'manual'
-      });
-      showNotification(status === 'approved' ? 'سند حسابداری با موفقیت تایید و ثبت شد' : 'سند موقت ذخیره شد', 'success');
+      if (initialDoc?.id) {
+        await updateAccountingDocument(initialDoc.id, {
+          ...initialDoc,
+          date,
+          description,
+          status,
+          items,
+        });
+        showNotification(status === 'approved' ? 'سند حسابداری با موفقیت بروزرسانی و تایید شد' : 'تغییرات سند موقت ذخیره شد', 'success');
+      } else {
+        await addAccountingDocument({
+          date,
+          description,
+          status,
+          items,
+          sourceType: 'manual'
+        });
+        showNotification(status === 'approved' ? 'سند حسابداری با موفقیت تایید و ثبت شد' : 'سند موقت ذخیره شد', 'success');
+      }
       onBack();
     } catch (err: any) {
       showNotification(err.message || 'خطا در ثبت سند', 'error');
@@ -104,7 +115,7 @@ export default function AccountingDocCreate({ showNotification, onBack }: any) {
              <Calculator className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-800">صدور سند حسابداری (دستی)</h2>
+            <h2 className="text-xl font-black text-slate-800">{initialDoc ? `ویرایش سند حسابداری (${initialDoc.documentNumber || initialDoc.id})` : 'صدور سند حسابداری (دستی)'}</h2>
             <p className="text-sm text-slate-500 mt-1">ثبت آرتیکل‌های بدهکار و بستانکار</p>
           </div>
         </div>

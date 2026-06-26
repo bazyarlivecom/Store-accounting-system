@@ -1209,6 +1209,7 @@ export default function App() {
   const [reportDateRange, setReportDateRange] = useState<Date[]>([]);
   const [viewingInvoice, setViewingInvoice] = useState<any>(null);
   const [viewingAccountingDoc, setViewingAccountingDoc] = useState<any>(null);
+  const [editingAccountingDoc, setEditingAccountingDoc] = useState<any>(null);
   const [pricingWizardInvoice, setPricingWizardInvoice] = useState<any>(null);
   const [pricingWizardItems, setPricingWizardItems] = useState<any[]>([]);
   const [pricingPrintMode, setPricingPrintMode] = useState<"list" | "labels">(
@@ -19160,18 +19161,27 @@ export default function App() {
                 ) : activeTab === "accounting_docs_list" ? (
                   <AccountingDocsList
                     showNotification={showNotification}
-                    onNavigateToCreate={() =>
-                      setActiveTab("accounting_doc_create")
-                    }
+                    onNavigateToCreate={() => {
+                      setEditingAccountingDoc(null);
+                      setActiveTab("accounting_doc_create");
+                    }}
                     onNavigateToView={(doc: any) => {
                       setViewingAccountingDoc(doc);
                       setActiveTab("accounting_doc_view");
+                    }}
+                    onNavigateToEdit={(doc: any) => {
+                      setEditingAccountingDoc(doc);
+                      setActiveTab("accounting_doc_create");
                     }}
                   />
                 ) : activeTab === "accounting_doc_create" ? (
                   <AccountingDocCreate
                     showNotification={showNotification}
-                    onBack={() => setActiveTab("accounting_docs_list")}
+                    initialDoc={editingAccountingDoc}
+                    onBack={() => {
+                      setEditingAccountingDoc(null);
+                      setActiveTab("accounting_docs_list");
+                    }}
                   />
                 ) : activeTab === "accounting_doc_view" &&
                   viewingAccountingDoc ? (
