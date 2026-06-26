@@ -408,7 +408,7 @@ export default function App() {
     setRawActiveTab(tab);
   };
   const [systemModule, setSystemModule] = useState<
-    "selector" | "all" | "commerce" | "inventory" | "accounting" | "admin"
+    "selector" | "all" | "commerce" | "inventory" | "accounting" | "admin" | "crm" | "hr" | "reports_module"
   >(() => {
     try {
       const saved = localStorage.getItem("app_systemModule");
@@ -849,6 +849,15 @@ export default function App() {
       if (systemModule === "admin") {
         return ["reports", "settings"].includes(g.id);
       }
+      if (systemModule === "crm") {
+        return ["persons", "sales_operations", "reports"].includes(g.id);
+      }
+      if (systemModule === "hr") {
+        return ["salary", "persons", "reports"].includes(g.id);
+      }
+      if (systemModule === "reports_module") {
+        return ["reports"].includes(g.id);
+      }
       return true;
     })
     .map((g) => {
@@ -872,6 +881,9 @@ export default function App() {
                 "debts_credits",
               ].includes(item.id);
             if (systemModule === "admin") return true;
+            if (systemModule === "crm") return ["analytical_dashboard", "person_ledger"].includes(item.id);
+            if (systemModule === "hr") return ["analytical_dashboard"].includes(item.id);
+            if (systemModule === "reports_module") return true;
             return true;
           }),
         };
@@ -11832,6 +11844,9 @@ export default function App() {
             else if (sel === "inventory") setActiveTab("inventory_report");
             else if (sel === "accounting") setActiveTab("financial_report");
             else if (sel === "admin") setActiveTab("settings");
+            else if (sel === "crm") setActiveTab("analytical_dashboard");
+            else if (sel === "hr") setActiveTab("list_salary_payroll");
+            else if (sel === "reports_module") setActiveTab("analytical_dashboard");
             else setActiveTab("financial_report");
           }}
         />

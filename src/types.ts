@@ -317,4 +317,5 @@ export type SystemLog = {
   entityType: string;
   entityId: string | number;
   timestamp: number;
+  changes?: string;
 };

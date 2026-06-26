@@ -26,17 +26,36 @@ export default function SystemLogs() {
   };
 
   const getActionName = (action: string) => {
-    if (action.startsWith('ADD_')) return 'ثبت جدید';
-    if (action.startsWith('UPDATE_')) return 'ویرایش';
-    if (action.startsWith('DELETE_')) return 'حذف';
+    if (action === 'CREATE' || action.startsWith('ADD_')) return 'ثبت جدید';
+    if (action === 'UPDATE' || action.startsWith('UPDATE_')) return 'ویرایش';
+    if (action === 'DELETE' || action.startsWith('DELETE_')) return 'حذف';
     return action;
   };
 
   const getActionColor = (action: string) => {
-    if (action.startsWith('ADD_')) return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-    if (action.startsWith('UPDATE_')) return 'bg-blue-50 text-blue-600 border-blue-100';
-    if (action.startsWith('DELETE_')) return 'bg-rose-50 text-rose-600 border-rose-100';
+    if (action === 'CREATE' || action.startsWith('ADD_')) return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+    if (action === 'UPDATE' || action.startsWith('UPDATE_')) return 'bg-blue-50 text-blue-600 border-blue-100';
+    if (action === 'DELETE' || action.startsWith('DELETE_')) return 'bg-rose-50 text-rose-600 border-rose-100';
     return 'bg-gray-50 text-gray-600 border-gray-100';
+  };
+
+  const getEntityName = (type: string) => {
+    const map: Record<string, string> = {
+      'products': 'کالاها و خدمات',
+      'invoices': 'فاکتورها و اسناد',
+      'persons': 'اشخاص (مشتریان/تامین‌کنندگان)',
+      'transactions': 'تراکنش‌های مالی',
+      'accounts': 'حساب‌های بانکی',
+      'cashboxes': 'صندوق‌ها',
+      'users': 'کاربران',
+      'settings': 'تنظیمات',
+      'product_categories': 'گروه‌های کالا',
+      'person_groups': 'گروه‌بندی اشخاص',
+      'financial_years': 'سال‌های مالی',
+      'company_profile': 'پروفایل شرکت',
+      'warehouses': 'انبارها'
+    };
+    return map[type] || type;
   };
 
   const filteredLogs = logs.filter(log => {
@@ -127,10 +146,22 @@ export default function SystemLogs() {
                         </span>
                       </td>
                       <td className="p-4 font-bold text-slate-700 text-xs text-left" dir="ltr">
-                        <div className="flex justify-end items-center gap-1.5">{log.entityType} <Database className="w-3.5 h-3.5"/></div>
+                        <div className="flex justify-end items-center gap-1.5">{getEntityName(log.entityType)} <Database className="w-3.5 h-3.5"/></div>
                       </td>
                       <td className="p-4 font-medium text-xs text-slate-600 w-1/3">
                         <div className="truncate max-w-sm">{log.details}</div>
+                        {log.changes && (
+                          <div className="mt-2 p-2 bg-slate-100 rounded-lg text-left overflow-x-auto max-h-32 text-[10px] font-mono whitespace-pre-wrap break-all" dir="ltr">
+                            {(() => {
+                              try {
+                                const parsed = JSON.parse(log.changes);
+                                return JSON.stringify(parsed, null, 2);
+                              } catch(e) {
+                                return log.changes;
+                              }
+                            })()}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
