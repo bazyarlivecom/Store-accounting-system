@@ -3,6 +3,10 @@ import { motion } from 'framer-motion';
 import { FileText, Plus, Search, Eye, Edit2, Trash2 } from 'lucide-react';
 import { getAccountingDocuments, getLedgerAccounts, getStoreSettings, deleteAccountingDocument } from '../../services/dataService';
 import { AccountingDocument, LedgerAccount, CompanySettings } from '../../types';
+import CustomDatePicker from "../ui/CustomDatePicker";
+const DatePicker = CustomDatePicker;
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 
 export default function AccountingDocsList({ onNavigateToCreate, onNavigateToView, onNavigateToEdit, showNotification }: any) {
   const [docs, setDocs] = useState<AccountingDocument[]>([]);
@@ -96,20 +100,24 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">از تاریخ</label>
-            <input
-              type="date"
+            <DatePicker
               value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-sans"
+              onChange={(date: any) => setFromDate(date ? (typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString()) : '')}
+              calendar={storeSettings?.calendarType === "gregorian" ? undefined : persian}
+              locale={storeSettings?.calendarType === "gregorian" ? undefined : persian_fa}
+              calendarPosition="bottom-right"
+              inputClass="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-sans"
             />
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">تا تاریخ</label>
-            <input
-              type="date"
+            <DatePicker
               value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-sans"
+              onChange={(date: any) => setToDate(date ? (typeof date.toDate === 'function' ? date.toDate().toISOString() : new Date(date).toISOString()) : '')}
+              calendar={storeSettings?.calendarType === "gregorian" ? undefined : persian}
+              locale={storeSettings?.calendarType === "gregorian" ? undefined : persian_fa}
+              calendarPosition="bottom-right"
+              inputClass="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-sans"
             />
           </div>
           <div>
@@ -193,7 +201,8 @@ export default function AccountingDocsList({ onNavigateToCreate, onNavigateToVie
                           <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-xs">موقت (پیش‌نویس)</span>
                        )}
                     </td>
-                    <td className="p-4 text-sm font-black text-indigo-700 font-mono" dir="ltr">
+                    <td className="p-4 text-sm font-black text-indigo-700 font-mono text-left whitespace-nowrap" dir="ltr">
+                      <span className="text-xs font-sans text-indigo-500 font-bold ml-1">{storeSettings?.currency || 'تومان'}</span>
                       {total.toLocaleString()}
                     </td>
                     <td className="p-4 text-center">

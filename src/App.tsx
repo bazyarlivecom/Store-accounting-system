@@ -210,6 +210,7 @@ import AccountingDocCreate from "./components/accounting/AccountingDocCreate";
 import AccountingDocView from "./components/accounting/AccountingDocView";
 import AccountingAutoSync from "./components/accounting/AccountingAutoSync";
 import AccountingVerification from "./components/accounting/AccountingVerification";
+import OpeningBalances from "./components/accounting/OpeningBalances";
 import FinancialYearManager from "./components/accounting/FinancialYearManager";
 import {
   Person,
@@ -386,6 +387,7 @@ export default function App() {
     | "accounting_doc_view"
     | "accounting_auto_sync"
     | "accounting_verification"
+  | "accounting_opening_balances"
   >("financial_report");
 
   const setActiveTab = (tab: any, force: boolean = false) => {
@@ -685,6 +687,11 @@ export default function App() {
         {
           id: "accounting_docs_list",
           label: "اسناد حسابداری",
+          roles: ["admin", "accountant"],
+        },
+        {
+          id: "accounting_opening_balances",
+          label: "اسناد افتتاحیه",
           roles: ["admin", "accountant"],
         },
         {
@@ -19194,6 +19201,11 @@ export default function App() {
                   <AccountingAutoSync showNotification={showNotification} />
                 ) : activeTab === "accounting_verification" ? (
                   <AccountingVerification showNotification={showNotification} />
+                ) : activeTab === "accounting_opening_balances" ? (
+                  <OpeningBalances
+                    showNotification={showNotification}
+                    onBack={() => setActiveTab("accounting_docs_list")}
+                  />
                 ) : null}
                 {![
                   "products",
@@ -19224,6 +19236,7 @@ export default function App() {
                   "accounting_doc_view",
                   "accounting_auto_sync",
                   "accounting_verification",
+                  "accounting_opening_balances",
                 ].includes(activeTab) && renderTabContent()}
               </div>
             </main>
