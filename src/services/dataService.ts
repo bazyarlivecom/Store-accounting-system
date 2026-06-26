@@ -1675,3 +1675,85 @@ export const deleteSmsMessage = async (id: string): Promise<void> => {
   const messages = await getSmsMessages();
   await saveLocalData('sms_messages', messages.filter(m => m.id !== id));
 };
+
+// --- Persons Opening Balances ---
+export const getPersonOpeningBalances = async () => {
+  const balances = await getLocalData<any[]>('person_opening_balances', []);
+  return balances.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addPersonOpeningBalance = async (balanceDoc: any) => {
+  const balances = await getLocalData<any[]>('person_opening_balances', []);
+  const now = Date.now();
+  const newBalance = { ...balanceDoc, id: generateId(), createdAt: now, updatedAt: now };
+  balances.push(newBalance);
+  await saveLocalData('person_opening_balances', balances);
+  
+  // Sync with person collection
+  const persons = await getLocalData<any[]>('persons', []);
+  const idx = persons.findIndex((p: any) => String(p.id) === String(balanceDoc.personId));
+  if (idx !== -1) {
+    persons[idx].initialBalance = Number(balanceDoc.amount || 0);
+    persons[idx].initialBalanceType = balanceDoc.balanceType || "settled";
+    persons[idx].updatedAt = now;
+    await saveLocalData('persons', persons);
+  }
+
+  if (typeof addSystemLog !== 'undefined') {
+    await addSystemLog('ADD_PERSON_OPENING_BALANCE', `ثبت سند افتتاحیه جدید برای شخص ${balanceDoc.personId}`, 'PersonOpeningBalance', newBalance.id);
+  }
+
+  return newBalance;
+};
+
+export const updatePersonOpeningBalance = async (id: string, balanceDoc: any) => {
+  const balances = await getLocalData<any[]>('person_opening_balances', []);
+  const index = balances.findIndex((b: any) => String(b.id) === String(id));
+  if (index !== -1) {
+    const oldBalance = balances[index];
+    const now = Date.now();
+    const updatedBalance = { ...oldBalance, ...balanceDoc, updatedAt: now };
+    balances[index] = updatedBalance;
+    await saveLocalData('person_opening_balances', balances);
+
+    // Sync with person collection
+    const persons = await getLocalData<any[]>('persons', []);
+    const idx = persons.findIndex((p: any) => String(p.id) === String(updatedBalance.personId));
+    if (idx !== -1) {
+      persons[idx].initialBalance = Number(updatedBalance.amount || 0);
+      persons[idx].initialBalanceType = updatedBalance.balanceType || "settled";
+      persons[idx].updatedAt = now;
+      await saveLocalData('persons', persons);
+    }
+
+    if (typeof addSystemLog !== 'undefined') {
+      await addSystemLog('UPDATE_PERSON_OPENING_BALANCE', `ویرایش سند افتتاحیه شخص ${updatedBalance.personId}`, 'PersonOpeningBalance', updatedBalance.id);
+    }
+
+    return updatedBalance;
+  }
+  return null;
+};
+
+export const deletePersonOpeningBalance = async (id: string) => {
+  const balances = await getLocalData<any[]>('person_opening_balances', []);
+  const doc = balances.find((b: any) => String(b.id) === String(id));
+  if (doc) {
+    const personId = doc.personId;
+    await saveLocalData('person_opening_balances', balances.filter((b: any) => String(b.id) !== String(id)));
+
+    // Sync with person collection - reset to settled
+    const persons = await getLocalData<any[]>('persons', []);
+    const idx = persons.findIndex((p: any) => String(p.id) === String(personId));
+    if (idx !== -1) {
+      persons[idx].initialBalance = 0;
+      persons[idx].initialBalanceType = "settled";
+      persons[idx].updatedAt = Date.now();
+      await saveLocalData('persons', persons);
+    }
+
+    if (typeof addSystemLog !== 'undefined') {
+      await addSystemLog('DELETE_PERSON_OPENING_BALANCE', `حذف سند افتتاحیه شخص ${personId}`, 'PersonOpeningBalance', id);
+    }
+  }
+};

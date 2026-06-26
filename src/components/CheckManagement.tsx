@@ -781,7 +781,7 @@ export default function CheckManagement({ showNotification }: { showNotification
                   <label className="block text-xs font-black text-gray-700 mb-1">گیرنده چک (طرف حساب ذینفع) *</label>
                   <select required value={icPayeeId} onChange={e => setIcPayeeId(e.target.value)} className="w-full border rounded-xl px-4 py-2 text-sm bg-white">
                     <option value="">-- انتخاب طرف حساب --</option>
-                    {persons.map(p => (
+                    {persons.filter(p => p.isActive !== false).map(p => (
                       <option key={p.id} value={p.id}>{p.name} ({p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'همکار'})</option>
                     ))}
                   </select>
@@ -834,7 +834,7 @@ export default function CheckManagement({ showNotification }: { showNotification
                   <label className="block text-xs font-black text-gray-700 mb-1">پرداخت‌کننده (طرف حساب متعهد چک) *</label>
                   <select required value={rcPayerId} onChange={e => setRcPayerId(e.target.value)} className="w-full border rounded-xl px-4 py-2 text-sm bg-white">
                     <option value="">-- انتخاب پرداخت‌کننده --</option>
-                    {persons.map(p => (
+                    {persons.filter(p => p.isActive !== false).map(p => (
                       <option key={p.id} value={p.id}>{p.name} ({p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'همکار'})</option>
                     ))}
                   </select>

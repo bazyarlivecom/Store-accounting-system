@@ -47,7 +47,7 @@ export default function InvoiceAllocation({
     }
   };
 
-  const personOptions = persons.map(p => ({
+  const personOptions = persons.filter(p => p.isActive !== false).map(p => ({
     value: p.id,
     label: `${p.personCode ? '[' + p.personCode + '] ' : ''}${p.alias || p.name}`
   }));

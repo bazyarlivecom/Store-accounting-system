@@ -56,10 +56,17 @@ export default function SearchableSelect({
   }, [isOpen]);
 
   const filteredOptions = options.filter(
-    (opt) =>
-      opt.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (typeof opt.subLabel === 'string' && opt.subLabel.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (opt.searchStr && opt.searchStr.toLowerCase().includes(searchQuery.toLowerCase()))
+    (opt) => {
+      if (!searchQuery) return true;
+      const terms = searchQuery.toLowerCase().split(' ').filter(Boolean);
+      const searchable = (
+        opt.label + ' ' + 
+        (typeof opt.subLabel === 'string' ? opt.subLabel : '') + ' ' + 
+        (opt.searchStr || '')
+      ).toLowerCase();
+      
+      return terms.every((term) => searchable.includes(term));
+    }
   );
 
   return (

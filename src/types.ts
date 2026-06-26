@@ -23,6 +23,7 @@ export type Person = {
   personCode?: string;
   accountingCode?: string;
   title?: string;
+  gender?: string;
   name: string; 
   firstName?: string;
   lastName?: string;

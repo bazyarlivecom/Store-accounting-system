@@ -166,7 +166,7 @@ export default function AccountingDocCreate({ showNotification, onBack }: any) {
                       className="w-full bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs text-slate-600"
                     >
                        <option value="">بدون شخص</option>
-                       {persons.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                       {persons.filter(p => p.isActive !== false).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </td>
                   <td className="p-2 min-w-[200px]">

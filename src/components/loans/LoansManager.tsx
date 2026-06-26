@@ -363,7 +363,7 @@ export default function LoansManager({
                   className="w-full bg-gray-50 border-2 border-gray-100 focus:border-emerald-500 focus:bg-white rounded-xl px-4 py-3 outline-none transition-all font-medium"
                 >
                   <option value="">انتخاب شخص...</option>
-                  {persons.map(p => (
+                  {persons.filter(p => p.isActive !== false).map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>

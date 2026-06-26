@@ -190,7 +190,7 @@ export default function EditReceiptModal({
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500/30"
               >
                 <option value="">-- انتخاب طرف حساب --</option>
-                {persons.map(p => (
+                {persons.filter(p => p.isActive !== false).map(p => (
                   <option key={p.id} value={p.id}>{p.name} ({p.role === 'customer' ? 'مشتری' : p.role === 'supplier' ? 'تامین کننده' : 'همکار'})</option>
                 ))}
               </select>
