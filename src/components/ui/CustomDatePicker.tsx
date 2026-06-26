@@ -35,7 +35,7 @@ export default function CustomDatePicker(props: any) {
   return (
     <DatePicker
       {...props}
-      format={props.format || (props.range ? "YYYY/MM/DD" : "YYYY/MM/DD HH:mm")}
+      format={props.format || (props.range ? "DD MMMM YYYY" : "DD MMMM YYYY HH:mm")}
       plugins={[
         ...(!props.range ? [<TimePicker position="bottom" />] : []),
         <TodayButton position="bottom" range={props.range} />,
