@@ -31,6 +31,7 @@ export type Person = {
   nationalId?: string;
   address?: string;
   personType: 'real' | 'legal';
+  gender?: 'male' | 'female' | 'none';
   role: 'customer' | 'employee' | 'supplier'; 
   phone: string; 
   bankName?: string;

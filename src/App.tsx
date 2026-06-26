@@ -71,7 +71,9 @@ import { Building,
   MapPin,
   PlusCircle,
   MinusCircle,
-  Barcode as BarcodeIcon
+  Barcode as BarcodeIcon,
+  LayoutGrid,
+  Table
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -965,6 +967,7 @@ export default function App() {
   const [selectedPersonRole, setSelectedPersonRole] = useState<string>("all");
   const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
   const [personPageSize, setPersonPageSize] = useState<number>(10);
+  const [personsViewMode, setPersonsViewMode] = useState<"list" | "table">("list");
   const [productCurrentPage, setProductCurrentPage] = useState<number>(1);
   const [productPageSize, setProductPageSize] = useState<number>(10);
   const [invoiceCurrentPage, setInvoiceCurrentPage] = useState<number>(1);
@@ -1676,6 +1679,7 @@ export default function App() {
   // Person state
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [newPersonType, setNewPersonType] = useState<"real" | "legal">("real");
+  const [newPersonGender, setNewPersonGender] = useState<"male" | "female" | "none">("none");
   const [newPersonTitle, setNewPersonTitle] = useState("");
   const [newPersonAlias, setNewPersonAlias] = useState("");
   const [newPersonFirstName, setNewPersonFirstName] = useState("");
@@ -2260,9 +2264,30 @@ export default function App() {
         generatedAlias = newPersonAlias || newPersonCompanyName || "";
       } else {
         name = `${newPersonFirstName || ""} ${newPersonLastName || ""}`.trim();
-        generatedAlias =
-          newPersonAlias ||
-          `${newPersonTitle ? newPersonTitle + " " : ""}${name}`.trim();
+        let defaultAlias = `${newPersonTitle ? newPersonTitle + " " : ""}${name}`.trim();
+        if (newPersonFatherName) {
+          defaultAlias += `(${newPersonFatherName})`;
+        }
+        
+        let shouldOverrideAlias = false;
+        if (isEdit) {
+          const existingPerson = persons.find(p => p.id === editingPersonId);
+          if (existingPerson) {
+            const oldName = `${existingPerson.firstName || ""} ${existingPerson.lastName || ""}`.trim();
+            const oldDefaultAlias = `${existingPerson.title ? existingPerson.title + " " : ""}${oldName}`.trim();
+            const oldDefaultAliasWithFather = existingPerson.fatherName ? `${oldDefaultAlias}(${existingPerson.fatherName})` : oldDefaultAlias;
+            
+            if (newPersonAlias === oldDefaultAlias || newPersonAlias === oldDefaultAliasWithFather) {
+              shouldOverrideAlias = true;
+            }
+          }
+        }
+        
+        if (!newPersonAlias || shouldOverrideAlias) {
+          generatedAlias = defaultAlias;
+        } else {
+          generatedAlias = newPersonAlias;
+        }
       }
 
       const duplicateNationalId = newPersonNationalId
@@ -2328,6 +2353,7 @@ export default function App() {
         companyName: newPersonCompanyName,
         fatherName: newPersonFatherName,
         nationalId: newPersonNationalId,
+        gender: newPersonGender,
         accountingCode: newPersonAccountingCode,
         address: newPersonAddress,
         imageUrl: newPersonImage,
@@ -2355,6 +2381,7 @@ export default function App() {
       await fetchPersons();
       setNewPersonTitle("");
       setNewPersonAlias("");
+      setNewPersonGender("none");
       setNewPersonFirstName("");
       setNewPersonLastName("");
       setNewPersonCompanyName("");
@@ -3374,6 +3401,7 @@ export default function App() {
   const handleEditPerson = (p: Person) => {
     setEditingPersonId(p.id);
     setNewPersonType(p.personType);
+    setNewPersonGender(p.gender || "none");
     setNewPersonTitle(p.title || "");
     setNewPersonAlias(p.alias || "");
     setNewPersonFirstName(p.firstName || "");
@@ -12920,6 +12948,25 @@ export default function App() {
                                 </select>
                               )}
                             </div>
+                            
+                            <div className="h-8 w-px bg-slate-200 hidden xl:block" />
+                            
+                            <div className="flex bg-slate-100/70 p-1.5 rounded-2xl">
+                              <button
+                                onClick={() => setPersonsViewMode("list")}
+                                className={`p-1.5 rounded-xl transition-all ${personsViewMode === "list" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
+                                title="نمایش کارتی"
+                              >
+                                <LayoutGrid className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setPersonsViewMode("table")}
+                                className={`p-1.5 rounded-xl transition-all ${personsViewMode === "table" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"}`}
+                                title="نمایش جدولی"
+                              >
+                                <Table className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -12932,7 +12979,7 @@ export default function App() {
                               <h3 className="text-lg font-black text-slate-700 mb-2">هیچ شخصی یافت نشد</h3>
                               <p className="text-sm font-semibold text-slate-400">با تغییر فیلترها جستجو را تکرار کنید یا شخص جدیدی ایجاد نمایید.</p>
                             </div>
-                          ) : (
+                          ) : personsViewMode === "list" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                               {paginatedPersons.map((p, index) => {
                                 const bal = paginatedPersonBalances[p.id.toString()] || 0;
@@ -12953,10 +13000,24 @@ export default function App() {
                                         {p.imageUrl ? (
                                           <img src={p.imageUrl} alt={p.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md ring-1 ring-slate-100 group-hover:ring-indigo-100 transition-all z-10 relative" />
                                         ) : (
-                                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-white shadow-sm ring-1 ring-slate-100 group-hover:ring-indigo-100 flex items-center justify-center transition-all z-10 relative">
-                                            <span className="text-2xl font-black text-slate-300">
-                                              {p.name.substring(0, 1)}
-                                            </span>
+                                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-white shadow-sm ring-1 ring-slate-100 group-hover:ring-indigo-100 flex items-center justify-center transition-all z-10 relative overflow-hidden">
+                                            {p.personType === "real" && p.gender === "male" ? (
+                                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-blue-400 opacity-80 mt-2">
+                                                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="12" cy="7" r="4"></circle>
+                                              </svg>
+                                            ) : p.personType === "real" && p.gender === "female" ? (
+                                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-pink-400 opacity-80 mt-2">
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="12" cy="7" r="4"></circle>
+                                                <path d="M8 7v4s0 2 -2 2"></path>
+                                                <path d="M16 7v4s0 2 2 2"></path>
+                                              </svg>
+                                            ) : (
+                                              <span className="text-2xl font-black text-slate-300">
+                                                {p.name.substring(0, 1)}
+                                              </span>
+                                            )}
                                           </div>
                                         )}
                                         <div className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shadow-sm z-20 border-2 border-white ${
@@ -13100,6 +13161,155 @@ export default function App() {
                                   </motion.div>
                                 );
                               })}
+                            </div>
+                          ) : (
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-right">
+                                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                                    <tr>
+                                      <th className="px-6 py-4">نام شخص / شرکت</th>
+                                      <th className="px-6 py-4">نقش و گروه</th>
+                                      <th className="px-6 py-4">شماره تماس</th>
+                                      <th className="px-6 py-4">مانده حساب</th>
+                                      <th className="px-6 py-4">کدینگ</th>
+                                      <th className="px-6 py-4 text-left">عملیات</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {paginatedPersons.map((p, index) => {
+                                      const bal = paginatedPersonBalances[p.id.toString()] || 0;
+                                      const isDebtor = bal > 0;
+                                      const isCreditor = bal < 0;
+                                      
+                                      return (
+                                        <tr 
+                                          key={p.id} 
+                                          onClick={() => setDrawerPersonId(p.id)}
+                                          className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
+                                        >
+                                          <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                                                {p.imageUrl ? (
+                                                  <img src={p.imageUrl} alt={p.name} className="w-full h-full rounded-xl object-cover" />
+                                                ) : (
+                                                  p.personType === "real" && p.gender === "male" ? (
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-blue-400 mt-1">
+                                                      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                                      <circle cx="12" cy="7" r="4"></circle>
+                                                    </svg>
+                                                  ) : p.personType === "real" && p.gender === "female" ? (
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-pink-400 mt-1">
+                                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                      <circle cx="12" cy="7" r="4"></circle>
+                                                      <path d="M8 7v4s0 2 -2 2"></path>
+                                                      <path d="M16 7v4s0 2 2 2"></path>
+                                                    </svg>
+                                                  ) : (
+                                                    <span className="text-sm font-black text-slate-400">{p.name.substring(0, 1)}</span>
+                                                  )
+                                                )}
+                                              </div>
+                                              <div>
+                                                <div className="font-black text-slate-800">{p.name}</div>
+                                                {p.alias && p.alias !== p.name && (
+                                                  <div className="text-xs text-slate-500 mt-0.5">{p.alias}</div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </td>
+                                          <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1.5">
+                                              <span className={`text-[10px] font-black px-2 py-1 rounded-lg inline-block w-fit ${getRoleBadgeClasses(p.role)}`}>
+                                                {getRoleName(p.role)}
+                                              </span>
+                                              {p.group && (() => {
+                                                const g = personGroups.find(grp => grp.id === p.group);
+                                                if (!g) return null;
+                                                return (
+                                                  <span className="text-[10px] font-bold text-slate-500">{g.name}</span>
+                                                );
+                                              })()}
+                                            </div>
+                                          </td>
+                                          <td className="px-6 py-4">
+                                            <span className="font-sans font-bold text-slate-700">
+                                              {p.phone ? toPersianDigits(p.phone) : "-"}
+                                            </span>
+                                          </td>
+                                          <td className="px-6 py-4">
+                                            <div className={`font-sans font-black text-xs ${isDebtor ? 'text-rose-600' : isCreditor ? 'text-emerald-600' : 'text-slate-500'}`} dir="ltr">
+                                              {bal === 0 ? "تسویه (۰)" : toPersianDigits(formatNumber(Math.abs(bal)))}
+                                              {bal !== 0 && <span className="text-[10px] font-medium mr-1">{storeSettings.currency}</span>}
+                                            </div>
+                                          </td>
+                                          <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1 text-[10px] font-sans font-black">
+                                              {p.personCode && <span className="text-slate-600">ID: {toPersianDigits(p.personCode)}</span>}
+                                              {p.accountingCode && <span className="text-indigo-600">ACC: {toPersianDigits(p.accountingCode)}</span>}
+                                            </div>
+                                          </td>
+                                          <td className="px-6 py-4">
+                                            <div className="flex items-center justify-end gap-1" dir="ltr">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  confirmAction(
+                                                    "آیا از حذف این شخص اطمینان دارید؟",
+                                                    () => handleDeletePerson(p.id),
+                                                  );
+                                                }}
+                                                className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                title="حذف"
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleEditPerson(p);
+                                                }}
+                                                className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-all"
+                                                title="ویرایش"
+                                              >
+                                                <Edit2 className="w-4 h-4" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setPersonExtraId(p.id);
+                                                  setPersonBankName(p.bankName || "");
+                                                  setPersonBankAcc(p.bankAccountNumber || "");
+                                                  setPersonCard(p.cardNumber || "");
+                                                  setPersonSheba(p.shebaNumber || "");
+                                                  setPersonNotes(p.additionalNotes || "");
+                                                  setIsPersonExtraModalOpen(true);
+                                                }}
+                                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                                title="اطلاعات تکمیلی بانکی"
+                                              >
+                                                <Info className="w-4 h-4" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setLedgerPersonId(p.id);
+                                                  setActiveTab("person_ledger");
+                                                }}
+                                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                title="صورت‌حساب"
+                                              >
+                                                <FileText className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -16832,40 +17042,6 @@ export default function App() {
                                     })
                                   }
                                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                                />
-                              </div>
-
-                              <div className="w-full text-right">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  تاریخ شروع سال مالی
-                                </label>
-                                <input
-                                  type="date"
-                                  value={settingsForm.financialYearStart || ""}
-                                  onChange={(e) =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      financialYearStart: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-sans"
-                                />
-                              </div>
-
-                              <div className="w-full text-right">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  تاریخ پایان سال مالی
-                                </label>
-                                <input
-                                  type="date"
-                                  value={settingsForm.financialYearEnd || ""}
-                                  onChange={(e) =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      financialYearEnd: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-sans"
                                 />
                               </div>
                             </div>
@@ -21211,9 +21387,15 @@ export default function App() {
                                     }
                                   }
 
+                                  let alias = mappedType === "legal" ? (companyName || mappedName) : mappedName;
+                                  if (mappedType === "real" && fatherName) {
+                                    alias += `(${fatherName})`;
+                                  }
+
                                   // Call API to append
                                   await addPerson({
                                     name: mappedName,
+                                    alias,
                                     personType: mappedType,
                                     role: mappedRole,
                                     phone,
@@ -21484,6 +21666,22 @@ export default function App() {
                                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
                                       required
                                     />
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      جنسیت
+                                    </label>
+                                    <select
+                                      value={newPersonGender}
+                                      onChange={(e) =>
+                                        setNewPersonGender(e.target.value as any)
+                                      }
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
+                                    >
+                                      <option value="none">نامشخص</option>
+                                      <option value="male">مرد</option>
+                                      <option value="female">زن</option>
+                                    </select>
                                   </div>
                                   <div className="w-full text-right">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
