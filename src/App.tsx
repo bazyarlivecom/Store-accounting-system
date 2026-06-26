@@ -1946,6 +1946,10 @@ export default function App() {
           setSubmittingProduct(true);
           
           let successCount = 0;
+          let skippedCount = 0;
+          let duplicateMsgs: string[] = [];
+          const currentProducts = [...products];
+
           for (const p of imported as any[]) {
             // Check if it's the standard template format
             if (p["نام کالا/خدمات (الزامی)"] !== undefined) {
@@ -1953,6 +1957,27 @@ export default function App() {
                 continue; // Skip invalid rows
               }
               
+              // Duplicate checking before inserting
+              const pName = String(p["نام کالا/خدمات (الزامی)"]);
+              const pCode = p["کد کالا"] ? String(p["کد کالا"]) : "";
+              const pBarcode = p["بارکد"] ? String(p["بارکد"]) : "";
+
+              if (currentProducts.some(pr => pr.name === pName)) {
+                duplicateMsgs.push(`نام تکراری: ${pName} - پیشنهاد: تغییر نام کالا`);
+                skippedCount++;
+                continue;
+              }
+              if (pCode && currentProducts.some(pr => pr.code === pCode)) {
+                duplicateMsgs.push(`کد تکراری: ${pCode} (برای ${pName}) - پیشنهاد: تغییر کد`);
+                skippedCount++;
+                continue;
+              }
+              if (pBarcode && currentProducts.some(pr => pr.barcode === pBarcode)) {
+                duplicateMsgs.push(`بارکد تکراری: ${pBarcode} (برای ${pName})`);
+                skippedCount++;
+                continue;
+              }
+
               // Handle category
               let catId = "";
               const catName = p["دسته‌بندی"];
@@ -1972,9 +1997,9 @@ export default function App() {
               }
 
               const payload = {
-                name: String(p["نام کالا/خدمات (الزامی)"]),
-                code: p["کد کالا"] ? String(p["کد کالا"]) : "",
-                barcode: p["بارکد"] ? String(p["بارکد"]) : "",
+                name: pName,
+                code: pCode,
+                barcode: pBarcode,
                 type: p["نوع (product/service) (الزامی)"] === "service" ? "service" : "product",
                 categoryId: catId,
                 category: catName ? String(catName) : "",
@@ -1990,7 +2015,8 @@ export default function App() {
                 description: p["توضیحات"] ? String(p["توضیحات"]) : "",
                 isActive: true
               };
-              await addProduct(payload as any);
+              const newProd = await addProduct(payload as any);
+              currentProducts.push(newProd as any);
               successCount++;
             } else {
               // Legacy/Exported format
@@ -1998,13 +2024,40 @@ export default function App() {
               delete payload.id;
               delete payload.createdAt;
               delete payload.updatedAt;
-              await addProduct(payload);
+
+              const pName = payload.name;
+              const pCode = payload.code;
+              const pBarcode = payload.barcode;
+
+              if (currentProducts.some(pr => pr.name === pName)) {
+                duplicateMsgs.push(`نام تکراری: ${pName}`);
+                skippedCount++;
+                continue;
+              }
+              if (pCode && currentProducts.some(pr => pr.code === pCode)) {
+                duplicateMsgs.push(`کد تکراری: ${pCode} (برای ${pName})`);
+                skippedCount++;
+                continue;
+              }
+              if (pBarcode && currentProducts.some(pr => pr.barcode === pBarcode)) {
+                duplicateMsgs.push(`بارکد تکراری: ${pBarcode} (برای ${pName})`);
+                skippedCount++;
+                continue;
+              }
+
+              const newProd = await addProduct(payload);
+              currentProducts.push(newProd as any);
               successCount++;
             }
           }
           await fetchProducts();
           setSubmittingProduct(false);
-          customAlert(`${successCount} کالا با موفقیت درون‌ریزی شد.`);
+          let finalMsg = `${successCount} کالا با موفقیت درون‌ریزی شد.`;
+          if (skippedCount > 0) {
+            finalMsg += `\n\nتعداد ${skippedCount} کالا به دلیل تکراری بودن رد شدند:\n` + duplicateMsgs.slice(0, 10).join("\n");
+            if (duplicateMsgs.length > 10) finalMsg += "\n...";
+          }
+          customAlert(finalMsg);
         } catch (err) {
           console.error(err);
           customAlert("خطا در خواندن فایل اکسل!");
@@ -2118,6 +2171,29 @@ export default function App() {
           .filter((n) => !isNaN(n))
           .reduce((a, b) => Math.max(a, b), 0);
         finalCode = `${catCode}${String(maxCode + 1).padStart(4, "0")}`;
+      }
+
+      const duplicateName = products.find((p) => p.name === newProductName && p.id !== editingProductId);
+      if (duplicateName) {
+        customAlert(`کالایی با نام "${newProductName}" قبلا ثبت شده است. لطفا نام دیگری انتخاب کنید.`);
+        setSubmittingProduct(false);
+        return;
+      }
+
+      const duplicateCode = products.find((p) => p.code === finalCode && p.id !== editingProductId);
+      if (duplicateCode) {
+        customAlert(`کد کالا (${finalCode}) تکراری است. لطفا کد دیگری وارد کنید.`);
+        setSubmittingProduct(false);
+        return;
+      }
+
+      if (newProductBarcode) {
+        const duplicateBarcode = products.find((p) => p.barcode === newProductBarcode && p.id !== editingProductId);
+        if (duplicateBarcode) {
+          customAlert(`بارکد (${newProductBarcode}) تکراری است.`);
+          setSubmittingProduct(false);
+          return;
+        }
       }
 
       const payload = {
@@ -13041,13 +13117,15 @@ export default function App() {
                             className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-xl overflow-hidden text-right font-sans"
                           >
                             {/* Modal Header */}
-                            <div className="bg-gradient-to-l from-indigo-50/50 to-white px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-                              <h2 className="text-base font-extrabold text-slate-900">
+                            <div className="bg-gradient-to-l from-indigo-600 to-violet-600 px-6 py-5 border-b border-indigo-700 flex items-center justify-between">
+                              <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-indigo-200" />
                                 {editingOpeningBalanceId ? "ویرایش سند افتتاحیه" : "ثبت سند افتتاحیه جدید"}
                               </h2>
                               <button
+                                type="button"
                                 onClick={() => setIsOpeningBalanceModalOpen(false)}
-                                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition-colors cursor-pointer"
+                                className="p-1.5 hover:bg-white/20 text-indigo-100 hover:text-white rounded-xl transition-colors cursor-pointer"
                               >
                                 <X className="w-5 h-5" />
                               </button>
@@ -13104,52 +13182,87 @@ export default function App() {
                               } finally {
                                 setSubmittingOpeningBalance(false);
                               }
-                            }} className="p-6 space-y-5">
+                            }} className="p-6 space-y-6 bg-slate-50/50">
                               {/* Person Selection */}
                               <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-2">
+                                <label className="block text-sm font-extrabold text-slate-700 mb-2">
                                   شخص / طرف حساب را انتخاب کنید <span className="text-rose-500">*</span>
                                 </label>
                                 <Select
                                   isRtl
                                   options={persons.filter(p => p.isActive).map(p => ({
                                     value: p.id.toString(),
-                                    label: `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"}) - کد: ${p.personCode || ""}`
+                                    label: `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"})${p.personCode ? ` - کد: ${p.personCode}` : ""}`,
+                                    data: p
                                   }))}
+                                  formatOptionLabel={(option: any) => (
+                                    <div className="flex items-center justify-between py-1">
+                                      <div className="flex flex-col">
+                                        <span className="font-extrabold text-slate-800 text-sm">{option.data.name}</span>
+                                        <span className="text-xs text-slate-500 mt-0.5">
+                                          {option.data.role === "supplier" ? "تامین‌کننده" : option.data.role === "employee" ? "کارمند" : "مشتری"}
+                                        </span>
+                                      </div>
+                                      {option.data.personCode && (
+                                        <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md">
+                                          کد: {option.data.personCode}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                   value={
                                     selectedOpeningBalancePersonId
                                       ? {
                                           value: selectedOpeningBalancePersonId,
                                           label: (() => {
                                             const p = persons.find(x => String(x.id) === String(selectedOpeningBalancePersonId));
-                                            return p ? `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"}) - کد: ${p.personCode || ""}` : "";
-                                          })()
+                                            return p ? `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"})${p.personCode ? ` - کد: ${p.personCode}` : ""}` : "";
+                                          })(),
+                                          data: persons.find(x => String(x.id) === String(selectedOpeningBalancePersonId))
                                         }
                                       : null
                                   }
-                                  onChange={(opt: any) => setSelectedOpeningBalancePersonId(opt ? opt.value : "")}
+                                  onChange={(opt: any) => {
+                                    const selectedId = opt ? opt.value : "";
+                                    setSelectedOpeningBalancePersonId(selectedId);
+                                    if (selectedId && !editingOpeningBalanceId) {
+                                      const p = opt.data;
+                                      if (p && p.initialBalance && p.initialBalance > 0) {
+                                        setOpeningBalanceAmount(p.initialBalance.toString());
+                                        if (p.initialBalanceType === "debtor" || p.initialBalanceType === "creditor") {
+                                          setOpeningBalanceType(p.initialBalanceType);
+                                        }
+                                      } else {
+                                        setOpeningBalanceAmount("");
+                                        setOpeningBalanceType("debtor");
+                                      }
+                                    }
+                                  }}
                                   placeholder="جستجو و انتخاب شخص..."
-                                  className="text-xs"
+                                  className="text-sm font-sans"
                                   isDisabled={!!editingOpeningBalanceId}
                                 />
                                 {editingOpeningBalanceId && (
-                                  <p className="text-[10px] text-slate-400 mt-1">در حالت ویرایش، امکان تغییر شخص وجود ندارد.</p>
+                                  <p className="text-xs font-bold text-slate-400 mt-2 flex items-center gap-1">
+                                    <Info className="w-4 h-4" />
+                                    در حالت ویرایش، امکان تغییر شخص وجود ندارد.
+                                  </p>
                                 )}
                               </div>
 
                               {/* Balance Type buttons */}
                               <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-2">
+                                <label className="block text-sm font-extrabold text-slate-700 mb-2">
                                   نوع مانده حساب افتتاحیه <span className="text-rose-500">*</span>
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
                                   <button
                                     type="button"
                                     onClick={() => setOpeningBalanceType("debtor")}
-                                    className={`py-2.5 px-3 text-center rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                    className={`py-3 px-4 text-center rounded-2xl text-sm font-bold border-2 transition-all cursor-pointer ${
                                       openingBalanceType === "debtor"
-                                        ? "bg-rose-500 text-white border-rose-600 shadow-md shadow-rose-200"
-                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                        ? "bg-rose-50 text-rose-700 border-rose-500 shadow-md shadow-rose-100"
+                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                                     }`}
                                   >
                                     بدهکار (طلب ما از شخص)
@@ -13157,10 +13270,10 @@ export default function App() {
                                   <button
                                     type="button"
                                     onClick={() => setOpeningBalanceType("creditor")}
-                                    className={`py-2.5 px-3 text-center rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                    className={`py-3 px-4 text-center rounded-2xl text-sm font-bold border-2 transition-all cursor-pointer ${
                                       openingBalanceType === "creditor"
-                                        ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-200"
-                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-500 shadow-md shadow-emerald-100"
+                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                                     }`}
                                   >
                                     بستانکار (بدهی ما به شخص)
@@ -13169,21 +13282,21 @@ export default function App() {
                               </div>
 
                               {/* Amount input & Date */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                  <label className="block text-xs font-bold text-slate-700 mb-2">
+                                  <label className="block text-sm font-extrabold text-slate-700 mb-2">
                                     مبلغ مانده اولیه ({storeSettings?.currency || "تومان"}) <span className="text-rose-500">*</span>
                                   </label>
                                   <CurrencyInput
                                     value={openingBalanceAmount}
                                     onChange={(e: any) => setOpeningBalanceAmount(e.target.value)}
                                     placeholder="مثلا: 10,000,000"
-                                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs font-mono text-left font-bold bg-white"
+                                    className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-lg font-sans font-extrabold text-slate-800 tracking-wider bg-white transition-all text-left"
                                   />
                                 </div>
 
                                 <div>
-                                  <label className="block text-xs font-bold text-slate-700 mb-2">
+                                  <label className="block text-sm font-extrabold text-slate-700 mb-2">
                                     تاریخ ثبت سند <span className="text-rose-500">*</span>
                                   </label>
                                   <div className="relative">
@@ -13200,7 +13313,7 @@ export default function App() {
                                           ? undefined
                                           : persian_fa
                                       }
-                                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs text-center font-mono font-bold"
+                                      className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-sm text-center font-sans font-bold bg-white"
                                     />
                                   </div>
                                 </div>
@@ -13208,7 +13321,7 @@ export default function App() {
 
                               {/* Description */}
                               <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-2">
+                                <label className="block text-sm font-extrabold text-slate-700 mb-2">
                                   توضیحات / بابت
                                 </label>
                                 <textarea
@@ -13216,32 +13329,32 @@ export default function App() {
                                   onChange={(e) => setOpeningBalanceDescription(e.target.value)}
                                   placeholder="مثلا: بابت مانده حساب قبلی سال ۱۴۰۴"
                                   rows={2}
-                                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs font-medium"
+                                  className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-sm font-bold bg-white transition-all"
                                 />
                               </div>
 
                               {/* Action buttons */}
-                              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 mt-2">
                                 <button
                                   type="button"
                                   onClick={() => setIsOpeningBalanceModalOpen(false)}
-                                  className="px-4 py-2 hover:bg-slate-50 text-slate-500 rounded-xl text-xs font-bold cursor-pointer"
+                                  className="px-6 py-2.5 hover:bg-slate-200 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold cursor-pointer transition-colors"
                                 >
                                   انصراف
                                 </button>
                                 <button
                                   type="submit"
                                   disabled={submittingOpeningBalance}
-                                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                                 >
                                   {submittingOpeningBalance ? (
                                     <>
-                                      <RefreshCw className="w-4 h-4 animate-spin" />
+                                      <RefreshCw className="w-5 h-5 animate-spin" />
                                       در حال ذخیره...
                                     </>
                                   ) : (
                                     <>
-                                      <Save className="w-4 h-4" />
+                                      <Save className="w-5 h-5" />
                                       ذخیره سند
                                     </>
                                   )}
