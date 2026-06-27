@@ -517,7 +517,7 @@ async function startServer() {
     }
   
     try {
-      const prompt = `Search for 10 product names and details related to "${query}"${category ? ` in the category of "${category}"` : ''}. Extract a list of products. Focus on Persian product names. Return purely a JSON array of objects with keys "name", "description", and "priceStr". No markdown formatting, no backticks, just raw JSON.`;
+      const prompt = `Generate a realistic list of 10 fake products related to "${query}"${category ? ` in the category of "${category}"` : ''}. Focus on Persian product names. Return purely a JSON array of objects with keys "name", "description", and "priceStr". No markdown formatting, no backticks, just raw JSON.`;
       
       const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(prompt)}`);
       
@@ -526,7 +526,14 @@ async function startServer() {
       }
       
       const text = await response.text();
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let cleanText = text;
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) {
+        cleanText = match[0];
+      } else {
+        cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      }
+      
       const products = JSON.parse(cleanText || "[]");
       
       res.json({ products });
