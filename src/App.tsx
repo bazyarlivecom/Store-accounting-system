@@ -20844,17 +20844,19 @@ export default function App() {
                                   </label>
                                   <input
                                     type="number"
-                                    min="1"
+                                    min="0"
+                                    step="any"
                                     value={newProductUnitRatio}
                                     onChange={(e) =>
                                       setNewProductUnitRatio(e.target.value)
                                     }
-                                    placeholder="مثال: 24"
+                                    placeholder="مثال: 2.5 یا 24"
                                     className="w-full px-3 py-2.5 rounded-lg border border-blue-200 focus:ring-max focus:ring-blue-500 shadow-sm text-sm"
                                     disabled={!newProductSecondaryUnit}
                                   />
                                   {newProductSecondaryUnit &&
                                     newProductUnitRatio &&
+                                    Number(newProductUnitRatio) > 0 &&
                                     newProductUnit && (
                                       <p className="text-xs font-bold text-emerald-600 mt-2">
                                         1 {newProductSecondaryUnit} ={" "}
@@ -20887,7 +20889,7 @@ export default function App() {
                                 />
                                 {newProductSecondaryUnit &&
                                   newProductUnitRatio &&
-                                  Number(newProductUnitRatio) > 1 &&
+                                  Number(newProductUnitRatio) > 0 &&
                                   newProductPurchasePrice && (
                                     <p className="text-xs font-bold text-emerald-700 mt-1.5 bg-emerald-100/50 px-3 py-1.5 rounded-lg border border-emerald-200">
                                       معادل{" "}
@@ -20926,7 +20928,7 @@ export default function App() {
                                 />
                                 {newProductSecondaryUnit &&
                                   newProductUnitRatio &&
-                                  Number(newProductUnitRatio) > 1 &&
+                                  Number(newProductUnitRatio) > 0 &&
                                   newProductPrice && (
                                     <p className="text-xs font-bold text-indigo-700 mt-1.5 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
                                       معادل{" "}
