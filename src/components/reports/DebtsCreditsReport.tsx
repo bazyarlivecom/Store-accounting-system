@@ -3,7 +3,7 @@ import { Users, Search, Filter, Printer, RefreshCw, HandCoins, UserX, UserCheck,
 import { motion } from 'motion/react';
 import { getPersons, getInvoices, getTransactions, getIssuedChecks, getReceivedChecks, getStoreSettings, getPersonGroups } from '../../services/dataService';
 import { Person, PersonGroup } from '../../types';
-import { getDefaultExchangeRate } from '../../utils/format';
+import { getDefaultExchangeRate, formatPersianDateDisplay } from '../../utils/format';
 
 const formatNumber = (num: number) => new Intl.NumberFormat('fa-IR').format(num);
 
@@ -229,7 +229,7 @@ const DebtsCreditsReport: React.FC<DebtsCreditsReportProps> = ({ showNotificatio
             <div className="grid grid-cols-2 gap-4 text-sm font-bold text-slate-700">
                <div>فیلتر گروه: {selectedGroup === 'all' ? 'همه' : groups.find(g => g.id.toString() === selectedGroup.toString())?.name}</div>
                <div>وضعیت تسویه: {filterType === 'all' ? 'همه' : filterType === 'debtor' ? 'بدهکاران' : filterType === 'creditor' ? 'بستانکاران' : 'بی‌حساب'}</div>
-               <div className="col-span-2">تاریخ گزارش: {new Date().toLocaleDateString('fa-IR')}</div>
+               <div className="col-span-2">تاریخ گزارش: {formatPersianDateDisplay(new Date())}</div>
             </div>
         </div>
 

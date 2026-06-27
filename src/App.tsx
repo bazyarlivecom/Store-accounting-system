@@ -99,6 +99,8 @@ import {
   getDefaultExchangeRate,
   showInvoiceCurrency,
   numToPersianWords,
+  toPersianDigits,
+  formatPersianDateDisplay,
 } from "./utils/format";
 import CustomDatePicker from "./components/ui/CustomDatePicker";
 const DatePicker = CustomDatePicker;
@@ -308,6 +310,8 @@ export default function App() {
     useState<any>(null);
   const [hasCheckedFinancialYears, setHasCheckedFinancialYears] =
     useState(false);
+
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
 
   const fetchFinancialYearInfo = async () => {
     try {
@@ -1099,7 +1103,9 @@ export default function App() {
     currency: "تومان",
     isSetup: false,
     fontFamily: "Vazirmatn",
+    theme: "classic",
   });
+  const isGmailTheme = storeSettings?.theme === "gmail";
   const [loading, setLoading] = useState(false);
   const [requiresInitSetup, setRequiresInitSetup] = useState(false);
 
@@ -1841,6 +1847,7 @@ export default function App() {
     logoUrl: "",
     currency: "تومان",
     fontFamily: "Vazirmatn",
+    theme: "classic",
     allowNegativeStock: false,
     requireWarehouse: false,
     prefix_warehouse_receipt: "REC-",
@@ -3651,6 +3658,7 @@ export default function App() {
         const savedData = data as any;
         const mergedSettings = {
           ...savedData,
+          theme: savedData.theme ?? "classic",
           prefix_warehouse_receipt:
             savedData.prefix_warehouse_receipt ?? "REC-",
           prefix_warehouse_remittance:
@@ -3945,6 +3953,11 @@ export default function App() {
       forceProductObj || products.find((p) => p.id.toString() === productIdStr);
     if (!product) return;
 
+    if (activeTab === "create_warehouse_doc" && product.type === "service") {
+      customAlert("کالای خدماتی فاقد عملیات انبارداری و مدیریت تعداد است.");
+      return;
+    }
+
     const isPurchase =
       activeTab === "create_purchase" ||
       (activeTab === "create_warehouse_doc" &&
@@ -4021,6 +4034,10 @@ export default function App() {
               (p) => p.id.toString() === String(value),
             );
             if (product) {
+              if (activeTab === "create_warehouse_doc" && product.type === "service") {
+                customAlert("کالای خدماتی فاقد عملیات انبارداری و مدیریت تعداد است.");
+                return item;
+              }
               updatedItem.productName = product.name;
               updatedItem.selectedUnit = product.unit || "";
               updatedItem.unitRatio = product.unitRatio || 1;
@@ -4315,6 +4332,9 @@ export default function App() {
     });
 
     const hasAny = sourceInv.items.some((it: any) => {
+      const prod = products.find(p => p.id?.toString() === it.productId?.toString());
+      if (prod?.type === 'service') return false;
+
       const key = String(it.productId || it.productName || "");
       const processed = key ? processedAmounts[key] || 0 : 0;
       const remaining = (Number(it.quantity) || 0) - processed;
@@ -6206,6 +6226,10 @@ export default function App() {
                             }
 
                             const remainingItems = sourceInv.items
+                              .filter((it) => {
+                                const prod = products.find(p => p.id?.toString() === it.productId?.toString());
+                                return prod?.type !== 'service';
+                              })
                               .map((it) => {
                                 const key = String(
                                   it.productId || it.productName || "",
@@ -6392,13 +6416,15 @@ export default function App() {
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
                     <div className="flex-[2]">
                       <SearchableSelect
-                        options={products.map((p) => ({
-                          value: p.id,
-                          label: p.name,
-                          subLabel: formatProductStockDetails(p),
-                          badge: p.type === "service" ? "خدمات" : "کالا",
-                          searchStr: `${p.code || ""} ${p.barcode || ""}`,
-                        }))}
+                        options={products
+                          .filter((p) => p.type !== "service")
+                          .map((p) => ({
+                            value: p.id,
+                            label: p.name,
+                            subLabel: formatProductStockDetails(p),
+                            badge: p.type === "service" ? "خدمات" : "کالا",
+                            searchStr: `${p.code || ""} ${p.barcode || ""}`,
+                          }))}
                         value=""
                         onChange={(val) => handleFastAddProduct(String(val))}
                         placeholder="🔎 جستجو و افزودن سریع کالا به لیست..."
@@ -6546,10 +6572,10 @@ export default function App() {
                                       className="w-full p-2 text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-slate-400"
                                     >
                                       <option value="false">
-                                        {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
+                                        {product.unit} (اصلی)
                                       </option>
                                       <option value="true">
-                                        {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
+                                        {product.secondaryUnit} (فرعی)
                                       </option>
                                     </select>
                                   ) : product ? (
@@ -9601,7 +9627,7 @@ export default function App() {
                               >
                                 <Calendar className="w-3.5 h-3.5 text-indigo-500" />
                                 <span className="font-sans font-black text-xs text-slate-700">
-                                  {toPersianDigits(inv.jalaliDate)}
+                                  {formatPersianDateDisplay(inv.jalaliDate)}
                                 </span>
                               </div>
                             </td>
@@ -10494,7 +10520,7 @@ export default function App() {
                                           `#${toPersianDigits(inv.id)}`}
                                       </td>
                                       <td className="p-3 font-mono text-xs">
-                                        {toPersianDigits(inv.jalaliDate)}
+                                        {formatPersianDateDisplay(inv.jalaliDate)}
                                       </td>
                                       <td className="p-3 font-mono text-xs font-bold text-slate-700">
                                         {formatCurrency(total)}
@@ -10694,9 +10720,7 @@ export default function App() {
                               {renderPersonLink(person?.id, person?.name)}
                             </td>
                             <td className="p-4 font-sans text-slate-600 font-bold text-xs">
-                              {toPersianDigits(
-                                tx.jalaliDate || tx.date?.split("T")[0],
-                              )}
+                              {formatPersianDateDisplay(tx.jalaliDate || tx.date?.split('T')[0])}
                             </td>
                             <td className="p-4 text-xs font-black text-slate-600 text-right">
                               {resourceLabel}
@@ -11265,9 +11289,9 @@ export default function App() {
                 <table className="w-full text-right divide-y divide-gray-150">
                   <thead>
                     <tr className="bg-gray-50 text-sm text-gray-500 border-b border-gray-100">
-                      <th className="p-4 font-bold text-right">شناسه سند</th>
+                      <th className="p-4 font-bold text-right">شماره فیش</th>
                       <th className="p-4 font-bold text-right">نام کارمند</th>
-                      <th className="p-4 font-bold text-right">تاریخ سند</th>
+                      <th className="p-4 font-bold text-right">تاریخ فیش</th>
                       <th className="p-4 font-bold text-right">تسویه مستقیم</th>
                       <th className="p-4 font-bold text-right">حقوق خالص</th>
                       <th className="p-4 font-bold text-center">عملیات</th>
@@ -11285,16 +11309,14 @@ export default function App() {
                           className="hover:bg-gray-50 transition-colors"
                         >
                           <td className="p-4 font-mono font-bold text-indigo-600">
-                            #{toPersianDigits(tx.id)}
+                            {tx.receiptNumber ? toPersianDigits(tx.receiptNumber) : `#${toPersianDigits(tx.id)}`}
                           </td>
                           <td className="p-4 font-bold text-gray-800">
                             {renderPersonLink(person?.id, person?.name)}
                           </td>
                           <td className="p-4 text-gray-500 text-right">
                             <div className="font-mono text-sm mb-1" dir="ltr">
-                              {toPersianDigits(
-                                tx.jalaliDate || tx.date?.split("T")[0],
-                              )}
+                              {formatPersianDateDisplay(tx.jalaliDate || tx.date?.split('T')[0])}
                             </div>
                             {(() => {
                               try {
@@ -11911,7 +11933,11 @@ export default function App() {
           <div key={group.id} className="mb-1 px-3">
             <button
               onClick={() => toggleGroup(group.id)}
-              className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm font-bold transition-colors ${
+                isGmailTheme
+                  ? "text-[#444746] hover:bg-[#eaeef6] rounded-xl"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg"
+              }`}
             >
               <span className="flex items-center gap-2">
                 {group.icon} {group.label}
@@ -11928,7 +11954,9 @@ export default function App() {
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-1 mt-1 border-r border-slate-700/50 mr-6 pr-3">
+                  <div className={`space-y-1 mt-1 mr-6 pr-3 border-r ${
+                    isGmailTheme ? "border-slate-200" : "border-slate-700/50"
+                  }`}>
                     {group.items
                       .filter((item) => !user || item.roles.includes(user.role))
                       .map((item) => (
@@ -11940,8 +11968,12 @@ export default function App() {
                           }}
                           className={`w-full text-right block py-2 px-3 rounded-lg text-sm transition-colors ${
                             activeTab === item.id
-                              ? "bg-indigo-600/20 text-indigo-300 font-bold"
-                              : "text-slate-400 hover:text-white hover:bg-slate-800"
+                              ? isGmailTheme
+                                ? "bg-[#fce8e6] text-[#b3261e] font-black"
+                                : "bg-indigo-600/20 text-indigo-300 font-bold"
+                              : isGmailTheme
+                                ? "text-[#444746] hover:bg-[#eaeef6]"
+                                : "text-slate-400 hover:text-white hover:bg-slate-800"
                           }`}
                         >
                           {item.label}
@@ -12067,6 +12099,132 @@ export default function App() {
           </motion.div>{" "}
         </div>
       )}
+
+      {/* Gmail style Compose Quick Action Modal */}
+      {isComposeOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[200] p-4 print:hidden" dir="rtl">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col font-sans"
+          >
+            {/* Modal Header */}
+            <div className="bg-[#f6f8fc] px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#fdf2f2] text-[#b3261e] rounded-xl flex items-center justify-center shadow-xs">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">ایجاد سریع سند / تراکنش</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">میانبرهای کاربردی برای ثبت سریع اطلاعات در بخش‌های مختلف</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsComposeOpen(false)}
+                className="p-1.5 hover:bg-slate-200/50 text-slate-500 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-white max-h-[70vh] overflow-y-auto">
+              {/* Shortcut Item 1 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("create_sale");
+                  setIsComposeOpen(false);
+                }}
+                className="p-4 border border-slate-200 hover:border-[#b3261e]/40 hover:bg-rose-50/10 rounded-2xl text-right flex gap-4 transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+              >
+                <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex-shrink-0 flex items-center justify-center font-bold">
+                  📑
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-800">صدور فاکتور فروش کالا</h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">فروش کالا و خدمات به مشتریان با ثبت خودکار سند حسابداری و کاهش موجودی انبار.</p>
+                </div>
+              </button>
+
+              {/* Shortcut Item 2 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("create_purchase");
+                  setIsComposeOpen(false);
+                }}
+                className="p-4 border border-slate-200 hover:border-[#b3261e]/40 hover:bg-rose-50/10 rounded-2xl text-right flex gap-4 transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+              >
+                <div className="w-11 h-11 bg-rose-50 text-rose-600 rounded-xl flex-shrink-0 flex items-center justify-center font-bold">
+                  🛒
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-800">ثبت فاکتور خرید کالا</h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">ثبت خرید کالا و خدمات از تامین‌کنندگان برای افزایش موجودی انبار.</p>
+                </div>
+              </button>
+
+              {/* Shortcut Item 3 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("create_receive_receipt");
+                  setIsComposeOpen(false);
+                }}
+                className="p-4 border border-slate-200 hover:border-[#b3261e]/40 hover:bg-rose-50/10 rounded-2xl text-right flex gap-4 transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+              >
+                <div className="w-11 h-11 bg-teal-50 text-teal-600 rounded-xl flex-shrink-0 flex items-center justify-center font-bold">
+                  💵
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-800">ثبت سند دریافت وجه</h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">ثبت مبالغ دریافتی از مشتریان، صندوق یا بانک به صورت نقد یا چک.</p>
+                </div>
+              </button>
+
+              {/* Shortcut Item 4 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("create_pay_receipt");
+                  setIsComposeOpen(false);
+                }}
+                className="p-4 border border-slate-200 hover:border-[#b3261e]/40 hover:bg-rose-50/10 rounded-2xl text-right flex gap-4 transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
+              >
+                <div className="w-11 h-11 bg-amber-50 text-amber-600 rounded-xl flex-shrink-0 flex items-center justify-center font-bold">
+                  💸
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-800">ثبت سند پرداخت وجه</h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">ثبت پرداختی‌های نقد یا چک به تامین‌کنندگان، هزینه‌ها یا پرسنل.</p>
+                </div>
+              </button>
+
+              {/* Shortcut Item 5 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("transfer");
+                  setIsComposeOpen(false);
+                }}
+                className="p-4 border border-slate-200 hover:border-[#b3261e]/40 hover:bg-rose-50/10 rounded-2xl text-right flex gap-4 transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer md:col-span-2"
+              >
+                <div className="w-11 h-11 bg-indigo-50 text-indigo-600 rounded-xl flex-shrink-0 flex items-center justify-center font-bold">
+                  🔄
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-800">انتقال وجه بین حساب‌ها</h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">جابجایی مبالغ نقدینگی بین حساب‌های بانکی و صندوق‌های مختلف کسب و کار با ثبت سند معین.</p>
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
       {systemModule === "selector" ? (
         <ModuleSelector
           onSelectModule={(sel) => {
@@ -12083,9 +12241,98 @@ export default function App() {
         />
       ) : (
         <div
-          className={`flex ${menuLayout === "horizontal" ? "flex-col h-screen" : "h-screen"} overflow-hidden bg-gray-50/50 text-gray-800 font-sans print:h-auto print:block print:overflow-visible`}
+          className={`flex ${menuLayout === "horizontal" ? "flex-col h-screen" : "h-screen"} overflow-hidden ${isGmailTheme ? "theme-gmail bg-[#f6f8fc]" : "bg-gray-50/50"} text-gray-800 font-sans print:h-auto print:block print:overflow-visible`}
           dir="rtl"
         >
+          {isGmailTheme && (
+            <style dangerouslySetInnerHTML={{ __html: `
+              /* Gmail theme overrides */
+              .theme-gmail .bg-indigo-600 {
+                background-color: #b3261e !important;
+              }
+              .theme-gmail .hover\\:bg-indigo-700:hover {
+                background-color: #8c1d18 !important;
+              }
+              .theme-gmail .text-indigo-600 {
+                color: #b3261e !important;
+              }
+              .theme-gmail .text-indigo-800 {
+                color: #8c1d18 !important;
+              }
+              .theme-gmail .border-indigo-600 {
+                border-color: #b3261e !important;
+              }
+              .theme-gmail .bg-indigo-50 {
+                background-color: #fce8e6 !important;
+              }
+              .theme-gmail .text-indigo-300 {
+                color: #b3261e !important;
+              }
+              .theme-gmail .focus\\:ring-indigo-500:focus {
+                --tw-ring-color: #b3261e !important;
+                ring-color: #b3261e !important;
+              }
+              .theme-gmail .focus\\:ring-indigo-600:focus {
+                --tw-ring-color: #b3261e !important;
+                ring-color: #b3261e !important;
+              }
+              .theme-gmail .bg-indigo-600\\/20 {
+                background-color: rgba(253, 232, 230, 0.7) !important;
+              }
+              .theme-gmail .border-indigo-100 {
+                border-color: #fce8e6 !important;
+              }
+              .theme-gmail .border-indigo-200 {
+                border-color: #f9d5d3 !important;
+              }
+              .theme-gmail .text-indigo-500 {
+                color: #b3261e !important;
+              }
+              .theme-gmail .bg-indigo-600\\/10 {
+                background-color: rgba(253, 232, 230, 0.4) !important;
+              }
+              /* Custom overrides for cards and layouts inside Gmail theme */
+              .theme-gmail .bg-gradient-to-l.from-indigo-50.to-white {
+                background-image: linear-gradient(to left, #fce8e6, #ffffff) !important;
+              }
+              .theme-gmail .bg-gradient-to-r.from-indigo-500.to-indigo-600 {
+                background-image: linear-gradient(to right, #b3261e, #8c1d18) !important;
+              }
+              .theme-gmail .bg-gradient-to-br.from-indigo-500.to-indigo-600 {
+                background-image: linear-gradient(to bottom right, #b3261e, #8c1d18) !important;
+              }
+              .theme-gmail .from-indigo-600 {
+                --tw-gradient-from: #b3261e !important;
+              }
+              .theme-gmail .to-indigo-700 {
+                --tw-gradient-to: #8c1d18 !important;
+              }
+              .theme-gmail .text-indigo-700 {
+                color: #b3261e !important;
+              }
+              .theme-gmail .bg-indigo-100 {
+                background-color: #fce8e6 !important;
+              }
+              .theme-gmail .text-indigo-900 {
+                color: #601410 !important;
+              }
+              .theme-gmail .hover\\:text-indigo-500:hover {
+                color: #b3261e !important;
+              }
+              .theme-gmail .border-l-4.border-indigo-600 {
+                border-left-color: #b3261e !important;
+              }
+              .theme-gmail .border-r-4.border-indigo-600 {
+                border-right-color: #b3261e !important;
+              }
+              .theme-gmail .accent-indigo-600 {
+                accent-color: #b3261e !important;
+              }
+              .theme-gmail .bg-indigo-900 {
+                background-color: #3f0c0a !important;
+              }
+            ` }} />
+          )}
           {/* Sidebar Mobile Overlay */}
           {isSidebarOpen && (
             <div
@@ -12097,10 +12344,14 @@ export default function App() {
           {/* Desktop Sidebar */}
           {menuLayout === "vertical" && (
             <aside
-              className="hidden md:flex flex-col w-64 bg-slate-900 shadow-2xl z-40 text-slate-300 flex-shrink-0 transition-all duration-300 overflow-y-auto print:hidden"
+              className={`hidden md:flex flex-col w-64 flex-shrink-0 transition-all duration-300 overflow-y-auto print:hidden ${
+                isGmailTheme
+                  ? "bg-[#f6f8fc] border-l border-slate-200"
+                  : "bg-slate-900 shadow-2xl text-slate-300 z-40"
+              }`}
               dir="rtl"
             >
-              <div className="p-5 border-b border-slate-800 flex flex-col justify-center">
+              <div className={`p-5 flex flex-col justify-center ${isGmailTheme ? "border-b border-slate-200/50" : "border-b border-slate-800"}`}>
                 <div className="flex items-center gap-3">
                   {storeSettings.logoUrl ? (
                     <img
@@ -12109,14 +12360,14 @@ export default function App() {
                       alt="logo"
                     />
                   ) : (
-                    <Receipt className="w-8 h-8 text-indigo-500" />
+                    <Receipt className={`w-8 h-8 ${isGmailTheme ? "text-[#b3261e]" : "text-indigo-500"}`} />
                   )}
                   <div>
-                    <h1 className="font-extrabold text-white text-lg">
+                    <h1 className={`font-extrabold text-lg ${isGmailTheme ? "text-slate-800" : "text-white"}`}>
                       {storeSettings.storeName || "سیستم مدیریت"}
                     </h1>
                     <div
-                      className="text-xs text-slate-400 font-mono mt-0.5"
+                      className={`text-xs font-mono mt-0.5 ${isGmailTheme ? "text-slate-500" : "text-slate-400"}`}
                       dir="ltr"
                     >
                       {localStorage.getItem("localAppVersion") || "Build 2.9.0"}
@@ -12124,13 +12375,33 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {isGmailTheme && (
+                <div className="px-4 pt-4 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsComposeOpen(true)}
+                    className="flex items-center gap-3 px-6 py-4 bg-white hover:bg-[#eaeef6] text-slate-800 rounded-2xl shadow-md hover:shadow-lg transition-all border border-slate-100 w-full font-black text-sm text-right justify-center cursor-pointer"
+                  >
+                    <svg className="w-5 h-5 text-[#b3261e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span className="text-slate-700 font-extrabold">ایجاد جدید</span>
+                  </button>
+                </div>
+              )}
+
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 {renderSidebarGroups()}
               </div>
-              <div className="p-4 border-t border-slate-800">
+              <div className={`p-4 ${isGmailTheme ? "border-t border-slate-200/50" : "border-t border-slate-800"}`}>
                 <button
                   onClick={signOut}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 text-rose-400 hover:text-white hover:bg-rose-500/20 rounded-xl font-bold transition-colors"
+                  className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-colors ${
+                    isGmailTheme
+                      ? "text-[#b3261e] hover:bg-rose-50 border border-rose-100"
+                      : "text-rose-400 hover:text-white hover:bg-rose-500/20"
+                  }`}
                 >
                   <LogOut className="w-5 h-5" />
                   خروج از حساب
@@ -12141,16 +12412,18 @@ export default function App() {
 
           {/* Mobile Drawer Menu */}
           <div
-            className={`fixed inset-y-0 right-0 w-72 bg-slate-900 text-slate-300 shadow-2xl z-40 transform transition-transform duration-300 md:hidden flex flex-col print:hidden ${isSidebarOpen ? "translate-x-0" : "translate-x-full"}`}
+            className={`fixed inset-y-0 right-0 w-72 shadow-2xl z-40 transform transition-transform duration-300 md:hidden flex flex-col print:hidden ${isSidebarOpen ? "translate-x-0" : "translate-x-full"} ${
+              isGmailTheme ? "bg-[#f6f8fc] text-[#444746]" : "bg-slate-900 text-slate-300"
+            }`}
           >
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-bold text-white">
-                <Shield className="w-5 h-5 text-indigo-500" />
+            <div className={`p-4 flex items-center justify-between border-b ${isGmailTheme ? "border-slate-200" : "border-slate-800"}`}>
+              <div className={`flex items-center gap-2 font-bold ${isGmailTheme ? "text-slate-800" : "text-white"}`}>
+                <Shield className={`w-5 h-5 ${isGmailTheme ? "text-[#b3261e]" : "text-indigo-500"}`} />
                 <span>منوی سیستم</span>
               </div>
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-1 hover:bg-slate-800 text-slate-400 rounded-lg"
+                className={`p-1 rounded-lg ${isGmailTheme ? "hover:bg-slate-200/50 text-slate-500" : "hover:bg-slate-800 text-slate-400"}`}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -12158,10 +12431,14 @@ export default function App() {
             <div className="flex-1 overflow-y-auto py-2">
               {renderSidebarGroups()}
             </div>
-            <div className="p-4 border-t border-slate-800">
+            <div className={`p-4 border-t ${isGmailTheme ? "border-slate-200 bg-white/40" : "border-slate-800"}`}>
               <button
                 onClick={signOut}
-                className="w-full flex items-center justify-center gap-2 py-3 text-rose-400 hover:text-white bg-slate-800/50 hover:bg-rose-500/20 rounded-xl font-bold transition-colors"
+                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors ${
+                  isGmailTheme
+                    ? "text-[#b3261e] hover:bg-rose-50 border border-rose-100"
+                    : "text-rose-400 hover:text-white bg-slate-800/50 hover:bg-rose-500/20"
+                }`}
               >
                 <LogOut className="w-5 h-5" />
                 خروج از حساب
@@ -12170,11 +12447,15 @@ export default function App() {
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 flex flex-col w-full min-w-0 min-h-0 transition-all duration-300 overflow-hidden print:overflow-visible print:bg-white print:h-auto">
+          <div className={`flex-1 flex flex-col w-full min-w-0 min-h-0 transition-all duration-300 overflow-hidden print:overflow-visible print:bg-white print:h-auto ${isGmailTheme ? "bg-white md:rounded-3xl md:border md:border-slate-200/80 md:m-3 md:shadow-xs" : ""}`}>
             {/* Top Header */}
-            <div className="flex flex-col bg-white border-b border-gray-100 sticky top-0 z-[60] shadow-sm print:hidden">
+            <div className={`flex flex-col sticky top-0 z-[60] print:hidden ${isGmailTheme ? "bg-[#f6f8fc]" : "bg-white border-b border-gray-100 shadow-sm"}`}>
               <div
-                className="flex flex-row items-center justify-between p-4 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 shadow-xs"
+                className={`flex flex-row items-center justify-between p-4 sticky top-0 ${
+                  isGmailTheme
+                    ? "bg-[#f6f8fc] border-none"
+                    : "bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-xs"
+                }`}
                 dir="rtl"
               >
                 <div className="flex items-center gap-3">
@@ -12193,7 +12474,7 @@ export default function App() {
                       />
                     ) : (
                       <Receipt
-                        className={`w-5 h-5 text-indigo-600 ${menuLayout === "vertical" ? "md:hidden" : ""}`}
+                        className={`w-5 h-5 ${isGmailTheme ? "text-[#b3261e]" : "text-indigo-600"} ${menuLayout === "vertical" ? "md:hidden" : ""}`}
                       />
                     )}
                     <span
@@ -12203,6 +12484,22 @@ export default function App() {
                     </span>
                   </div>
                 </div>
+
+                {/* Google style centered Search bar */}
+                {isGmailTheme && (
+                  <div className="hidden md:flex flex-1 max-w-xl mx-8 relative">
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="جستجو در میان اسناد، تراکنش‌ها، فاکتورها و اشخاص..."
+                      className="w-full pr-11 pl-4 py-2 bg-[#eaf1fb] hover:bg-[#e3ecf8] focus:bg-white text-slate-800 placeholder-slate-500 rounded-full outline-none focus:ring-2 focus:ring-[#b3261e]/30 border-none font-bold text-sm transition-all shadow-3xs"
+                    />
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3">
                   <button
@@ -13719,9 +14016,9 @@ export default function App() {
                                                 <span className="mr-2 text-[10px] font-bold bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md align-middle">غیرفعال</span>
                                               )}
                                             </h3>
-                                            {p.alias && p.alias !== p.name && (
-                                              <p className="text-xs font-bold text-slate-400 mt-0.5 truncate">
-                                                {p.alias}
+                                            {p.alias && (
+                                              <p className="text-xs font-black text-rose-600 mt-1 truncate bg-rose-50/70 inline-block px-2.5 py-0.5 rounded-lg border border-rose-100/50">
+                                                نام مستعار: {p.alias}
                                               </p>
                                             )}
                                           </div>
@@ -13904,8 +14201,10 @@ export default function App() {
                                                     <span className="mr-2 text-[10px] font-bold bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md">غیرفعال</span>
                                                   )}
                                                 </div>
-                                                {p.alias && p.alias !== p.name && (
-                                                  <div className="text-xs text-slate-500 mt-0.5">{p.alias}</div>
+                                                {p.alias && (
+                                                  <div className="text-xs font-black text-rose-600 mt-1 bg-rose-50/70 inline-block px-2 py-0.5 rounded-md border border-rose-100/50">
+                                                    نام مستعار: {p.alias}
+                                                  </div>
                                                 )}
                                               </div>
                                             </div>
@@ -16321,7 +16620,10 @@ export default function App() {
                             try {
                               const parsed = JSON.parse(t.description);
                               if (parsed.isPayslip) {
-                                desc = `ثبت حقوق و دستمزد: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || "حقوق دوره‌ای"})`;
+                                const months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+                                const monthName = parsed.periodMonth ? months[parseInt(parsed.periodMonth) - 1] : "";
+                                const periodStr = (monthName && parsed.periodYear) ? ` (دوره فیش: ${monthName} ماه ${parsed.periodYear})` : "";
+                                desc = `ثبت حقوق و دستمزد${periodStr}: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || "حقوق دوره‌ای"})`;
                               }
                             } catch (e) {
                               desc = t.description;
@@ -16810,9 +17112,7 @@ export default function App() {
                                                 dir="ltr"
                                               >
                                                 <span className="whitespace-nowrap">
-                                                  {toPersianDigits(
-                                                    entry.jalaliDate,
-                                                  )}
+                                                  {formatPersianDateDisplay(entry.jalaliDate)}
                                                 </span>
                                               </span>
                                               <span className="text-[10px] text-gray-600 border border-gray-300 px-1.5 py-0.5 rounded flex items-center gap-1">
@@ -17288,9 +17588,7 @@ export default function App() {
                                                 dir="ltr"
                                               >
                                                 <span className="mt-0.5 whitespace-nowrap">
-                                                  {toPersianDigits(
-                                                    entry.jalaliDate,
-                                                  )}
+                                                  {formatPersianDateDisplay(entry.jalaliDate)}
                                                 </span>
                                                 <Calendar className="w-4 h-4 text-indigo-500/70" />
                                               </span>
@@ -17726,6 +18024,32 @@ export default function App() {
                                 </select>
                                 <p className="text-xs text-gray-500 mt-2">
                                   انتخاب فونت برای نمایش در کل سیستم.
+                                </p>
+                              </div>
+
+                              <div className="w-full text-right">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  پوسته و تم سیستم
+                                </label>
+                                <select
+                                  value={settingsForm.theme || "classic"}
+                                  onChange={(e) =>
+                                    setSettingsForm({
+                                      ...settingsForm,
+                                      theme: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
+                                >
+                                  <option value="classic">
+                                    پوسته کلاسیک سرمه‌ای (Classic Indigo)
+                                  </option>
+                                  <option value="gmail">
+                                    پوسته گوگل جیمیل سرخ (Google Gmail Red)
+                                  </option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-2">
+                                  امکان سوئیچ بین ظاهر کلاسیک و ظاهر مدرن به سبک گوگل جیمیل.
                                 </p>
                               </div>
 
@@ -19291,9 +19615,7 @@ export default function App() {
                             تاریخ صدور سند
                           </span>
                           <span className="text-sm font-extrabold text-gray-900 font-sans mt-0.5 block">
-                            {toPersianDigits(
-                              viewingPayslip.jalaliDate || viewingPayslip.date,
-                            )}
+                            {formatPersianDateDisplay(viewingPayslip.jalaliDate || viewingPayslip.date)}
                           </span>
                         </div>
                       </div>
@@ -23281,16 +23603,7 @@ export default function App() {
                                   تاریخ صدور:
                                 </span>
                                 <span className="font-bold text-sm tracking-wide">
-                                  {viewingInvoice.jalaliDate ||
-                                    (viewingInvoice.date &&
-                                      new Date(
-                                        viewingInvoice.date,
-                                      ).toLocaleDateString(
-                                        storeSettings?.calendarType ===
-                                          "gregorian"
-                                          ? "en-US"
-                                          : "fa-IR",
-                                      ))}
+                                  {formatPersianDateDisplay(viewingInvoice.jalaliDate || viewingInvoice.date)}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
@@ -23734,7 +24047,7 @@ export default function App() {
                                             ) || `#${toPersianDigits(tx.id)}`}
                                           </td>
                                           <td className="py-2 px-3 font-sans font-bold border-l border-slate-200">
-                                            {toPersianDigits(tx.jalaliDate)}
+                                            {formatPersianDateDisplay(tx.jalaliDate)}
                                           </td>
                                           <td className="py-2 px-3 border-l border-slate-200">
                                             {accounts.find(
@@ -23971,7 +24284,10 @@ export default function App() {
                           try {
                             const parsed = JSON.parse(t.description);
                             if (parsed.isPayslip) {
-                              desc = `ثبت حقوق و دستمزد: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || "حقوق دوره‌ای"})`;
+                              const months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+                              const monthName = parsed.periodMonth ? months[parseInt(parsed.periodMonth) - 1] : "";
+                              const periodStr = (monthName && parsed.periodYear) ? ` (دوره فیش: ${monthName} ماه ${parsed.periodYear})` : "";
+                              desc = `ثبت حقوق و دستمزد${periodStr}: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || "حقوق دوره‌ای"})`;
                             }
                           } catch (e) {
                             desc = t.description;
@@ -24534,7 +24850,7 @@ export default function App() {
                                             >
                                               <td className="py-3 px-4">
                                                 <div className="font-mono text-gray-500 font-bold">
-                                                  {entry.jalaliDate}
+                                                  {formatPersianDateDisplay(entry.jalaliDate)}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 mt-0.5">
                                                   {entry.refId}
@@ -24763,7 +25079,7 @@ export default function App() {
                                   تاریخ ایجاد سند
                                 </span>
                                 <div className="text-base font-bold text-gray-800 font-mono">
-                                  {previewReceiptData.jalaliDate}
+                                  {formatPersianDateDisplay(previewReceiptData.jalaliDate)}
                                 </div>
                               </div>
                               <div>
@@ -25261,16 +25577,7 @@ export default function App() {
                                   )}
                                 <span className="px-2">
                                   تاريخ:{" "}
-                                  {previewInvoiceData.jalaliDate ||
-                                    (previewInvoiceData.date &&
-                                      new Date(
-                                        previewInvoiceData.date,
-                                      ).toLocaleDateString(
-                                        storeSettings?.calendarType ===
-                                          "gregorian"
-                                          ? "en-US"
-                                          : "fa-IR",
-                                      ))}
+                                  {formatPersianDateDisplay(previewInvoiceData.jalaliDate || previewInvoiceData.date)}
                                 </span>
                                 {true && (
                                   <span className="bg-rose-50 text-rose-600 border border-rose-100 px-2 py-1 rounded text-xs">
@@ -25694,7 +26001,7 @@ export default function App() {
                                               ) || `#${toPersianDigits(tx.id)}`}
                                             </td>
                                             <td className="p-3 font-mono border-l border-gray-200 print:border-gray-300">
-                                              {tx.jalaliDate}
+                                              {formatPersianDateDisplay(tx.jalaliDate)}
                                             </td>
                                             <td className="p-3 border-l border-gray-200 print:border-gray-300">
                                               {accounts.find(
@@ -26040,11 +26347,7 @@ export default function App() {
                             تاریخ:
                           </span>
                           <span className="font-sans font-black text-gray-900">
-                            {toPersianDigits(
-                              printingTransaction.jalaliDate ||
-                                printingTransaction.date?.split("T")[0] ||
-                                "",
-                            )}
+                            {formatPersianDateDisplay(printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0])}
                           </span>
                         </div>
                         <div className="flex justify-between items-center w-full max-w-[170px]">
@@ -26509,10 +26812,10 @@ export default function App() {
                     </span>
                     <span>
                       تاریخ ثبت خرید:{" "}
-                      {toPersianDigits(pricingWizardInvoice?.jalaliDate || "")}
+                      {formatPersianDateDisplay(pricingWizardInvoice?.jalaliDate)}
                     </span>
                     <span>
-                      تاریخ قیمت‌گذاری: {new Date().toLocaleDateString("fa-IR")}
+                      تاریخ قیمت‌گذاری: {formatPersianDateDisplay(new Date())}
                     </span>
                   </div>
                 </div>

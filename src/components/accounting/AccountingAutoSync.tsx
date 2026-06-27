@@ -38,7 +38,6 @@ export default function AccountingAutoSync({ showNotification }: any) {
 
       const mInvoices = invoices.filter(inv => !['proforma', 'warehouse_receipt', 'warehouse_remittance'].includes(inv.type) && !invoiceDocs.some(d => d.sourceId?.toString() === inv.id.toString()));
       const mTransactions = transactions.filter(t => !transactionDocs.some(d => d.sourceId?.toString() === t.id.toString()));
-      const mBalances = persons.filter(p => p.initialBalance && Number(p.initialBalance) > 0 && p.initialBalanceType !== 'settled' && !balanceDocs.some(d => d.sourceId?.toString() === p.id.toString()));
       
       const mChecks = [...issuedChecks.map(c => ({...c, _isIssued: true})), ...receivedChecks.map(c => ({...c, _isIssued: false}))].filter(c => !checkDocs.some(d => d.sourceId?.toString() === c.id.toString()));
       const mLoans = loans.filter(l => !loanDocs.some(d => d.sourceId?.toString() === l.id.toString()));
@@ -47,7 +46,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
 
       setMissingInvoices(mInvoices);
       setMissingTransactions(mTransactions);
-      setMissingBalances(mBalances);
+      setMissingBalances([]); // Removed from arrears
       setMissingChecks(mChecks);
       setMissingLoans(mLoans);
       setMissingInstallments(mInsts);

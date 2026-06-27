@@ -9,6 +9,7 @@ export interface CompanySettings {
   logoUrl?: string;
   currency?: string;
   fontFamily?: string;
+  theme?: string;
 }
 
 const getLocalData = async <T>(key: string, defaultValue: T, retries = 3): Promise<T> => {
@@ -1692,12 +1693,46 @@ export const addPersonOpeningBalance = async (balanceDoc: any) => {
   // Sync with person collection
   const persons = await getLocalData<any[]>('persons', []);
   const idx = persons.findIndex((p: any) => String(p.id) === String(balanceDoc.personId));
+  let personName = '';
   if (idx !== -1) {
+    personName = persons[idx].name;
     persons[idx].initialBalance = Number(balanceDoc.amount || 0);
     persons[idx].initialBalanceType = balanceDoc.balanceType || "settled";
     persons[idx].updatedAt = now;
     await saveLocalData('persons', persons);
   }
+
+  // Auto-generate basic accounting document
+  try {
+     const ledgerAccounts = await getLedgerAccounts();
+     const defaultLedger = ledgerAccounts.length > 0 ? ledgerAccounts[0].id : '';
+     let personLedgerId = defaultLedger;
+     if (balanceDoc.personId) {
+        const person = persons.find(p => String(p.id) === String(balanceDoc.personId));
+        if (person && person.accountingCode) {
+           const acc = ledgerAccounts.find(a => a.code === person.accountingCode);
+           if (acc) personLedgerId = acc.id;
+        }
+     }
+
+     const items = [];
+     if (balanceDoc.balanceType === 'debtor') {
+        items.push({ description: 'بدهکار - طرف حساب', debit: Number(balanceDoc.amount), credit: 0, ledgerAccountId: personLedgerId, detailedAccountId: balanceDoc.personId });
+        items.push({ description: 'بستانکار - تراز افتتاحیه', debit: 0, credit: Number(balanceDoc.amount), ledgerAccountId: defaultLedger });
+     } else {
+        items.push({ description: 'بدهکار - تراز افتتاحیه', debit: Number(balanceDoc.amount), credit: 0, ledgerAccountId: defaultLedger });
+        items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(balanceDoc.amount), ledgerAccountId: personLedgerId, detailedAccountId: balanceDoc.personId });
+     }
+     
+     await addAccountingDocument({
+        date: balanceDoc.date || new Date().toISOString().split('T')[0],
+        description: balanceDoc.description || `سند افتتاحیه طرف حساب: ${personName}`,
+        status: 'approved',
+        sourceType: 'opening_balance',
+        sourceId: balanceDoc.personId,
+        items
+     });
+  } catch(e) {}
 
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_PERSON_OPENING_BALANCE', `ثبت سند افتتاحیه جدید برای شخص ${balanceDoc.personId}`, 'PersonOpeningBalance', newBalance.id);
@@ -1719,12 +1754,58 @@ export const updatePersonOpeningBalance = async (id: string, balanceDoc: any) =>
     // Sync with person collection
     const persons = await getLocalData<any[]>('persons', []);
     const idx = persons.findIndex((p: any) => String(p.id) === String(updatedBalance.personId));
+    let personName = '';
     if (idx !== -1) {
+      personName = persons[idx].name;
       persons[idx].initialBalance = Number(updatedBalance.amount || 0);
       persons[idx].initialBalanceType = updatedBalance.balanceType || "settled";
       persons[idx].updatedAt = now;
       await saveLocalData('persons', persons);
     }
+
+    // Update auto-generated accounting document
+    try {
+       const accountingDocs = await getAccountingDocuments();
+       const existingDoc = accountingDocs.find((d: any) => d.sourceType === 'opening_balance' && String(d.sourceId) === String(updatedBalance.personId));
+       
+       const ledgerAccounts = await getLedgerAccounts();
+       const defaultLedger = ledgerAccounts.length > 0 ? ledgerAccounts[0].id : '';
+       let personLedgerId = defaultLedger;
+       if (updatedBalance.personId) {
+          const person = persons.find(p => String(p.id) === String(updatedBalance.personId));
+          if (person && person.accountingCode) {
+             const acc = ledgerAccounts.find(a => a.code === person.accountingCode);
+             if (acc) personLedgerId = acc.id;
+          }
+       }
+
+       const items = [];
+       if (updatedBalance.balanceType === 'debtor') {
+          items.push({ description: 'بدهکار - طرف حساب', debit: Number(updatedBalance.amount), credit: 0, ledgerAccountId: personLedgerId, detailedAccountId: updatedBalance.personId });
+          items.push({ description: 'بستانکار - تراز افتتاحیه', debit: 0, credit: Number(updatedBalance.amount), ledgerAccountId: defaultLedger });
+       } else {
+          items.push({ description: 'بدهکار - تراز افتتاحیه', debit: Number(updatedBalance.amount), credit: 0, ledgerAccountId: defaultLedger });
+          items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(updatedBalance.amount), ledgerAccountId: personLedgerId, detailedAccountId: updatedBalance.personId });
+       }
+
+       if (existingDoc) {
+          await updateAccountingDocument(existingDoc.id, {
+             ...existingDoc,
+             date: updatedBalance.date || existingDoc.date,
+             description: updatedBalance.description || `سند افتتاحیه طرف حساب: ${personName}`,
+             items
+          });
+       } else {
+          await addAccountingDocument({
+             date: updatedBalance.date || new Date().toISOString().split('T')[0],
+             description: updatedBalance.description || `سند افتتاحیه طرف حساب: ${personName}`,
+             status: 'approved',
+             sourceType: 'opening_balance',
+             sourceId: updatedBalance.personId,
+             items
+          });
+       }
+    } catch(e) {}
 
     if (typeof addSystemLog !== 'undefined') {
       await addSystemLog('UPDATE_PERSON_OPENING_BALANCE', `ویرایش سند افتتاحیه شخص ${updatedBalance.personId}`, 'PersonOpeningBalance', updatedBalance.id);
@@ -1751,6 +1832,15 @@ export const deletePersonOpeningBalance = async (id: string) => {
       persons[idx].updatedAt = Date.now();
       await saveLocalData('persons', persons);
     }
+
+    // Delete auto-generated accounting document
+    try {
+       const accountingDocs = await getAccountingDocuments();
+       const existingDoc = accountingDocs.find((d: any) => d.sourceType === 'opening_balance' && String(d.sourceId) === String(personId));
+       if (existingDoc) {
+          await deleteAccountingDocument(existingDoc.id);
+       }
+    } catch(e) {}
 
     if (typeof addSystemLog !== 'undefined') {
       await addSystemLog('DELETE_PERSON_OPENING_BALANCE', `حذف سند افتتاحیه شخص ${personId}`, 'PersonOpeningBalance', id);

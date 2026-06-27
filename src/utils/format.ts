@@ -106,3 +106,30 @@ export function toPersianDigits(str: string | number | undefined | null): string
     return id[+w];
   });
 }
+
+export function formatPersianDateDisplay(dateInput: string | Date | undefined | null): string {
+  if (!dateInput || dateInput === "-") return "-";
+  const months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+  
+  if (typeof dateInput === 'string' && dateInput.includes('/')) {
+    const englishStr = dateInput.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
+    const parts = englishStr.split("/");
+    if (parts.length === 3) {
+      const year = parts[0];
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2].split(" ")[0], 10); // in case there's time part
+      if (monthIndex >= 0 && monthIndex < 12) {
+        return toPersianDigits(`${day} ${months[monthIndex]} ${year}`);
+      }
+    }
+  }
+
+  try {
+    const d = new Date(dateInput);
+    if (!isNaN(d.getTime())) {
+      return toPersianDigits(d.toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" }));
+    }
+  } catch (e) {}
+
+  return toPersianDigits(String(dateInput));
+}
