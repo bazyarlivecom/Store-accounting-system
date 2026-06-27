@@ -220,6 +220,7 @@ import FinancialYearManager from "./components/accounting/FinancialYearManager";
 import WarehousePrintTemplate from "./components/print/WarehousePrintTemplate";
 import InvoicePrintTemplate from "./components/print/InvoicePrintTemplate";
 import AIProductSearchModal from "./components/products/AIProductSearchModal";
+import BulkProductImportModal from "./components/products/BulkProductImportModal";
 import {
   Person,
   PersonGroup,
@@ -1650,6 +1651,60 @@ export default function App() {
 
   // Product state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+
+  const handleBulkImportItems = (importedItems: any[]) => {
+    if (!importedItems || importedItems.length === 0) return;
+
+    setItems((currentItems) => {
+      const newItems = [...currentItems];
+      
+      importedItems.forEach(imported => {
+        const { product, quantity, unitPrice, discountPercent } = imported;
+        if (!product) return;
+        
+        // Check if exists
+        const existingItemIndex = newItems.findIndex(
+          (i) => i.productId?.toString() === product.id?.toString(),
+        );
+
+        if (existingItemIndex > -1 && !storeSettings.allowDuplicateInvoiceRows) {
+          // Update existing
+          newItems[existingItemIndex].quantity += quantity;
+          if (unitPrice > 0) newItems[existingItemIndex].unitPrice = unitPrice;
+          if (discountPercent > 0) newItems[existingItemIndex].discountPercent = discountPercent;
+          
+          newItems[existingItemIndex].totalPrice = Math.max(
+            0,
+            newItems[existingItemIndex].quantity *
+              newItems[existingItemIndex].unitPrice *
+              (1 - newItems[existingItemIndex].discountPercent / 100),
+          );
+        } else {
+          // Add new
+          const pPrice = unitPrice > 0 ? unitPrice : (product.price || 0);
+          const convertedPrice = exchangeRate > 0 ? pPrice / exchangeRate : pPrice;
+          const unitPriceRounded = Number(convertedPrice.toFixed(4));
+          
+          newItems.push({
+            id: generateId(),
+            productId: product.id.toString(),
+            productName: product.name,
+            quantity: quantity > 0 ? quantity : 1,
+            unitPrice: unitPriceRounded,
+            discountPercent: discountPercent || 0,
+            totalPrice: unitPriceRounded * (quantity > 0 ? quantity : 1) * (1 - (discountPercent || 0) / 100),
+            selectedUnit: product.unit || "",
+            unitRatio: product.unitRatio || 1,
+            isSecondaryUnit: false,
+          });
+        }
+      });
+      return newItems;
+    });
+    
+    showNotification(`${toPersianDigits(importedItems.length)} کالا با موفقیت اضافه شد.`, "success");
+  };
   const handleBarcodeScan = (code: string) => {
     setIsScannerOpen(false);
     const product = products.find((p) => p.barcode === code);
@@ -6449,7 +6504,16 @@ export default function App() {
                     </button>
                   </div>
                   <div className="w-full relative z-10 flex flex-col md:flex-row gap-2">
-                    <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <div className="flex gap-2">
+                      <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                      <button
+                        onClick={() => setIsBulkImportOpen(true)}
+                        className="p-2.5 bg-white border border-gray-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-colors flex items-center justify-center shrink-0"
+                        title="ورود گروهی کالا (اکسل / CSV / JSON)"
+                      >
+                        <Database className="w-5 h-5" />
+                      </button>
+                    </div>
                     <div className="flex-[2]">
                       <SearchableSelect
                         options={products
@@ -6917,7 +6981,16 @@ export default function App() {
                   برگشت از خرید
                 </h3>
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
-                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <div className="flex gap-2">
+                    <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <button
+                      onClick={() => setIsBulkImportOpen(true)}
+                      className="p-2.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors flex items-center justify-center shrink-0"
+                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
+                    >
+                      <Database className="w-5 h-5" />
+                    </button>
+                  </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
                       <SearchableSelect
@@ -7582,7 +7655,16 @@ export default function App() {
                   خریداری شده
                 </h3>
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
-                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <div className="flex gap-2">
+                    <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <button
+                      onClick={() => setIsBulkImportOpen(true)}
+                      className="p-2.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors flex items-center justify-center shrink-0"
+                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
+                    >
+                      <Database className="w-5 h-5" />
+                    </button>
+                  </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
                       <SearchableSelect
@@ -8204,7 +8286,16 @@ export default function App() {
                   برگشت از فروش
                 </h3>
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
-                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <div className="flex gap-2">
+                    <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <button
+                      onClick={() => setIsBulkImportOpen(true)}
+                      className="p-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center shrink-0"
+                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
+                    >
+                      <Database className="w-5 h-5" />
+                    </button>
+                  </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
                       <SearchableSelect
@@ -8858,7 +8949,16 @@ export default function App() {
                   آماده فروش
                 </h3>
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
-                  <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                  <div className="flex gap-2">
+                    <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <button
+                      onClick={() => setIsBulkImportOpen(true)}
+                      className="p-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center shrink-0"
+                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
+                    >
+                      <Database className="w-5 h-5" />
+                    </button>
+                  </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
                       <SearchableSelect
@@ -12263,6 +12363,7 @@ export default function App() {
       )}
       {systemModule === "selector" ? (
         <ModuleSelector
+          storeSettings={storeSettings}
           onSelectModule={(sel) => {
             setSystemModule(sel);
             if (sel === "commerce") setActiveTab("analytical_dashboard");
@@ -13280,6 +13381,18 @@ export default function App() {
                       onClose={() => setIsAIProductSearchOpen(false)}
                       categories={productCategories}
                       onAddProducts={handleAIProductsAdd}
+                    />
+
+                    <BulkProductImportModal
+                      isOpen={isBulkImportOpen}
+                      onClose={() => setIsBulkImportOpen(false)}
+                      products={products}
+                      onImport={handleBulkImportItems}
+                      isPurchase={
+                        activeTab === "create_purchase" ||
+                        (activeTab === "create_warehouse_doc" && invoiceType === "warehouse_receipt")
+                      }
+                      getLastPriceForProduct={getLastPriceForProduct}
                     />
                   </motion.div>
                 ) : activeTab === "person_opening_balances" ? (
