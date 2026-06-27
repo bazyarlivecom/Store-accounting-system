@@ -517,49 +517,18 @@ async function startServer() {
     }
   
     try {
-      const { GoogleGenAI, Type } = await import("@google/genai");
-      const ai = new GoogleGenAI({
-        apiKey: process.env.GEMINI_API_KEY,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
-  
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: `Search the internet for product names and details related to "${query}"${category ? ` in the category of "${category}"` : ''}. Extract a list of products. Focus on Persian product names.`,
-        config: {
-          systemInstruction: "You are an assistant that finds real product names and descriptions from the internet. Provide results in Persian.",
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: {
-                  type: Type.STRING,
-                  description: "Name of the product in Persian",
-                },
-                description: {
-                  type: Type.STRING,
-                  description: "Short description or brand info",
-                },
-                priceStr: {
-                  type: Type.STRING,
-                  description: "Approximate price if available, otherwise empty string",
-                }
-              },
-              required: ["name"]
-            }
-          }
-        }
-      });
-  
-      const text = response.text;
-      const products = JSON.parse(text || "[]");
+      const prompt = `Search for 10 product names and details related to "${query}"${category ? ` in the category of "${category}"` : ''}. Extract a list of products. Focus on Persian product names. Return purely a JSON array of objects with keys "name", "description", and "priceStr". No markdown formatting, no backticks, just raw JSON.`;
+      
+      const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(prompt)}`);
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const text = await response.text();
+      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const products = JSON.parse(cleanText || "[]");
+      
       res.json({ products });
     } catch (err) {
       res.status(500).json({ error: err.message });
