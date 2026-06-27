@@ -17107,8 +17107,8 @@ export default function App() {
                                           <td className="py-3 px-2 align-top pt-3">
                                             <div className="flex flex-col gap-1.5 text-right relative">
                                               <span
-                                                className="text-gray-800 font-bold flex items-center justify-end gap-1 text-xs pr-0"
-                                                dir="ltr"
+                                                className="text-gray-800 font-bold flex items-center justify-start gap-1 text-xs pr-0"
+                                                dir="rtl"
                                               >
                                                 <span className="whitespace-nowrap">
                                                   {formatPersianDateDisplay(entry.jalaliDate)}
@@ -17583,8 +17583,8 @@ export default function App() {
                                           <td className="py-5 px-4 align-top pt-5 print:py-3 print:px-2 print:pt-4">
                                             <div className="flex flex-col gap-2.5 text-right relative">
                                               <span
-                                                className="text-gray-700 font-bold flex items-center justify-end gap-2 text-sm max-w-fit pr-0 print:text-xs"
-                                                dir="ltr"
+                                                className="text-gray-700 font-bold flex items-center justify-start gap-2 text-sm max-w-fit pr-0 print:text-xs"
+                                                dir="rtl"
                                               >
                                                 <span className="mt-0.5 whitespace-nowrap">
                                                   {formatPersianDateDisplay(entry.jalaliDate)}
