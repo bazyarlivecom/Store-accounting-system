@@ -138,56 +138,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
              <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-100 rounded-full blur-3xl opacity-50"></div>
              
              <div className="relative">
-                 <div className="flex justify-center mb-6">
-                    <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner border border-indigo-100/50">
-                       <Lock className="w-10 h-10" />
+                 <div className="flex justify-center mb-8">
+                    <div className="w-16 h-16 bg-slate-100 text-slate-800 rounded-2xl flex items-center justify-center border border-slate-200/60 shadow-sm">
+                       <Lock className="w-7 h-7" />
                     </div>
                  </div>
-                 <h2 className="text-3xl font-black text-center text-gray-800 mb-2 tracking-tight">ورود به سیستم</h2>
-                 <p className="text-center text-sm font-semibold text-gray-500 mb-8">شماره همراه یا نام کاربری خود را وارد کنید</p>
+                 <h2 className="text-2xl font-black text-center text-slate-900 mb-2 tracking-tight">ورود به پنل مدیریت</h2>
+                 <p className="text-center text-sm font-medium text-slate-500 mb-8">اطلاعات حساب کاربری خود را وارد نمایید</p>
 
                  {error && (
-                    <div className="mb-4 p-4 bg-rose-50 text-rose-600 text-sm rounded-xl font-bold flex items-center gap-2 border border-rose-100 shadow-sm">
-                       <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                       {error}
+                    <div className="mb-6 p-4 bg-red-50 text-red-800 text-sm rounded-xl font-bold flex items-start gap-3 border border-red-100 shadow-sm">
+                       <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                       <p className="leading-relaxed">{error}</p>
                     </div>
                  )}
                  {successMsg && (
-                    <div className="mb-4 p-4 bg-emerald-50 text-emerald-700 text-sm rounded-xl font-bold flex items-center gap-2 border border-emerald-100 shadow-sm break-all">
-                       <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                       {successMsg}
+                    <div className="mb-6 p-4 bg-emerald-50 text-emerald-800 text-sm rounded-xl font-bold flex items-start gap-3 border border-emerald-100 shadow-sm break-all">
+                       <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                       <p className="leading-relaxed">{successMsg}</p>
                     </div>
                  )}
 
                  {!requireOTP ? (
                      <form onSubmit={handleLogin} className="space-y-5">
                         <div>
-                           <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5"><UserIcon className="w-4 h-4 text-indigo-500"/> نام کاربری</label>
-                           <input type="text" value={username} onChange={e=>setUsername(e.target.value)} required className="w-full px-5 py-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:bg-white font-sans text-left transition-all font-bold placeholder-gray-400" dir="ltr" placeholder="admin" />
+                           <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><UserIcon className="w-4 h-4 text-slate-400"/> نام کاربری</label>
+                           <input type="text" value={username} onChange={e=>setUsername(e.target.value)} required className="w-full px-4 py-3.5 bg-slate-50/50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-800 focus:border-slate-800 focus:bg-white font-sans text-left transition-all font-semibold placeholder-slate-400" dir="ltr" placeholder="admin" />
                         </div>
                         <div>
-                           <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5"><Lock className="w-4 h-4 text-indigo-500"/> رمز عبور</label>
-                           <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="w-full px-5 py-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:bg-white font-sans text-left transition-all font-bold placeholder-gray-400 tracking-widest" dir="ltr" placeholder="••••••••" />
+                           <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><Lock className="w-4 h-4 text-slate-400"/> رمز عبور</label>
+                           <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required className="w-full px-4 py-3.5 bg-slate-50/50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-800 focus:border-slate-800 focus:bg-white font-sans text-left transition-all font-semibold placeholder-slate-400 tracking-[0.2em]" dir="ltr" placeholder="••••••••" />
                         </div>
-                        <button type="submit" className="w-full py-4 mt-2 bg-gradient-to-l from-indigo-600 to-indigo-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-md active:scale-[0.98]">
+                        <button type="submit" className="w-full py-4 mt-4 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md active:scale-[0.98]">
                            <LogIn className="w-5 h-5"/>
-                           ورود امن به نرم‌افزار
+                           ورود به حساب کاربری
                         </button>
                      </form>
                  ) : (
                      <form onSubmit={handleVerifyOTP} className="space-y-5 animate-in slide-in-from-right relative">
-                        <button type="button" onClick={() => setRequireOTP(false)} className="text-xs text-indigo-600 font-bold mb-4 block hover:underline">بازگشت</button>
+                        <button type="button" onClick={() => setRequireOTP(false)} className="text-xs text-slate-500 font-bold mb-4 block hover:text-slate-800 transition-colors">بازگشت به مرحله قبل</button>
                         <div>
-                           <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5"><KeyRound className="w-4 h-4 text-indigo-500"/> کد تایید دو مرحله‌ای (OTP)</label>
-                           <input type="text" value={otp} onChange={e=>setOtp(e.target.value)} required className="w-full px-5 py-4 bg-gray-50 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:bg-white font-mono font-black text-center text-2xl tracking-[0.5em] transition-all" dir="ltr" placeholder="------" maxLength={6} />
+                           <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><KeyRound className="w-4 h-4 text-slate-400"/> کد تایید (OTP)</label>
+                           <input type="text" value={otp} onChange={e=>setOtp(e.target.value)} required className="w-full px-4 py-4 bg-slate-50/50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-800 focus:border-slate-800 focus:bg-white font-mono font-black text-center text-2xl tracking-[0.5em] transition-all" dir="ltr" placeholder="------" maxLength={6} />
                         </div>
-                        <button type="submit" className="w-full py-4 mt-2 bg-emerald-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-md active:scale-[0.98]">
+                        <button type="submit" className="w-full py-4 mt-4 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md active:scale-[0.98]">
                            <Lock className="w-5 h-5"/>
-                           تایید دسترسی
+                           تایید و ورود
                         </button>
                      </form>
                  )}
-                 <p className="text-center text-xs text-gray-400 mt-8 font-mono font-bold tracking-widest uppercase">SECURE PORTAL V2.0</p>
+                 <p className="text-center text-[10px] text-slate-400 mt-10 font-mono font-bold tracking-widest uppercase">SECURE PORTAL</p>
              </div>
           </div>
        </div>

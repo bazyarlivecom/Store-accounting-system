@@ -5799,30 +5799,29 @@ export default function App() {
         className="min-h-screen bg-slate-50 flex items-center justify-center p-4 pt-10 pb-10"
         dir="rtl"
       >
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-xl w-full border border-gray-100">
-          <div className="bg-gradient-to-l from-indigo-600 to-indigo-800 p-8 text-center text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mx-24 -mt-24 pointer-events-none"></div>
-            <h1 className="text-3xl font-black mb-2 relative z-10">
-              خوش آمدید!
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden max-w-xl w-full">
+          <div className="bg-slate-900 p-10 text-center text-white relative overflow-hidden">
+            <h1 className="text-2xl font-black mb-3 relative z-10 tracking-tight">
+              خوش آمدید
             </h1>
-            <p className="text-indigo-100 font-medium relative z-10">
-              تنظیمات اولیه سیستم خود را تکمیل کنید
+            <p className="text-slate-300 font-medium relative z-10 text-sm">
+              جهت ورود به سیستم، تنظیمات اولیه را تکمیل نمایید
             </p>
           </div>
           <div className="p-8">
-            <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm font-bold flex items-start gap-3 mb-8 border border-amber-100">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              <p className="leading-loose">
-                توجه داشته باشید که <strong>نوع تقویم</strong> و{" "}
+            <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm font-bold flex items-start gap-3 mb-8 border border-amber-100 shadow-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                توجه: <strong>نوع تقویم</strong> و{" "}
                 <strong>واحد پولی</strong> پس از ثبت برای حفظ یکپارچگی پایگاه
-                داده و نرم‌افزار <strong>غیرقابل تغییر</strong> خواهند بود.
+                داده سیستم <strong>غیرقابل تغییر</strong> خواهند بود.
               </p>
             </div>
 
             <form onSubmit={handleSaveSettings} className="space-y-6">
               <div>
-                <label className="block text-sm font-extrabold text-gray-800 mb-3">
-                  نام فروشگاه یا مجموعه تجاری
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  نام مجموعه / شرکت
                 </label>
                 <input
                   type="text"
@@ -5834,13 +5833,13 @@ export default function App() {
                       storeName: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-gray-900"
-                  placeholder="وارد کنید..."
+                  className="w-full px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-800 focus:border-slate-800 focus:bg-white transition-colors font-semibold text-slate-900"
+                  placeholder="عنوان کسب و کار خود را وارد کنید..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-extrabold text-gray-800 mb-3">
+                <label className="block text-sm font-bold text-slate-700 mb-2">
                   واحد پولی سیستم
                 </label>
                 <select
@@ -5851,7 +5850,7 @@ export default function App() {
                       currency: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-gray-900"
+                  className="w-full px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-800 focus:border-slate-800 focus:bg-white transition-colors font-semibold text-slate-900"
                 >
                   <option value="ریال">ریال</option>
                   <option value="تومان">تومان</option>
@@ -5863,7 +5862,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-sm font-extrabold text-gray-800 mb-3">
+                <label className="block text-sm font-bold text-slate-700 mb-2">
                   تاریخ و تقویم سیستم
                 </label>
                 <div className="grid grid-cols-2 gap-4">
@@ -5875,7 +5874,7 @@ export default function App() {
                         calendarType: "jalali",
                       })
                     }
-                    className={`py-4 px-2 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType !== "gregorian" ? "border-indigo-600 bg-indigo-50 text-indigo-800" : "border-gray-100 text-gray-500 hover:border-gray-200"}`}
+                    className={`py-4 px-2 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType !== "gregorian" ? "border-slate-800 bg-slate-800 text-white shadow-sm" : "border-slate-200 text-slate-500 hover:border-slate-300 bg-slate-50/50 hover:bg-slate-50"}`}
                   >
                     تقویم شمسی (جلالی)
                   </button>
@@ -5887,7 +5886,7 @@ export default function App() {
                         calendarType: "gregorian",
                       })
                     }
-                    className={`py-4 px-2 rounded-xl border-2 flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType === "gregorian" ? "border-indigo-600 bg-indigo-50 text-indigo-800" : "border-gray-100 text-gray-500 hover:border-gray-200"}`}
+                    className={`py-4 px-2 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all ${settingsForm.calendarType === "gregorian" ? "border-slate-800 bg-slate-800 text-white shadow-sm" : "border-slate-200 text-slate-500 hover:border-slate-300 bg-slate-50/50 hover:bg-slate-50"}`}
                   >
                     تقویم میلادی
                   </button>
@@ -5895,7 +5894,7 @@ export default function App() {
               </div>
 
               <div>
-                <label className="block text-sm font-extrabold text-gray-800 mb-3">
+                <label className="block text-sm font-bold text-slate-700 mb-2">
                   فونت سیستم
                 </label>
                 <select
@@ -5906,7 +5905,7 @@ export default function App() {
                       fontFamily: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-indigo-500 focus:ring-0 transition-colors font-bold text-gray-900"
+                  className="w-full px-4 py-3 bg-slate-50/50 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-800 focus:border-slate-800 focus:bg-white transition-colors font-semibold text-slate-900"
                 >
                   <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
                   <option value="IRANYekanXFaNum">
@@ -5921,16 +5920,16 @@ export default function App() {
                 </select>
               </div>
 
-              <div className="pt-6 border-t border-gray-100">
+              <div className="pt-6 border-t border-slate-100 mt-2">
                 <button
                   type="submit"
                   disabled={submittingSettings}
-                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-lg transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-md active:scale-[0.98] focus:ring-4 focus:ring-slate-100"
                 >
                   {submittingSettings ? (
-                    <RefreshCw className="w-6 h-6 animate-spin" />
+                    <RefreshCw className="w-5 h-5 animate-spin" />
                   ) : (
-                    <Save className="w-6 h-6" />
+                    <CheckCircle className="w-5 h-5" />
                   )}
                   ثبت نهایی و ورود به سیستم
                 </button>
