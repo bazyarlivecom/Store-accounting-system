@@ -464,8 +464,32 @@ async function startServer() {
   });
 
   app.post('/api/system/update', (req, res) => {
-    // Simulate update success
-    res.json({ success: true, message: 'Update completed successfully.' });
+    const repoUrl = 'https://github.com/bazyarlivecom/Store-accounting-system.git';
+    
+    const script = `
+      if [ ! -d ".git" ]; then
+        git init
+        git remote add origin ${repoUrl}
+      fi
+      git fetch --all
+      git reset --hard origin/main
+      npm run build
+    `;
+
+    exec(script, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`update error: ${error.message}`);
+        return res.status(500).json({ error: error.message, details: stderr });
+      }
+      
+      console.log('Update output:', stdout);
+      res.json({ success: true, message: 'Update completed successfully. ' + stdout });
+      
+      setTimeout(() => {
+        console.log('Restarting process after update...');
+        process.exit(0);
+      }, 2000);
+    });
   });
 
   app.post('/api/db/execute', (req, res) => {

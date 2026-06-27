@@ -5651,11 +5651,12 @@ export default function App() {
     const totalSimulatedTime = 6000; // 6 seconds to reach ~95%
     const increment = 100 / (totalSimulatedTime / intervalTime);
 
-    // Simulate fetch immediately instead of requiring a backend route
-    let fetchPromise = new Promise<{ ok: boolean; data: any }>((resolve) => {
-      setTimeout(() => {
-        resolve({ ok: true, data: { success: true } });
-      }, 1000);
+    let fetchPromise = fetch('/api/system/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }).then(async (res) => {
+       const data = await res.json();
+       return { ok: res.ok, data };
     });
 
     const updateInterval = setInterval(() => {
