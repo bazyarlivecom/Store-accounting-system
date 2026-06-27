@@ -37,12 +37,12 @@ export default function WarehousePrintTemplate({
           </div>
           <div className="flex items-center gap-2 text-xs font-bold">
             <span className="text-slate-500 w-16">شماره سند:</span>
-            <span className="font-mono">{toPersianDigits(data.invoiceNumber || data.id)}</span>
+            <span className="font-bold">{toPersianDigits(data.invoiceNumber || data.id)}</span>
           </div>
           {data.sellerInvoiceNumber && (
             <div className="flex items-center gap-2 text-xs font-bold">
               <span className="text-slate-500 w-16">عطف:</span>
-              <span className="font-mono">{toPersianDigits(data.sellerInvoiceNumber)}</span>
+              <span className="font-bold">{toPersianDigits(data.sellerInvoiceNumber)}</span>
             </div>
           )}
         </div>
@@ -122,11 +122,11 @@ export default function WarehousePrintTemplate({
             {data.items?.filter((it: any) => it.productName || it.productId || it.quantity > 0).map((item: any, idx: number) => (
               <tr key={idx} className="hover:bg-slate-50 print:hover:bg-transparent">
                 <td className="py-2 px-3 text-center border-l border-slate-300 text-slate-500">{toPersianDigits(idx + 1)}</td>
-                <td className="py-2 px-3 border-l border-slate-300 font-mono text-slate-600">
+                <td className="py-2 px-3 border-l border-slate-300 font-bold text-slate-600">
                    {toPersianDigits(item.productId || "-")}
                 </td>
                 <td className="py-2 px-3 border-l border-slate-300">{item.productName || "کالا"}</td>
-                <td className="py-2 px-3 text-center border-l border-slate-300 font-mono text-sm" dir="rtl">
+                <td className="py-2 px-3 text-center border-l border-slate-300 font-bold text-sm" dir="rtl">
                   {toPersianDigits(item.quantity || 1)}
                 </td>
                 <td className="py-2 px-3 text-center text-slate-600">

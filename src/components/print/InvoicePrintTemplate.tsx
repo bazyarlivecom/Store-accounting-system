@@ -6,12 +6,14 @@ interface InvoicePrintTemplateProps {
   data: any;
   storeSettings: any;
   persons: any[];
+  transactions?: any[];
 }
 
 export default function InvoicePrintTemplate({
   data,
   storeSettings,
   persons,
+  transactions = [],
 }: InvoicePrintTemplateProps) {
   const isSale = data.type === "sale" || data.type === "sale_return";
   const isReturn = data.type === "sale_return" || data.type === "purchase_return";
@@ -22,6 +24,10 @@ export default function InvoicePrintTemplate({
   const relatedPerson = persons.find(
     (p) => p.id === data.customerId || p.name === data.customerName
   );
+
+  const allocatedTransactions = transactions.filter((t: any) => {
+    return t.linkedInvoices && t.linkedInvoices[data.id] && t.linkedInvoices[data.id] > 0;
+  });
 
   return (
     <div className="w-full text-sm text-slate-800 font-sans p-4 print:p-0">
@@ -34,12 +40,12 @@ export default function InvoicePrintTemplate({
           </div>
           <div className="flex items-center gap-2 text-xs font-bold">
             <span className="text-slate-500 w-16">شماره سند:</span>
-            <span className="font-mono">{toPersianDigits(data.invoiceNumber || data.id)}</span>
+            <span className="font-bold">{toPersianDigits(data.invoiceNumber || data.id)}</span>
           </div>
           {data.sellerInvoiceNumber && (
             <div className="flex items-center gap-2 text-xs font-bold">
               <span className="text-slate-500 w-16">عطف:</span>
-              <span className="font-mono">{toPersianDigits(data.sellerInvoiceNumber)}</span>
+              <span className="font-bold">{toPersianDigits(data.sellerInvoiceNumber)}</span>
             </div>
           )}
         </div>
@@ -122,19 +128,19 @@ export default function InvoicePrintTemplate({
               <tr key={idx} className="hover:bg-slate-50 print:hover:bg-transparent">
                 <td className="py-2 px-3 text-center border-l border-slate-300 text-slate-500">{toPersianDigits(idx + 1)}</td>
                 <td className="py-2 px-3 border-l border-slate-300">{item.productName || "کالا"}</td>
-                <td className="py-2 px-3 text-center border-l border-slate-300 font-mono text-sm" dir="rtl">
+                <td className="py-2 px-3 text-center border-l border-slate-300 font-bold text-sm" dir="rtl">
                   {toPersianDigits(item.quantity || 1)}
                 </td>
                 <td className="py-2 px-3 text-center border-l border-slate-300 text-slate-600">
                   {item.selectedUnit || "-"}
                 </td>
-                <td className="py-2 px-3 text-center border-l border-slate-300 font-mono text-sm">
+                <td className="py-2 px-3 text-center border-l border-slate-300 font-bold text-sm">
                   {toPersianDigits(addCommas(item.unitPrice || 0))}
                 </td>
-                <td className="py-2 px-3 text-center border-l border-slate-300 font-mono text-sm">
+                <td className="py-2 px-3 text-center border-l border-slate-300 font-bold text-sm">
                   {toPersianDigits(item.discountPercent || 0)}
                 </td>
-                <td className="py-2 px-3 text-center font-mono text-sm">
+                <td className="py-2 px-3 text-center font-bold text-sm">
                   {toPersianDigits(addCommas(item.totalPrice || 0))}
                 </td>
               </tr>
@@ -160,18 +166,55 @@ export default function InvoicePrintTemplate({
         <div className="w-64 border-2 border-slate-800 rounded-lg overflow-hidden print:border-slate-500 text-xs font-bold">
           <div className="flex justify-between p-2.5 border-b border-slate-300 print:border-slate-400">
              <span className="text-slate-600">جمع مبالغ:</span>
-             <span className="font-mono">{toPersianDigits(addCommas(data.items?.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0) || 0))}</span>
+             <span className="font-bold">{toPersianDigits(addCommas(data.items?.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0) || 0))}</span>
           </div>
           <div className="flex justify-between p-2.5 border-b border-slate-300 print:border-slate-400 text-red-600">
              <span>تخفیف کل:</span>
-             <span className="font-mono">{toPersianDigits(addCommas((data.items?.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0) || 0) - (data.totalAmount || 0)))}</span>
+             <span className="font-bold">{toPersianDigits(addCommas((data.items?.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0) || 0) - (data.totalAmount || 0)))}</span>
           </div>
           <div className="flex justify-between p-3 bg-slate-100 print:bg-slate-200 text-sm font-black">
              <span>مبلغ قابل پرداخت:</span>
-             <span className="font-mono">{toPersianDigits(addCommas(data.totalAmount || 0))}</span>
+             <span className="font-bold">{toPersianDigits(addCommas(data.totalAmount || 0))}</span>
           </div>
         </div>
       </div>
+
+      {/* Allocated Transactions Area */}
+      {allocatedTransactions.length > 0 && (
+        <div className="mb-6">
+          <div className="font-bold text-xs mb-2">اسناد مالی مرتبط:</div>
+          <div className="border border-slate-400 rounded-lg overflow-hidden">
+            <table className="w-full text-right text-[10px]">
+              <thead className="bg-slate-100 print:bg-slate-200 border-b border-slate-400">
+                <tr>
+                  <th className="py-2 px-3 border-l border-slate-300">تاریخ</th>
+                  <th className="py-2 px-3 border-l border-slate-300">نوع سند</th>
+                  <th className="py-2 px-3 border-l border-slate-300">نحوه تسویه</th>
+                  <th className="py-2 px-3 border-l border-slate-300">شماره / پیگیری</th>
+                  <th className="py-2 px-3">مبلغ اختصاص یافته (تومان)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-300 font-bold">
+                {allocatedTransactions.map((tx: any, idx: number) => {
+                  const txType = tx.type === "receive" ? "دریافت" : "پرداخت";
+                  const txMethod = tx.method === "cash" ? "نقدی" : "چک";
+                  const txRef = tx.method === "check" ? tx.checkNumber : tx.receiptNumber || "-";
+                  const allocatedAmount = tx.linkedInvoices[data.id];
+                  return (
+                    <tr key={idx} className="hover:bg-slate-50 print:hover:bg-transparent">
+                      <td className="py-2 px-3 border-l border-slate-300">{formatPersianDateDisplay(tx.jalaliDate || tx.date)}</td>
+                      <td className="py-2 px-3 border-l border-slate-300 text-slate-600">{txType}</td>
+                      <td className="py-2 px-3 border-l border-slate-300 text-slate-600">{txMethod}</td>
+                      <td className="py-2 px-3 border-l border-slate-300 font-bold">{toPersianDigits(txRef)}</td>
+                      <td className="py-2 px-3 font-bold">{toPersianDigits(addCommas(allocatedAmount))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Signatures */}
       <div className="mt-8 grid grid-cols-2 gap-8 text-center text-xs font-bold text-slate-700">

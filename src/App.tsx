@@ -23319,7 +23319,7 @@ export default function App() {
                                   : "max-w-[210mm] min-h-fit")
                           }
                         >
-                           <InvoicePrintTemplate data={viewingInvoice} storeSettings={storeSettings} persons={persons} />
+                           <InvoicePrintTemplate data={viewingInvoice} storeSettings={storeSettings} persons={persons} transactions={transactions} />
                         </div>
                       )}
                     </div>
@@ -24722,7 +24722,7 @@ export default function App() {
                                   : "max-w-[210mm] min-h-fit mx-auto")
                           }
                         >
-                           <InvoicePrintTemplate data={previewInvoiceData} storeSettings={storeSettings} persons={persons} />
+                           <InvoicePrintTemplate data={previewInvoiceData} storeSettings={storeSettings} persons={persons} transactions={transactions} />
                         </div>
                         )}
                         {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING END --- */}
