@@ -69,9 +69,8 @@ export default function WarehousePrintTemplate({
         </div>
       </div>
 
-      {/* Info Blocks */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        {/* Person Info */}
+      {/* Person Info */}
+      <div className="mb-4">
         <div className="border border-slate-300 rounded-lg p-3 text-xs leading-relaxed print:border-slate-400">
           <div className="flex items-center gap-1 text-slate-500 font-bold mb-2">
             <User className="w-4 h-4" />
@@ -85,8 +84,52 @@ export default function WarehousePrintTemplate({
             </div>
           )}
         </div>
+      </div>
 
-        {/* Warehouse Info */}
+      {/* Items Table */}
+      <div className="border-2 border-slate-800 rounded-lg overflow-hidden print:border-slate-500 mb-6">
+        <table className="w-full text-right text-xs">
+          <thead className="bg-slate-100 print:bg-slate-200 text-slate-900 font-black border-b-2 border-slate-800 print:border-slate-500">
+            <tr>
+              <th className="py-2.5 px-2 w-10 text-center border-l border-slate-300">ردیف</th>
+              <th className="py-2.5 px-2 w-24 border-l border-slate-300">کد کالا</th>
+              <th className="py-2.5 px-2 w-auto border-l border-slate-300">شرح کالا</th>
+              <th className="py-2.5 px-2 w-24 text-center border-l border-slate-300">مقدار / تعداد</th>
+              <th className="py-2.5 px-2 w-24 text-center">واحد اندازه گیری</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-300 font-bold text-slate-800">
+            {data.items?.filter((it: any) => it.productName || it.productId || it.quantity > 0).map((item: any, idx: number) => (
+              <tr key={idx} className="hover:bg-slate-50 print:hover:bg-transparent">
+                <td className="py-2 px-2 text-center border-l border-slate-300 text-slate-500">{toPersianDigits(idx + 1)}</td>
+                <td className="py-2 px-2 border-l border-slate-300 font-bold text-slate-600">
+                   {toPersianDigits(item.productId || "-")}
+                </td>
+                <td className="py-2 px-2 border-l border-slate-300">{item.productName || "کالا"}</td>
+                <td className="py-2 px-2 text-center border-l border-slate-300 font-bold text-sm" dir="rtl">
+                  {toPersianDigits(item.quantity || 1)}
+                </td>
+                <td className="py-2 px-2 text-center text-slate-600">
+                  {item.selectedUnit || "-"}
+                </td>
+              </tr>
+            ))}
+            {/* Empty rows to maintain table height if few items */}
+            {Array.from({ length: Math.max(0, 5 - (data.items?.length || 0)) }).map((_, i) => (
+               <tr key={`empty-${i}`} className="h-9">
+                  <td className="border-l border-slate-300"></td>
+                  <td className="border-l border-slate-300"></td>
+                  <td className="border-l border-slate-300"></td>
+                  <td className="border-l border-slate-300"></td>
+                  <td></td>
+               </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Warehouse Info */}
+      <div className="mb-6">
         <div className="border border-slate-300 rounded-lg p-3 text-xs leading-relaxed print:border-slate-400">
           <div className="flex items-center gap-1 text-slate-500 font-bold mb-2">
             <Building2 className="w-4 h-4" />
@@ -104,48 +147,6 @@ export default function WarehousePrintTemplate({
              <div className="mt-2 text-slate-600">توضیحات: {data.description}</div>
           )}
         </div>
-      </div>
-
-      {/* Items Table */}
-      <div className="border-2 border-slate-800 rounded-lg overflow-hidden print:border-slate-500">
-        <table className="w-full text-right text-xs">
-          <thead className="bg-slate-100 print:bg-slate-200 text-slate-900 font-black border-b-2 border-slate-800 print:border-slate-500">
-            <tr>
-              <th className="py-2.5 px-3 w-12 text-center border-l border-slate-300">ردیف</th>
-              <th className="py-2.5 px-3 border-l border-slate-300">کد کالا</th>
-              <th className="py-2.5 px-3 border-l border-slate-300">شرح کالا</th>
-              <th className="py-2.5 px-3 w-28 text-center border-l border-slate-300">مقدار / تعداد</th>
-              <th className="py-2.5 px-3 w-24 text-center">واحد اندازه گیری</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-300 font-bold text-slate-800">
-            {data.items?.filter((it: any) => it.productName || it.productId || it.quantity > 0).map((item: any, idx: number) => (
-              <tr key={idx} className="hover:bg-slate-50 print:hover:bg-transparent">
-                <td className="py-2 px-3 text-center border-l border-slate-300 text-slate-500">{toPersianDigits(idx + 1)}</td>
-                <td className="py-2 px-3 border-l border-slate-300 font-bold text-slate-600">
-                   {toPersianDigits(item.productId || "-")}
-                </td>
-                <td className="py-2 px-3 border-l border-slate-300">{item.productName || "کالا"}</td>
-                <td className="py-2 px-3 text-center border-l border-slate-300 font-bold text-sm" dir="rtl">
-                  {toPersianDigits(item.quantity || 1)}
-                </td>
-                <td className="py-2 px-3 text-center text-slate-600">
-                  {item.selectedUnit || "-"}
-                </td>
-              </tr>
-            ))}
-            {/* Empty rows to maintain table height if few items */}
-            {Array.from({ length: Math.max(0, 5 - (data.items?.length || 0)) }).map((_, i) => (
-               <tr key={`empty-${i}`} className="h-9">
-                  <td className="border-l border-slate-300"></td>
-                  <td className="border-l border-slate-300"></td>
-                  <td className="border-l border-slate-300"></td>
-                  <td className="border-l border-slate-300"></td>
-                  <td></td>
-               </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
       {/* Signatures */}
