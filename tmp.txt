@@ -1,0 +1,98 @@
+401:      const isInvoiceTab = activeTab === "create_sale" || activeTab === "create_purchase" || activeTab === "create_warehouse_doc";
+413:      const isReceiptTab = activeTab === "create_receive_receipt" || activeTab === "create_pay_receipt";
+948:    if (activeTab === "create_sale") {
+951:    } else if (activeTab === "create_sale_return") {
+954:    } else if (activeTab === "create_purchase_return") {
+957:    } else if (activeTab === "create_purchase") {
+960:    } else if (activeTab === "create_warehouse_doc") {
+1494:                    activeTab === "create_sale" ||
+1617:    if (activeTab === "financial_years") {
+3749:      if (activeTab === "create_warehouse_doc") {
+3764:          activeTab === "create_warehouse_doc" &&
+3835:      activeTab === "settings" && settingsForm?.fontFamily
+3956:    if (activeTab === "create_warehouse_doc" && product.type === "service") {
+3962:      activeTab === "create_purchase" ||
+3963:      (activeTab === "create_warehouse_doc" &&
+4037:              if (activeTab === "create_warehouse_doc" && product.type === "service") {
+4047:                activeTab === "create_purchase" ||
+4048:                (activeTab === "create_warehouse_doc" &&
+4108:            const isWarehouseTab = activeTab === "create_warehouse_doc";
+4312:      (activeTab === "create_warehouse_doc" &&
+4314:      activeTab === "list_warehouse_docs";
+4350:        (activeTab === "create_warehouse_doc" &&
+4356:        (activeTab === "create_warehouse_doc" &&
+4361:      else if (activeTab === "create_purchase" || invoiceType === "purchase")
+4365:        activeTab === "create_sale_return" ||
+4370:        activeTab === "create_purchase_return" ||
+4456:    if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
+4466:      (activeTab === "create_sale" || invoiceType === "sale") &&
+4568:                activeTab === "create_sale" ||
+4881:        if (activeTab === "create_sale") {
+4886:        } else if (activeTab === "create_sale_return") {
+4891:        } else if (activeTab === "create_purchase_return") {
+4896:        } else if (activeTab === "create_purchase") {
+4901:        } else if (activeTab === "create_warehouse_doc") {
+5171:    if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
+5201:    if (activeTab === "create_warehouse_doc" && !invoiceWarehouseId) {
+5604:    activeTab === "create_sale" ||
+5605:    activeTab === "create_purchase" ||
+5606:    activeTab === "create_warehouse_doc" ||
+5607:    activeTab === "create_sale_return" ||
+5608:    activeTab === "create_purchase_return"
+9282:            if (activeTab === "list_sale") {
+9284:            } else if (activeTab === "list_purchase") {
+9294:            } else if (activeTab === "list_warehouse_docs") {
+9303:            } else if (activeTab === "list_sale_return") {
+9305:            } else if (activeTab === "list_purchase_return") {
+9394:                  {activeTab === "list_sale"
+9396:                    : activeTab === "list_purchase"
+9413:                {(activeTab === "list_sale" ||
+9414:                  activeTab === "list_purchase") && (
+9439:                {activeTab === "list_warehouse_docs" && (
+9576:                                  (activeTab === "list_sale"
+9583:                                    (activeTab === "list_sale"
+9739:                              {activeTab === "list_purchase" && (
+9925:        const isReceive = activeTab === "create_receive_receipt";
+10620:        const isReceive = activeTab === "list_receive_receipt";
+11970:                            activeTab === item.id
+12018:                  className={`text-right w-full px-3 py-2.5 rounded-lg text-xs font-bold transition-colors ${activeTab === item.id ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+12592:                {activeTab === "products" ? (
+13233:                ) : activeTab === "person_opening_balances" ? (
+13674:                ) : activeTab === "persons" ? (
+14414:                ) : activeTab === "person_groups" ? (
+14588:                ) : activeTab === "person_roles" ? (
+14721:                ) : activeTab === "accounts" ? (
+14876:                ) : activeTab === "cashboxes" ? (
+14996:                ) : activeTab === "warehouses" ? (
+15361:                ) : activeTab === "financial_report" ? (
+16315:                ) : activeTab === "person_ledger" ? (
+17699:                ) : activeTab === "debts_credits" ? (
+17701:                ) : activeTab === "checkbooks" ? (
+17715:                ) : activeTab === "issued_checks" ? (
+17729:                ) : activeTab === "received_checks" ? (
+17743:                ) : activeTab === "check_calendar" ? (
+17757:                ) : activeTab === "check_charts" ? (
+17771:                ) : activeTab === "transfer" ? (
+17778:                ) : activeTab === "invoice_allocation" ? (
+17789:                ) : activeTab === "quick_refund" ? (
+17799:                ) : activeTab === "loans" ? (
+17811:                ) : activeTab === "users_manager" ? (
+17813:                ) : activeTab === "settings" ? (
+18818:                ) : activeTab === "inventory_report" ? (
+18820:                ) : activeTab === "analytical_dashboard" ? (
+18822:                ) : activeTab === "sms_panel" ? (
+19093:                ) : activeTab === "system_logs" ? (
+19100:                ) : activeTab === "database" ? (
+19102:                ) : activeTab === "update" ? (
+19424:                ) : activeTab === "quick_price_inquiry" ? (
+19429:                ) : activeTab === "product_view" ? (
+19475:                ) : activeTab === "checklist" ? (
+19477:                ) : activeTab === "stocktaking" ? (
+19485:                ) : activeTab === "financial_years" ? (
+19487:                ) : activeTab === "chart_of_accounts" ? (
+19492:                ) : activeTab === "accounting_docs_list" ? (
+19508:                ) : activeTab === "accounting_doc_create" ? (
+19517:                ) : activeTab === "accounting_doc_view" &&
+19524:                ) : activeTab === "accounting_auto_sync" ? (
+19526:                ) : activeTab === "accounting_verification" ? (
+19528:                ) : activeTab === "accounting_opening_balances" ? (

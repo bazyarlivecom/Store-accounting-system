@@ -74,7 +74,9 @@ import { Building,
   Barcode as BarcodeIcon,
   LayoutGrid,
   Table,
-  Download
+  Download,
+  Globe,
+  Bell
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -214,6 +216,9 @@ import AccountingAutoSync from "./components/accounting/AccountingAutoSync";
 import AccountingVerification from "./components/accounting/AccountingVerification";
 import OpeningBalances from "./components/accounting/OpeningBalances";
 import FinancialYearManager from "./components/accounting/FinancialYearManager";
+import WarehousePrintTemplate from "./components/print/WarehousePrintTemplate";
+import InvoicePrintTemplate from "./components/print/InvoicePrintTemplate";
+import AIProductSearchModal from "./components/products/AIProductSearchModal";
 import {
   Person,
   PersonGroup,
@@ -1657,6 +1662,7 @@ export default function App() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isProductActionsMenuOpen, setIsProductActionsMenuOpen] = useState(false);
   const [isGenerateBarcodesModalOpen, setIsGenerateBarcodesModalOpen] = useState(false);
+  const [isAIProductSearchOpen, setIsAIProductSearchOpen] = useState(false);
   const [barcodeFormat, setBarcodeFormat] = useState("prefix_serial");
   const [barcodePrefix, setBarcodePrefix] = useState("PRD-");
   const [barcodeLength, setBarcodeLength] = useState(6);
@@ -1864,9 +1870,7 @@ export default function App() {
     print_signature_3: "",
   });
   const [submittingSettings, setSubmittingSettings] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<
-    "general" | "numbering" | "features" | "printing" | "notification"
-  >("general");
+  const [settingsTab, setSettingsTab] = useState<string>("general");
   const [smsPanelTab, setSmsPanelTab] = useState<"send_history" | "templates">("send_history");
 
   // Fetch API data on mount
@@ -3510,6 +3514,37 @@ export default function App() {
     setNewProductDesc(p.description || "");
     setProductFormTab("general");
     setIsProductModalOpen(true);
+  };
+
+  const handleAIProductsAdd = async (selectedProducts: any[], categoryId: string) => {
+    try {
+      let isSuccess = false;
+      for (const prod of selectedProducts) {
+        const newProduct = {
+          name: prod.name,
+          description: prod.description || "",
+          price: prod.price || 0,
+          type: "product",
+          categoryId: categoryId || "",
+          code: "",
+          barcode: "",
+          purchasePrice: 0,
+          stock: 0,
+          minStock: 0,
+          unit: "عدد",
+          secondaryUnit: "",
+          unitRatio: 1,
+        };
+        await addProduct(newProduct as any);
+        isSuccess = true;
+      }
+      if (isSuccess) {
+        await fetchProducts();
+        setSuccessMsg("کالاهای انتخاب شده با موفقیت افزوده شدند.");
+      }
+    } catch (e: any) {
+      alert("خطا در ثبت کالاها: " + e.message);
+    }
   };
 
   const handleSavePersonRole = async () => {
@@ -12661,6 +12696,15 @@ export default function App() {
                                 <div className="h-px bg-slate-100 my-1 mx-3"></div>
                                 
                                 <button
+                                  onClick={() => { setIsProductActionsMenuOpen(false); setIsAIProductSearchOpen(true); }}
+                                  className="w-full text-right px-4 py-2.5 hover:bg-purple-50 text-purple-700 flex items-center gap-3 text-sm transition-colors font-medium group"
+                                >
+                                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-500 group-hover:bg-purple-200 group-hover:text-purple-600 transition-colors">
+                                    <Sparkles className="w-4 h-4" />
+                                  </div>
+                                  استخراج هوشمند کالاها
+                                </button>
+                                <button
                                   onClick={() => { setIsProductActionsMenuOpen(false); setIsGroupPriceModalOpen(true); }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-emerald-50 text-emerald-700 flex items-center gap-3 text-sm transition-colors font-medium group"
                                 >
@@ -13229,6 +13273,13 @@ export default function App() {
                         );
                       })()}
                     </div>
+                    
+                    <AIProductSearchModal
+                      isOpen={isAIProductSearchOpen}
+                      onClose={() => setIsAIProductSearchOpen(false)}
+                      categories={productCategories}
+                      onAddProducts={handleAIProductsAdd}
+                    />
                   </motion.div>
                 ) : activeTab === "person_opening_balances" ? (
                   <motion.div
@@ -17814,1005 +17865,676 @@ export default function App() {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-3xl mx-auto"
+                    className="bg-gray-50/50 rounded-2xl shadow-sm border border-gray-200 overflow-hidden max-w-7xl mx-auto h-[85vh] flex flex-col"
                   >
-                    <div className="bg-gradient-to-l from-indigo-50 to-white px-8 py-6 border-b border-gray-100">
-                      <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-                        <Store className="w-6 h-6 text-indigo-600" />
-                        تنظیمات فروشگاه و کسب و کار
-                      </h1>
-                      <p className="mt-2 text-sm text-gray-500">
-                        اطلاعات پایه از قبیل نام کسب و کار، آدرس، تلفن و واحد
-                        پولی را مدیریت کنید.
-                      </p>
-                    </div>
-
-                    {successMsg && (
-                      <div className="mx-6 mt-6 bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-green-100 mb-0">
-                        <CheckCircle className="w-5 h-5" />
-                        {successMsg}
+                    <div className="bg-gradient-to-l from-indigo-900 to-indigo-700 px-8 py-5 flex items-center justify-between shrink-0 shadow-md">
+                      <div className="flex flex-col">
+                        <h1 className="text-xl font-extrabold text-white flex items-center gap-3">
+                          <Settings className="w-6 h-6 text-indigo-200" />
+                          تنظیمات جامع سیستم
+                        </h1>
+                        <p className="mt-1.5 text-indigo-100/80 text-sm max-w-xl leading-relaxed">
+                          پیکربندی کامل امکانات فروشگاه، حسابداری، اطلاع‌رسانی، شخصی‌سازی چاپ و شماره‌گذاری اسناد.
+                        </p>
                       </div>
-                    )}
-
-                    <div className="border-b border-gray-100 flex gap-6 px-6 bg-white overflow-x-auto">
                       <button
-                        onClick={() => setSettingsTab("general")}
-                        className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === "general" ? "text-indigo-600" : "text-gray-500 hover:text-indigo-500"}`}
-                      >
-                        عمومی و اطلاعات فروشگاه
-                        {settingsTab === "general" && (
-                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setSettingsTab("features")}
-                        className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === "features" ? "text-indigo-600" : "text-gray-500 hover:text-indigo-500"}`}
-                      >
-                        امکانات سیستم (انبار/فروش)
-                        {settingsTab === "features" && (
-                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setSettingsTab("numbering")}
-                        className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === "numbering" ? "text-indigo-600" : "text-gray-500 hover:text-indigo-500"}`}
-                      >
-                        شماره‌گذاری اسناد
-                        {settingsTab === "numbering" && (
-                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setSettingsTab("printing")}
-                        className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === "printing" ? "text-indigo-600" : "text-gray-500 hover:text-indigo-500"}`}
-                      >
-                        چاپ و امضائات
-                        {settingsTab === "printing" && (
-                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setSettingsTab("notification")}
-                        className={`py-4 font-bold text-sm whitespace-nowrap transition-colors relative ${settingsTab === "notification" ? "text-indigo-600" : "text-gray-500 hover:text-indigo-500"}`}
-                      >
-                        پیامک و اطلاع‌رسانی
-                        {settingsTab === "notification" && (
-                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>
-                        )}
-                      </button>
-                    </div>
-                    <div className="p-6 bg-white">
-                      <form
-                        id="settingsForm"
-                        onSubmit={(e) => {
+                        onClick={(e) => {
                           e.preventDefault();
                           confirmAction(
                             "آیا از ذخیره تنظیمات اطمینان دارید؟",
-                            () => handleSaveSettings(e as any),
+                            () => handleSaveSettings(e as any)
                           );
                         }}
-                        className="flex flex-col gap-6"
+                        disabled={submittingSettings}
+                        className="px-6 py-2.5 bg-white text-indigo-700 hover:bg-indigo-50 rounded-xl font-black transition-all shadow-sm flex items-center gap-2 cursor-pointer border-none disabled:opacity-50"
                       >
-                        {settingsTab === "general" && (
-                          <div className="flex flex-col gap-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="w-full text-right md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  لوگو فروشگاه / شرکت
-                                </label>
-                                <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                  {settingsForm.logoUrl ? (
-                                    <div className="relative group">
-                                      <img
-                                        src={settingsForm.logoUrl}
-                                        alt="Logo preview"
-                                        className="w-16 h-16 object-contain rounded bg-white shadow-sm border border-gray-100"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setSettingsForm({
-                                            ...settingsForm,
-                                            logoUrl: "",
-                                          })
-                                        }
-                                        className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
+                        {submittingSettings ? (
+                          <span className="w-5 h-5 border-2 border-indigo-700/30 border-t-indigo-700 rounded-full animate-spin"></span>
+                        ) : (
+                          <Save className="w-5 h-5" />
+                        )}
+                        ذخیره تنظیمات
+                      </button>
+                    </div>
+
+                    <div className="flex flex-1 overflow-hidden">
+                      {/* Sidebar */}
+                      <div className="w-64 bg-white border-l border-gray-200 shrink-0 flex flex-col overflow-y-auto custom-scrollbar p-4 gap-2">
+                        {[
+                          { id: "general", label: "اطلاعات پایه و عمومی", icon: Store },
+                          { id: "features", label: "تنظیمات انبار و فروش", icon: Box },
+                          { id: "financial", label: "مالی و حسابداری", icon: Calculator },
+                          { id: "numbering", label: "شماره‌گذاری اسناد", icon: FileText },
+                          { id: "printing", label: "چاپ و قالب فاکتور", icon: Printer },
+                          { id: "notification", label: "پیامک و ارتباطات", icon: Bell },
+                        ].map((tab) => {
+                          const Icon = tab.icon;
+                          const isActive = settingsTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setSettingsTab(tab.id)}
+                              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${
+                                isActive 
+                                  ? "bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100" 
+                                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent"
+                              }`}
+                            >
+                              <Icon className={`w-5 h-5 ${isActive ? "text-indigo-600" : "text-gray-400"}`} />
+                              {tab.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Content Area */}
+                      <div className="flex-1 bg-gray-50/30 overflow-y-auto custom-scrollbar p-6 lg:p-8">
+                        {successMsg && (
+                          <div className="mb-6 bg-emerald-50 text-emerald-700 px-4 py-3 rounded-xl flex items-center gap-2 border border-emerald-100 shadow-sm">
+                            <CheckCircle className="w-5 h-5" />
+                            <span className="font-bold">{successMsg}</span>
+                          </div>
+                        )}
+                        
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                          {settingsTab === "general" && (
+                            <div className="flex flex-col gap-8">
+                              <div>
+                                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                  <Store className="w-5 h-5 text-indigo-500" />
+                                  پروفایل کسب و کار
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="w-full text-right md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">لوگو فروشگاه / شرکت</label>
+                                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                      {settingsForm.logoUrl ? (
+                                        <div className="relative group">
+                                          <img
+                                            src={settingsForm.logoUrl}
+                                            alt="Logo preview"
+                                            className="w-16 h-16 object-contain rounded bg-white shadow-sm border border-gray-100"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setSettingsForm({ ...settingsForm, logoUrl: "" })}
+                                            className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="w-16 h-16 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 shadow-sm">
+                                          <Image className="w-6 h-6" />
+                                        </div>
+                                      )}
+                                      <div className="flex-1">
+                                        <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm inline-block">
+                                          انتخاب تصویر جدید
+                                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                                        </label>
+                                        <p className="text-xs text-gray-500 mt-2 font-medium">حداکثر حجم فایل ۲ مگابایت. فرمت‌های JPG و PNG.</p>
+                                      </div>
                                     </div>
-                                  ) : (
-                                    <div className="w-16 h-16 bg-white border border-gray-200 rounded flex items-center justify-center text-gray-400 shadow-sm">
-                                      <Image className="w-6 h-6" />
-                                    </div>
-                                  )}
-                                  <div className="flex-1">
-                                    <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm inline-block">
-                                      انتخاب تصویر
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={handleLogoUpload}
-                                      />
-                                    </label>
-                                    <p className="text-xs text-gray-500 mt-2">
-                                      حداکثر حجم فایل ۲ مگابایت. فرمت‌های JPG و
-                                      PNG.
-                                    </p>
+                                  </div>
+                                  <div className="w-full text-right md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">نام فروشگاه / شرکت</label>
+                                    <input
+                                      type="text"
+                                      value={settingsForm.storeName}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, storeName: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                                      required
+                                    />
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">تلفن تماس</label>
+                                    <input
+                                      type="text"
+                                      value={settingsForm.phone || ""}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                                      dir="ltr"
+                                    />
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">آدرس</label>
+                                    <input
+                                      type="text"
+                                      value={settingsForm.address || ""}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, address: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                                    />
                                   </div>
                                 </div>
                               </div>
 
-                              <div className="w-full text-right md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  نام فروشگاه / شرکت
-                                </label>
-                                <input
-                                  type="text"
-                                  value={settingsForm.storeName}
-                                  onChange={(e) =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      storeName: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                                  required
-                                />
-                              </div>
-
-                              <div className="w-full text-right">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  واحد پولی سیستم (غیرقابل تغییر)
-                                </label>
-                                <input
-                                  type="text"
-                                  value={storeSettings.currency}
-                                  disabled
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
-                                />
-                              </div>
-                              <div className="w-full text-right">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  تاریخ و تقویم سیستم (غیرقابل تغییر)
-                                </label>
-                                <input
-                                  type="text"
-                                  value={
-                                    storeSettings.calendarType === "gregorian"
-                                      ? "میلادی"
-                                      : "شمسی (جلالی)"
-                                  }
-                                  disabled
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
-                                />
-                              </div>
-
-                              <div className="w-full text-right">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  فونت سیستم
-                                </label>
-                                <select
-                                  value={settingsForm.fontFamily || "Vazirmatn"}
-                                  onChange={(e) =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      fontFamily: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
-                                >
-                                  <option value="Vazirmatn">
-                                    وزیرمتن (Vazirmatn)
-                                  </option>
-                                  <option value="IRANYekanXFaNum">
-                                    ایران یکان (IRANYekanX)
-                                  </option>
-                                  <option value="Lalezar">
-                                    لاله‌زار (Lalezar)
-                                  </option>
-                                  <option value="Readex Pro">
-                                    ریدکس پرو (Readex Pro)
-                                  </option>
-                                  <option value="Cairo">قاهره (Cairo)</option>
-                                  <option value="Amiri">امیری (Amiri)</option>
-                                  <option value="Changa">چنگا (Changa)</option>
-                                  <option value="Tahoma">
-                                    تاهوما (Tahoma)
-                                  </option>
-                                </select>
-                                <p className="text-xs text-gray-500 mt-2">
-                                  انتخاب فونت برای نمایش در کل سیستم.
-                                </p>
-                              </div>
-
-                              <div className="w-full text-right">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  پوسته و تم سیستم
-                                </label>
-                                <select
-                                  value={settingsForm.theme || "classic"}
-                                  onChange={(e) =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      theme: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
-                                >
-                                  <option value="classic">
-                                    پوسته کلاسیک سرمه‌ای (Classic Indigo)
-                                  </option>
-                                  <option value="gmail">
-                                    پوسته گوگل جیمیل سرخ (Google Gmail Red)
-                                  </option>
-                                </select>
-                                <p className="text-xs text-gray-500 mt-2">
-                                  امکان سوئیچ بین ظاهر کلاسیک و ظاهر مدرن به سبک گوگل جیمیل.
-                                </p>
-                              </div>
-
-                              <div className="w-full text-right">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  تلفن تماس
-                                </label>
-                                <input
-                                  type="text"
-                                  value={settingsForm.phone || ""}
-                                  onChange={(e) =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      phone: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                                  dir="ltr"
-                                />
-                              </div>
-
-                              <div className="w-full text-right md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  آدرس
-                                </label>
-                                <input
-                                  type="text"
-                                  value={settingsForm.address || ""}
-                                  onChange={(e) =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      address: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                                />
+                              <div className="border-t border-gray-100 pt-8">
+                                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                  <Globe className="w-5 h-5 text-indigo-500" />
+                                  منطقه و شخصی‌سازی ظاهر
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">فونت سیستم</label>
+                                    <select
+                                      value={settingsForm.fontFamily || "Vazirmatn"}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, fontFamily: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
+                                    >
+                                      <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
+                                      <option value="IRANYekanXFaNum">ایران یکان (IRANYekanX)</option>
+                                      <option value="Lalezar">لاله‌زار (Lalezar)</option>
+                                      <option value="Readex Pro">ریدکس پرو (Readex Pro)</option>
+                                      <option value="Cairo">قاهره (Cairo)</option>
+                                      <option value="Amiri">امیری (Amiri)</option>
+                                      <option value="Changa">چنگا (Changa)</option>
+                                      <option value="Tahoma">تاهوما (Tahoma)</option>
+                                    </select>
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">پوسته و تم سیستم</label>
+                                    <select
+                                      value={settingsForm.theme || "classic"}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, theme: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
+                                    >
+                                      <option value="classic">کلاسیک سرمه‌ای (Classic Indigo)</option>
+                                      <option value="gmail">گوگل جیمیل سرخ (Google Gmail Red)</option>
+                                    </select>
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">واحد پولی (غیرقابل تغییر)</label>
+                                    <input
+                                      type="text"
+                                      value={storeSettings.currency}
+                                      disabled
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
+                                    />
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">تقویم پایه</label>
+                                    <input
+                                      type="text"
+                                      value={storeSettings.calendarType === "gregorian" ? "میلادی" : "شمسی (جلالی)"}
+                                      disabled
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
+                                    />
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {settingsTab === "features" && (
-                          <div className="flex flex-col gap-6">
-                            <div className="col-span-full border border-gray-100 rounded-2xl p-6 bg-white shadow-sm space-y-6">
-                              <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 flex items-center gap-2">
-                                تنظیمات انبار و فروش
+                          {settingsTab === "features" && (
+                            <div>
+                              <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                <Box className="w-5 h-5 text-indigo-500" />
+                                پیکربندی رفتار انبار و فاکتورها
                               </h3>
-                              <div className="flex flex-col gap-4">
-                                <div
-                                  className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer"
-                                  onClick={() =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      allowNegativeStock:
-                                        !settingsForm.allowNegativeStock,
-                                    })
-                                  }
-                                >
-                                  <div className="pr-2">
-                                    <div className="font-bold text-gray-800 text-sm">
-                                      مجوز فروش موجودی منفی انبار
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      امکان ثبت فاکتور فروش برای کالاهایی که
-                                      موجودی آنها صفر یا ناکافی است فراهم
-                                      می‌شود.
+                              <div className="grid gap-4">
+                                <label className="flex items-start gap-4 p-5 border border-gray-200 rounded-xl hover:bg-gray-50/80 cursor-pointer transition-all shadow-sm">
+                                  <div className="mt-0.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={settingsForm.allowNegativeStock || false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, allowNegativeStock: e.target.checked })}
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="font-bold text-gray-900 mb-1">مجوز فروش موجودی منفی انبار</div>
+                                    <div className="text-sm text-gray-500 font-medium leading-relaxed">
+                                      اجازه ثبت فاکتور فروش برای کالاهایی که موجودی فعلی آن‌ها صفر یا کمتر از مقدار درخواستی است. 
+                                      (مناسب برای پیش‌فروش یا عدم ثبت دقیق ورود کالاها)
                                     </div>
                                   </div>
-                                  <div
-                                    className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.allowNegativeStock ? "bg-indigo-600" : "bg-gray-300"}`}
-                                  >
-                                    <div
-                                      className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.allowNegativeStock ? "-translate-x-6" : "translate-x-0"}`}
-                                    ></div>
+                                </label>
+                                
+                                <label className="flex items-start gap-4 p-5 border border-gray-200 rounded-xl hover:bg-gray-50/80 cursor-pointer transition-all shadow-sm">
+                                  <div className="mt-0.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={settingsForm.requireWarehouse || false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, requireWarehouse: e.target.checked })}
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
                                   </div>
-                                </div>
+                                  <div className="flex-1">
+                                    <div className="font-bold text-gray-900 mb-1">الزام انتخاب انبار در سطرهای فاکتور</div>
+                                    <div className="text-sm text-gray-500 font-medium leading-relaxed">
+                                      هنگام ثبت فاکتورهای فروش و خرید، کاربر ملزم به مشخص کردن انبار برای هر کالا خواهد بود. 
+                                      (در غیر این‌صورت انبار پیش‌فرض لحاظ می‌شود)
+                                    </div>
+                                  </div>
+                                </label>
 
-                                <div
-                                  className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer"
-                                  onClick={() =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      requireWarehouse:
-                                        !settingsForm.requireWarehouse,
-                                    })
-                                  }
-                                >
-                                  <div className="pr-2">
-                                    <div className="font-bold text-gray-800 text-sm">
-                                      اجباری بودن انتخاب انبار در ردیف فاکتور
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      هنگام ثبت فاکتورهای فروش و خرید، انتخاب
-                                      انبار برای هر سطر کالا الزامی خواهد شد.
+                                <label className="flex items-start gap-4 p-5 border border-gray-200 rounded-xl hover:bg-gray-50/80 cursor-pointer transition-all shadow-sm">
+                                  <div className="mt-0.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={settingsForm.allowDuplicateInvoiceRows || false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, allowDuplicateInvoiceRows: e.target.checked })}
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="font-bold text-gray-900 mb-1">مجوز تکرار کالا در سطرهای مجزا</div>
+                                    <div className="text-sm text-gray-500 font-medium leading-relaxed">
+                                      در صورت فعال بودن، افزودن کالای تکراری به فاکتور، یک سطر جدید ایجاد می‌کند. 
+                                      در غیر اینصورت، صرفاً تعداد همان کالای قبلی در فاکتور اضافه خواهد شد.
                                     </div>
                                   </div>
-                                  <div
-                                    className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.requireWarehouse ? "bg-indigo-600" : "bg-gray-300"}`}
-                                  >
-                                    <div
-                                      className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.requireWarehouse ? "-translate-x-6" : "translate-x-0"}`}
-                                    ></div>
-                                  </div>
-                                </div>
-
-                                <div
-                                  className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between cursor-pointer"
-                                  onClick={() =>
-                                    setSettingsForm({
-                                      ...settingsForm,
-                                      allowDuplicateInvoiceRows:
-                                        !settingsForm.allowDuplicateInvoiceRows,
-                                    })
-                                  }
-                                >
-                                  <div className="pr-2">
-                                    <div className="font-bold text-gray-800 text-sm">
-                                      مجوز تکراری بودن ردیف‌ها در فاکتور
-                                    </div>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      در صورت غیرفعال بودن، افزودن مجدد کالای
-                                      تکراری صرفاً تعداد آن را در فاکتور افزایش
-                                      می‌دهد.
-                                    </div>
-                                  </div>
-                                  <div
-                                    className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.allowDuplicateInvoiceRows ? "bg-indigo-600" : "bg-gray-300"}`}
-                                  >
-                                    <div
-                                      className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.allowDuplicateInvoiceRows ? "-translate-x-6" : "translate-x-0"}`}
-                                    ></div>
-                                  </div>
-                                </div>
+                                </label>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {settingsTab === "numbering" && (
-                          <div className="flex flex-col gap-6">
-                            <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl mb-2">
-                              <p className="text-sm text-indigo-800 font-medium text-right">
-                                در این بخش الگو، پیشوند، شماره شروع و تعداد
-                                ارقام قسمت عددی انواع اسناد را به صورت جداگانه
-                                تعیین کنید.
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col gap-6">
-                              {[
-                                {
-                                  title: "فروش و انبار",
-                                  items: [
-                                    {
-                                      key: "sale",
-                                      label: "فاکتور فروش",
-                                      defaultPrefix: "INV-",
-                                    },
-                                    {
-                                      key: "proforma",
-                                      label: "پیش‌فاکتور (Proforma)",
-                                      defaultPrefix: "PF-",
-                                    },
-                                    {
-                                      key: "purchase",
-                                      label: "فاکتور خرید",
-                                      defaultPrefix: "PUR-",
-                                    },
-                                    {
-                                      key: "sale_return",
-                                      label: "برگشت از فروش",
-                                      defaultPrefix: "RTN-S-",
-                                    },
-                                    {
-                                      key: "purchase_return",
-                                      label: "برگشت از خرید",
-                                      defaultPrefix: "RTN-P-",
-                                    },
-                                    {
-                                      key: "warehouse_receipt",
-                                      label: "رسید انبار (ورود)",
-                                      defaultPrefix: "REC-",
-                                    },
-                                    {
-                                      key: "warehouse_remittance",
-                                      label: "حواله انبار (خروج)",
-                                      defaultPrefix: "REM-",
-                                    },
-                                  ],
-                                },
-                                {
-                                  title: "خزانه‌داری (دریافت و پرداخت)",
-                                  items: [
-                                    {
-                                      key: "receive_receipt",
-                                      label: "رسید دریافت وجه",
-                                      defaultPrefix: "RD-",
-                                    },
-                                    {
-                                      key: "pay_receipt",
-                                      label: "رسید پرداخت وجه",
-                                      defaultPrefix: "PD-",
-                                    },
-                                    {
-                                      key: "salary",
-                                      label: "فیش حقوقی",
-                                      defaultPrefix: "PAY-",
-                                    },
-                                  ],
-                                },
-                                {
-                                  title: "مدیریت چک",
-                                  items: [
-                                    {
-                                      key: "check_issued",
-                                      label: "چک پرداختی",
-                                      defaultPrefix: "CHK-O-",
-                                    },
-                                    {
-                                      key: "check_received",
-                                      label: "چک دریافتی",
-                                      defaultPrefix: "CHK-I-",
-                                    },
-                                  ],
-                                },
-                                {
-                                  title: "اشخاص و کالاها",
-                                  items: [
-                                    {
-                                      key: "person",
-                                      label: "کد شخص / مشتری",
-                                      defaultPrefix: "P-",
-                                    },
-                                    {
-                                      key: "product",
-                                      label: "کد کالا",
-                                      defaultPrefix: "PRD-",
-                                    },
-                                  ],
-                                },
-                                {
-                                  title: "حسابداری",
-                                  items: [
-                                    {
-                                      key: "accounting_document",
-                                      label: "سند حسابداری",
-                                      defaultPrefix: "ACC-",
-                                    },
-                                  ],
-                                },
-                                {
-                                  title: "وام و اقساط",
-                                  items: [
-                                    {
-                                      key: "loan",
-                                      label: "پرونده وام",
-                                      defaultPrefix: "LN-",
-                                    },
-                                    {
-                                      key: "installment",
-                                      label: "رسید قسط",
-                                      defaultPrefix: "INS-",
-                                    },
-                                  ],
-                                },
-                              ].map((section, sIndex) => (
-                                <div
-                                  key={sIndex}
-                                  className="overflow-x-auto border border-gray-200 rounded-xl bg-white shadow-sm"
-                                >
-                                  <div className="bg-slate-100 px-4 py-3 border-b border-gray-200 font-extrabold text-slate-800 flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                                    {section.title}
-                                  </div>
-                                  <table
-                                    className="w-full text-sm text-right"
-                                    dir="rtl"
-                                  >
-                                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold">
-                                      <tr>
-                                        <th className="p-4 w-1/4">
-                                          نوع سند / فرم
-                                        </th>
-                                        <th className="p-4 w-1/4">
-                                          پیشوند نمادین
-                                        </th>
-                                        <th className="p-4 w-1/4">
-                                          شماره شروع
-                                        </th>
-                                        <th className="p-4 w-1/4">
-                                          تعداد مجاز ارقام
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 table-fixed">
-                                      {section.items.map((doc) => (
-                                        <tr
-                                          key={doc.key}
-                                          className="hover:bg-gray-50/50 transition-colors"
-                                        >
-                                          <td className="p-4 font-bold text-gray-800 border-l border-gray-100">
-                                            {doc.label}
-                                          </td>
-                                          <td className="p-4 border-l border-gray-100">
-                                            <input
-                                              type="text"
-                                              value={
-                                                settingsForm[
-                                                  `prefix_${doc.key}`
-                                                ] || ""
-                                              }
-                                              onChange={(e) =>
-                                                setSettingsForm({
-                                                  ...settingsForm,
-                                                  [`prefix_${doc.key}`]:
-                                                    e.target.value,
-                                                })
-                                              }
-                                              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
-                                              dir="ltr"
-                                              placeholder={doc.defaultPrefix}
-                                            />
-                                          </td>
-                                          <td className="p-4 border-l border-gray-100">
-                                            <input
-                                              type="number"
-                                              value={
-                                                settingsForm[
-                                                  `start_${doc.key}`
-                                                ] || ""
-                                              }
-                                              onChange={(e) =>
-                                                setSettingsForm({
-                                                  ...settingsForm,
-                                                  [`start_${doc.key}`]:
-                                                    e.target.value,
-                                                })
-                                              }
-                                              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
-                                              dir="ltr"
-                                              placeholder="1000"
-                                            />
-                                          </td>
-                                          <td className="p-4">
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              max="15"
-                                              value={
-                                                settingsForm[
-                                                  `len_${doc.key}`
-                                                ] || ""
-                                              }
-                                              onChange={(e) =>
-                                                setSettingsForm({
-                                                  ...settingsForm,
-                                                  [`len_${doc.key}`]:
-                                                    parseInt(e.target.value) ||
-                                                    "",
-                                                })
-                                              }
-                                              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white transition-all shadow-sm"
-                                              dir="ltr"
-                                              placeholder="6"
-                                            />
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {settingsTab === "printing" && (
-                          <div className="flex flex-col gap-6">
-                            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
-                              <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">
-                                تنظیمات چاپ فاکتور و رسید
+                          {settingsTab === "financial" && (
+                            <div>
+                              <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                <Calculator className="w-5 h-5 text-indigo-500" />
+                                تنظیمات پایه مالی و حسابداری
                               </h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="w-full text-right md:col-span-2">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    سایز کاغذ چاپ (A4, A5, فیش پرینتر)
-                                  </label>
-                                  <select
-                                    value={
-                                      settingsForm.print_paper_size || "A4"
-                                    }
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        print_paper_size: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                  >
-                                    <option value="A4">A4 (استاندارد)</option>
-                                    <option value="A5">A5 (نصف صفحه)</option>
-                                    <option value="receipt80">
-                                      فیش پرینتر عرض 80mm
-                                    </option>
-                                    <option value="receipt58">
-                                      فیش پرینتر عرض 58mm
-                                    </option>
-                                  </select>
+                                <div className="w-full text-right">
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">درصد مالیات بر ارزش افزوده پیش‌فرض</label>
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      value={settingsForm.default_tax_percent !== undefined ? settingsForm.default_tax_percent : 0}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, default_tax_percent: parseFloat(e.target.value) || 0 })}
+                                      className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold text-left"
+                                      dir="ltr"
+                                    />
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">%</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-2 font-medium">این درصد هنگام ایجاد فاکتور جدید به صورت خودکار اعمال می‌شود.</p>
                                 </div>
 
                                 <div className="w-full text-right">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    نمایش لوگو در فاکتور
-                                  </label>
-                                  <select
-                                    value={
-                                      settingsForm.print_show_logo !== false
-                                        ? "true"
-                                        : "false"
-                                    }
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        print_show_logo:
-                                          e.target.value === "true",
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                  >
-                                    <option value="true">
-                                      بله، نمایش داده شود
-                                    </option>
-                                    <option value="false">خیر، مخفی شود</option>
-                                  </select>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">درصد تخفیف پیش‌فرض خطوط</label>
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      value={settingsForm.default_discount_percent !== undefined ? settingsForm.default_discount_percent : 0}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, default_discount_percent: parseFloat(e.target.value) || 0 })}
+                                      className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold text-left"
+                                      dir="ltr"
+                                    />
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">%</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-8 border-t border-gray-100 pt-8">
+                                <h4 className="text-md font-black text-gray-800 mb-4">اسناد حسابداری</h4>
+                                <label className="flex items-start gap-4 p-5 border border-gray-200 rounded-xl hover:bg-gray-50/80 cursor-pointer transition-all shadow-sm">
+                                  <div className="mt-0.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={settingsForm.auto_generate_accounting_docs !== false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, auto_generate_accounting_docs: e.target.checked })}
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="font-bold text-gray-900 mb-1">صدور خودکار اسناد حسابداری</div>
+                                    <div className="text-sm text-gray-500 font-medium leading-relaxed">
+                                      با ثبت هر فاکتور یا رسید مالی، سیستم به صورت خودکار سند حسابداری متناظر با آن را در دفتر روزنامه ثبت می‌کند. 
+                                      غیرفعال‌سازی این گزینه نیازمند ثبت دستی اسناد است.
+                                    </div>
+                                  </div>
+                                </label>
+                              </div>
+                            </div>
+                          )}
+
+                          {settingsTab === "numbering" && (
+                            <div>
+                              <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-indigo-500" />
+                                الگوی شماره‌گذاری اسناد
+                              </h3>
+                              <p className="text-sm text-gray-600 font-medium mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                پیشوند نمایشی، شماره شروع و تعداد ارقام ثابت برای هر نوع سند را تنظیم کنید.
+                              </p>
+                              
+                              <div className="space-y-8">
+                                {[
+                                  {
+                                    title: "فروش و انبار",
+                                    items: [
+                                      { key: "sale", label: "فاکتور فروش", defaultPrefix: "INV-" },
+                                      { key: "proforma", label: "پیش‌فاکتور", defaultPrefix: "PF-" },
+                                      { key: "purchase", label: "فاکتور خرید", defaultPrefix: "PUR-" },
+                                      { key: "sale_return", label: "برگشت از فروش", defaultPrefix: "RTN-S-" },
+                                      { key: "purchase_return", label: "برگشت از خرید", defaultPrefix: "RTN-P-" },
+                                      { key: "warehouse_receipt", label: "رسید انبار (ورود)", defaultPrefix: "REC-" },
+                                      { key: "warehouse_remittance", label: "حواله انبار (خروج)", defaultPrefix: "REM-" },
+                                    ],
+                                  },
+                                  {
+                                    title: "خزانه‌داری",
+                                    items: [
+                                      { key: "receive_receipt", label: "رسید دریافت", defaultPrefix: "RD-" },
+                                      { key: "pay_receipt", label: "رسید پرداخت", defaultPrefix: "PD-" },
+                                      { key: "salary", label: "فیش حقوقی", defaultPrefix: "PAY-" },
+                                    ],
+                                  },
+                                  {
+                                    title: "سایر",
+                                    items: [
+                                      { key: "person", label: "کد شخص/مشتری", defaultPrefix: "P-" },
+                                      { key: "product", label: "کد کالا/خدمات", defaultPrefix: "PRD-" },
+                                      { key: "accounting_document", label: "سند حسابداری", defaultPrefix: "ACC-" },
+                                    ],
+                                  }
+                                ].map((section, sIndex) => (
+                                  <div key={sIndex} className="overflow-hidden border border-gray-200 rounded-xl bg-white shadow-sm">
+                                    <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 font-black text-gray-800">
+                                      {section.title}
+                                    </div>
+                                    <table className="w-full text-sm text-right">
+                                      <thead className="bg-gray-50/50 text-gray-500 font-bold text-xs">
+                                        <tr>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">نوع فرم</th>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">پیشوند نمادین</th>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">شماره شروع</th>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">تعداد ارقام ثابت</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-100">
+                                        {section.items.map((doc) => (
+                                          <tr key={doc.key} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="p-4 font-bold text-gray-800 border-l border-gray-100">{doc.label}</td>
+                                            <td className="p-4 border-l border-gray-100">
+                                              <input
+                                                type="text"
+                                                value={settingsForm[`prefix_${doc.key}`] || ""}
+                                                onChange={(e) => setSettingsForm({ ...settingsForm, [`prefix_${doc.key}`]: e.target.value })}
+                                                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white shadow-sm"
+                                                dir="ltr"
+                                                placeholder={doc.defaultPrefix}
+                                              />
+                                            </td>
+                                            <td className="p-4 border-l border-gray-100">
+                                              <input
+                                                type="number"
+                                                value={settingsForm[`start_${doc.key}`] || ""}
+                                                onChange={(e) => setSettingsForm({ ...settingsForm, [`start_${doc.key}`]: e.target.value })}
+                                                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white shadow-sm"
+                                                dir="ltr"
+                                                placeholder="1000"
+                                              />
+                                            </td>
+                                            <td className="p-4">
+                                              <input
+                                                type="number" min="1" max="15"
+                                                value={settingsForm[`len_${doc.key}`] || ""}
+                                                onChange={(e) => setSettingsForm({ ...settingsForm, [`len_${doc.key}`]: parseInt(e.target.value) || "" })}
+                                                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white shadow-sm"
+                                                dir="ltr"
+                                                placeholder="6"
+                                              />
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {settingsTab === "printing" && (
+                            <div>
+                              <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                <Printer className="w-5 h-5 text-indigo-500" />
+                                تنظیمات قالب چاپ
+                              </h3>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-6">
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">سایز پیش‌فرض کاغذ</label>
+                                    <select
+                                      value={settingsForm.print_paper_size || "A4"}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_paper_size: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
+                                    >
+                                      <option value="A4">A4 (استاندارد)</option>
+                                      <option value="A5">A5 (نصف صفحه)</option>
+                                      <option value="receipt80">فیش پرینتر عرض 80mm</option>
+                                      <option value="receipt58">فیش پرینتر عرض 58mm</option>
+                                    </select>
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">نمایش لوگو در فاکتور</label>
+                                    <select
+                                      value={settingsForm.print_show_logo !== false ? "true" : "false"}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_show_logo: e.target.value === "true" })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
+                                    >
+                                      <option value="true">بله، نمایش داده شود</option>
+                                      <option value="false">خیر، مخفی شود</option>
+                                    </select>
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">نمایش خلاصه وضعیت مالی مشتری</label>
+                                    <select
+                                      value={settingsForm.print_show_financial !== false ? "true" : "false"}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_show_financial: e.target.value === "true" })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
+                                    >
+                                      <option value="true">بله، نمایش داده شود</option>
+                                      <option value="false">خیر، مخفی شود</option>
+                                    </select>
+                                  </div>
                                 </div>
 
-                                <div className="w-full text-right">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    نمایش خلاصه مالی (دریافتی/باقیمانده)
-                                  </label>
-                                  <select
-                                    value={
-                                      settingsForm.print_show_financial !==
-                                      false
-                                        ? "true"
-                                        : "false"
-                                    }
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        print_show_financial:
-                                          e.target.value === "true",
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                  >
-                                    <option value="true">
-                                      بله، نمایش داده شود
-                                    </option>
-                                    <option value="false">خیر، مخفی شود</option>
-                                  </select>
+                                <div className="space-y-6">
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">عنوان امضاکننده اول (چپ)</label>
+                                    <input
+                                      type="text"
+                                      value={settingsForm.print_signature_1 || ""}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_signature_1: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                                      placeholder="مثال: مهر و امضای خریدار"
+                                    />
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">عنوان امضاکننده دوم (وسط)</label>
+                                    <input
+                                      type="text"
+                                      value={settingsForm.print_signature_2 || ""}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_signature_2: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                                      placeholder="مثال: تحویل‌دهنده"
+                                    />
+                                  </div>
+                                  <div className="w-full text-right">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">عنوان امضاکننده سوم (راست)</label>
+                                    <input
+                                      type="text"
+                                      value={settingsForm.print_signature_3 || ""}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_signature_3: e.target.value })}
+                                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                                      placeholder="مثال: مهر و امضای فروشنده"
+                                    />
+                                  </div>
                                 </div>
 
                                 <div className="w-full text-right md:col-span-2">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    یادداشت ثابت انتهای فاکتورها (فوتر)
-                                  </label>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">یادداشت ثابت انتهای فاکتورها (فوتر)</label>
                                   <textarea
                                     value={settingsForm.print_footer_note || ""}
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        print_footer_note: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                    placeholder="متنی که مایلید همیشه در پایین فاکتورهای چاپ شده نمایش داده شود..."
-                                    rows={3}
-                                  ></textarea>
-                                </div>
-
-                                <div className="w-full text-right">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    عنوان امضاکننده 1 (خریدار/تحویل‌گیرنده)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={settingsForm.print_signature_1 || ""}
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        print_signature_1: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                    placeholder="مثال: مهر و امضای خریدار"
-                                  />
-                                </div>
-
-                                <div className="w-full text-right">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    عنوان امضاکننده 2 (فروشنده/تحویل‌دهنده)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={settingsForm.print_signature_2 || ""}
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        print_signature_2: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                    placeholder="مثال: مهر و امضای فروشنده"
-                                  />
-                                </div>
-
-                                <div className="w-full text-right">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    عنوان امضاکننده 3 (مدیر/تایید کننده)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={settingsForm.print_signature_3 || ""}
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        print_signature_3: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                    placeholder="مثال: مدیریت"
+                                    onChange={(e) => setSettingsForm({ ...settingsForm, print_footer_note: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium h-24"
+                                    placeholder="قوانین تعویض کالا یا تشکر از خرید و ..."
                                   />
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {settingsTab === "notification" && (
-                          <div className="flex flex-col gap-6">
-                            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
-                              <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">
-                                تنظیمات روش ارسال پیام
-                              </h3>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="w-full text-right md:col-span-2">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    روش پیش‌فرض اطلاع‌رسانی
-                                  </label>
-                                  <select
-                                    value={settingsForm.notify_method || "none"}
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        notify_method: e.target.value,
-                                      })
-                                    }
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                  >
-                                    <option value="none">غیرفعال</option>
-                                    <option value="sms">
-                                      سامانه پیامکی (API)
-                                    </option>
-                                    <option value="whatsapp">واتساپ</option>
-                                    <option value="gsm">دستگاه GSM</option>
-                                  </select>
-                                </div>
+                          {settingsTab === "notification" && (
+                            <div className="space-y-8">
+                              <div>
+                                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                  <Bell className="w-5 h-5 text-indigo-500" />
+                                  درگاه‌های ارتباطی
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="w-full text-right md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">سرویس اصلی پیام‌رسان</label>
+                                    <div className="flex flex-wrap gap-4">
+                                      {[
+                                        { id: "none", label: "غیرفعال" },
+                                        { id: "sms", label: "سامانه پیامکی ابری (API)" },
+                                        { id: "whatsapp", label: "واتساپ بیزینس" },
+                                        { id: "gsm", label: "مودم GSM محلی" }
+                                      ].map((method) => (
+                                        <label key={method.id} className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                          settingsForm.notify_method === method.id 
+                                            ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm" 
+                                            : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                                        }`}>
+                                          <input 
+                                            type="radio" 
+                                            name="notify_method" 
+                                            className="hidden" 
+                                            checked={settingsForm.notify_method === method.id}
+                                            onChange={() => setSettingsForm({ ...settingsForm, notify_method: method.id })} 
+                                          />
+                                          <span className="font-bold text-sm">{method.label}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </div>
 
-                                {settingsForm.notify_method &&
-                                  settingsForm.notify_method !== "none" && (
+                                  {settingsForm.notify_method && settingsForm.notify_method !== "none" && (
                                     <>
                                       <div className="w-full text-right md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                          کلید API / تنظیمات درگاه / پورت COM
-                                        </label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">کلید API / تنظیمات درگاه / پورت COM</label>
                                         <input
                                           type="text"
-                                          value={
-                                            settingsForm.notify_api_key || ""
-                                          }
-                                          onChange={(e) =>
-                                            setSettingsForm({
-                                              ...settingsForm,
-                                              notify_api_key: e.target.value,
-                                            })
-                                          }
-                                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                          placeholder="مثال: p1h2g3... یا پورت COM3"
+                                          value={settingsForm.notify_api_key || ""}
+                                          onChange={(e) => setSettingsForm({ ...settingsForm, notify_api_key: e.target.value })}
+                                          className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                                          placeholder="Token or Port (e.g. COM3)"
                                           dir="ltr"
                                         />
                                       </div>
                                       <div className="w-full text-right md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                          شماره خط فرستنده / شماره دستگاه
-                                        </label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">خط فرستنده / شماره دستگاه</label>
                                         <input
                                           type="text"
-                                          value={
-                                            settingsForm.notify_sender_number ||
-                                            ""
-                                          }
-                                          onChange={(e) =>
-                                            setSettingsForm({
-                                              ...settingsForm,
-                                              notify_sender_number:
-                                                e.target.value,
-                                            })
-                                          }
-                                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all"
-                                          placeholder="مثال: 3000xxxx یا +98912..."
+                                          value={settingsForm.notify_sender_number || ""}
+                                          onChange={(e) => setSettingsForm({ ...settingsForm, notify_sender_number: e.target.value })}
+                                          className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                                          placeholder="+989..."
                                           dir="ltr"
                                         />
                                       </div>
                                     </>
                                   )}
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
-                              <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">
-                                رویدادهای اطلاع‌رسانی خودکار
-                              </h3>
-                              <div className="space-y-4">
-                                <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      settingsForm.notify_on_invoice || false
-                                    }
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        notify_on_invoice: e.target.checked,
-                                      })
-                                    }
-                                    className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-gray-800 font-medium">
-                                    ارسال فاکتور خرید/فروش برای مشتری
-                                  </span>
-                                </label>
+                              <div className="border-t border-gray-100 pt-8">
+                                <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+                                  <CheckSquare className="w-5 h-5 text-indigo-500" />
+                                  رویدادهای خودکار اطلاع‌رسانی
+                                </h3>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
+                                    <input
+                                      type="checkbox"
+                                      checked={settingsForm.notify_on_invoice || false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, notify_on_invoice: e.target.checked })}
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-gray-800 font-bold">ارسال فاکتور خرید/فروش برای مشتری</span>
+                                  </label>
 
-                                <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      settingsForm.notify_on_receipt || false
-                                    }
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        notify_on_receipt: e.target.checked,
-                                      })
-                                    }
-                                    className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-gray-800 font-medium">
-                                    ارسال رسید ثبت دریافتی / پرداختی
-                                  </span>
-                                </label>
+                                  <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
+                                    <input
+                                      type="checkbox"
+                                      checked={settingsForm.notify_on_receipt || false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, notify_on_receipt: e.target.checked })}
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-gray-800 font-bold">ارسال رسید ثبت دریافتی / پرداختی</span>
+                                  </label>
 
-                                <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      settingsForm.notify_on_balance || false
-                                    }
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        notify_on_balance: e.target.checked,
-                                      })
-                                    }
-                                    className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-gray-800 font-medium">
-                                    گزارش مانده حساب (پس از هر تراکنش)
-                                  </span>
-                                </label>
+                                  <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
+                                    <input
+                                      type="checkbox"
+                                      checked={settingsForm.notify_on_balance || false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, notify_on_balance: e.target.checked })}
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-gray-800 font-bold">گزارش مانده حساب (پس از هر تراکنش)</span>
+                                  </label>
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-6">
-                              <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3">
-                                هشدار خودکار سقف بدهی
-                              </h3>
-                              <div className="space-y-4">
-                                <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      settingsForm.smsDebtThresholdEnabled || false
-                                    }
-                                    onChange={(e) =>
-                                      setSettingsForm({
-                                        ...settingsForm,
-                                        smsDebtThresholdEnabled: e.target.checked,
-                                      })
-                                    }
-                                    className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                  />
-                                  <span className="text-gray-800 font-medium">
-                                    ارسال پیامک هشدار در صورت عبور بدهی از سقف تعیین شده
-                                  </span>
-                                </label>
-
+                              <div className="border-t border-gray-100 pt-8">
+                                <div className="flex items-center justify-between mb-6">
+                                  <h3 className="text-lg font-black text-gray-800 flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5 text-rose-500" />
+                                    هشدار سقف اعتباری مشتریان
+                                  </h3>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <span className="font-bold text-sm text-gray-600">فعال‌سازی سیستم هشدار</span>
+                                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.smsDebtThresholdEnabled ? "bg-indigo-600" : "bg-gray-300"}`}>
+                                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.smsDebtThresholdEnabled ? "-translate-x-6" : "translate-x-0"}`}></div>
+                                    </div>
+                                    <input
+                                      type="checkbox"
+                                      className="hidden"
+                                      checked={settingsForm.smsDebtThresholdEnabled || false}
+                                      onChange={(e) => setSettingsForm({ ...settingsForm, smsDebtThresholdEnabled: e.target.checked })}
+                                    />
+                                  </label>
+                                </div>
+                                
                                 {settingsForm.smsDebtThresholdEnabled && (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                  <div className="bg-rose-50/50 p-6 rounded-xl border border-rose-100 grid grid-cols-1 gap-6">
                                     <div className="w-full text-right">
-                                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        سقف مجاز بدهی (تومان)
-                                      </label>
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">سقف مجاز بدهی عمومی (تومان)</label>
                                       <CurrencyInput
                                         value={settingsForm.smsDebtThresholdAmount || ""}
                                         onChange={(e: any) =>
-                                          setSettingsForm({
-                                            ...settingsForm,
-                                            smsDebtThresholdAmount: Number(e.target.value) || 0,
-                                          })
+                                          setSettingsForm({ ...settingsForm, smsDebtThresholdAmount: Number(e.target.value) || 0 })
                                         }
                                         placeholder="مثال: 50,000,000"
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                                        className="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm"
                                         currencyLabel="تومان"
                                       />
                                     </div>
-                                    <div className="w-full text-right md:col-span-2">
-                                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        متن پیامک هشدار
-                                      </label>
+                                    <div className="w-full text-right">
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">متن پیامک هشدار</label>
                                       <textarea
                                         value={settingsForm.smsDebtThresholdMessage || "مشتری گرامی، مانده بدهی شما از سقف مجاز عبور کرده است. لطفا نسبت به تسویه حساب اقدام نمایید."}
-                                        onChange={(e) =>
-                                          setSettingsForm({
-                                            ...settingsForm,
-                                            smsDebtThresholdMessage: e.target.value,
-                                          })
-                                        }
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all h-24"
+                                        onChange={(e) => setSettingsForm({ ...settingsForm, smsDebtThresholdMessage: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all h-24"
                                       />
                                     </div>
                                   </div>
                                 )}
                               </div>
                             </div>
-                          </div>
-                        )}
-
-                        <div className="flex justify-start border-t border-gray-100 pt-6 mt-4">
-                          <button
-                            type="submit"
-                            disabled={submittingSettings}
-                            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
-                          >
-                            {submittingSettings ? (
-                              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                            ) : (
-                              <Save className="w-5 h-5" />
-                            )}
-                            ذخیره تغییرات و اعمال در سیستم
-                          </button>
+                          )}
                         </div>
-                      </form>
+                      </div>
                     </div>
                   </motion.div>
                 ) : activeTab === "inventory_report" ? (
@@ -23568,588 +23290,37 @@ export default function App() {
 
                     {/* Printable Area */}
                     <div className="p-6 md:p-8 overflow-y-auto flex-1 text-gray-800 text-sm print:overflow-visible print:px-8 print:py-12 bg-gray-50/50 print:bg-white flex justify-center">
-                      {/* Print Layout */}
-                      <div
-                        className={
-                          "bg-white print:p-0 rounded-2xl print:rounded-none overflow-hidden text-slate-800 w-full shadow-sm border border-slate-200 print:shadow-none print:border-none p-8 md:p-12 relative flex flex-col font-sans " +
-                          (storeSettings.print_paper_size === "A5"
-                            ? "max-w-[148mm] min-h-[210mm]"
-                            : storeSettings.print_paper_size === "receipt80"
-                              ? "max-w-[80mm] min-h-[100mm] print:text-xs"
-                              : storeSettings.print_paper_size === "receipt58"
-                                ? "max-w-[58mm] min-h-[100mm] print:text-[10px]"
-                                : "max-w-[210mm] min-h-[297mm]")
-                        }
-                      >
-                        {/* Elegant Header - Classic Invoice */}
-                        <div className="flex flex-col md:flex-row justify-between items-start pb-8 mb-8 border-b-2 border-slate-800">
-                          <div className="space-y-6">
-                            <div className="inline-block border-2 border-indigo-900 px-4 py-2 rounded-lg bg-indigo-50/30">
-                              <h1 className="text-2xl font-black text-indigo-900 tracking-tight text-center">
-                                {viewingInvoice.type === "purchase"
-                                  ? "فاکتور خرید"
-                                  : viewingInvoice.type === "sale"
-                                    ? viewingInvoice.title || "فاکتور فروش"
-                                    : viewingInvoice.type ===
-                                        "warehouse_receipt"
-                                      ? "رسید ورود کالا (انبار)"
-                                      : viewingInvoice.type ===
-                                          "warehouse_remittance"
-                                        ? "حواله خروج کالا (انبار)"
-                                        : "سند ساختگی"}
-                              </h1>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-xs text-slate-700">
-                              <div className="flex items-center gap-2">
-                                <span className="text-slate-400 font-bold whitespace-nowrap">
-                                  تاریخ صدور:
-                                </span>
-                                <span className="font-bold text-sm tracking-wide">
-                                  {formatPersianDateDisplay(viewingInvoice.jalaliDate || viewingInvoice.date)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-slate-400 font-bold whitespace-nowrap">
-                                  شماره سند:
-                                </span>
-                                <span className="font-bold text-sm tracking-wide">
-                                  #
-                                  {toPersianDigits(
-                                    viewingInvoice.invoiceNumber,
-                                  )}
-                                </span>
-                              </div>
-                              {(viewingInvoice.type === "purchase" ||
-                                viewingInvoice.type === "purchase_return") &&
-                                viewingInvoice.sellerInvoiceNumber && (
-                                  <div className="flex items-center gap-2 col-span-2 mt-1 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded border border-emerald-100/50 w-fit">
-                                    <span className="text-slate-500 font-bold whitespace-nowrap">
-                                      شماره فاکتور فروشنده (ارجاع):
-                                    </span>
-                                    <span className="font-mono font-bold text-sm tracking-wide">
-                                      #
-                                      {toPersianDigits(
-                                        viewingInvoice.sellerInvoiceNumber,
-                                      )}
-                                    </span>
-                                  </div>
-                                )}
-                            </div>
-                          </div>
-                          <div className="text-right md:text-left flex flex-col items-end mt-6 md:mt-0 text-slate-800">
-                            {storeSettings.print_show_logo !== false &&
-                              storeSettings.logoUrl && (
-                                <img
-                                  src={storeSettings.logoUrl}
-                                  alt="Logo"
-                                  className="w-16 h-16 object-contain mb-3 grayscale print:grayscale-0"
-                                />
-                              )}
-                            <h2 className="text-2xl font-black mb-3">
-                              {storeSettings.storeName || "کسب و کار سیستم"}
-                            </h2>
-                            {storeSettings.phone && (
-                              <div className="text-sm font-bold flex items-center justify-end gap-1.5">
-                                <span dir="ltr">
-                                  {toPersianDigits(storeSettings.phone)}
-                                </span>{" "}
-                                <span className="text-slate-400 text-xs">
-                                  تلفن
-                                </span>
-                              </div>
-                            )}
-                            {storeSettings.address && (
-                              <div className="text-xs font-bold leading-relaxed max-w-[280px] text-right mt-1.5">
-                                {storeSettings.address}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Info blocks */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-                          {/* Customer Info */}
-                          <div className="border-t border-b border-slate-200 py-4 font-sans">
-                            <div className="text-xs font-bold text-indigo-600 mb-3 flex items-center gap-1.5">
-                              <User className="w-4 h-4" />
-                              {viewingInvoice.type === "purchase"
-                                ? "تامین کننده"
-                                : viewingInvoice.type === "sale"
-                                  ? "خریدار"
-                                  : "طرف حساب"}
-                            </div>
-                            <h3 className="text-xl font-black text-slate-900 mb-2">
-                              {renderPersonLink(
-                                viewingInvoice.customerId,
-                                viewingInvoice.customerName,
-                              )}
-                            </h3>
-                            {viewingInvoice.customerPhone && (
-                              <div className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                <span className="text-slate-400 text-xs">
-                                  تلفن:
-                                </span>
-                                <span dir="ltr">
-                                  {toPersianDigits(
-                                    viewingInvoice.customerPhone,
-                                  )}
-                                </span>
-                              </div>
-                            )}
-                            {(() => {
-                              const originalPerson = persons.find(
-                                (p) =>
-                                  p.name === viewingInvoice.customerName ||
-                                  p.id === viewingInvoice.customerId,
-                              );
-                              if (originalPerson) {
-                                return (
-                                  <div className="space-y-1.5 text-xs text-slate-600 font-bold mt-2">
-                                    {originalPerson.nationalId && (
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-slate-400">
-                                          کد ملی / اقتصادی:
-                                        </span>
-                                        <span>
-                                          {toPersianDigits(
-                                            originalPerson.nationalId,
-                                          )}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {originalPerson.address && (
-                                      <div className="flex items-start gap-2 whitespace-normal leading-relaxed mt-1">
-                                        <span className="text-slate-400 whitespace-nowrap">
-                                          نشانی:
-                                        </span>
-                                        <span>{originalPerson.address}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </div>
-
-                          {/* Payment/Warehouse Info */}
-                          <div className="border-t border-b border-slate-200 py-4 flex flex-col font-sans">
-                            {!viewingInvoice.type?.includes("warehouse") ? (
-                              <div className="flex flex-col gap-2">
-                                <span className="text-xs text-indigo-600 font-bold flex items-center gap-1.5">
-                                  <DollarSign className="w-4 h-4" />
-                                  ارزش کل معامله
-                                </span>
-                                <div className="text-3xl font-black text-slate-900 inline-flex items-baseline gap-1 mt-2">
-                                  {toPersianDigits(
-                                    formatCurrency(viewingInvoice.totalAmount),
-                                  )}{" "}
-                                  <span className="text-sm font-bold text-slate-500">
-                                    {showInvoiceCurrency(
-                                      viewingInvoice.currency,
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-2">
-                                <span className="text-xs text-indigo-600 font-bold flex items-center gap-1.5">
-                                  <Box className="w-4 h-4" /> انبار ثبت سند
-                                </span>
-                                <div className="text-xl font-black text-slate-900 mt-2">
-                                  {warehouses.find(
-                                    (w) =>
-                                      w.id?.toString() ===
-                                        viewingInvoice.warehouseId?.toString() ||
-                                      w.id?.toString() ===
-                                        viewingInvoice.items?.[0]?.warehouseId?.toString(),
-                                  )?.name || "نامشخص"}
-                                </div>
-                              </div>
-                            )}
-                            {viewingInvoice.description && (
-                              <div className="mt-4 text-xs leading-relaxed text-slate-700 bg-slate-50 rounded-lg p-3 border border-slate-100">
-                                <span className="font-bold text-slate-400 inline-block ml-1">
-                                  توضیحات:
-                                </span>
-                                <span className="font-bold">
-                                  {viewingInvoice.description}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Items table */}
-                        <div className="border-2 border-slate-200 print:border-slate-800 rounded-xl overflow-hidden mb-8">
-                          <table className="w-full text-right text-sm border-collapse bg-white font-sans">
-                            <thead className="bg-slate-100 print:bg-slate-100 border-b-2 border-slate-200 print:border-slate-800">
-                              <tr>
-                                <th className="py-3 px-3 w-12 text-center font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
-                                  ردیف
-                                </th>
-                                <th className="py-3 px-4 font-bold text-slate-700 text-sm border-l border-slate-200 print:border-slate-400">
-                                  شرح کالا یا خدمات
-                                </th>
-                                <th className="py-3 px-3 w-24 text-center font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
-                                  مقدار
-                                </th>
-                                {!viewingInvoice.type?.includes(
-                                  "warehouse",
-                                ) && (
-                                  <>
-                                    <th className="py-3 px-3 text-center w-36 font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
-                                      فی (
-                                      {showInvoiceCurrency(
-                                        viewingInvoice.currency,
-                                      )}
-                                      )
-                                    </th>
-                                    <th className="py-3 px-3 text-center w-20 font-bold text-slate-700 text-xs border-l border-slate-200 print:border-slate-400">
-                                      تخفیف
-                                    </th>
-                                    <th className="py-3 px-3 w-44 text-center font-bold text-slate-700 text-xs">
-                                      مبلغ کل (
-                                      {showInvoiceCurrency(
-                                        viewingInvoice.currency,
-                                      )}
-                                      )
-                                    </th>
-                                  </>
-                                )}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 print:divide-slate-300 text-slate-800 text-sm">
-                              {viewingInvoice.items
-                                ?.filter(
-                                  (it: any) =>
-                                    it.productName ||
-                                    it.productId ||
-                                    (it.quantity > 0 && it.unitPrice > 0),
-                                )
-                                .map((item: any, idx: number) => (
-                                  <tr
-                                    key={idx}
-                                    className="group print:hover:bg-transparent"
-                                  >
-                                    <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-slate-500">
-                                      {toPersianDigits(idx + 1)}
-                                    </td>
-                                    <td className="py-3 px-4 border-l border-slate-100 print:border-slate-400">
-                                      <div className="flex flex-col gap-1">
-                                        <span className="text-slate-900 font-bold tracking-tight">
-                                          {item.productName || "تحریر نشده"}
-                                        </span>
-                                        {item.warehouseId && (
-                                          <span className="text-[10px] text-slate-400 font-bold">
-                                            از انبار:{" "}
-                                            {warehouses.find(
-                                              (w) =>
-                                                w.id?.toString() ===
-                                                item.warehouseId?.toString(),
-                                            )?.name || "-"}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                    <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400">
-                                      <span className="font-bold text-slate-900 ml-1.5 text-base">
-                                        {toPersianDigits(
-                                          formatNumber(item.quantity || 1),
-                                        )}
-                                      </span>
-                                      <span className="text-xs text-slate-500 font-bold hidden md:inline-block">
-                                        {item.selectedUnit || ""}
-                                      </span>
-                                    </td>
-                                    {!viewingInvoice.type?.includes(
-                                      "warehouse",
-                                    ) && (
-                                      <>
-                                        <td className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-slate-700 text-base">
-                                          {toPersianDigits(
-                                            formatCurrency(item.unitPrice || 0),
-                                          )}
-                                        </td>
-                                        <td
-                                          className="py-3 px-3 text-center border-l border-slate-100 print:border-slate-400 font-bold text-rose-600 text-base"
-                                          dir="ltr"
-                                        >
-                                          {item.discountPercent > 0
-                                            ? `${toPersianDigits(item.discountPercent)}٪`
-                                            : "-"}
-                                        </td>
-                                        <td className="py-3 px-3 text-center font-black text-slate-900 bg-slate-50/50 print:bg-transparent text-base">
-                                          {toPersianDigits(
-                                            formatCurrency(
-                                              item.totalPrice || 0,
-                                            ),
-                                          )}
-                                        </td>
-                                      </>
-                                    )}
-                                  </tr>
-                                ))}
-                              {/* Empty spacer rows to fill page slightly if needed */}
-                              {viewingInvoice.items?.length < 3 &&
-                                Array.from({
-                                  length:
-                                    3 - (viewingInvoice.items?.length || 0),
-                                }).map((_, i) => (
-                                  <tr
-                                    key={`empty-${i}`}
-                                    className="h-12 border-t border-slate-100 print:border-slate-300"
-                                  >
-                                    <td className="border-l border-slate-100 print:border-slate-400"></td>
-                                    <td className="border-l border-slate-100 print:border-slate-400"></td>
-                                    <td className="border-l border-slate-100 print:border-slate-400"></td>
-                                    {!viewingInvoice.type?.includes(
-                                      "warehouse",
-                                    ) && (
-                                      <>
-                                        <td className="border-l border-slate-100 print:border-slate-400"></td>
-                                        <td className="border-l border-slate-100 print:border-slate-400"></td>
-                                        <td></td>
-                                      </>
-                                    )}
-                                  </tr>
-                                ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Summary Section */}
-                        {!viewingInvoice.type?.includes("warehouse") && (
-                          <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8 font-sans">
-                            <div className="w-full md:w-[50%] flex flex-col justify-between self-stretch">
-                              <div className="border border-slate-200 print:border-slate-300 rounded-xl p-5 bg-slate-50/50 print:bg-transparent">
-                                <span className="text-xs text-slate-500 font-bold block mb-2">
-                                  جمع مبلغ به حروف (تومان)
-                                </span>
-                                <p className="text-slate-900 font-black text-base leading-loose">
-                                  {numToPersianWords(
-                                    viewingInvoice.totalAmount,
-                                  )}{" "}
-                                  {showInvoiceCurrency(viewingInvoice.currency)}
-                                </p>
-                              </div>
-                              <p className="text-[10px] text-slate-400 font-bold leading-loose text-justify mt-4 print:text-slate-500 border-t border-slate-100 print:border-slate-200 pt-4">
-                                مشتری گرامی، خواهشمند است اقلام را در زمان تحویل
-                                به دقت بررسی نمایید. پس از تحویل، مجموعه هیچگونه
-                                مسئولیتی در قبال کسری یا آسیب‌دیدگی ظاهری
-                                نمی‌پذیرد.
-                              </p>
-                            </div>
-                            <div className="w-full md:w-[45%] ml-auto border-2 border-slate-200 print:border-slate-800 rounded-xl overflow-hidden font-bold">
-                              <div className="flex justify-between px-5 py-3 border-b border-slate-200 print:border-slate-300 bg-white">
-                                <span className="text-sm text-slate-600">
-                                  جمع کل (بدون تخفیف)
-                                </span>
-                                <span className="font-bold text-slate-900 text-base">
-                                  {toPersianDigits(
-                                    formatCurrency(
-                                      viewingInvoice.items?.reduce(
-                                        (sum: number, it: any) =>
-                                          sum +
-                                          (it.quantity || 0) *
-                                            (it.unitPrice || 0),
-                                        0,
-                                      ) || 0,
-                                    ),
-                                  )}
-                                </span>
-                              </div>
-                              <div className="flex justify-between px-5 py-3 border-b border-slate-200 print:border-slate-300 bg-white">
-                                <span className="text-sm text-rose-600">
-                                  مجموع تخفیف‌ها
-                                </span>
-                                <span className="font-bold text-rose-600 text-base">
-                                  {toPersianDigits(
-                                    formatCurrency(
-                                      Math.max(
-                                        0,
-                                        (viewingInvoice.items?.reduce(
-                                          (sum: number, it: any) =>
-                                            sum +
-                                            (it.quantity || 0) *
-                                              (it.unitPrice || 0),
-                                          0,
-                                        ) || 0) - viewingInvoice.totalAmount,
-                                      ),
-                                    ),
-                                  )}
-                                </span>
-                              </div>
-                              <div className="flex justify-between p-5 bg-slate-100 print:bg-slate-100 text-slate-900 items-center">
-                                <span className="text-base font-black text-slate-800">
-                                  مبلغ نهایی فاکتور
-                                </span>
-                                <div
-                                  className="flex items-baseline gap-1.5"
-                                  dir="ltr"
-                                >
-                                  <span className="text-2xl font-black text-indigo-900">
-                                    {toPersianDigits(
-                                      formatCurrency(
-                                        viewingInvoice.totalAmount,
-                                      ),
-                                    )}
-                                  </span>
-                                  <span className="text-xs font-bold text-slate-500">
-                                    {showInvoiceCurrency(
-                                      viewingInvoice.currency,
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Payment Allocation History */}
-                        {storeSettings.print_show_financial !== false &&
-                          !viewingInvoice.type?.includes("warehouse") &&
-                          (() => {
-                            const allocatedTxs = transactions.filter(
-                              (t) =>
-                                t.linkedInvoices &&
-                                t.linkedInvoices[viewingInvoice.id] > 0,
-                            );
-                            if (allocatedTxs.length > 0) {
-                              return (
-                                <div className="mb-6 border border-slate-200 rounded-xl overflow-hidden">
-                                  <div className="bg-slate-50 border-b border-slate-200 p-2.5">
-                                    <span className="font-extrabold text-xs text-slate-600 mr-2">
-                                      تاریخچه دریافت / پرداخت برای این سند
-                                    </span>
-                                  </div>
-                                  <table className="w-full text-right text-xs font-bold text-slate-600 bg-white">
-                                    <thead className="border-b border-slate-200 bg-slate-50/50">
-                                      <tr>
-                                        <th className="py-2 px-3 border-l border-slate-200 font-extrabold w-28">
-                                          شماره پیگیری
-                                        </th>
-                                        <th className="py-2 px-3 border-l border-slate-200 font-extrabold w-28">
-                                          تاریخ واریز
-                                        </th>
-                                        <th className="py-2 px-3 border-l border-slate-200 font-extrabold">
-                                          جزئیات حساب/صندوق
-                                        </th>
-                                        <th className="py-2 px-3 text-center font-extrabold w-40">
-                                          ارزش ثبت شده
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                      {allocatedTxs.map((tx) => (
-                                        <tr key={tx.id}>
-                                          <td className="py-2 px-3 font-sans font-bold text-slate-500 border-l border-slate-200">
-                                            {toPersianDigits(
-                                              tx.receiptNumber,
-                                            ) || `#${toPersianDigits(tx.id)}`}
-                                          </td>
-                                          <td className="py-2 px-3 font-sans font-bold border-l border-slate-200">
-                                            {formatPersianDateDisplay(tx.jalaliDate)}
-                                          </td>
-                                          <td className="py-2 px-3 border-l border-slate-200">
-                                            {accounts.find(
-                                              (a) =>
-                                                a.id.toString() ===
-                                                tx.accountId?.toString(),
-                                            )?.title ||
-                                              cashboxes.find(
-                                                (c) =>
-                                                  c.id.toString() ===
-                                                  tx.cashboxId?.toString(),
-                                              )?.name ||
-                                              "نامشخص"}
-                                          </td>
-                                          <td className="py-2 px-3 text-center font-sans font-black text-slate-800">
-                                            {toPersianDigits(
-                                              formatCurrency(
-                                                tx.linkedInvoices![
-                                                  viewingInvoice.id
-                                                ],
-                                              ),
-                                            )}
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                    <tfoot className="bg-slate-50 border-t border-slate-200">
-                                      <tr>
-                                        <td
-                                          colSpan={3}
-                                          className="py-2.5 px-3 text-left font-black text-slate-700 border-l border-slate-200"
-                                        >
-                                          مجموع پرداختی:
-                                        </td>
-                                        <td className="py-2.5 px-3 text-center font-sans font-black text-slate-800">
-                                          {toPersianDigits(
-                                            formatCurrency(
-                                              viewingInvoice.paidAmount || 0,
-                                            ),
-                                          )}
-                                        </td>
-                                      </tr>
-                                      <tr>
-                                        <td
-                                          colSpan={3}
-                                          className="py-2 px-3 text-left font-black text-rose-500 border-l border-slate-200"
-                                        >
-                                          بدهی باقیمانده مانده (تراز):
-                                        </td>
-                                        <td className="py-2 px-3 text-center font-sans font-black text-rose-600">
-                                          {toPersianDigits(
-                                            formatCurrency(
-                                              Math.max(
-                                                (viewingInvoice.totalAmount ||
-                                                  0) -
-                                                  (viewingInvoice.paidAmount ||
-                                                    0),
-                                                0,
-                                              ),
-                                            ),
-                                          )}
-                                        </td>
-                                      </tr>
-                                    </tfoot>
-                                  </table>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-
-                        {/* Footer Notes & Signature Block */}
-                        {storeSettings.print_footer_note && (
-                          <div className="mb-6 text-[10px] font-bold text-slate-500 text-center leading-relaxed">
-                            {storeSettings.print_footer_note}
-                          </div>
-                        )}
-
+                      {viewingInvoice.type?.includes("warehouse") ? (
                         <div
-                          className={`grid pt-6 pb-2 text-center text-xs font-extrabold text-slate-400 ${storeSettings.print_signature_3 ? "grid-cols-3 gap-8" : "grid-cols-2 gap-16"} `}
+                          className={
+                            "bg-white print:p-0 rounded-2xl print:rounded-none overflow-hidden text-slate-800 w-full shadow-sm border border-slate-200 print:shadow-none print:border-none relative flex flex-col font-sans " +
+                            (storeSettings.print_paper_size === "A5"
+                              ? "max-w-[148mm] min-h-[210mm]"
+                              : storeSettings.print_paper_size === "receipt80"
+                                ? "max-w-[80mm] min-h-[100mm] print:text-xs"
+                                : storeSettings.print_paper_size === "receipt58"
+                                  ? "max-w-[58mm] min-h-[100mm] print:text-[10px]"
+                                  : "max-w-[210mm] min-h-fit")
+                          }
                         >
-                          <div className="pt-6 border-t border-slate-200 px-4 w-5/6 mx-auto">
-                            {storeSettings.print_signature_1 ||
-                              (viewingInvoice.type?.includes("warehouse")
-                                ? "تأیید تحویل‌گیرنده"
-                                : "امضای مشتری")}
-                          </div>
-                          {storeSettings.print_signature_3 && (
-                            <div className="pt-6 border-t border-slate-200 px-4 w-5/6 mx-auto">
-                              {storeSettings.print_signature_3}
-                            </div>
-                          )}
-                          <div className="pt-6 border-t border-slate-200 px-4 w-5/6 mx-auto text-slate-700">
-                            {storeSettings.print_signature_2 ||
-                              (viewingInvoice.type?.includes("warehouse")
-                                ? `تأیید حواله‌دهنده (${storeSettings.storeName})`
-                                : `مهر و اعتبار ${storeSettings.storeName}`)}
-                          </div>
+                           <WarehousePrintTemplate data={viewingInvoice} storeSettings={storeSettings} warehouses={warehouses} persons={persons} />
                         </div>
-                      </div>
+                      ) : (
+                        <div
+                          className={
+                            "bg-white print:p-0 rounded-2xl print:rounded-none overflow-hidden text-slate-800 w-full shadow-sm border border-slate-200 print:shadow-none print:border-none relative flex flex-col font-sans " +
+                            (storeSettings.print_paper_size === "A5"
+                              ? "max-w-[148mm] min-h-[210mm]"
+                              : storeSettings.print_paper_size === "receipt80"
+                                ? "max-w-[80mm] min-h-[100mm] print:text-xs"
+                                : storeSettings.print_paper_size === "receipt58"
+                                  ? "max-w-[58mm] min-h-[100mm] print:text-[10px]"
+                                  : "max-w-[210mm] min-h-fit")
+                          }
+                        >
+                           <InvoicePrintTemplate data={viewingInvoice} storeSettings={storeSettings} persons={persons} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Sticky bottom (No print) */}
@@ -25522,616 +24693,37 @@ export default function App() {
 
                         {/* Header info */}
                         {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
-
+                        {previewInvoiceData.type?.includes("warehouse") ? (
+                           <div
+                              className={
+                                "bg-white print:p-0 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " +
+                                (storeSettings.print_paper_size === "A5"
+                                  ? "max-w-[148mm] min-h-[210mm] mx-auto"
+                                  : storeSettings.print_paper_size === "receipt80"
+                                    ? "max-w-[80mm] min-h-[100mm] mx-auto print:text-xs"
+                                    : storeSettings.print_paper_size === "receipt58"
+                                      ? "max-w-[58mm] min-h-[100mm] mx-auto print:text-[10px]"
+                                      : "max-w-4xl min-h-fit mx-auto")
+                              }
+                            >
+                               <WarehousePrintTemplate data={previewInvoiceData} storeSettings={storeSettings} warehouses={warehouses} persons={persons} />
+                            </div>
+                        ) : (
                         <div
                           className={
-                            "bg-white print:p-0 p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " +
+                            "bg-white print:p-0 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " +
                             (storeSettings.print_paper_size === "A5"
                               ? "max-w-[148mm] min-h-[210mm] mx-auto"
                               : storeSettings.print_paper_size === "receipt80"
                                 ? "max-w-[80mm] min-h-[100mm] mx-auto print:text-xs"
                                 : storeSettings.print_paper_size === "receipt58"
                                   ? "max-w-[58mm] min-h-[100mm] mx-auto print:text-[10px]"
-                                  : "")
+                                  : "max-w-[210mm] min-h-fit mx-auto")
                           }
                         >
-                          {/* Top Accent Line */}
-                          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 print:bg-gray-900"></div>
-
-                          {/* Elegant Header */}
-                          <div className="flex flex-col md:flex-row justify-between items-start pb-8 mb-8 border-b-2 border-gray-100 print:border-gray-300 mt-2">
-                            <div className="space-y-3">
-                              <h1 className="text-3xl md:text-4xl font-black text-gray-950 tracking-tighter">
-                                {previewInvoiceData.type === "purchase"
-                                  ? "فاکتور خرید"
-                                  : previewInvoiceData.type === "sale"
-                                    ? previewInvoiceData.title || "فاکتور فروش"
-                                    : previewInvoiceData.type === "sale_return"
-                                      ? "فاکتور برگشت از فروش"
-                                      : previewInvoiceData.type ===
-                                          "purchase_return"
-                                        ? "فاکتور برگشت از خرید"
-                                        : previewInvoiceData.type ===
-                                            "warehouse_receipt"
-                                          ? "رسید انبار (ورود کالا)"
-                                          : previewInvoiceData.type ===
-                                              "warehouse_remittance"
-                                            ? "حواله انبار (خروج کالا)"
-                                            : "سند"}
-                              </h1>
-                              <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-gray-600">
-                                <span className="bg-gray-50 print:bg-transparent border border-gray-200 print:border-gray-400 px-3 py-1.5 rounded-lg text-gray-900 font-mono text-base">
-                                  شماره فاکتور:{" "}
-                                  {toPersianDigits(
-                                    previewInvoiceData.invoiceNumber,
-                                  )}
-                                </span>
-                                {(previewInvoiceData.type === "purchase" ||
-                                  previewInvoiceData.type ===
-                                    "purchase_return") &&
-                                  previewInvoiceData.sellerInvoiceNumber && (
-                                    <span className="bg-emerald-50 text-emerald-850 border border-emerald-100 px-3 py-1.5 rounded-lg text-xs leading-none">
-                                      ارجاع فاکتور فروشنده:{" "}
-                                      {toPersianDigits(
-                                        previewInvoiceData.sellerInvoiceNumber,
-                                      )}
-                                    </span>
-                                  )}
-                                <span className="px-2">
-                                  تاريخ:{" "}
-                                  {formatPersianDateDisplay(previewInvoiceData.jalaliDate || previewInvoiceData.date)}
-                                </span>
-                                {true && (
-                                  <span className="bg-rose-50 text-rose-600 border border-rose-100 px-2 py-1 rounded text-xs">
-                                    پیش‌نمایش چاپ
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-right md:text-left flex flex-col md:items-end mt-6 md:mt-0">
-                              {storeSettings.print_show_logo !== false &&
-                                storeSettings.logoUrl && (
-                                  <img
-                                    src={storeSettings.logoUrl}
-                                    alt="Logo"
-                                    className="w-16 h-16 object-contain mb-3 grayscale print:grayscale-0"
-                                  />
-                                )}
-                              <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-                                {storeSettings.storeName || "نام مجموعه تجاری"}
-                              </h2>
-                              {storeSettings.phone && (
-                                <p className="text-sm font-bold text-gray-500 mt-2">
-                                  تلفن:{" "}
-                                  <span dir="ltr">{storeSettings.phone}</span>
-                                </p>
-                              )}
-                              {storeSettings.address && (
-                                <p className="text-xs font-bold text-gray-400 mt-1 max-w-[250px] truncate">
-                                  {storeSettings.address}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Info blocks */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            {/* Customer Info */}
-                            <div className="bg-gray-50/50 print:bg-transparent print:border-gray-300 p-5 rounded-2xl border border-gray-100">
-                              <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                <User className="w-4 h-4" />
-                                {["purchase", "purchase_return"].includes(
-                                  previewInvoiceData.type,
-                                )
-                                  ? "تامین کننده"
-                                  : ["sale", "sale_return"].includes(
-                                        previewInvoiceData.type,
-                                      )
-                                    ? "خریدار"
-                                    : "طرف حساب"}
-                              </div>
-                              <h3 className="text-xl font-black text-gray-900 mb-2">
-                                {renderPersonLink(
-                                  previewInvoiceData.customerId,
-                                  previewInvoiceData.customerName,
-                                )}
-                              </h3>
-                              {previewInvoiceData.customerPhone && (
-                                <p className="text-sm text-gray-600 font-bold">
-                                  تلفن:{" "}
-                                  <span dir="ltr" className="text-gray-900">
-                                    {previewInvoiceData.customerPhone}
-                                  </span>
-                                </p>
-                              )}
-                              {(() => {
-                                const originalPerson = persons.find(
-                                  (p) =>
-                                    p.name ===
-                                      previewInvoiceData.customerName ||
-                                    p.id === previewInvoiceData.customerId,
-                                );
-                                if (originalPerson) {
-                                  return (
-                                    <div className="mt-3 space-y-1 text-xs text-gray-500 font-bold">
-                                      {originalPerson.nationalId && (
-                                        <p>
-                                          شناسه ملی/کد اقتصادی:{" "}
-                                          <span className="text-gray-800">
-                                            {originalPerson.nationalId}
-                                          </span>
-                                        </p>
-                                      )}
-                                      {originalPerson.address && (
-                                        <p
-                                          className="truncate block"
-                                          title={originalPerson.address}
-                                        >
-                                          نشانی فیزیکی:{" "}
-                                          <span className="text-gray-800 whitespace-normal">
-                                            {originalPerson.address}
-                                          </span>
-                                        </p>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
-
-                            {/* Payment/Warehouse Info */}
-                            <div className="bg-gray-50/50 print:bg-transparent print:border-gray-300 p-5 rounded-2xl border border-gray-100 flex flex-col justify-center">
-                              <div className="grid grid-cols-2 gap-4">
-                                {!previewInvoiceData.type?.includes(
-                                  "warehouse",
-                                ) && (
-                                  <div>
-                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1">
-                                      مبلغ نهایی معامله
-                                    </span>
-                                    <div
-                                      className="text-xl font-black text-gray-900"
-                                      dir="ltr"
-                                    >
-                                      {formatCurrency(
-                                        previewInvoiceData.totalAmount,
-                                      )}{" "}
-                                      <span className="text-xs font-bold text-gray-500">
-                                        {showInvoiceCurrency(
-                                          previewInvoiceData.currency,
-                                        )}
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-                                {previewInvoiceData.type?.includes(
-                                  "warehouse",
-                                ) && (
-                                  <div className="col-span-2">
-                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1">
-                                      <Box className="w-4 h-4 inline mr-1 text-gray-400" />{" "}
-                                      انبار انتسابی به این سند
-                                    </span>
-                                    <div className="text-lg font-black text-gray-900">
-                                      {warehouses.find(
-                                        (w) =>
-                                          w.id?.toString() ===
-                                            previewInvoiceData.warehouseId?.toString() ||
-                                          w.id?.toString() ===
-                                            previewInvoiceData.items?.[0]?.warehouseId?.toString(),
-                                      )?.name || "نامشخص"}
-                                    </div>
-                                  </div>
-                                )}
-                                {previewInvoiceData.description && (
-                                  <div className="col-span-2 mt-2 pt-4 border-t border-gray-200 print:border-gray-100">
-                                    <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1">
-                                      یادداشت سند
-                                    </span>
-                                    <p className="text-sm text-gray-800 font-bold">
-                                      {previewInvoiceData.description}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Items table */}
-                          <div className="rounded-2xl overflow-hidden border border-gray-200 print:border-gray-600 print:rounded-none mb-8">
-                            <table className="w-full text-right text-sm border-collapse">
-                              <thead className="bg-gray-100 print:bg-gray-100 text-gray-900">
-                                <tr>
-                                  <th className="py-4 px-3 w-12 text-center font-black border-l border-gray-200 print:border-gray-400">
-                                    ردیف
-                                  </th>
-                                  <th className="py-4 px-4 font-black border-l border-gray-200 print:border-gray-400">
-                                    شرح کالا یا خدمات
-                                  </th>
-                                  <th className="py-4 px-3 w-28 text-center font-black border-l border-gray-200 print:border-gray-400">
-                                    مقدار
-                                  </th>
-                                  {!previewInvoiceData.type?.includes(
-                                    "warehouse",
-                                  ) && (
-                                    <>
-                                      <th className="py-4 px-3 text-left w-40 font-black border-l border-gray-200 print:border-gray-400">
-                                        فی (
-                                        {showInvoiceCurrency(
-                                          previewInvoiceData.currency,
-                                        )}
-                                        )
-                                      </th>
-                                      <th className="py-4 px-3 text-center w-24 font-black border-l border-gray-200 print:border-gray-400">
-                                        تخفیف
-                                      </th>
-                                      <th className="py-4 px-3 text-left w-44 font-black">
-                                        مبلغ کل (
-                                        {showInvoiceCurrency(
-                                          previewInvoiceData.currency,
-                                        )}
-                                        )
-                                      </th>
-                                    </>
-                                  )}
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-200 print:divide-gray-400 text-gray-800 font-bold">
-                                {previewInvoiceData.items
-                                  ?.filter(
-                                    (it: any) =>
-                                      it.productName ||
-                                      it.productId ||
-                                      (it.quantity > 0 && it.unitPrice > 0),
-                                  )
-                                  .map((item: any, idx: number) => (
-                                    <tr
-                                      key={idx}
-                                      className="hover:bg-gray-50 print:hover:bg-transparent"
-                                    >
-                                      <td className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 text-gray-500">
-                                        {idx + 1}
-                                      </td>
-                                      <td className="py-3 px-4 border-l border-gray-200 print:border-gray-400">
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-gray-900 font-extrabold">
-                                            {item.productName || "کالا/خدمات"}
-                                          </span>
-                                          {item.warehouseId && (
-                                            <span className="text-[10px] text-gray-500 font-bold block">
-                                              انبار:{" "}
-                                              {warehouses.find(
-                                                (w) =>
-                                                  w.id?.toString() ===
-                                                  item.warehouseId?.toString(),
-                                              )?.name || "نامشخص"}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </td>
-                                      <td
-                                        className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 font-mono text-base"
-                                        dir="rtl"
-                                      >
-                                        {formatNumber(item.quantity || 1)}{" "}
-                                        <span className="text-[10px] text-gray-500 font-sans">
-                                          {item.selectedUnit || "-"}
-                                        </span>
-                                      </td>
-                                      {!previewInvoiceData.type?.includes(
-                                        "warehouse",
-                                      ) && (
-                                        <>
-                                          <td
-                                            className="py-3 px-3 text-left border-l border-gray-200 print:border-gray-400 font-mono"
-                                            dir="ltr"
-                                          >
-                                            {formatCurrency(
-                                              item.unitPrice || 0,
-                                            )}
-                                          </td>
-                                          <td
-                                            className="py-3 px-3 text-center border-l border-gray-200 print:border-gray-400 text-red-600 font-mono"
-                                            dir="ltr"
-                                          >
-                                            {toPersianDigits(
-                                              item.discountPercent || 0,
-                                            )}
-                                            ٪
-                                          </td>
-                                          <td
-                                            className="py-3 px-3 text-left font-black font-mono text-gray-900 bg-gray-50/50 print:bg-transparent"
-                                            dir="ltr"
-                                          >
-                                            {formatCurrency(
-                                              item.totalPrice || 0,
-                                            )}
-                                          </td>
-                                        </>
-                                      )}
-                                    </tr>
-                                  ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {/* Summary Section */}
-                          {!previewInvoiceData.type?.includes("warehouse") && (
-                            <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-8">
-                              <div className="w-full md:w-1/2 mt-2">
-                                <div className="border border-gray-200 print:border-gray-400 rounded-xl p-4 bg-gray-50/50 print:bg-transparent">
-                                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-2">
-                                    مبلغ فاکتور به حروف:
-                                  </span>
-                                  <p className="text-gray-900 font-black text-[15px] leading-relaxed">
-                                    {numToPersianWords(
-                                      previewInvoiceData.totalAmount,
-                                    )}{" "}
-                                    {showInvoiceCurrency(
-                                      previewInvoiceData.currency,
-                                    )}
-                                  </p>
-                                </div>
-                                <p className="text-[11px] text-gray-400 font-bold leading-relaxed mt-4 text-justify">
-                                  این فاکتور بر اساس قوانین جاری صادر گردیده
-                                  است. بررسی کامل اقلام توسط خریدار در زمان
-                                  تحویل الزامی است. پس از تأیید و خروج کالا از
-                                  محدوده فروشگاه هیچگونه مسئولیتی در قبال کسری
-                                  یا آسیب دیدگی پذیرفته نخواهد بود.
-                                </p>
-                              </div>
-                              <div className="w-full md:w-5/12 ml-auto border border-gray-200 print:border-gray-400 rounded-2xl overflow-hidden text-sm font-bold text-gray-600">
-                                <div className="flex justify-between p-4 border-b border-gray-100 print:border-gray-200 bg-white">
-                                  <span>جمع خالص اقلام (بدون تخفیف):</span>
-                                  <span
-                                    className="font-mono text-gray-900"
-                                    dir="ltr"
-                                  >
-                                    {formatCurrency(
-                                      previewInvoiceData.items?.reduce(
-                                        (sum: number, it: any) =>
-                                          sum +
-                                          (it.quantity || 0) *
-                                            (it.unitPrice || 0),
-                                        0,
-                                      ) || 0,
-                                    )}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between p-4 border-b border-gray-100 print:border-gray-200 bg-white text-rose-600">
-                                  <span>مجموع کل تخفیف‌ها روی خطوط:</span>
-                                  <span className="font-mono" dir="ltr">
-                                    {formatCurrency(
-                                      Math.max(
-                                        0,
-                                        (previewInvoiceData.items?.reduce(
-                                          (sum: number, it: any) =>
-                                            sum +
-                                            (it.quantity || 0) *
-                                              (it.unitPrice || 0),
-                                          0,
-                                        ) || 0) -
-                                          previewInvoiceData.totalAmount,
-                                      ),
-                                    )}
-                                  </span>
-                                </div>
-                                {previewInvoiceData.overallDiscountPercent >
-                                  0 && (
-                                  <div className="flex justify-between p-4 border-b border-gray-100 print:border-gray-200 bg-white text-rose-600">
-                                    <span>
-                                      تخفیف کلی فاکتور (
-                                      {toPersianDigits(
-                                        previewInvoiceData.overallDiscountPercent,
-                                      )}
-                                      ٪):
-                                    </span>
-                                    <span className="font-mono" dir="ltr">
-                                      {formatCurrency(
-                                        (previewInvoiceData.items?.reduce(
-                                          (sum: number, it: any) =>
-                                            sum + (it.totalPrice || 0),
-                                          0,
-                                        ) || 0) *
-                                          (previewInvoiceData.overallDiscountPercent /
-                                            100),
-                                      )}
-                                    </span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between p-5 bg-gray-900 print:bg-gray-100 print:text-gray-900 text-white text-lg font-black items-center">
-                                  <span>مبلغ قابل پرداخت فاکتور:</span>
-                                  <div className="text-left" dir="ltr">
-                                    <span className="font-mono text-2xl px-1">
-                                      {formatCurrency(
-                                        previewInvoiceData.totalAmount,
-                                      )}
-                                    </span>
-                                    <span className="text-sm font-bold opacity-80">
-                                      {showInvoiceCurrency(
-                                        previewInvoiceData.currency,
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Payment Allocation History (for viewing only) */}
-                          {storeSettings.print_show_financial !== false &&
-                            !previewInvoiceData.type?.includes("warehouse") &&
-                            (() => {
-                              const allocatedTxs = transactions.filter(
-                                (t) =>
-                                  t.linkedInvoices &&
-                                  t.linkedInvoices[previewInvoiceData.id] > 0,
-                              );
-                              if (allocatedTxs.length > 0) {
-                                return (
-                                  <div className="mt-8 mb-8 border border-gray-200 print:border-gray-300 rounded-xl overflow-hidden print:rounded-none">
-                                    <div className="bg-gray-100 print:bg-gray-50 border-b border-gray-200 print:border-gray-300 p-3 flex justify-between items-center text-gray-800">
-                                      <span className="font-black text-sm text-gray-700">
-                                        تاریخچه پرداخت‌های مرتبط با این فاکتور
-                                      </span>
-                                    </div>
-                                    <table className="w-full text-right text-xs font-bold text-gray-600">
-                                      <thead>
-                                        <tr className="bg-white print:bg-white border-b border-gray-200 print:border-gray-300">
-                                          <th className="p-3 w-32 border-l border-gray-200 print:border-gray-300">
-                                            شماره سند پرداختی
-                                          </th>
-                                          <th className="p-3 w-32 border-l border-gray-200 print:border-gray-300">
-                                            تاریخ پرداخت
-                                          </th>
-                                          <th className="p-3 border-l border-gray-200 print:border-gray-300">
-                                            حساب / صندوق مرتبط
-                                          </th>
-                                          <th className="p-3 text-left w-64">
-                                            مبلغ دریافتی/پرداختی مربوط به این
-                                            فاکتور
-                                          </th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-gray-100 print:divide-gray-200 bg-white">
-                                        {allocatedTxs.map((tx) => (
-                                          <tr key={tx.id}>
-                                            <td className="p-3 font-mono text-gray-500 border-l border-gray-200 print:border-gray-300">
-                                              {toPersianDigits(
-                                                tx.receiptNumber,
-                                              ) || `#${toPersianDigits(tx.id)}`}
-                                            </td>
-                                            <td className="p-3 font-mono border-l border-gray-200 print:border-gray-300">
-                                              {formatPersianDateDisplay(tx.jalaliDate)}
-                                            </td>
-                                            <td className="p-3 border-l border-gray-200 print:border-gray-300">
-                                              {accounts.find(
-                                                (a) =>
-                                                  a.id.toString() ===
-                                                  tx.accountId?.toString(),
-                                              )?.title ||
-                                                cashboxes.find(
-                                                  (c) =>
-                                                    c.id.toString() ===
-                                                    tx.cashboxId?.toString(),
-                                                )?.name ||
-                                                "نامشخص"}
-                                            </td>
-                                            <td
-                                              className="p-3 text-left font-sans font-black text-gray-900"
-                                              dir="ltr"
-                                            >
-                                              {formatCurrency(
-                                                tx.linkedInvoices![
-                                                  previewInvoiceData.id
-                                                ],
-                                              )}{" "}
-                                              <span className="text-[9px] text-gray-400">
-                                                {showInvoiceCurrency(
-                                                  previewInvoiceData.currency,
-                                                )}
-                                              </span>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                      <tfoot className="bg-gray-50 print:bg-white border-t-2 border-gray-300">
-                                        <tr>
-                                          <td
-                                            colSpan={3}
-                                            className="p-3 text-left font-black text-gray-900 border-l border-gray-200 print:border-gray-300"
-                                          >
-                                            جمع کل دریافتی‌ها و پرداختی‌ها:
-                                          </td>
-                                          <td
-                                            className="p-3 text-left font-sans font-black text-gray-900"
-                                            dir="ltr"
-                                          >
-                                            {formatCurrency(
-                                              previewInvoiceData.paidAmount ||
-                                                0,
-                                            )}{" "}
-                                            <span className="text-[9px] text-gray-500">
-                                              {showInvoiceCurrency(
-                                                previewInvoiceData.currency,
-                                              )}
-                                            </span>
-                                          </td>
-                                        </tr>
-                                        <tr>
-                                          <td
-                                            colSpan={3}
-                                            className="p-3 text-left font-black text-rose-600 border-l border-gray-200 print:border-gray-300"
-                                          >
-                                            باقیمانده حساب (بدهی فاکتور):
-                                          </td>
-                                          <td
-                                            className="p-3 text-left font-mono font-black text-rose-600"
-                                            dir="ltr"
-                                          >
-                                            {formatCurrency(
-                                              Math.max(
-                                                (previewInvoiceData.totalAmount ||
-                                                  0) -
-                                                  (previewInvoiceData.paidAmount ||
-                                                    0),
-                                                0,
-                                              ),
-                                            )}{" "}
-                                            <span className="text-[9px] text-rose-400">
-                                              {showInvoiceCurrency(
-                                                previewInvoiceData.currency,
-                                              )}
-                                            </span>
-                                          </td>
-                                        </tr>
-                                      </tfoot>
-                                    </table>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })()}
-
-                          {/* Footer Notes & Signature Block */}
-                          {storeSettings.print_footer_note && (
-                            <div className="mb-6 text-[11px] font-bold text-gray-500 text-center leading-relaxed max-w-2xl mx-auto border-t border-gray-200 pt-6 mt-6 print:border-gray-300">
-                              {storeSettings.print_footer_note}
-                            </div>
-                          )}
-
-                          <div
-                            className={`grid pt-12 pb-4 text-center text-sm font-black text-gray-600 ${storeSettings.print_signature_3 ? "grid-cols-3 gap-8" : "grid-cols-2 gap-16"} `}
-                          >
-                            <div className="pt-8 border-t-2 border-gray-300 print:border-gray-400 border-dashed flex flex-col justify-end items-center px-4 w-3/4 mx-auto">
-                              <span>
-                                {storeSettings.print_signature_1 ||
-                                  (previewInvoiceData.type?.includes(
-                                    "warehouse",
-                                  )
-                                    ? "مهر و امضای تحویل دهنده"
-                                    : "مهر و امضای خریدار / مشتری")}
-                              </span>
-                            </div>
-                            {storeSettings.print_signature_3 && (
-                              <div className="pt-8 border-t-2 border-gray-300 print:border-gray-400 border-dashed flex flex-col justify-end items-center px-4 w-3/4 mx-auto">
-                                <span>{storeSettings.print_signature_3}</span>
-                              </div>
-                            )}
-                            <div className="pt-8 border-t-2 border-gray-300 print:border-gray-400 border-dashed flex flex-col justify-end items-center px-4 w-3/4 mx-auto">
-                              <span>
-                                {storeSettings.print_signature_2 ||
-                                  (previewInvoiceData.type?.includes(
-                                    "warehouse",
-                                  )
-                                    ? `تایید کننده (${storeSettings.storeName})`
-                                    : `مهر و امضای (${storeSettings.storeName})`)}
-                              </span>
-                            </div>
-                          </div>
+                           <InvoicePrintTemplate data={previewInvoiceData} storeSettings={storeSettings} persons={persons} />
                         </div>
-
+                        )}
                         {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING END --- */}
                       </div>
                     </div>

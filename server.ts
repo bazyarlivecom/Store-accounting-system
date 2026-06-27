@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -504,6 +505,62 @@ async function startServer() {
         const info = stmt.run(...(params || []));
         res.json({ info });
       }
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/search-products', async (req, res) => {
+    const { query, category } = req.body;
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+  
+    try {
+      const { GoogleGenAI, Type } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+  
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: `Search the internet for product names and details related to "${query}"${category ? ` in the category of "${category}"` : ''}. Extract a list of products. Focus on Persian product names.`,
+        config: {
+          systemInstruction: "You are an assistant that finds real product names and descriptions from the internet. Provide results in Persian.",
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: {
+                  type: Type.STRING,
+                  description: "Name of the product in Persian",
+                },
+                description: {
+                  type: Type.STRING,
+                  description: "Short description or brand info",
+                },
+                priceStr: {
+                  type: Type.STRING,
+                  description: "Approximate price if available, otherwise empty string",
+                }
+              },
+              required: ["name"]
+            }
+          }
+        }
+      });
+  
+      const text = response.text;
+      const products = JSON.parse(text || "[]");
+      res.json({ products });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

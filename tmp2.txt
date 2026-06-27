@@ -1,0 +1,3 @@
+105:  formatPersianDateDisplay,
+9630:                                  {formatPersianDateDisplay(inv.jalaliDate)}
+10523:                                        {formatPersianDateDisplay(inv.jalaliDate)}

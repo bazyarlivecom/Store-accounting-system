@@ -119,7 +119,7 @@ export function formatPersianDateDisplay(dateInput: string | Date | undefined | 
       const monthIndex = parseInt(parts[1], 10) - 1;
       const day = parseInt(parts[2].split(" ")[0], 10); // in case there's time part
       if (monthIndex >= 0 && monthIndex < 12) {
-        return toPersianDigits(`${day} ${months[monthIndex]} ${year}`);
+        return toPersianDigits(`\u200F${day} ${months[monthIndex]} ${year}\u200F`);
       }
     }
   }
@@ -127,7 +127,7 @@ export function formatPersianDateDisplay(dateInput: string | Date | undefined | 
   try {
     const d = new Date(dateInput);
     if (!isNaN(d.getTime())) {
-      return toPersianDigits(d.toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" }));
+      return toPersianDigits(`\u200F${d.toLocaleDateString("fa-IR", { year: "numeric", month: "long", day: "numeric" })}\u200F`);
     }
   } catch (e) {}
 
