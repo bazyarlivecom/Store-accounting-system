@@ -28,6 +28,7 @@ import { Building,
   DollarSign,
   Package,
   X,
+  Zap,
   RefreshCw,
   Menu,
   Github,
@@ -13448,24 +13449,6 @@ export default function App() {
                       categories={productCategories}
                       onAddProducts={handleAIProductsAdd}
                     />
-
-                    <FastProductCreateModal
-                      isOpen={isFastProductModalOpen}
-                      onClose={() => setIsFastProductModalOpen(false)}
-                      onSave={handleFastSaveProduct}
-                    />
-
-                    <BulkProductImportModal
-                      isOpen={isBulkImportOpen}
-                      onClose={() => setIsBulkImportOpen(false)}
-                      products={products}
-                      onImport={handleBulkImportItems}
-                      isPurchase={
-                        activeTab === "create_purchase" ||
-                        (activeTab === "create_warehouse_doc" && invoiceType === "warehouse_receipt")
-                      }
-                      getLastPriceForProduct={getLastPriceForProduct}
-                    />
                   </motion.div>
                 ) : activeTab === "person_opening_balances" ? (
                   <motion.div
@@ -25693,6 +25676,24 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <FastProductCreateModal
+        isOpen={isFastProductModalOpen}
+        onClose={() => setIsFastProductModalOpen(false)}
+        onSave={handleFastSaveProduct}
+      />
+
+      <BulkProductImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        products={products}
+        onImport={handleBulkImportItems}
+        isPurchase={
+          activeTab === "create_purchase" ||
+          (activeTab === "create_warehouse_doc" && invoiceType === "warehouse_receipt")
+        }
+        getLastPriceForProduct={getLastPriceForProduct}
+      />
     </>
   );
 }
