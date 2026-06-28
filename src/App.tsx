@@ -1785,6 +1785,7 @@ export default function App() {
   // Person state
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [personLedgerActionsOpen, setPersonLedgerActionsOpen] = useState(false);
+  const [openPersonActionsId, setOpenPersonActionsId] = useState<string | number | null>(null);
   const [newPersonType, setNewPersonType] = useState<"real" | "legal">("real");
   const [newPersonGender, setNewPersonGender] = useState<"male" | "female" | "none">("none");
   const [newPersonTitle, setNewPersonTitle] = useState("");
@@ -14189,7 +14190,7 @@ export default function App() {
                                     transition={{ delay: index * 0.03 }}
                                     key={p.id}
                                     onClick={() => setDrawerPersonId(p.id)}
-                                    className="group relative bg-white border border-slate-200 hover:border-indigo-300 rounded-3xl p-5 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col"
+                                    className="group relative bg-white border border-slate-200 hover:border-indigo-300 rounded-3xl p-5 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer flex flex-col"
                                   >
                                     <div className="flex items-start gap-4">
                                       <div className="relative">
@@ -14301,60 +14302,112 @@ export default function App() {
                                       </div>
                                     </div>
 
-                                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 relative">
                                        <span className="text-[10px] font-black text-indigo-500 px-2">عملیات حساب:</span>
                                        <div className="flex items-center gap-1" dir="ltr">
-                                         <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              confirmAction(
-                                                "آیا از حذف این شخص اطمینان دارید؟",
-                                                () => handleDeletePerson(p.id),
-                                              );
-                                            }}
-                                            className="p-2 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all shadow-sm"
-                                            title="حذف شخص"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleEditPerson(p);
-                                            }}
-                                            className="p-2 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-all shadow-sm"
-                                            title="ویرایش شخص"
-                                          >
-                                            <Edit2 className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setPersonExtraId(p.id);
-                                              setPersonBankName(p.bankName || "");
-                                              setPersonBankAcc(p.bankAccountNumber || "");
-                                              setPersonCard(p.cardNumber || "");
-                                              setPersonSheba(p.shebaNumber || "");
-                                              setPersonNotes(p.additionalNotes || "");
-                                              setIsPersonExtraModalOpen(true);
-                                            }}
-                                            className="p-2 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-xl transition-all shadow-sm"
-                                            title="اطلاعات تکمیلی بانکی"
-                                          >
-                                            <Info className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setLedgerPersonId(p.id);
-                                              setActiveTab("person_ledger");
+                                              setOpenPersonActionsId(openPersonActionsId === p.id ? null : p.id);
                                             }}
                                             className="px-3 py-1.5 h-8 flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] shadow-sm"
-                                            title="مشاهده کارت حساب"
                                           >
-                                            <FileText className="w-3.5 h-3.5" />
-                                            صورت‌حساب
+                                            <Settings className="w-3.5 h-3.5" /> عملیات <ChevronDown className="w-3.5 h-3.5" />
                                           </button>
+                                          
+                                          {openPersonActionsId === p.id && (
+                                            <>
+                                              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenPersonActionsId(null); }}></div>
+                                              <div className="absolute left-0 bottom-10 mb-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-50 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()} dir="rtl">
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    setLedgerPersonId(p.id);
+                                                    setActiveTab("person_ledger");
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <FileText className="w-4 h-4" /> مشاهده کارت حساب
+                                                </button>
+                                                <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    setActiveTab("create_sale");
+                                                    setCustomerId(p.id);
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <FileText className="w-4 h-4" /> صدور فاکتور فروش
+                                                </button>
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    setActiveTab("create_purchase");
+                                                    setCustomerId(p.id);
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <ShoppingCart className="w-4 h-4" /> صدور فاکتور خرید
+                                                </button>
+                                                <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    setActiveTab("create_receive_receipt");
+                                                    setReceiptPersonId(p.id);
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <ArrowDownToLine className="w-4 h-4" /> دریافت وجه (سند وصول)
+                                                </button>
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    setActiveTab("create_pay_receipt");
+                                                    setReceiptPersonId(p.id);
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <ArrowUpFromLine className="w-4 h-4" /> پرداخت وجه (سند پرداخت)
+                                                </button>
+                                                <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    handleEditPerson(p);
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-50 hover:text-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <Edit2 className="w-4 h-4" /> ویرایش شخص
+                                                </button>
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    setPersonExtraId(p.id);
+                                                    setPersonBankName(p.bankName || "");
+                                                    setPersonBankAcc(p.bankAccountNumber || "");
+                                                    setPersonCard(p.cardNumber || "");
+                                                    setPersonSheba(p.shebaNumber || "");
+                                                    setPersonNotes(p.additionalNotes || "");
+                                                    setIsPersonExtraModalOpen(true);
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-50 hover:text-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <Info className="w-4 h-4" /> اطلاعات تکمیلی بانکی
+                                                </button>
+                                                <button 
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(null);
+                                                    confirmAction("آیا از حذف این شخص اطمینان دارید؟", () => handleDeletePerson(p.id));
+                                                  }} 
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors flex items-center gap-2"
+                                                >
+                                                  <Trash2 className="w-4 h-4" /> حذف شخص
+                                                </button>
+                                              </div>
+                                            </>
+                                          )}
                                        </div>
                                     </div>
                                   </motion.div>
@@ -14362,8 +14415,8 @@ export default function App() {
                               })}
                             </div>
                           ) : (
-                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                              <div className="overflow-x-auto">
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+                              <div className="overflow-x-auto pb-40">
                                 <table className="w-full text-sm text-right">
                                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                                     <tr>
@@ -14457,57 +14510,110 @@ export default function App() {
                                             </div>
                                           </td>
                                           <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-1" dir="ltr">
-                                              <button
+                                            <div className="flex items-center justify-end gap-1 relative" dir="ltr">
+                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  confirmAction(
-                                                    "آیا از حذف این شخص اطمینان دارید؟",
-                                                    () => handleDeletePerson(p.id),
-                                                  );
+                                                  setOpenPersonActionsId(openPersonActionsId === p.id ? null : p.id);
                                                 }}
-                                                className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                                                title="حذف"
+                                                className="px-3 py-1.5 h-8 flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] shadow-sm"
                                               >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Settings className="w-3.5 h-3.5" /> عملیات <ChevronDown className="w-3.5 h-3.5" />
                                               </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleEditPerson(p);
-                                                }}
-                                                className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-all"
-                                                title="ویرایش"
-                                              >
-                                                <Edit2 className="w-4 h-4" />
-                                              </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setPersonExtraId(p.id);
-                                                  setPersonBankName(p.bankName || "");
-                                                  setPersonBankAcc(p.bankAccountNumber || "");
-                                                  setPersonCard(p.cardNumber || "");
-                                                  setPersonSheba(p.shebaNumber || "");
-                                                  setPersonNotes(p.additionalNotes || "");
-                                                  setIsPersonExtraModalOpen(true);
-                                                }}
-                                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                                title="اطلاعات تکمیلی بانکی"
-                                              >
-                                                <Info className="w-4 h-4" />
-                                              </button>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setLedgerPersonId(p.id);
-                                                  setActiveTab("person_ledger");
-                                                }}
-                                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                                title="صورت‌حساب"
-                                              >
-                                                <FileText className="w-4 h-4" />
-                                              </button>
+                                              
+                                              {openPersonActionsId === p.id && (
+                                                <>
+                                                  <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenPersonActionsId(null); }}></div>
+                                                  <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-50 flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()} dir="rtl">
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        setLedgerPersonId(p.id);
+                                                        setActiveTab("person_ledger");
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <FileText className="w-4 h-4" /> مشاهده کارت حساب
+                                                    </button>
+                                                    <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        setActiveTab("create_sale");
+                                                        setCustomerId(p.id);
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <FileText className="w-4 h-4" /> صدور فاکتور فروش
+                                                    </button>
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        setActiveTab("create_purchase");
+                                                        setCustomerId(p.id);
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <ShoppingCart className="w-4 h-4" /> صدور فاکتور خرید
+                                                    </button>
+                                                    <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        setActiveTab("create_receive_receipt");
+                                                        setReceiptPersonId(p.id);
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <ArrowDownToLine className="w-4 h-4" /> دریافت وجه (سند وصول)
+                                                    </button>
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        setActiveTab("create_pay_receipt");
+                                                        setReceiptPersonId(p.id);
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <ArrowUpFromLine className="w-4 h-4" /> پرداخت وجه (سند پرداخت)
+                                                    </button>
+                                                    <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        handleEditPerson(p);
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-50 hover:text-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <Edit2 className="w-4 h-4" /> ویرایش شخص
+                                                    </button>
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        setPersonExtraId(p.id);
+                                                        setPersonBankName(p.bankName || "");
+                                                        setPersonBankAcc(p.bankAccountNumber || "");
+                                                        setPersonCard(p.cardNumber || "");
+                                                        setPersonSheba(p.shebaNumber || "");
+                                                        setPersonNotes(p.additionalNotes || "");
+                                                        setIsPersonExtraModalOpen(true);
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-50 hover:text-slate-800 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <Info className="w-4 h-4" /> اطلاعات تکمیلی بانکی
+                                                    </button>
+                                                    <button 
+                                                      onClick={() => {
+                                                        setOpenPersonActionsId(null);
+                                                        confirmAction("آیا از حذف این شخص اطمینان دارید؟", () => handleDeletePerson(p.id));
+                                                      }} 
+                                                      className="w-full text-right px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors flex items-center gap-2"
+                                                    >
+                                                      <Trash2 className="w-4 h-4" /> حذف شخص
+                                                    </button>
+                                                  </div>
+                                                </>
+                                              )}
                                             </div>
                                           </td>
                                         </tr>
