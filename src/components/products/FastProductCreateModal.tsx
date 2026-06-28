@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Zap, Barcode, Package, DollarSign, Plus, Check } from 'lucide-react';
+import { X, Zap, Barcode, Package, DollarSign, Plus, Check, FolderPlus, Folder } from 'lucide-react';
 import { toPersianDigits } from '../../utils/format';
+import { getProductCategories, addProductCategory } from '../../services/dataService';
 
 interface FastProductCreateModalProps {
   isOpen: boolean;
@@ -18,6 +19,10 @@ export default function FastProductCreateModal({
   const [purchasePrice, setPurchasePrice] = useState("");
   const [sellPrice, setSellPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [category, setCategory] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -26,11 +31,39 @@ export default function FastProductCreateModal({
 
   useEffect(() => {
     if (isOpen) {
+      loadCategories();
       setTimeout(() => {
         barcodeInputRef.current?.focus();
       }, 100);
     }
   }, [isOpen]);
+
+  const loadCategories = async () => {
+    try {
+      const cats = await getProductCategories();
+      setCategories(cats || []);
+    } catch (e) {
+      console.error("Error loading categories", e);
+    }
+  };
+
+  const handleSaveCategory = async () => {
+    if (!newCategoryName.trim()) {
+      setIsAddingNewCategory(false);
+      return;
+    }
+    
+    try {
+      const newCat = { name: newCategoryName.trim() };
+      const savedCat = await addProductCategory(newCat);
+      setCategories(prev => [...prev, savedCat]);
+      setCategory(savedCat.name);
+      setNewCategoryName("");
+      setIsAddingNewCategory(false);
+    } catch (e) {
+      console.error("Error saving category", e);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +78,7 @@ export default function FastProductCreateModal({
       purchasePrice: purchasePrice ? Number(purchasePrice) : 0,
       price: sellPrice ? Number(sellPrice) : 0,
       stock: stock ? Number(stock) : 0,
+      category: category || "بدون دسته‌بندی",
       type: 'product',
       code: barcode.trim() || `P${Math.floor(Math.random() * 10000)}`, // auto code if empty
     };
@@ -59,6 +93,7 @@ export default function FastProductCreateModal({
         setPurchasePrice("");
         setSellPrice("");
         setStock("");
+        // category is kept intentionally for sequential product additions
         
         // Focus barcode again
         barcodeInputRef.current?.focus();
@@ -121,6 +156,66 @@ export default function FastProductCreateModal({
                   }
                 }}
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                  <Folder className="w-4 h-4 text-slate-400" /> دسته‌بندی کالا
+                </label>
+                {!isAddingNewCategory && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingNewCategory(true)}
+                    className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg"
+                  >
+                    <Plus className="w-3 h-3" /> دسته جدید
+                  </button>
+                )}
+              </div>
+              
+              {isAddingNewCategory ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="flex-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all text-sm"
+                    placeholder="نام دسته بندی جدید"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSaveCategory();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveCategory}
+                    className="p-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors shrink-0"
+                  >
+                    <Check className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingNewCategory(false)}
+                    className="p-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition-all text-sm font-medium"
+                >
+                  <option value="">بدون دسته‌بندی</option>
+                  {categories.map((c: any) => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="space-y-1.5">

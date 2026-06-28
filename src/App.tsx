@@ -9447,10 +9447,8 @@ export default function App() {
           .filter((inv) => {
             if (!invoiceSearchQuery) return true;
             const term = invoiceSearchQuery.toLowerCase();
-            const pName = (
-              persons.find((p) => p.id.toString() === inv.customerId.toString())
-                ?.name || "نامشخص"
-            ).toLowerCase();
+            const p = persons.find((p) => p.id.toString() === inv.customerId.toString());
+            const pName = ((p?.alias || p?.name) || "نامشخص").toLowerCase();
             const invNum = (inv.invoiceNumber || "").toLowerCase();
             const sellNum = (inv.sellerInvoiceNumber || "").toLowerCase();
             return (
@@ -9506,11 +9504,8 @@ export default function App() {
           .filter((inv) => {
             if (!invoiceSearchQuery) return true;
             const term = invoiceSearchQuery.toLowerCase();
-            const pName = (
-              persons.find(
-                (p) => p.id.toString() === inv.customerId?.toString(),
-              )?.name || "نامشخص"
-            ).toLowerCase();
+            const p = persons.find((p) => p.id.toString() === inv.customerId?.toString());
+            const pName = ((p?.alias || p?.name) || "نامشخص").toLowerCase();
             const invNum = (inv.invoiceNumber || "").toLowerCase();
             const sellNum = (inv.sellerInvoiceNumber || "").toLowerCase();
             return (

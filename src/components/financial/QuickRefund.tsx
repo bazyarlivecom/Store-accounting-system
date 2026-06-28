@@ -276,7 +276,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                    </thead>
                    <tbody className="divide-y divide-gray-50 text-sm">
                      {refundRequests.map((req) => {
-                       const personName = req.personId ? persons.find(p => p.id?.toString() === req.personId?.toString())?.name : req.miscName;
+                       const personName = req.personId ? (() => { const p = persons.find(p => p.id?.toString() === req.personId?.toString()); return p ? (p.alias || p.name) : undefined; })() : req.miscName;
                        const sourceName = req.resourceType === 'bank' 
                          ? accounts.find(a => a.id?.toString() === req.resourceId?.toString())?.bankName
                          : cashboxes.find(c => c.id?.toString() === req.resourceId?.toString())?.name;
@@ -434,7 +434,7 @@ export default function QuickRefund({ showNotification, onComplete }: { showNoti
                          <select required value={personId} onChange={e => setPersonId(e.target.value)} className="w-full border rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
                            <option value="">-- انتخاب کنید --</option>
                            {persons.filter(p => p.isActive !== false).map(p => (
-                             <option key={p.id} value={p.id}>{p.name} {p.personType === 'legal' ? '(حقوقی)' : ''}</option>
+                             <option key={p.id} value={p.id}>{p.alias || p.name} {p.personType === 'legal' ? '(حقوقی)' : ''}</option>
                            ))}
                          </select>
                       </div>

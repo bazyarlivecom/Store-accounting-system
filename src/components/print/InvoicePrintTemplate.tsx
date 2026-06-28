@@ -154,7 +154,7 @@ export default function InvoicePrintTemplate({
             <User className="w-4 h-4" />
             <span>{isSale ? "مشخصات خریدار" : "مشخصات تامین کننده"}</span>
           </div>
-          <div className="font-bold text-sm mb-1">{data.customerName || "نامشخص"}</div>
+          <div className="font-bold text-sm mb-1">{(relatedPerson?.alias || data.customerName) || "نامشخص"}</div>
           {relatedPerson && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 text-slate-600">
               {relatedPerson.phone && <div>تلفن: <span dir="ltr">{toPersianDigits(relatedPerson.phone)}</span></div>}

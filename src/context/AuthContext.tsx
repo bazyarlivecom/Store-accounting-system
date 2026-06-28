@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { Lock, User as UserIcon, LogIn, AlertCircle, KeyRound } from 'lucide-react';
+import { Lock, User as UserIcon, LogIn, AlertCircle, KeyRound, Zap } from 'lucide-react';
+import FastProductCreateModal from '../components/products/FastProductCreateModal';
+import { addProduct } from '../services/dataService';
 
 interface AuthContextType {
   user: User | null;
@@ -37,6 +39,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [requireOTP, setRequireOTP] = useState(false);
   const [otp, setOtp] = useState('');
   const [tempToken, setTempToken] = useState('');
+
+  const [isFastProductModalOpen, setIsFastProductModalOpen] = useState(false);
 
   const checkAuth = () => {
     const storedUser = localStorage.getItem('auth_user');
@@ -126,6 +130,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const handleFastSaveProduct = async (productData: any): Promise<boolean> => {
+    try {
+      await addProduct(productData);
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
   if (loading) {
      return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-bold">در حال بررسی اطلاعات کاربری...</div>;
   }
@@ -188,8 +202,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      </form>
                  )}
                  <p className="text-center text-[10px] text-slate-400 mt-10 font-mono font-bold tracking-widest uppercase">SECURE PORTAL</p>
+                 
+                 <div className="mt-6 pt-6 border-t border-slate-100 flex justify-center">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsFastProductModalOpen(true)}
+                      className="flex items-center gap-2 text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-4 py-2.5 rounded-xl transition-colors font-bold text-sm w-full justify-center"
+                    >
+                      <Zap className="w-4 h-4 fill-current" />
+                      ثبت سریع کالا بدون ورود
+                    </button>
+                 </div>
              </div>
           </div>
+          <FastProductCreateModal
+            isOpen={isFastProductModalOpen}
+            onClose={() => setIsFastProductModalOpen(false)}
+            onSave={handleFastSaveProduct}
+          />
        </div>
      );
   }
@@ -200,3 +230,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+
