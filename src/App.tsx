@@ -1784,6 +1784,7 @@ export default function App() {
 
   // Person state
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
+  const [personLedgerActionsOpen, setPersonLedgerActionsOpen] = useState(false);
   const [newPersonType, setNewPersonType] = useState<"real" | "legal">("real");
   const [newPersonGender, setNewPersonGender] = useState<"male" | "female" | "none">("none");
   const [newPersonTitle, setNewPersonTitle] = useState("");
@@ -17415,11 +17416,83 @@ export default function App() {
                             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
                               <div>
                                 <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
-                                  <span
-                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getRoleBadgeClasses(selectedPerson.role)}`}
-                                  >
-                                    {getRoleName(selectedPerson.role)}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold ${getRoleBadgeClasses(selectedPerson.role)}`}
+                                    >
+                                      {getRoleName(selectedPerson.role)}
+                                    </span>
+                                    <div className="relative">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setPersonLedgerActionsOpen(!personLedgerActionsOpen);
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1 bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-lg text-xs font-bold transition-all shadow-sm border border-violet-100"
+                                      >
+                                        <Settings className="w-3.5 h-3.5" /> عملیات <ChevronDown className="w-3.5 h-3.5" />
+                                      </button>
+                                      {personLedgerActionsOpen && (
+                                        <>
+                                          <div className="fixed inset-0 z-40" onClick={() => setPersonLedgerActionsOpen(false)}></div>
+                                          <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-1.5 z-50 flex flex-col gap-0.5">
+                                            <button 
+                                              onClick={() => {
+                                                setPersonLedgerActionsOpen(false);
+                                                handleEditPerson(selectedPerson);
+                                                setIsPersonModalOpen(true);
+                                              }} 
+                                              className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                              <Edit2 className="w-4 h-4" /> ویرایش اطلاعات شخص
+                                            </button>
+                                            <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                            <button 
+                                              onClick={() => {
+                                                setPersonLedgerActionsOpen(false);
+                                                setActiveTab("create_sale");
+                                                setCustomerId(selectedPerson.id);
+                                              }} 
+                                              className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                              <FileText className="w-4 h-4" /> صدور فاکتور فروش
+                                            </button>
+                                            <button 
+                                              onClick={() => {
+                                                setPersonLedgerActionsOpen(false);
+                                                setActiveTab("create_purchase");
+                                                setCustomerId(selectedPerson.id);
+                                              }} 
+                                              className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                              <ShoppingCart className="w-4 h-4" /> صدور فاکتور خرید
+                                            </button>
+                                            <div className="h-px bg-gray-100 my-1 mx-1"></div>
+                                            <button 
+                                              onClick={() => {
+                                                setPersonLedgerActionsOpen(false);
+                                                setActiveTab("create_receive_receipt");
+                                                setReceiptPersonId(selectedPerson.id);
+                                              }} 
+                                              className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                              <ArrowDownToLine className="w-4 h-4" /> دریافت وجه (سند وصول)
+                                            </button>
+                                            <button 
+                                              onClick={() => {
+                                                setPersonLedgerActionsOpen(false);
+                                                setActiveTab("create_pay_receipt");
+                                                setReceiptPersonId(selectedPerson.id);
+                                              }} 
+                                              className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                              <ArrowUpFromLine className="w-4 h-4" /> پرداخت وجه (سند پرداخت)
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                   <span className="text-xs text-gray-400 font-medium font-mono text-left">
                                     کد شخص: #
                                     {toPersianDigits(
