@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Barcode from "react-barcode";
-import { Building,
+import {
+  Building,
   ScanLine,
   Shield,
   Key,
@@ -78,7 +79,7 @@ import { Building,
   Download,
   Globe,
   Bell,
-  Sparkles
+  Sparkles,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -400,33 +401,48 @@ export default function App() {
     | "accounting_doc_view"
     | "accounting_auto_sync"
     | "accounting_verification"
-  | "accounting_opening_balances"
+    | "accounting_opening_balances"
   >("financial_report");
 
   const setActiveTab = (tab: any, force: boolean = false) => {
     if (tab === activeTab) return;
 
     if (!force) {
-      const isInvoiceTab = activeTab === "create_sale" || activeTab === "create_purchase" || activeTab === "create_warehouse_doc";
+      const isInvoiceTab =
+        activeTab === "create_sale" ||
+        activeTab === "create_purchase" ||
+        activeTab === "create_warehouse_doc";
       if (isInvoiceTab && items && items.length > 0) {
-        confirmAction("فاکتور/سند در حال ثبت است. در صورت خروج از این صفحه، اطلاعات وارد شده حذف خواهد شد. آیا مطمئن هستید؟", () => {
-          setItems([]);
-          setCustomerId("");
-          setInvoicePaidAmount(0);
-          setOverallDiscountPercent(0);
-          setRawActiveTab(tab);
-        });
+        confirmAction(
+          "فاکتور/سند در حال ثبت است. در صورت خروج از این صفحه، اطلاعات وارد شده حذف خواهد شد. آیا مطمئن هستید؟",
+          () => {
+            setItems([]);
+            setCustomerId("");
+            setInvoicePaidAmount(0);
+            setOverallDiscountPercent(0);
+            setRawActiveTab(tab);
+          },
+        );
         return;
       }
 
-      const isReceiptTab = activeTab === "create_receive_receipt" || activeTab === "create_pay_receipt";
-      if (isReceiptTab && receiptLinkedInvoices && Object.keys(receiptLinkedInvoices).length > 0) {
-        confirmAction("رسید در حال ثبت است. در صورت خروج از این صفحه، اطلاعات وارد شده حذف خواهد شد. آیا مطمئن هستید؟", () => {
-          setReceiptLinkedInvoices({});
-          setReceiptPersonId("");
-          setReceiptAmount("");
-          setRawActiveTab(tab);
-        });
+      const isReceiptTab =
+        activeTab === "create_receive_receipt" ||
+        activeTab === "create_pay_receipt";
+      if (
+        isReceiptTab &&
+        receiptLinkedInvoices &&
+        Object.keys(receiptLinkedInvoices).length > 0
+      ) {
+        confirmAction(
+          "رسید در حال ثبت است. در صورت خروج از این صفحه، اطلاعات وارد شده حذف خواهد شد. آیا مطمئن هستید؟",
+          () => {
+            setReceiptLinkedInvoices({});
+            setReceiptPersonId("");
+            setReceiptAmount("");
+            setRawActiveTab(tab);
+          },
+        );
         return;
       }
     }
@@ -434,7 +450,15 @@ export default function App() {
     setRawActiveTab(tab);
   };
   const [systemModule, setSystemModule] = useState<
-    "selector" | "all" | "commerce" | "inventory" | "accounting" | "admin" | "crm" | "hr" | "reports_module"
+    | "selector"
+    | "all"
+    | "commerce"
+    | "inventory"
+    | "accounting"
+    | "admin"
+    | "crm"
+    | "hr"
+    | "reports_module"
   >(() => {
     try {
       const saved = localStorage.getItem("app_systemModule");
@@ -917,8 +941,12 @@ export default function App() {
                 "debts_credits",
               ].includes(item.id);
             if (systemModule === "admin") return true;
-            if (systemModule === "crm") return ["analytical_dashboard", "person_ledger"].includes(item.id);
-            if (systemModule === "hr") return ["analytical_dashboard"].includes(item.id);
+            if (systemModule === "crm")
+              return ["analytical_dashboard", "person_ledger"].includes(
+                item.id,
+              );
+            if (systemModule === "hr")
+              return ["analytical_dashboard"].includes(item.id);
             if (systemModule === "reports_module") return true;
             return true;
           }),
@@ -976,15 +1004,25 @@ export default function App() {
 
   const [persons, setPersons] = useState<Person[]>([]);
   const [personOpeningBalances, setPersonOpeningBalances] = useState<any[]>([]);
-  const [isOpeningBalanceModalOpen, setIsOpeningBalanceModalOpen] = useState(false);
-  const [editingOpeningBalanceId, setEditingOpeningBalanceId] = useState<string | null>(null);
-  const [selectedOpeningBalancePersonId, setSelectedOpeningBalancePersonId] = useState("");
+  const [isOpeningBalanceModalOpen, setIsOpeningBalanceModalOpen] =
+    useState(false);
+  const [editingOpeningBalanceId, setEditingOpeningBalanceId] = useState<
+    string | null
+  >(null);
+  const [selectedOpeningBalancePersonId, setSelectedOpeningBalancePersonId] =
+    useState("");
   const [openingBalanceAmount, setOpeningBalanceAmount] = useState("");
-  const [openingBalanceType, setOpeningBalanceType] = useState<"debtor" | "creditor">("debtor");
-  const [openingBalanceDate, setOpeningBalanceDate] = useState<any>(new DateObject());
-  const [openingBalanceDescription, setOpeningBalanceDescription] = useState("");
+  const [openingBalanceType, setOpeningBalanceType] = useState<
+    "debtor" | "creditor"
+  >("debtor");
+  const [openingBalanceDate, setOpeningBalanceDate] = useState<any>(
+    new DateObject(),
+  );
+  const [openingBalanceDescription, setOpeningBalanceDescription] =
+    useState("");
   const [openingBalanceSearch, setOpeningBalanceSearch] = useState("");
-  const [submittingOpeningBalance, setSubmittingOpeningBalance] = useState(false);
+  const [submittingOpeningBalance, setSubmittingOpeningBalance] =
+    useState(false);
   const [personGroups, setPersonGroups] = useState<PersonGroup[]>([]);
   const [personRoles, setPersonRoles] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -1011,7 +1049,9 @@ export default function App() {
   const [selectedPersonRole, setSelectedPersonRole] = useState<string>("all");
   const [personCurrentPage, setPersonCurrentPage] = useState<number>(1);
   const [personPageSize, setPersonPageSize] = useState<number>(10);
-  const [personsViewMode, setPersonsViewMode] = useState<"list" | "table">("list");
+  const [personsViewMode, setPersonsViewMode] = useState<"list" | "table">(
+    "list",
+  );
   const [productCurrentPage, setProductCurrentPage] = useState<number>(1);
   const [productPageSize, setProductPageSize] = useState<number>(10);
   const [invoiceCurrentPage, setInvoiceCurrentPage] = useState<number>(1);
@@ -1221,7 +1261,9 @@ export default function App() {
   const [ledgerPersonId, setLedgerPersonId] = useState<string | number | "">(
     "",
   );
-  const [ledgerTab, setLedgerTab] = useState<'transactions' | 'detailed' | 'items' | 'checks' | 'drafts' | 'notes'>('transactions');
+  const [ledgerTab, setLedgerTab] = useState<
+    "transactions" | "detailed" | "items" | "checks" | "drafts" | "notes"
+  >("transactions");
   const [drawerPersonId, setDrawerPersonId] = useState<string | number | "">(
     "",
   );
@@ -1352,7 +1394,13 @@ export default function App() {
 
   useEffect(() => {
     setInvoiceCurrentPage(1);
-  }, [activeTab, invoiceGroupMode, listFilter, invoiceSearchQuery, purchaseFilter]);
+  }, [
+    activeTab,
+    invoiceGroupMode,
+    listFilter,
+    invoiceSearchQuery,
+    purchaseFilter,
+  ]);
 
   const [invoiceMode, setInvoiceMode] = useState<"auto" | "manual">("auto");
   const [invoiceTitle, setInvoiceTitle] = useState("فاکتور فروش کالا");
@@ -1474,12 +1522,18 @@ export default function App() {
               return;
             }
 
-            const existingDraft = autoSaveInvoiceId ? invoices.find(i => i.id === autoSaveInvoiceId) : null;
+            const existingDraft = autoSaveInvoiceId
+              ? invoices.find((i) => i.id === autoSaveInvoiceId)
+              : null;
             const payload = {
               id: autoSaveInvoiceId || generateId(),
-              invoiceNumber: existingDraft?.invoiceNumber || ((invoiceMode === "auto" && !invoiceNumber) || String(invoiceNumber || "").startsWith("پیش‌نویس-") || !invoiceNumber
-                ? getInvoiceNumber(invoiceType)
-                : invoiceNumber),
+              invoiceNumber:
+                existingDraft?.invoiceNumber ||
+                ((invoiceMode === "auto" && !invoiceNumber) ||
+                String(invoiceNumber || "").startsWith("پیش‌نویس-") ||
+                !invoiceNumber
+                  ? getInvoiceNumber(invoiceType)
+                  : invoiceNumber),
               sellerInvoiceNumber: sellerInvoiceNumber || "",
               title: invoiceTitle,
               description: invoiceDescription,
@@ -1660,22 +1714,26 @@ export default function App() {
 
     setItems((currentItems) => {
       const newItems = [...currentItems];
-      
-      importedItems.forEach(imported => {
+
+      importedItems.forEach((imported) => {
         const { product, quantity, unitPrice, discountPercent } = imported;
         if (!product) return;
-        
+
         // Check if exists
         const existingItemIndex = newItems.findIndex(
           (i) => i.productId?.toString() === product.id?.toString(),
         );
 
-        if (existingItemIndex > -1 && !storeSettings.allowDuplicateInvoiceRows) {
+        if (
+          existingItemIndex > -1 &&
+          !storeSettings.allowDuplicateInvoiceRows
+        ) {
           // Update existing
           newItems[existingItemIndex].quantity += quantity;
           if (unitPrice > 0) newItems[existingItemIndex].unitPrice = unitPrice;
-          if (discountPercent > 0) newItems[existingItemIndex].discountPercent = discountPercent;
-          
+          if (discountPercent > 0)
+            newItems[existingItemIndex].discountPercent = discountPercent;
+
           newItems[existingItemIndex].totalPrice = Math.max(
             0,
             newItems[existingItemIndex].quantity *
@@ -1684,10 +1742,11 @@ export default function App() {
           );
         } else {
           // Add new
-          const pPrice = unitPrice > 0 ? unitPrice : (product.price || 0);
-          const convertedPrice = exchangeRate > 0 ? pPrice / exchangeRate : pPrice;
+          const pPrice = unitPrice > 0 ? unitPrice : product.price || 0;
+          const convertedPrice =
+            exchangeRate > 0 ? pPrice / exchangeRate : pPrice;
           const unitPriceRounded = Number(convertedPrice.toFixed(4));
-          
+
           newItems.push({
             id: generateId(),
             productId: product.id.toString(),
@@ -1695,7 +1754,10 @@ export default function App() {
             quantity: quantity > 0 ? quantity : 1,
             unitPrice: unitPriceRounded,
             discountPercent: discountPercent || 0,
-            totalPrice: unitPriceRounded * (quantity > 0 ? quantity : 1) * (1 - (discountPercent || 0) / 100),
+            totalPrice:
+              unitPriceRounded *
+              (quantity > 0 ? quantity : 1) *
+              (1 - (discountPercent || 0) / 100),
             selectedUnit: product.unit || "",
             unitRatio: product.unitRatio || 1,
             isSecondaryUnit: false,
@@ -1704,8 +1766,11 @@ export default function App() {
       });
       return newItems;
     });
-    
-    showNotification(`${toPersianDigits(importedItems.length)} کالا با موفقیت اضافه شد.`, "success");
+
+    showNotification(
+      `${toPersianDigits(importedItems.length)} کالا با موفقیت اضافه شد.`,
+      "success",
+    );
   };
   const handleBarcodeScan = (code: string) => {
     setIsScannerOpen(false);
@@ -1719,8 +1784,10 @@ export default function App() {
   };
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isFastProductModalOpen, setIsFastProductModalOpen] = useState(false);
-  const [isProductActionsMenuOpen, setIsProductActionsMenuOpen] = useState(false);
-  const [isGenerateBarcodesModalOpen, setIsGenerateBarcodesModalOpen] = useState(false);
+  const [isProductActionsMenuOpen, setIsProductActionsMenuOpen] =
+    useState(false);
+  const [isGenerateBarcodesModalOpen, setIsGenerateBarcodesModalOpen] =
+    useState(false);
   const [isAIProductSearchOpen, setIsAIProductSearchOpen] = useState(false);
   const [barcodeFormat, setBarcodeFormat] = useState("prefix_serial");
   const [barcodePrefix, setBarcodePrefix] = useState("PRD-");
@@ -1785,9 +1852,13 @@ export default function App() {
   // Person state
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [personLedgerActionsOpen, setPersonLedgerActionsOpen] = useState(false);
-  const [openPersonActionsId, setOpenPersonActionsId] = useState<string | number | null>(null);
+  const [openPersonActionsId, setOpenPersonActionsId] = useState<
+    string | number | null
+  >(null);
   const [newPersonType, setNewPersonType] = useState<"real" | "legal">("real");
-  const [newPersonGender, setNewPersonGender] = useState<"male" | "female" | "none">("none");
+  const [newPersonGender, setNewPersonGender] = useState<
+    "male" | "female" | "none"
+  >("none");
   const [newPersonTitle, setNewPersonTitle] = useState("");
   const [newPersonAlias, setNewPersonAlias] = useState("");
   const [newPersonFirstName, setNewPersonFirstName] = useState("");
@@ -1932,7 +2003,9 @@ export default function App() {
   });
   const [submittingSettings, setSubmittingSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<string>("general");
-  const [smsPanelTab, setSmsPanelTab] = useState<"send_history" | "templates">("send_history");
+  const [smsPanelTab, setSmsPanelTab] = useState<"send_history" | "templates">(
+    "send_history",
+  );
 
   // Fetch API data on mount
   const fetchInvoices = async () => {
@@ -1976,9 +2049,9 @@ export default function App() {
       {
         "نام کالا/خدمات (الزامی)": "کالای نمونه",
         "کد کالا": "1001",
-        "بارکد": "1234567890123",
+        بارکد: "1234567890123",
         "نوع (product/service) (الزامی)": "product",
-        "دسته‌بندی": "نوشیدنی‌ها",
+        دسته‌بندی: "نوشیدنی‌ها",
         "قیمت خرید (ریال)": 20000,
         "قیمت فروش (ریال) (الزامی)": 25000,
         "موجودی فعلی": 50,
@@ -1986,14 +2059,16 @@ export default function App() {
         "واحد اصلی (الزامی)": "عدد",
         "واحد فرعی": "بسته",
         "تعداد واحد اصلی در فرعی": 10,
-        "توضیحات": "این یک کالای نمونه است"
-      }
+        توضیحات: "این یک کالای نمونه است",
+      },
     ];
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
     XLSX.writeFile(workbook, "products_import_template.xlsx");
-    customAlert("قالب استاندارد با موفقیت دانلود شد. لطفا اطلاعات را در این قالب وارد کرده و سپس درون‌ریزی کنید.");
+    customAlert(
+      "قالب استاندارد با موفقیت دانلود شد. لطفا اطلاعات را در این قالب وارد کرده و سپس درون‌ریزی کنید.",
+    );
   };
 
   const handleImportProductsData = () => {
@@ -2024,7 +2099,7 @@ export default function App() {
             return;
 
           setSubmittingProduct(true);
-          
+
           let successCount = 0;
           let skippedCount = 0;
           let duplicateMsgs: string[] = [];
@@ -2033,26 +2108,38 @@ export default function App() {
           for (const p of imported as any[]) {
             // Check if it's the standard template format
             if (p["نام کالا/خدمات (الزامی)"] !== undefined) {
-              if (!p["نام کالا/خدمات (الزامی)"] || !p["نوع (product/service) (الزامی)"] || !p["قیمت فروش (ریال) (الزامی)"] || !p["واحد اصلی (الزامی)"]) {
+              if (
+                !p["نام کالا/خدمات (الزامی)"] ||
+                !p["نوع (product/service) (الزامی)"] ||
+                !p["قیمت فروش (ریال) (الزامی)"] ||
+                !p["واحد اصلی (الزامی)"]
+              ) {
                 continue; // Skip invalid rows
               }
-              
+
               // Duplicate checking before inserting
               const pName = String(p["نام کالا/خدمات (الزامی)"]);
               const pCode = p["کد کالا"] ? String(p["کد کالا"]) : "";
               const pBarcode = p["بارکد"] ? String(p["بارکد"]) : "";
 
-              if (currentProducts.some(pr => pr.name === pName)) {
-                duplicateMsgs.push(`نام تکراری: ${pName} - پیشنهاد: تغییر نام کالا`);
+              if (currentProducts.some((pr) => pr.name === pName)) {
+                duplicateMsgs.push(
+                  `نام تکراری: ${pName} - پیشنهاد: تغییر نام کالا`,
+                );
                 skippedCount++;
                 continue;
               }
-              if (pCode && currentProducts.some(pr => pr.code === pCode)) {
-                duplicateMsgs.push(`کد تکراری: ${pCode} (برای ${pName}) - پیشنهاد: تغییر کد`);
+              if (pCode && currentProducts.some((pr) => pr.code === pCode)) {
+                duplicateMsgs.push(
+                  `کد تکراری: ${pCode} (برای ${pName}) - پیشنهاد: تغییر کد`,
+                );
                 skippedCount++;
                 continue;
               }
-              if (pBarcode && currentProducts.some(pr => pr.barcode === pBarcode)) {
+              if (
+                pBarcode &&
+                currentProducts.some((pr) => pr.barcode === pBarcode)
+              ) {
                 duplicateMsgs.push(`بارکد تکراری: ${pBarcode} (برای ${pName})`);
                 skippedCount++;
                 continue;
@@ -2062,12 +2149,16 @@ export default function App() {
               let catId = "";
               const catName = p["دسته‌بندی"];
               if (catName) {
-                const existingCat = productCategories.find(c => c.name === catName);
+                const existingCat = productCategories.find(
+                  (c) => c.name === catName,
+                );
                 if (existingCat) {
                   catId = existingCat.id;
                 } else {
                   // Create category if it doesn't exist
-                  const newCat = await addProductCategory({ name: String(catName) });
+                  const newCat = await addProductCategory({
+                    name: String(catName),
+                  });
                   if (newCat) {
                     catId = newCat.id;
                     const fetchedCats = await getProductCategories();
@@ -2080,7 +2171,10 @@ export default function App() {
                 name: pName,
                 code: pCode,
                 barcode: pBarcode,
-                type: p["نوع (product/service) (الزامی)"] === "service" ? "service" : "product",
+                type:
+                  p["نوع (product/service) (الزامی)"] === "service"
+                    ? "service"
+                    : "product",
                 categoryId: catId,
                 category: catName ? String(catName) : "",
                 purchasePrice: Number(p["قیمت خرید (ریال)"] || 0),
@@ -2093,7 +2187,7 @@ export default function App() {
                 secondaryUnit: p["واحد فرعی"] ? String(p["واحد فرعی"]) : "",
                 unitRatio: Number(p["تعداد واحد اصلی در فرعی"] || 1),
                 description: p["توضیحات"] ? String(p["توضیحات"]) : "",
-                isActive: true
+                isActive: true,
               };
               const newProd = await addProduct(payload as any);
               currentProducts.push(newProd as any);
@@ -2109,17 +2203,20 @@ export default function App() {
               const pCode = payload.code;
               const pBarcode = payload.barcode;
 
-              if (currentProducts.some(pr => pr.name === pName)) {
+              if (currentProducts.some((pr) => pr.name === pName)) {
                 duplicateMsgs.push(`نام تکراری: ${pName}`);
                 skippedCount++;
                 continue;
               }
-              if (pCode && currentProducts.some(pr => pr.code === pCode)) {
+              if (pCode && currentProducts.some((pr) => pr.code === pCode)) {
                 duplicateMsgs.push(`کد تکراری: ${pCode} (برای ${pName})`);
                 skippedCount++;
                 continue;
               }
-              if (pBarcode && currentProducts.some(pr => pr.barcode === pBarcode)) {
+              if (
+                pBarcode &&
+                currentProducts.some((pr) => pr.barcode === pBarcode)
+              ) {
                 duplicateMsgs.push(`بارکد تکراری: ${pBarcode} (برای ${pName})`);
                 skippedCount++;
                 continue;
@@ -2134,7 +2231,9 @@ export default function App() {
           setSubmittingProduct(false);
           let finalMsg = `${successCount} کالا با موفقیت درون‌ریزی شد.`;
           if (skippedCount > 0) {
-            finalMsg += `\n\nتعداد ${skippedCount} کالا به دلیل تکراری بودن رد شدند:\n` + duplicateMsgs.slice(0, 10).join("\n");
+            finalMsg +=
+              `\n\nتعداد ${skippedCount} کالا به دلیل تکراری بودن رد شدند:\n` +
+              duplicateMsgs.slice(0, 10).join("\n");
             if (duplicateMsgs.length > 10) finalMsg += "\n...";
           }
           customAlert(finalMsg);
@@ -2253,22 +2352,32 @@ export default function App() {
         finalCode = `${catCode}${String(maxCode + 1).padStart(4, "0")}`;
       }
 
-      const duplicateName = products.find((p) => p.name === newProductName && p.id !== editingProductId);
+      const duplicateName = products.find(
+        (p) => p.name === newProductName && p.id !== editingProductId,
+      );
       if (duplicateName) {
-        customAlert(`کالایی با نام "${newProductName}" قبلا ثبت شده است. لطفا نام دیگری انتخاب کنید.`);
+        customAlert(
+          `کالایی با نام "${newProductName}" قبلا ثبت شده است. لطفا نام دیگری انتخاب کنید.`,
+        );
         setSubmittingProduct(false);
         return;
       }
 
-      const duplicateCode = products.find((p) => p.code === finalCode && p.id !== editingProductId);
+      const duplicateCode = products.find(
+        (p) => p.code === finalCode && p.id !== editingProductId,
+      );
       if (duplicateCode) {
-        customAlert(`کد کالا (${finalCode}) تکراری است. لطفا کد دیگری وارد کنید.`);
+        customAlert(
+          `کد کالا (${finalCode}) تکراری است. لطفا کد دیگری وارد کنید.`,
+        );
         setSubmittingProduct(false);
         return;
       }
 
       if (newProductBarcode) {
-        const duplicateBarcode = products.find((p) => p.barcode === newProductBarcode && p.id !== editingProductId);
+        const duplicateBarcode = products.find(
+          (p) => p.barcode === newProductBarcode && p.id !== editingProductId,
+        );
         if (duplicateBarcode) {
           customAlert(`بارکد (${newProductBarcode}) تکراری است.`);
           setSubmittingProduct(false);
@@ -2346,8 +2455,12 @@ export default function App() {
   const handleFastSaveProduct = async (productData: any): Promise<boolean> => {
     try {
       const addedProduct = await addProduct(productData);
-      
-      if (["create_sale", "create_purchase", "create_warehouse_doc"].includes(activeTab)) {
+
+      if (
+        ["create_sale", "create_purchase", "create_warehouse_doc"].includes(
+          activeTab,
+        )
+      ) {
         handleFastAddProduct(addedProduct.id.toString(), addedProduct);
         setNotification({
           message: "کالا ثبت و به عنوان ردیف جدید به فاکتور اضافه شد.",
@@ -2355,7 +2468,7 @@ export default function App() {
         });
         setTimeout(() => setNotification(null), 3000);
       }
-      
+
       await fetchProducts();
       return true;
     } catch (error) {
@@ -2443,7 +2556,9 @@ export default function App() {
   };
 
   const handleGenerateBarcodes = async () => {
-    const productsToUpdate = products.filter(p => !p.barcode || p.barcode.trim() === "");
+    const productsToUpdate = products.filter(
+      (p) => !p.barcode || p.barcode.trim() === "",
+    );
     if (productsToUpdate.length === 0) {
       customAlert("تمامی کالاها دارای بارکد هستند.");
       setIsGenerateBarcodesModalOpen(false);
@@ -2451,9 +2566,11 @@ export default function App() {
     }
 
     let currentNumber = Number(barcodeStartNumber) || 1000;
-    
+
     // To ensure unique barcodes with what's already existing:
-    const existingBarcodes = new Set(products.map(p => p.barcode).filter(Boolean));
+    const existingBarcodes = new Set(
+      products.map((p) => p.barcode).filter(Boolean),
+    );
 
     let updatedCount = 0;
     setSubmittingProduct(true);
@@ -2491,7 +2608,10 @@ export default function App() {
         await updateProduct(p.id.toString(), { ...p, barcode: newBarcode });
         updatedCount++;
       }
-      showNotification(`${updatedCount} کالا با موفقیت بارکدگذاری شدند.`, "success");
+      showNotification(
+        `${updatedCount} کالا با موفقیت بارکدگذاری شدند.`,
+        "success",
+      );
     } catch (e) {
       console.error(e);
       showNotification("خطا در بارکدگذاری کالاها", "error");
@@ -2554,25 +2674,33 @@ export default function App() {
         generatedAlias = newPersonAlias || newPersonCompanyName || "";
       } else {
         name = `${newPersonFirstName || ""} ${newPersonLastName || ""}`.trim();
-        let defaultAlias = `${newPersonTitle ? newPersonTitle + " " : ""}${name}`.trim();
+        let defaultAlias =
+          `${newPersonTitle ? newPersonTitle + " " : ""}${name}`.trim();
         if (newPersonFatherName) {
           defaultAlias += `(${newPersonFatherName})`;
         }
-        
+
         let shouldOverrideAlias = false;
         if (isEdit) {
-          const existingPerson = persons.find(p => p.id === editingPersonId);
+          const existingPerson = persons.find((p) => p.id === editingPersonId);
           if (existingPerson) {
-            const oldName = `${existingPerson.firstName || ""} ${existingPerson.lastName || ""}`.trim();
-            const oldDefaultAlias = `${existingPerson.title ? existingPerson.title + " " : ""}${oldName}`.trim();
-            const oldDefaultAliasWithFather = existingPerson.fatherName ? `${oldDefaultAlias}(${existingPerson.fatherName})` : oldDefaultAlias;
-            
-            if (newPersonAlias === oldDefaultAlias || newPersonAlias === oldDefaultAliasWithFather) {
+            const oldName =
+              `${existingPerson.firstName || ""} ${existingPerson.lastName || ""}`.trim();
+            const oldDefaultAlias =
+              `${existingPerson.title ? existingPerson.title + " " : ""}${oldName}`.trim();
+            const oldDefaultAliasWithFather = existingPerson.fatherName
+              ? `${oldDefaultAlias}(${existingPerson.fatherName})`
+              : oldDefaultAlias;
+
+            if (
+              newPersonAlias === oldDefaultAlias ||
+              newPersonAlias === oldDefaultAliasWithFather
+            ) {
               shouldOverrideAlias = true;
             }
           }
         }
-        
+
         if (!newPersonAlias || shouldOverrideAlias) {
           generatedAlias = defaultAlias;
         } else {
@@ -2864,51 +2992,112 @@ export default function App() {
   };
 
   const checkDebtThreshold = async (personId: string | number) => {
-    if (!storeSettings?.smsDebtThresholdEnabled || storeSettings.smsDebtThresholdAmount === undefined || !storeSettings?.notify_method || storeSettings.notify_method === 'none') return;
+    if (
+      !storeSettings?.smsDebtThresholdEnabled ||
+      storeSettings.smsDebtThresholdAmount === undefined ||
+      !storeSettings?.notify_method ||
+      storeSettings.notify_method === "none"
+    )
+      return;
 
     try {
-      const [allPersons, allInvoices, allTransactions, allIssuedChecks, allReceivedChecks] = await Promise.all([
+      const [
+        allPersons,
+        allInvoices,
+        allTransactions,
+        allIssuedChecks,
+        allReceivedChecks,
+      ] = await Promise.all([
         getPersons(),
         getInvoices(),
         getTransactions(),
         getIssuedChecks(),
-        getReceivedChecks()
+        getReceivedChecks(),
       ]);
-      
-      const person = allPersons.find((p: any) => p.id.toString() === personId.toString());
+
+      const person = allPersons.find(
+        (p: any) => p.id.toString() === personId.toString(),
+      );
       if (!person || !person.phone) return;
 
       let balance = 0;
       if (person.initialBalance && person.initialBalanceType !== "settled") {
-        balance += person.initialBalanceType === "debtor" ? person.initialBalance : -person.initialBalance;
+        balance +=
+          person.initialBalanceType === "debtor"
+            ? person.initialBalance
+            : -person.initialBalance;
       }
-      
-      allInvoices.filter((i: any) => i.customerId?.toString() === personId.toString() && i.type !== "warehouse_receipt" && i.type !== "warehouse_remittance" && i.type !== "proforma" && i.status !== "draft").forEach((inv: any) => {
-        const amount = (inv.totalAmount || 0) * getDefaultExchangeRate(inv.currency, storeSettings?.currency || "تومان");
-        if (inv.type === "sale") balance += amount;
-        else if (inv.type === "purchase") balance -= amount;
-        else if (inv.type === "sale_return") balance -= amount;
-        else if (inv.type === "purchase_return") balance += amount;
-      });
 
-      allTransactions.filter((t: any) => t.personId?.toString() === personId.toString() && t.method !== "check").forEach((t: any) => {
-        if (t.type === "receive") balance -= t.amount || 0;
-        else if (t.type === "pay") balance += t.amount || 0;
-        else if (t.type === "salary") balance -= t.amount || 0;
-      });
+      allInvoices
+        .filter(
+          (i: any) =>
+            i.customerId?.toString() === personId.toString() &&
+            i.type !== "warehouse_receipt" &&
+            i.type !== "warehouse_remittance" &&
+            i.type !== "proforma" &&
+            i.status !== "draft",
+        )
+        .forEach((inv: any) => {
+          const amount =
+            (inv.totalAmount || 0) *
+            getDefaultExchangeRate(
+              inv.currency,
+              storeSettings?.currency || "تومان",
+            );
+          if (inv.type === "sale") balance += amount;
+          else if (inv.type === "purchase") balance -= amount;
+          else if (inv.type === "sale_return") balance -= amount;
+          else if (inv.type === "purchase_return") balance += amount;
+        });
 
-      allIssuedChecks.filter((c: any) => c.payeeId?.toString() === personId.toString() && c.status !== "cancelled" && c.status !== "bounced" && c.status !== "cashed").forEach((c: any) => {
-        balance += c.amount || 0;
-      });
+      allTransactions
+        .filter(
+          (t: any) =>
+            t.personId?.toString() === personId.toString() &&
+            t.method !== "check",
+        )
+        .forEach((t: any) => {
+          if (t.type === "receive") balance -= t.amount || 0;
+          else if (t.type === "pay") balance += t.amount || 0;
+          else if (t.type === "salary") balance -= t.amount || 0;
+        });
 
-      allReceivedChecks.filter((c: any) => c.payerId?.toString() === personId.toString() && c.status !== "returned" && c.status !== "bounced" && c.status !== "cashed").forEach((c: any) => {
-        balance -= c.amount || 0;
-      });
+      allIssuedChecks
+        .filter(
+          (c: any) =>
+            c.payeeId?.toString() === personId.toString() &&
+            c.status !== "cancelled" &&
+            c.status !== "bounced" &&
+            c.status !== "cashed",
+        )
+        .forEach((c: any) => {
+          balance += c.amount || 0;
+        });
+
+      allReceivedChecks
+        .filter(
+          (c: any) =>
+            c.payerId?.toString() === personId.toString() &&
+            c.status !== "returned" &&
+            c.status !== "bounced" &&
+            c.status !== "cashed",
+        )
+        .forEach((c: any) => {
+          balance -= c.amount || 0;
+        });
 
       if (balance > storeSettings.smsDebtThresholdAmount) {
-        const amt = typeof formatNumber === "function" ? formatNumber(balance) : addCommas(balance);
-        let msg = storeSettings.smsDebtThresholdMessage || "مشتری گرامی، مانده بدهی شما از سقف مجاز عبور کرده است. لطفا نسبت به تسویه حساب اقدام نمایید.";
-        msg = msg.replace(/{name}/g, person.name).replace(/{amount}/g, String(amt)).replace(/{date}/g, new Date().toLocaleDateString("fa-IR"));
+        const amt =
+          typeof formatNumber === "function"
+            ? formatNumber(balance)
+            : addCommas(balance);
+        let msg =
+          storeSettings.smsDebtThresholdMessage ||
+          "مشتری گرامی، مانده بدهی شما از سقف مجاز عبور کرده است. لطفا نسبت به تسویه حساب اقدام نمایید.";
+        msg = msg
+          .replace(/{name}/g, person.name)
+          .replace(/{amount}/g, String(amt))
+          .replace(/{date}/g, new Date().toLocaleDateString("fa-IR"));
         sendNotification(msg, person.phone, storeSettings.notify_method);
       }
     } catch (err) {
@@ -2943,17 +3132,22 @@ export default function App() {
     }
 
     if (type === "pay") {
-      const person = persons.find(p => p.id.toString() === receiptPersonId.toString());
+      const person = persons.find(
+        (p) => p.id.toString() === receiptPersonId.toString(),
+      );
       if (person && person.creditLimit && person.creditLimit > 0) {
         const currentBalanceObj = calculatePersonBalance(receiptPersonId);
-        let currentDebt = currentBalanceObj.status === "بدهکار" ? currentBalanceObj.amount : -currentBalanceObj.amount;
-        
+        let currentDebt =
+          currentBalanceObj.status === "بدهکار"
+            ? currentBalanceObj.amount
+            : -currentBalanceObj.amount;
+
         // type === "pay" means we are paying them, so their debt to us INCREASES.
         const newDebt = currentDebt + Number(receiptAmount);
-        
+
         if (newDebt > person.creditLimit) {
-           customAlert(
-            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`
+          customAlert(
+            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`,
           );
           return;
         }
@@ -3173,13 +3367,16 @@ export default function App() {
             msg = storeSettings.smsTemplateReceipt
               .replace(/{name}/g, person.name)
               .replace(/{amount}/g, String(amt))
-              .replace(/{receipt_number}/g, String(createdReceiptObj?.receiptNumber || ""))
+              .replace(
+                /{receipt_number}/g,
+                String(createdReceiptObj?.receiptNumber || ""),
+              )
               .replace(/{date}/g, new Date().toLocaleDateString("fa-IR"));
           }
           sendNotification(msg, person.phone, storeSettings?.notify_method);
         }
       }
-      
+
       await checkDebtThreshold(previewReceiptData.personId);
     } catch (err: any) {
       console.error(err);
@@ -3599,7 +3796,10 @@ export default function App() {
     setIsProductModalOpen(true);
   };
 
-  const handleAIProductsAdd = async (selectedProducts: any[], categoryId: string) => {
+  const handleAIProductsAdd = async (
+    selectedProducts: any[],
+    categoryId: string,
+  ) => {
     try {
       let isSuccess = false;
       for (const prod of selectedProducts) {
@@ -4152,8 +4352,13 @@ export default function App() {
               (p) => p.id.toString() === String(value),
             );
             if (product) {
-              if (activeTab === "create_warehouse_doc" && product.type === "service") {
-                customAlert("کالای خدماتی فاقد عملیات انبارداری و مدیریت تعداد است.");
+              if (
+                activeTab === "create_warehouse_doc" &&
+                product.type === "service"
+              ) {
+                customAlert(
+                  "کالای خدماتی فاقد عملیات انبارداری و مدیریت تعداد است.",
+                );
                 return item;
               }
               updatedItem.productName = product.name;
@@ -4416,7 +4621,7 @@ export default function App() {
             : inv.type === "purchase"
               ? "create_purchase"
               : "create_warehouse_doc",
-      true
+      true,
     );
   };
 
@@ -4450,8 +4655,10 @@ export default function App() {
     });
 
     const hasAny = sourceInv.items.some((it: any) => {
-      const prod = products.find(p => p.id?.toString() === it.productId?.toString());
-      if (prod?.type === 'service') return false;
+      const prod = products.find(
+        (p) => p.id?.toString() === it.productId?.toString(),
+      );
+      if (prod?.type === "service") return false;
 
       const key = String(it.productId || it.productName || "");
       const processed = key ? processedAmounts[key] || 0 : 0;
@@ -4561,7 +4768,10 @@ export default function App() {
         (customPayload.isDraft || customPayload.status === "draft"));
 
     let finalInvoiceNumber = invoiceNumber;
-    if ((invoiceMode === "auto" && !autoSaveInvoiceId && !editingInvoiceId) || !invoiceNumber) {
+    if (
+      (invoiceMode === "auto" && !autoSaveInvoiceId && !editingInvoiceId) ||
+      !invoiceNumber
+    ) {
       finalInvoiceNumber = getInvoiceNumber(invoiceType);
     } else if (String(invoiceNumber || "").startsWith("پیش‌نویس-")) {
       finalInvoiceNumber = String(invoiceNumber || "").replace("پیش‌نویس-", "");
@@ -4619,12 +4829,21 @@ export default function App() {
 
     const actualCustomerId = customPayload?.customerId || customerId;
     const actualType = customPayload?.type || invoiceType;
-    if (!isDraft && actualCustomerId && (actualType === "sale" || actualType === "purchase_return")) {
-      const person = persons.find(p => p.id.toString() === actualCustomerId.toString());
+    if (
+      !isDraft &&
+      actualCustomerId &&
+      (actualType === "sale" || actualType === "purchase_return")
+    ) {
+      const person = persons.find(
+        (p) => p.id.toString() === actualCustomerId.toString(),
+      );
       if (person && person.creditLimit && person.creditLimit > 0) {
         const currentBalanceObj = calculatePersonBalance(actualCustomerId);
-        let currentDebt = currentBalanceObj.status === "بدهکار" ? currentBalanceObj.amount : -currentBalanceObj.amount;
-        
+        let currentDebt =
+          currentBalanceObj.status === "بدهکار"
+            ? currentBalanceObj.amount
+            : -currentBalanceObj.amount;
+
         let invTotal = 0;
         if (customPayload) {
           invTotal = customPayload.totalAmount || 0;
@@ -4635,7 +4854,7 @@ export default function App() {
         const newDebt = currentDebt + invTotal;
         if (newDebt > person.creditLimit) {
           customAlert(
-            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`
+            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`,
           );
           setSubmitting(false);
           return;
@@ -4648,8 +4867,10 @@ export default function App() {
           ...customPayload,
           isDraft,
           status: isDraft ? "draft" : "final",
-          invoiceNumber: (function() {
-            let num = customPayload.invoiceNumber || getInvoiceNumber(customPayload.type);
+          invoiceNumber: (function () {
+            let num =
+              customPayload.invoiceNumber ||
+              getInvoiceNumber(customPayload.type);
             if (num.includes("خودکار") || num.includes("تولید خودکار")) {
               num = getInvoiceNumber(customPayload.type);
             } else if (num.startsWith("پیش‌نویس-")) {
@@ -4950,11 +5171,7 @@ export default function App() {
               .replace(/{invoice_number}/g, String(payload.invoiceNumber || ""))
               .replace(/{date}/g, new Date().toLocaleDateString("fa-IR"));
           }
-          sendNotification(
-            msg,
-            person.phone,
-            storeSettings?.notify_method,
-          );
+          sendNotification(msg, person.phone, storeSettings?.notify_method);
         }
       }
       await fetchInvoices();
@@ -5237,7 +5454,10 @@ export default function App() {
             msg = storeSettings.smsTemplateInvoice
               .replace(/{name}/g, person.name)
               .replace(/{amount}/g, String(amt))
-              .replace(/{invoice_number}/g, String(originalPayload.invoiceNumber || ""))
+              .replace(
+                /{invoice_number}/g,
+                String(originalPayload.invoiceNumber || ""),
+              )
               .replace(/{date}/g, new Date().toLocaleDateString("fa-IR"));
           }
           sendNotification(msg, person.phone, storeSettings?.notify_method);
@@ -5420,7 +5640,13 @@ export default function App() {
     const saleReturnQtys: Record<string, number> = {};
 
     invoices.forEach((inv) => {
-      if (!inv.items || inv.isDraft || inv.status === "draft" || inv.type === "proforma") return;
+      if (
+        !inv.items ||
+        inv.isDraft ||
+        inv.status === "draft" ||
+        inv.type === "proforma"
+      )
+        return;
       inv.items.forEach((i: any) => {
         if (i.productId?.toString() === productId.toString()) {
           let q = Number(i.quantity) || 0;
@@ -5769,12 +5995,12 @@ export default function App() {
     const totalSimulatedTime = 6000; // 6 seconds to reach ~95%
     const increment = 100 / (totalSimulatedTime / intervalTime);
 
-    let fetchPromise = fetch('/api/system/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    let fetchPromise = fetch("/api/system/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
     }).then(async (res) => {
-       const data = await res.json();
-       return { ok: res.ok, data };
+      const data = await res.json();
+      return { ok: res.ok, data };
     });
 
     const updateInterval = setInterval(() => {
@@ -5931,9 +6157,9 @@ export default function App() {
             <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm font-bold flex items-start gap-3 mb-8 border border-amber-100 shadow-sm">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                توجه: <strong>نوع تقویم</strong> و{" "}
-                <strong>واحد پولی</strong> پس از ثبت برای حفظ یکپارچگی پایگاه
-                داده سیستم <strong>غیرقابل تغییر</strong> خواهند بود.
+                توجه: <strong>نوع تقویم</strong> و <strong>واحد پولی</strong> پس
+                از ثبت برای حفظ یکپارچگی پایگاه داده سیستم{" "}
+                <strong>غیرقابل تغییر</strong> خواهند بود.
               </p>
             </div>
 
@@ -6346,8 +6572,12 @@ export default function App() {
 
                             const remainingItems = sourceInv.items
                               .filter((it) => {
-                                const prod = products.find(p => p.id?.toString() === it.productId?.toString());
-                                return prod?.type !== 'service';
+                                const prod = products.find(
+                                  (p) =>
+                                    p.id?.toString() ===
+                                    it.productId?.toString(),
+                                );
+                                return prod?.type !== "service";
                               })
                               .map((it) => {
                                 const key = String(
@@ -6534,20 +6764,6 @@ export default function App() {
                   <div className="w-full relative z-10 flex flex-col md:flex-row gap-2">
                     <div className="flex gap-2">
                       <FastBarcodeScanner onScan={handleFastBarcodeScan} />
-                      <button
-                        onClick={() => setIsFastProductModalOpen(true)}
-                        className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
-                        title="ثبت سریع کالای جدید"
-                      >
-                        <Zap className="w-5 h-5 fill-current" />
-                      </button>
-                      <button
-                        onClick={() => setIsBulkImportOpen(true)}
-                        className="p-2.5 bg-white border border-gray-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-colors flex items-center justify-center shrink-0"
-                        title="ورود گروهی کالا (اکسل / CSV / JSON)"
-                      >
-                        <Database className="w-5 h-5" />
-                      </button>
                     </div>
                     <div className="flex-[2]">
                       <SearchableSelect
@@ -7018,20 +7234,6 @@ export default function App() {
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
-                    <button
-                      onClick={() => setIsFastProductModalOpen(true)}
-                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
-                      title="ثبت سریع کالای جدید"
-                    >
-                      <Zap className="w-5 h-5 fill-current" />
-                    </button>
-                    <button
-                      onClick={() => setIsBulkImportOpen(true)}
-                      className="p-2.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors flex items-center justify-center shrink-0"
-                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
-                    >
-                      <Database className="w-5 h-5" />
-                    </button>
                   </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
@@ -7210,10 +7412,22 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-emerald-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
+                                      {product.unit} (اصلی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice /
+                                              (product.unitRatio || 1)
+                                          : item.unitPrice,
+                                      )}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
+                                      {product.secondaryUnit} (فرعی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice
+                                          : item.unitPrice *
+                                              (product.unitRatio || 1),
+                                      )}
                                     </option>
                                   </select>
                                 ) : product ? (
@@ -7699,20 +7913,6 @@ export default function App() {
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
-                    <button
-                      onClick={() => setIsFastProductModalOpen(true)}
-                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
-                      title="ثبت سریع کالای جدید"
-                    >
-                      <Zap className="w-5 h-5 fill-current" />
-                    </button>
-                    <button
-                      onClick={() => setIsBulkImportOpen(true)}
-                      className="p-2.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors flex items-center justify-center shrink-0"
-                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
-                    >
-                      <Database className="w-5 h-5" />
-                    </button>
                   </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-emerald-300 rounded-xl bg-white shadow-sm transition-colors relative">
@@ -7891,10 +8091,22 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-emerald-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
+                                      {product.unit} (اصلی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice /
+                                              (product.unitRatio || 1)
+                                          : item.unitPrice,
+                                      )}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
+                                      {product.secondaryUnit} (فرعی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice
+                                          : item.unitPrice *
+                                              (product.unitRatio || 1),
+                                      )}
                                     </option>
                                   </select>
                                 ) : product ? (
@@ -8337,20 +8549,6 @@ export default function App() {
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
-                    <button
-                      onClick={() => setIsFastProductModalOpen(true)}
-                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
-                      title="ثبت سریع کالای جدید"
-                    >
-                      <Zap className="w-5 h-5 fill-current" />
-                    </button>
-                    <button
-                      onClick={() => setIsBulkImportOpen(true)}
-                      className="p-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center shrink-0"
-                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
-                    >
-                      <Database className="w-5 h-5" />
-                    </button>
                   </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
@@ -8533,10 +8731,22 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-indigo-800 bg-indigo-50 border border-indigo-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-indigo-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
+                                      {product.unit} (اصلی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice /
+                                              (product.unitRatio || 1)
+                                          : item.unitPrice,
+                                      )}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
+                                      {product.secondaryUnit} (فرعی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice
+                                          : item.unitPrice *
+                                              (product.unitRatio || 1),
+                                      )}
                                     </option>
                                   </select>
                                 ) : product ? (
@@ -9007,20 +9217,6 @@ export default function App() {
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
-                    <button
-                      onClick={() => setIsFastProductModalOpen(true)}
-                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
-                      title="ثبت سریع کالای جدید"
-                    >
-                      <Zap className="w-5 h-5 fill-current" />
-                    </button>
-                    <button
-                      onClick={() => setIsBulkImportOpen(true)}
-                      className="p-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center shrink-0"
-                      title="ورود گروهی کالا (اکسل / CSV / JSON)"
-                    >
-                      <Database className="w-5 h-5" />
-                    </button>
                   </div>
                   <div className="flex-[2] relative z-10 w-full">
                     <div className="border hover:border-indigo-300 rounded-xl bg-white shadow-sm transition-colors relative">
@@ -9203,10 +9399,22 @@ export default function App() {
                                     className="w-full p-2 text-sm font-bold text-indigo-800 bg-indigo-50 border border-indigo-100/50 rounded-xl outline-none cursor-pointer focus:ring-2 focus:ring-indigo-400"
                                   >
                                     <option value="false">
-                                      {product.unit} (اصلی) - {formatNumber(item.isSecondaryUnit ? (item.unitPrice / (product.unitRatio || 1)) : item.unitPrice)}
+                                      {product.unit} (اصلی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice /
+                                              (product.unitRatio || 1)
+                                          : item.unitPrice,
+                                      )}
                                     </option>
                                     <option value="true">
-                                      {product.secondaryUnit} (فرعی) - {formatNumber(item.isSecondaryUnit ? item.unitPrice : (item.unitPrice * (product.unitRatio || 1)))}
+                                      {product.secondaryUnit} (فرعی) -{" "}
+                                      {formatNumber(
+                                        item.isSecondaryUnit
+                                          ? item.unitPrice
+                                          : item.unitPrice *
+                                              (product.unitRatio || 1),
+                                      )}
                                     </option>
                                   </select>
                                 ) : product ? (
@@ -9450,8 +9658,10 @@ export default function App() {
           .filter((inv) => {
             if (!invoiceSearchQuery) return true;
             const term = invoiceSearchQuery.toLowerCase();
-            const p = persons.find((p) => p.id.toString() === inv.customerId.toString());
-            const pName = ((p?.alias || p?.name) || "نامشخص").toLowerCase();
+            const p = persons.find(
+              (p) => p.id.toString() === inv.customerId.toString(),
+            );
+            const pName = (p?.alias || p?.name || "نامشخص").toLowerCase();
             const invNum = (inv.invoiceNumber || "").toLowerCase();
             const sellNum = (inv.sellerInvoiceNumber || "").toLowerCase();
             return (
@@ -9507,8 +9717,10 @@ export default function App() {
           .filter((inv) => {
             if (!invoiceSearchQuery) return true;
             const term = invoiceSearchQuery.toLowerCase();
-            const p = persons.find((p) => p.id.toString() === inv.customerId?.toString());
-            const pName = ((p?.alias || p?.name) || "نامشخص").toLowerCase();
+            const p = persons.find(
+              (p) => p.id.toString() === inv.customerId?.toString(),
+            );
+            const pName = (p?.alias || p?.name || "نامشخص").toLowerCase();
             const invNum = (inv.invoiceNumber || "").toLowerCase();
             const sellNum = (inv.sellerInvoiceNumber || "").toLowerCase();
             return (
@@ -9518,11 +9730,16 @@ export default function App() {
             );
           });
 
-        const invoiceTotalPages = Math.ceil(filteredInvoicesList.length / invoicePageSize);
-        const invoiceSafeCurrentPage = Math.max(1, Math.min(invoiceCurrentPage, invoiceTotalPages));
+        const invoiceTotalPages = Math.ceil(
+          filteredInvoicesList.length / invoicePageSize,
+        );
+        const invoiceSafeCurrentPage = Math.max(
+          1,
+          Math.min(invoiceCurrentPage, invoiceTotalPages),
+        );
         const paginatedFilteredInvoicesList = filteredInvoicesList.slice(
-            (invoiceSafeCurrentPage - 1) * invoicePageSize,
-            invoiceSafeCurrentPage * invoicePageSize
+          (invoiceSafeCurrentPage - 1) * invoicePageSize,
+          invoiceSafeCurrentPage * invoicePageSize,
         );
 
         let groupedInvoices: { groupName: string; invoices: any[] }[] = [];
@@ -9972,6 +10189,32 @@ export default function App() {
                               )}
                               <button
                                 onClick={() => {
+                                  if (
+                                    inv.type === "sale" ||
+                                    inv.type === "purchase_return"
+                                  ) {
+                                    setReceiptPersonId(inv.personId);
+                                    setActiveTab("create_receive_receipt");
+                                  } else if (
+                                    inv.type === "purchase" ||
+                                    inv.type === "sale_return"
+                                  ) {
+                                    setReceiptPersonId(inv.personId);
+                                    setActiveTab("create_pay_receipt");
+                                  }
+                                }}
+                                className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg cursor-pointer bg-transparent border-none"
+                                title={
+                                  inv.type === "sale" ||
+                                  inv.type === "purchase_return"
+                                    ? "ثبت دریافت وجه"
+                                    : "ثبت پرداخت وجه"
+                                }
+                              >
+                                <Wallet className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
                                   setViewingInvoice(inv);
                                 }}
                                 className="p-2 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg cursor-pointer bg-transparent border-none"
@@ -10027,7 +10270,7 @@ export default function App() {
                   <span className="text-slate-850 font-sans font-black">
                     {Math.min(
                       filteredInvoicesList.length,
-                      invoiceSafeCurrentPage * invoicePageSize
+                      invoiceSafeCurrentPage * invoicePageSize,
                     ).toLocaleString("fa-IR")}
                   </span>{" "}
                   از مجموع{" "}
@@ -10056,7 +10299,7 @@ export default function App() {
                         (p) =>
                           p === 1 ||
                           p === invoiceTotalPages ||
-                          Math.abs(p - invoiceSafeCurrentPage) <= 1
+                          Math.abs(p - invoiceSafeCurrentPage) <= 1,
                       )
                       .map((p, i, arr) => (
                         <React.Fragment key={p}>
@@ -10081,7 +10324,7 @@ export default function App() {
                     disabled={invoiceSafeCurrentPage === invoiceTotalPages}
                     onClick={() =>
                       setInvoiceCurrentPage((prev) =>
-                        Math.min(invoiceTotalPages, prev + 1)
+                        Math.min(invoiceTotalPages, prev + 1),
                       )
                     }
                     className="p-2 border border-slate-200 hover:bg-slate-100 text-slate-600 bg-white rounded-xl transition-all disabled:opacity-40 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer flex items-center justify-center shadow-3xs"
@@ -10092,7 +10335,9 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 font-bold">نمایش:</span>
+                  <span className="text-xs text-slate-500 font-bold">
+                    نمایش:
+                  </span>
                   <select
                     value={invoicePageSize}
                     onChange={(e) => {
@@ -10296,7 +10541,9 @@ export default function App() {
                               <User className="w-4 h-4 text-slate-400" />
                             </div>
                           )}
-                          <span className="font-bold text-slate-700">{option.label}</span>
+                          <span className="font-bold text-slate-700">
+                            {option.label}
+                          </span>
                         </div>
                       )}
                       placeholder="انتخاب یا جستجوی نام شخص..."
@@ -10714,7 +10961,9 @@ export default function App() {
                                           `#${toPersianDigits(inv.id)}`}
                                       </td>
                                       <td className="p-3 font-mono text-xs">
-                                        {formatPersianDateDisplay(inv.jalaliDate)}
+                                        {formatPersianDateDisplay(
+                                          inv.jalaliDate,
+                                        )}
                                       </td>
                                       <td className="p-3 font-mono text-xs font-bold text-slate-700">
                                         {formatCurrency(total)}
@@ -10914,7 +11163,9 @@ export default function App() {
                               {renderPersonLink(person?.id, person?.name)}
                             </td>
                             <td className="p-4 font-sans text-slate-600 font-bold text-xs">
-                              {formatPersianDateDisplay(tx.jalaliDate || tx.date?.split('T')[0])}
+                              {formatPersianDateDisplay(
+                                tx.jalaliDate || tx.date?.split("T")[0],
+                              )}
                             </td>
                             <td className="p-4 text-xs font-black text-slate-600 text-right">
                               {resourceLabel}
@@ -11503,14 +11754,18 @@ export default function App() {
                           className="hover:bg-gray-50 transition-colors"
                         >
                           <td className="p-4 font-mono font-bold text-indigo-600">
-                            {tx.receiptNumber ? toPersianDigits(tx.receiptNumber) : `#${toPersianDigits(tx.id)}`}
+                            {tx.receiptNumber
+                              ? toPersianDigits(tx.receiptNumber)
+                              : `#${toPersianDigits(tx.id)}`}
                           </td>
                           <td className="p-4 font-bold text-gray-800">
                             {renderPersonLink(person?.id, person?.name)}
                           </td>
                           <td className="p-4 text-gray-500 text-right">
                             <div className="font-mono text-sm mb-1" dir="ltr">
-                              {formatPersianDateDisplay(tx.jalaliDate || tx.date?.split('T')[0])}
+                              {formatPersianDateDisplay(
+                                tx.jalaliDate || tx.date?.split("T")[0],
+                              )}
                             </div>
                             {(() => {
                               try {
@@ -12148,9 +12403,11 @@ export default function App() {
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className={`space-y-1 mt-1 mr-6 pr-3 border-r ${
-                    isGmailTheme ? "border-slate-200" : "border-slate-700/50"
-                  }`}>
+                  <div
+                    className={`space-y-1 mt-1 mr-6 pr-3 border-r ${
+                      isGmailTheme ? "border-slate-200" : "border-slate-700/50"
+                    }`}
+                  >
                     {group.items
                       .filter((item) => !user || item.roles.includes(user.role))
                       .map((item) => (
@@ -12293,10 +12550,12 @@ export default function App() {
           </motion.div>{" "}
         </div>
       )}
-
       {/* Gmail style Compose Quick Action Modal */}
       {isComposeOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[200] p-4 print:hidden" dir="rtl">
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[200] p-4 print:hidden"
+          dir="rtl"
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -12306,13 +12565,27 @@ export default function App() {
             <div className="bg-[#f6f8fc] px-6 py-5 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-[#fdf2f2] text-[#b3261e] rounded-xl flex items-center justify-center shadow-xs">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-800">ایجاد سریع سند / تراکنش</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">میانبرهای کاربردی برای ثبت سریع اطلاعات در بخش‌های مختلف</p>
+                  <h3 className="text-base font-black text-slate-800">
+                    ایجاد سریع سند / تراکنش
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    میانبرهای کاربردی برای ثبت سریع اطلاعات در بخش‌های مختلف
+                  </p>
                 </div>
               </div>
               <button
@@ -12339,8 +12612,13 @@ export default function App() {
                   📑
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-slate-800">صدور فاکتور فروش کالا</h4>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">فروش کالا و خدمات به مشتریان با ثبت خودکار سند حسابداری و کاهش موجودی انبار.</p>
+                  <h4 className="font-extrabold text-sm text-slate-800">
+                    صدور فاکتور فروش کالا
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    فروش کالا و خدمات به مشتریان با ثبت خودکار سند حسابداری و
+                    کاهش موجودی انبار.
+                  </p>
                 </div>
               </button>
 
@@ -12357,8 +12635,13 @@ export default function App() {
                   🛒
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-slate-800">ثبت فاکتور خرید کالا</h4>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">ثبت خرید کالا و خدمات از تامین‌کنندگان برای افزایش موجودی انبار.</p>
+                  <h4 className="font-extrabold text-sm text-slate-800">
+                    ثبت فاکتور خرید کالا
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    ثبت خرید کالا و خدمات از تامین‌کنندگان برای افزایش موجودی
+                    انبار.
+                  </p>
                 </div>
               </button>
 
@@ -12375,8 +12658,13 @@ export default function App() {
                   💵
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-slate-800">ثبت سند دریافت وجه</h4>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">ثبت مبالغ دریافتی از مشتریان، صندوق یا بانک به صورت نقد یا چک.</p>
+                  <h4 className="font-extrabold text-sm text-slate-800">
+                    ثبت سند دریافت وجه
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    ثبت مبالغ دریافتی از مشتریان، صندوق یا بانک به صورت نقد یا
+                    چک.
+                  </p>
                 </div>
               </button>
 
@@ -12393,8 +12681,13 @@ export default function App() {
                   💸
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-slate-800">ثبت سند پرداخت وجه</h4>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">ثبت پرداختی‌های نقد یا چک به تامین‌کنندگان، هزینه‌ها یا پرسنل.</p>
+                  <h4 className="font-extrabold text-sm text-slate-800">
+                    ثبت سند پرداخت وجه
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    ثبت پرداختی‌های نقد یا چک به تامین‌کنندگان، هزینه‌ها یا
+                    پرسنل.
+                  </p>
                 </div>
               </button>
 
@@ -12411,8 +12704,13 @@ export default function App() {
                   🔄
                 </div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-slate-800">انتقال وجه بین حساب‌ها</h4>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">جابجایی مبالغ نقدینگی بین حساب‌های بانکی و صندوق‌های مختلف کسب و کار با ثبت سند معین.</p>
+                  <h4 className="font-extrabold text-sm text-slate-800">
+                    انتقال وجه بین حساب‌ها
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    جابجایی مبالغ نقدینگی بین حساب‌های بانکی و صندوق‌های مختلف
+                    کسب و کار با ثبت سند معین.
+                  </p>
                 </div>
               </button>
             </div>
@@ -12430,7 +12728,8 @@ export default function App() {
             else if (sel === "admin") setActiveTab("settings");
             else if (sel === "crm") setActiveTab("analytical_dashboard");
             else if (sel === "hr") setActiveTab("list_salary_payroll");
-            else if (sel === "reports_module") setActiveTab("analytical_dashboard");
+            else if (sel === "reports_module")
+              setActiveTab("analytical_dashboard");
             else setActiveTab("financial_report");
           }}
         />
@@ -12440,7 +12739,9 @@ export default function App() {
           dir="rtl"
         >
           {isGmailTheme && (
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
               /* Gmail theme overrides */
               .theme-gmail .bg-indigo-600 {
                 background-color: #b3261e !important;
@@ -12526,7 +12827,9 @@ export default function App() {
               .theme-gmail .bg-indigo-900 {
                 background-color: #3f0c0a !important;
               }
-            ` }} />
+            `,
+              }}
+            />
           )}
           {/* Sidebar Mobile Overlay */}
           {isSidebarOpen && (
@@ -12546,7 +12849,9 @@ export default function App() {
               }`}
               dir="rtl"
             >
-              <div className={`p-5 flex flex-col justify-center ${isGmailTheme ? "border-b border-slate-200/50" : "border-b border-slate-800"}`}>
+              <div
+                className={`p-5 flex flex-col justify-center ${isGmailTheme ? "border-b border-slate-200/50" : "border-b border-slate-800"}`}
+              >
                 <div className="flex items-center gap-3">
                   {storeSettings.logoUrl ? (
                     <img
@@ -12555,10 +12860,14 @@ export default function App() {
                       alt="logo"
                     />
                   ) : (
-                    <Receipt className={`w-8 h-8 ${isGmailTheme ? "text-[#b3261e]" : "text-indigo-500"}`} />
+                    <Receipt
+                      className={`w-8 h-8 ${isGmailTheme ? "text-[#b3261e]" : "text-indigo-500"}`}
+                    />
                   )}
                   <div>
-                    <h1 className={`font-extrabold text-lg ${isGmailTheme ? "text-slate-800" : "text-white"}`}>
+                    <h1
+                      className={`font-extrabold text-lg ${isGmailTheme ? "text-slate-800" : "text-white"}`}
+                    >
                       {storeSettings.storeName || "سیستم مدیریت"}
                     </h1>
                     <div
@@ -12578,10 +12887,22 @@ export default function App() {
                     onClick={() => setIsComposeOpen(true)}
                     className="flex items-center gap-3 px-6 py-4 bg-white hover:bg-[#eaeef6] text-slate-800 rounded-2xl shadow-md hover:shadow-lg transition-all border border-slate-100 w-full font-black text-sm text-right justify-center cursor-pointer"
                   >
-                    <svg className="w-5 h-5 text-[#b3261e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    <svg
+                      className="w-5 h-5 text-[#b3261e]"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
-                    <span className="text-slate-700 font-extrabold">ایجاد جدید</span>
+                    <span className="text-slate-700 font-extrabold">
+                      ایجاد جدید
+                    </span>
                   </button>
                 </div>
               )}
@@ -12589,7 +12910,9 @@ export default function App() {
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 {renderSidebarGroups()}
               </div>
-              <div className={`p-4 ${isGmailTheme ? "border-t border-slate-200/50" : "border-t border-slate-800"}`}>
+              <div
+                className={`p-4 ${isGmailTheme ? "border-t border-slate-200/50" : "border-t border-slate-800"}`}
+              >
                 <button
                   onClick={signOut}
                   className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-colors ${
@@ -12608,12 +12931,20 @@ export default function App() {
           {/* Mobile Drawer Menu */}
           <div
             className={`fixed inset-y-0 right-0 w-72 shadow-2xl z-40 transform transition-transform duration-300 md:hidden flex flex-col print:hidden ${isSidebarOpen ? "translate-x-0" : "translate-x-full"} ${
-              isGmailTheme ? "bg-[#f6f8fc] text-[#444746]" : "bg-slate-900 text-slate-300"
+              isGmailTheme
+                ? "bg-[#f6f8fc] text-[#444746]"
+                : "bg-slate-900 text-slate-300"
             }`}
           >
-            <div className={`p-4 flex items-center justify-between border-b ${isGmailTheme ? "border-slate-200" : "border-slate-800"}`}>
-              <div className={`flex items-center gap-2 font-bold ${isGmailTheme ? "text-slate-800" : "text-white"}`}>
-                <Shield className={`w-5 h-5 ${isGmailTheme ? "text-[#b3261e]" : "text-indigo-500"}`} />
+            <div
+              className={`p-4 flex items-center justify-between border-b ${isGmailTheme ? "border-slate-200" : "border-slate-800"}`}
+            >
+              <div
+                className={`flex items-center gap-2 font-bold ${isGmailTheme ? "text-slate-800" : "text-white"}`}
+              >
+                <Shield
+                  className={`w-5 h-5 ${isGmailTheme ? "text-[#b3261e]" : "text-indigo-500"}`}
+                />
                 <span>منوی سیستم</span>
               </div>
               <button
@@ -12626,7 +12957,9 @@ export default function App() {
             <div className="flex-1 overflow-y-auto py-2">
               {renderSidebarGroups()}
             </div>
-            <div className={`p-4 border-t ${isGmailTheme ? "border-slate-200 bg-white/40" : "border-slate-800"}`}>
+            <div
+              className={`p-4 border-t ${isGmailTheme ? "border-slate-200 bg-white/40" : "border-slate-800"}`}
+            >
               <button
                 onClick={signOut}
                 className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors ${
@@ -12642,9 +12975,13 @@ export default function App() {
           </div>
 
           {/* Main Content Area */}
-          <div className={`flex-1 flex flex-col w-full min-w-0 min-h-0 transition-all duration-300 overflow-hidden print:overflow-visible print:bg-white print:h-auto ${isGmailTheme ? "bg-white md:rounded-3xl md:border md:border-slate-200/80 md:m-3 md:shadow-xs" : ""}`}>
+          <div
+            className={`flex-1 flex flex-col w-full min-w-0 min-h-0 transition-all duration-300 overflow-hidden print:overflow-visible print:bg-white print:h-auto ${isGmailTheme ? "bg-white md:rounded-3xl md:border md:border-slate-200/80 md:m-3 md:shadow-xs" : ""}`}
+          >
             {/* Top Header */}
-            <div className={`flex flex-col sticky top-0 z-[60] print:hidden ${isGmailTheme ? "bg-[#f6f8fc]" : "bg-white border-b border-gray-100 shadow-sm"}`}>
+            <div
+              className={`flex flex-col sticky top-0 z-[60] print:hidden ${isGmailTheme ? "bg-[#f6f8fc]" : "bg-white border-b border-gray-100 shadow-sm"}`}
+            >
               <div
                 className={`flex flex-row items-center justify-between p-4 sticky top-0 ${
                   isGmailTheme
@@ -12684,8 +13021,18 @@ export default function App() {
                 {isGmailTheme && (
                   <div className="hidden md:flex flex-1 max-w-xl mx-8 relative">
                     <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      <svg
+                        className="h-5 w-5 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
                       </svg>
                     </div>
                     <input
@@ -12802,23 +13149,35 @@ export default function App() {
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative" tabIndex={0} onBlur={(e) => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                            setIsProductActionsMenuOpen(false);
-                          }
-                        }}>
+                        <div
+                          className="relative"
+                          tabIndex={0}
+                          onBlur={(e) => {
+                            if (
+                              !e.currentTarget.contains(e.relatedTarget as Node)
+                            ) {
+                              setIsProductActionsMenuOpen(false);
+                            }
+                          }}
+                        >
                           <button
-                            onClick={() => setIsProductActionsMenuOpen(!isProductActionsMenuOpen)}
+                            onClick={() =>
+                              setIsProductActionsMenuOpen(
+                                !isProductActionsMenuOpen,
+                              )
+                            }
                             className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl flex items-center gap-2 transition-colors text-sm font-bold border border-slate-200 shadow-sm"
                           >
                             <Menu className="w-4 h-4" />
                             عملیات بیشتر
-                            <ChevronDown className={`w-3 h-3 transition-transform ${isProductActionsMenuOpen ? "rotate-180" : ""}`} />
+                            <ChevronDown
+                              className={`w-3 h-3 transition-transform ${isProductActionsMenuOpen ? "rotate-180" : ""}`}
+                            />
                           </button>
-                          
+
                           <AnimatePresence>
                             {isProductActionsMenuOpen && (
-                              <motion.div 
+                              <motion.div
                                 initial={{ opacity: 0, y: -5, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: -5, scale: 0.95 }}
@@ -12826,7 +13185,10 @@ export default function App() {
                                 className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50 origin-top-right"
                               >
                                 <button
-                                  onClick={() => { setIsProductActionsMenuOpen(false); handleExportProductsData(); }}
+                                  onClick={() => {
+                                    setIsProductActionsMenuOpen(false);
+                                    handleExportProductsData();
+                                  }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-slate-50 text-slate-700 flex items-center gap-3 text-sm transition-colors font-medium"
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
@@ -12835,7 +13197,10 @@ export default function App() {
                                   صدور اکسل (Export)
                                 </button>
                                 <button
-                                  onClick={() => { setIsProductActionsMenuOpen(false); handleImportProductsData(); }}
+                                  onClick={() => {
+                                    setIsProductActionsMenuOpen(false);
+                                    handleImportProductsData();
+                                  }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-slate-50 text-slate-700 flex items-center gap-3 text-sm transition-colors font-medium"
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
@@ -12844,7 +13209,10 @@ export default function App() {
                                   ورود اطلاعات از اکسل
                                 </button>
                                 <button
-                                  onClick={() => { setIsProductActionsMenuOpen(false); handleDownloadProductsTemplate(); }}
+                                  onClick={() => {
+                                    setIsProductActionsMenuOpen(false);
+                                    handleDownloadProductsTemplate();
+                                  }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-indigo-50 text-indigo-700 flex items-center gap-3 text-sm transition-colors font-medium group"
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-200 group-hover:text-indigo-600 transition-colors">
@@ -12852,11 +13220,14 @@ export default function App() {
                                   </div>
                                   دانلود قالب استاندارد ورود کالا
                                 </button>
-                                
+
                                 <div className="h-px bg-slate-100 my-1 mx-3"></div>
-                                
+
                                 <button
-                                  onClick={() => { setIsProductActionsMenuOpen(false); setIsAIProductSearchOpen(true); }}
+                                  onClick={() => {
+                                    setIsProductActionsMenuOpen(false);
+                                    setIsAIProductSearchOpen(true);
+                                  }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-purple-50 text-purple-700 flex items-center gap-3 text-sm transition-colors font-medium group"
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-500 group-hover:bg-purple-200 group-hover:text-purple-600 transition-colors">
@@ -12865,7 +13236,10 @@ export default function App() {
                                   استخراج هوشمند کالاها
                                 </button>
                                 <button
-                                  onClick={() => { setIsProductActionsMenuOpen(false); setIsGroupPriceModalOpen(true); }}
+                                  onClick={() => {
+                                    setIsProductActionsMenuOpen(false);
+                                    setIsGroupPriceModalOpen(true);
+                                  }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-emerald-50 text-emerald-700 flex items-center gap-3 text-sm transition-colors font-medium group"
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-200 group-hover:text-emerald-600 transition-colors">
@@ -12874,7 +13248,10 @@ export default function App() {
                                   بروزرسانی گروهی قیمت‌ها
                                 </button>
                                 <button
-                                  onClick={() => { setIsProductActionsMenuOpen(false); setIsGenerateBarcodesModalOpen(true); }}
+                                  onClick={() => {
+                                    setIsProductActionsMenuOpen(false);
+                                    setIsGenerateBarcodesModalOpen(true);
+                                  }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-blue-50 text-blue-700 flex items-center gap-3 text-sm transition-colors font-medium group"
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-500 group-hover:bg-blue-200 group-hover:text-blue-600 transition-colors">
@@ -12883,7 +13260,10 @@ export default function App() {
                                   تولید گروهی بارکد
                                 </button>
                                 <button
-                                  onClick={() => { setIsProductActionsMenuOpen(false); setShowProductBarcodesList(true); }}
+                                  onClick={() => {
+                                    setIsProductActionsMenuOpen(false);
+                                    setShowProductBarcodesList(true);
+                                  }}
                                   className="w-full text-right px-4 py-2.5 hover:bg-slate-50 text-slate-700 flex items-center gap-3 text-sm transition-colors font-medium group"
                                 >
                                   <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-slate-200 transition-colors">
@@ -12897,36 +13277,36 @@ export default function App() {
                         </div>
 
                         <button
-                            onClick={() => setIsFastProductModalOpen(true)}
-                            className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl flex items-center gap-2 transition-colors text-sm font-bold shadow-md shadow-amber-200"
-                          >
-                            <Zap className="w-4 h-4 fill-current" />
-                            ثبت سریع موبایلی
+                          onClick={() => setIsFastProductModalOpen(true)}
+                          className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl flex items-center gap-2 transition-colors text-sm font-bold shadow-md shadow-amber-200"
+                        >
+                          <Zap className="w-4 h-4 fill-current" />
+                          ثبت سریع موبایلی
                         </button>
                         <button
-                            onClick={() => {
-                              setEditingProductId(null);
-                              setNewProductName("");
-                              setNewProductPrice("");
-                              setNewProductType("product");
-                              setNewProductCategoryId("");
-                              setNewProductCode("");
-                              setNewProductBarcode("");
-                              setNewProductPurchasePrice("");
-                              setNewProductStock("");
-                              setNewProductMinStock("");
-                              setNewProductUnit("");
-                              setNewProductSecondaryUnit("");
-                              setNewProductUnitRatio("");
-                              setNewProductDesc("");
-                              setProductFormTab("general");
-                              setIsProductModalOpen(true);
-                            }}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-colors text-sm font-bold shadow-sm"
-                          >
-                            <Plus className="w-4 h-4" />
-                            ثبت کالا/خدمات
-                          </button>
+                          onClick={() => {
+                            setEditingProductId(null);
+                            setNewProductName("");
+                            setNewProductPrice("");
+                            setNewProductType("product");
+                            setNewProductCategoryId("");
+                            setNewProductCode("");
+                            setNewProductBarcode("");
+                            setNewProductPurchasePrice("");
+                            setNewProductStock("");
+                            setNewProductMinStock("");
+                            setNewProductUnit("");
+                            setNewProductSecondaryUnit("");
+                            setNewProductUnitRatio("");
+                            setNewProductDesc("");
+                            setProductFormTab("general");
+                            setIsProductModalOpen(true);
+                          }}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-colors text-sm font-bold shadow-sm"
+                        >
+                          <Plus className="w-4 h-4" />
+                          ثبت کالا/خدمات
+                        </button>
                       </div>
                     </div>
 
@@ -12945,14 +13325,19 @@ export default function App() {
                             <Package className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold text-slate-400">کل کالاها و خدمات</p>
+                            <p className="text-[11px] font-bold text-slate-400">
+                              کل کالاها و خدمات
+                            </p>
                             <h4 className="text-lg font-black text-slate-800 mt-0.5">
                               {products.length.toLocaleString("fa-IR")}
                             </h4>
                           </div>
                         </div>
                         <div className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-lg font-bold">
-                          {products.filter(p => p.type === "service").length.toLocaleString("fa-IR")} خدمات
+                          {products
+                            .filter((p) => p.type === "service")
+                            .length.toLocaleString("fa-IR")}{" "}
+                          خدمات
                         </div>
                       </div>
 
@@ -12962,13 +13347,21 @@ export default function App() {
                             <BarcodeIcon className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold text-slate-400">کالاهای بدون بارکد</p>
+                            <p className="text-[11px] font-bold text-slate-400">
+                              کالاهای بدون بارکد
+                            </p>
                             <h4 className="text-lg font-black text-amber-600 mt-0.5 animate-pulse">
-                              {products.filter(p => !p.barcode || p.barcode.trim() === "").length.toLocaleString("fa-IR")}
+                              {products
+                                .filter(
+                                  (p) => !p.barcode || p.barcode.trim() === "",
+                                )
+                                .length.toLocaleString("fa-IR")}
                             </h4>
                           </div>
                         </div>
-                        {products.filter(p => !p.barcode || p.barcode.trim() === "").length > 0 && (
+                        {products.filter(
+                          (p) => !p.barcode || p.barcode.trim() === "",
+                        ).length > 0 && (
                           <button
                             onClick={() => setIsGenerateBarcodesModalOpen(true)}
                             className="text-[10px] bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-xl font-bold transition-all shadow-sm shadow-amber-500/10 cursor-pointer"
@@ -12984,7 +13377,9 @@ export default function App() {
                             <Tag className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold text-slate-400 font-bold">گروه‌های تعریف‌شده</p>
+                            <p className="text-[11px] font-bold text-slate-400 font-bold">
+                              گروه‌های تعریف‌شده
+                            </p>
                             <h4 className="text-lg font-black text-slate-800 mt-0.5">
                               {productCategories.length.toLocaleString("fa-IR")}
                             </h4>
@@ -13011,7 +13406,9 @@ export default function App() {
                             className="w-full pl-10 pr-11 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 bg-white text-slate-900 font-bold text-sm transition-all placeholder:text-slate-400 placeholder:font-normal"
                             placeholder="جستجوی پیشرفته بر اساس نام، بارکد، کد کالا یا توضیحات..."
                             value={productSearchTerm}
-                            onChange={(e) => setProductSearchTerm(e.target.value)}
+                            onChange={(e) =>
+                              setProductSearchTerm(e.target.value)
+                            }
                           />
                           {productSearchTerm && (
                             <button
@@ -13045,7 +13442,9 @@ export default function App() {
                           {productCategories.slice(0, 5).map((cat) => (
                             <button
                               key={cat.id}
-                              onClick={() => setSelectedProductCategory(cat.id.toString())}
+                              onClick={() =>
+                                setSelectedProductCategory(cat.id.toString())
+                              }
                               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                                 selectedProductCategory === cat.id.toString()
                                   ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/10"
@@ -13061,25 +13460,45 @@ export default function App() {
                               <select
                                 value={
                                   selectedProductCategory !== "all" &&
-                                  productCategories.find((c) => c.id.toString() === selectedProductCategory)
+                                  productCategories.find(
+                                    (c) =>
+                                      c.id.toString() ===
+                                      selectedProductCategory,
+                                  )
                                     ? selectedProductCategory
                                     : ""
                                 }
                                 onChange={(e) => {
-                                  if (e.target.value) setSelectedProductCategory(e.target.value);
+                                  if (e.target.value)
+                                    setSelectedProductCategory(e.target.value);
                                 }}
                                 className="appearance-none bg-white border border-slate-200 font-bold text-xs text-slate-600 rounded-xl pl-8 pr-4 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer outline-none hover:bg-slate-50 hover:text-slate-900 transition-all"
                               >
-                                <option value="" disabled>سایر گروه‌ها...</option>
+                                <option value="" disabled>
+                                  سایر گروه‌ها...
+                                </option>
                                 {productCategories.slice(5).map((cat) => (
-                                  <option key={cat.id} value={cat.id.toString()}>
+                                  <option
+                                    key={cat.id}
+                                    value={cat.id.toString()}
+                                  >
                                     {cat.name}
                                   </option>
                                 ))}
                               </select>
                               <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                                <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                <svg
+                                  className="w-3.5 h-3.5 text-slate-400"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2.5}
+                                    d="M19 9l-7 7-7-7"
+                                  />
                                 </svg>
                               </div>
                             </div>
@@ -13440,7 +13859,7 @@ export default function App() {
                         );
                       })()}
                     </div>
-                    
+
                     <AIProductSearchModal
                       isOpen={isAIProductSearchOpen}
                       onClose={() => setIsAIProductSearchOpen(false)}
@@ -13462,7 +13881,8 @@ export default function App() {
                             سند افتتاحیه اشخاص
                           </h1>
                           <p className="text-xs text-slate-500 font-bold mt-1">
-                            ثبت و مدیریت مانده حساب‌های اولیه مشتریان، تامین‌کنندگان و کارمندان در شروع دوره مالی
+                            ثبت و مدیریت مانده حساب‌های اولیه مشتریان،
+                            تامین‌کنندگان و کارمندان در شروع دوره مالی
                           </p>
                         </div>
                         <button
@@ -13472,7 +13892,9 @@ export default function App() {
                             setOpeningBalanceAmount("");
                             setOpeningBalanceType("debtor");
                             setOpeningBalanceDate(new DateObject());
-                            setOpeningBalanceDescription("بابت مانده بدهی/طلب اول دوره");
+                            setOpeningBalanceDescription(
+                              "بابت مانده بدهی/طلب اول دوره",
+                            );
                             setIsOpeningBalanceModalOpen(true);
                           }}
                           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 transition-all text-xs font-bold shadow-sm cursor-pointer"
@@ -13490,14 +13912,19 @@ export default function App() {
                             <input
                               type="text"
                               value={openingBalanceSearch}
-                              onChange={(e) => setOpeningBalanceSearch(e.target.value)}
+                              onChange={(e) =>
+                                setOpeningBalanceSearch(e.target.value)
+                              }
                               placeholder="جستجو بر اساس نام شخص یا توضیحات..."
                               className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50"
                             />
                           </div>
-                          
+
                           <div className="text-xs font-bold text-slate-500">
-                            تعداد اسناد: <span className="text-indigo-600 font-extrabold">{personOpeningBalances.length}</span>
+                            تعداد اسناد:{" "}
+                            <span className="text-indigo-600 font-extrabold">
+                              {personOpeningBalances.length}
+                            </span>
                           </div>
                         </div>
 
@@ -13507,9 +13934,12 @@ export default function App() {
                             <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
                               <FileSpreadsheet className="w-8 h-8" />
                             </div>
-                            <h3 className="text-sm font-extrabold text-slate-800 mb-1">هیچ سند افتتاحیه ای ثبت نشده است</h3>
+                            <h3 className="text-sm font-extrabold text-slate-800 mb-1">
+                              هیچ سند افتتاحیه ای ثبت نشده است
+                            </h3>
                             <p className="text-xs text-slate-500 max-w-sm leading-relaxed mb-4">
-                              برای تعریف مانده حساب اولیه اشخاص، از دکمه «ثبت افتتاحیه جدید» استفاده کنید.
+                              برای تعریف مانده حساب اولیه اشخاص، از دکمه «ثبت
+                              افتتاحیه جدید» استفاده کنید.
                             </p>
                             <button
                               onClick={() => {
@@ -13518,7 +13948,9 @@ export default function App() {
                                 setOpeningBalanceAmount("");
                                 setOpeningBalanceType("debtor");
                                 setOpeningBalanceDate(new DateObject());
-                                setOpeningBalanceDescription("بابت مانده بدهی/طلب اول دوره");
+                                setOpeningBalanceDescription(
+                                  "بابت مانده بدهی/طلب اول دوره",
+                                );
                                 setIsOpeningBalanceModalOpen(true);
                               }}
                               className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-colors"
@@ -13532,66 +13964,127 @@ export default function App() {
                               <thead>
                                 <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
                                   <th className="px-4 py-3.5">کد</th>
-                                  <th className="px-4 py-3.5">شخص / طرف حساب</th>
-                                  <th className="px-4 py-3.5 text-center">نوع مانده</th>
-                                  <th className="px-4 py-3.5 text-left">مبلغ افتتاحیه</th>
+                                  <th className="px-4 py-3.5">
+                                    شخص / طرف حساب
+                                  </th>
+                                  <th className="px-4 py-3.5 text-center">
+                                    نوع مانده
+                                  </th>
+                                  <th className="px-4 py-3.5 text-left">
+                                    مبلغ افتتاحیه
+                                  </th>
                                   <th className="px-4 py-3.5">تاریخ ثبت</th>
-                                  <th className="px-4 py-3.5 max-w-xs truncate">توضیحات</th>
-                                  <th className="px-4 py-3.5 text-center">عملیات</th>
+                                  <th className="px-4 py-3.5 max-w-xs truncate">
+                                    توضیحات
+                                  </th>
+                                  <th className="px-4 py-3.5 text-center">
+                                    عملیات
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
                                 {personOpeningBalances
                                   .filter((ob: any) => {
-                                    const pObj = persons.find(p => String(p.id) === String(ob.personId));
+                                    const pObj = persons.find(
+                                      (p) =>
+                                        String(p.id) === String(ob.personId),
+                                    );
                                     if (!pObj) return false;
-                                    const matchSearch = pObj.name.toLowerCase().includes(openingBalanceSearch.toLowerCase()) || 
-                                                        (ob.description || "").toLowerCase().includes(openingBalanceSearch.toLowerCase());
+                                    const matchSearch =
+                                      pObj.name
+                                        .toLowerCase()
+                                        .includes(
+                                          openingBalanceSearch.toLowerCase(),
+                                        ) ||
+                                      (ob.description || "")
+                                        .toLowerCase()
+                                        .includes(
+                                          openingBalanceSearch.toLowerCase(),
+                                        );
                                     return matchSearch;
                                   })
                                   .map((ob: any, idx: number) => {
-                                    const pObj = persons.find(p => String(p.id) === String(ob.personId));
-                                    const isDebtor = ob.balanceType === "debtor";
+                                    const pObj = persons.find(
+                                      (p) =>
+                                        String(p.id) === String(ob.personId),
+                                    );
+                                    const isDebtor =
+                                      ob.balanceType === "debtor";
                                     return (
-                                      <tr key={ob.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-4 py-3 text-slate-400 font-mono font-medium">{idx + 1}</td>
+                                      <tr
+                                        key={ob.id}
+                                        className="hover:bg-slate-50/50 transition-colors"
+                                      >
+                                        <td className="px-4 py-3 text-slate-400 font-mono font-medium">
+                                          {idx + 1}
+                                        </td>
                                         <td className="px-4 py-3">
-                                          <div className="font-extrabold text-slate-950">{pObj?.name}</div>
+                                          <div className="font-extrabold text-slate-950">
+                                            {pObj?.name}
+                                          </div>
                                           <div className="text-[10px] text-slate-400 mt-0.5 font-bold flex items-center gap-1.5">
                                             <span>کد: {pObj?.personCode}</span>
                                             <span>•</span>
                                             <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[9px]">
-                                              {pObj?.role === "supplier" ? "تامین‌کننده" : pObj?.role === "employee" ? "کارمند" : "مشتری"}
+                                              {pObj?.role === "supplier"
+                                                ? "تامین‌کننده"
+                                                : pObj?.role === "employee"
+                                                  ? "کارمند"
+                                                  : "مشتری"}
                                             </span>
                                           </div>
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shadow-3xs inline-block ${
-                                            isDebtor 
-                                              ? "bg-rose-50 text-rose-700 border border-rose-100" 
-                                              : "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                          }`}>
-                                            {isDebtor ? "بدهکار (طلب ما)" : "بستانکار (بدهی ما)"}
+                                          <span
+                                            className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shadow-3xs inline-block ${
+                                              isDebtor
+                                                ? "bg-rose-50 text-rose-700 border border-rose-100"
+                                                : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                            }`}
+                                          >
+                                            {isDebtor
+                                              ? "بدهکار (طلب ما)"
+                                              : "بستانکار (بدهی ما)"}
                                           </span>
                                         </td>
                                         <td className="px-4 py-3 text-left font-mono font-extrabold text-slate-900 text-sm">
-                                          {addCommas(ob.amount)} {storeSettings?.currency || "تومان"}
+                                          {addCommas(ob.amount)}{" "}
+                                          {storeSettings?.currency || "تومان"}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-500 font-medium font-mono">{ob.date}</td>
-                                        <td className="px-4 py-3 text-slate-500 max-w-xs truncate font-medium" title={ob.description}>
+                                        <td className="px-4 py-3 text-slate-500 font-medium font-mono">
+                                          {ob.date}
+                                        </td>
+                                        <td
+                                          className="px-4 py-3 text-slate-500 max-w-xs truncate font-medium"
+                                          title={ob.description}
+                                        >
                                           {ob.description || "-"}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                           <div className="flex items-center justify-center gap-1.5">
                                             <button
                                               onClick={() => {
-                                                setEditingOpeningBalanceId(ob.id);
-                                                setSelectedOpeningBalancePersonId(ob.personId);
-                                                setOpeningBalanceAmount(ob.amount.toString());
-                                                setOpeningBalanceType(ob.balanceType);
-                                                setOpeningBalanceDate(new DateObject(ob.date));
-                                                setOpeningBalanceDescription(ob.description || "");
-                                                setIsOpeningBalanceModalOpen(true);
+                                                setEditingOpeningBalanceId(
+                                                  ob.id,
+                                                );
+                                                setSelectedOpeningBalancePersonId(
+                                                  ob.personId,
+                                                );
+                                                setOpeningBalanceAmount(
+                                                  ob.amount.toString(),
+                                                );
+                                                setOpeningBalanceType(
+                                                  ob.balanceType,
+                                                );
+                                                setOpeningBalanceDate(
+                                                  new DateObject(ob.date),
+                                                );
+                                                setOpeningBalanceDescription(
+                                                  ob.description || "",
+                                                );
+                                                setIsOpeningBalanceModalOpen(
+                                                  true,
+                                                );
                                               }}
                                               className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-colors cursor-pointer"
                                               title="ویرایش سند"
@@ -13600,15 +14093,25 @@ export default function App() {
                                             </button>
                                             <button
                                               onClick={async () => {
-                                                if (window.confirm("آیا از حذف این سند افتتاحیه اطمینان دارید؟ با حذف این سند، مانده حساب اولیه شخص نیز صفر خواهد شد.")) {
+                                                if (
+                                                  window.confirm(
+                                                    "آیا از حذف این سند افتتاحیه اطمینان دارید؟ با حذف این سند، مانده حساب اولیه شخص نیز صفر خواهد شد.",
+                                                  )
+                                                ) {
                                                   try {
-                                                    await deletePersonOpeningBalance(ob.id);
+                                                    await deletePersonOpeningBalance(
+                                                      ob.id,
+                                                    );
                                                     await fetchPersonOpeningBalances();
                                                     await fetchPersons();
-                                                    customAlert("سند افتتاحیه با موفقیت حذف شد.");
+                                                    customAlert(
+                                                      "سند افتتاحیه با موفقیت حذف شد.",
+                                                    );
                                                   } catch (err) {
                                                     console.error(err);
-                                                    customAlert("خطا در حذف سند افتتاحیه.");
+                                                    customAlert(
+                                                      "خطا در حذف سند افتتاحیه.",
+                                                    );
                                                   }
                                                 }
                                               }}
@@ -13643,11 +14146,15 @@ export default function App() {
                             <div className="bg-gradient-to-l from-indigo-600 to-violet-600 px-6 py-5 border-b border-indigo-700 flex items-center justify-between">
                               <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
                                 <FileText className="w-5 h-5 text-indigo-200" />
-                                {editingOpeningBalanceId ? "ویرایش سند افتتاحیه" : "ثبت سند افتتاحیه جدید"}
+                                {editingOpeningBalanceId
+                                  ? "ویرایش سند افتتاحیه"
+                                  : "ثبت سند افتتاحیه جدید"}
                               </h2>
                               <button
                                 type="button"
-                                onClick={() => setIsOpeningBalanceModalOpen(false)}
+                                onClick={() =>
+                                  setIsOpeningBalanceModalOpen(false)
+                                }
                                 className="p-1.5 hover:bg-white/20 text-indigo-100 hover:text-white rounded-xl transition-colors cursor-pointer"
                               >
                                 <X className="w-5 h-5" />
@@ -13655,75 +14162,104 @@ export default function App() {
                             </div>
 
                             {/* Modal Form */}
-                            <form onSubmit={async (e) => {
-                              e.preventDefault();
-                              if (!selectedOpeningBalancePersonId) {
-                                customAlert("لطفا شخص مورد نظر را انتخاب کنید.");
-                                return;
-                              }
-                              const amountNum = Number(openingBalanceAmount);
-                              if (isNaN(amountNum) || amountNum <= 0) {
-                                customAlert("لطفا یک مبلغ معتبر وارد کنید.");
-                                return;
-                              }
-
-                              // Check duplicate person
-                              const exists = personOpeningBalances.some(b => String(b.personId) === String(selectedOpeningBalancePersonId));
-                              if (exists && !editingOpeningBalanceId) {
-                                customAlert("برای این شخص قبلا سند افتتاحیه ثبت شده است. لطفا همان سند قبلی را ویرایش یا حذف کنید.");
-                                return;
-                              }
-
-                              setSubmittingOpeningBalance(true);
-                              try {
-                                const formattedDate = typeof openingBalanceDate.format === "function" 
-                                  ? openingBalanceDate.format("YYYY/MM/DD") 
-                                  : String(openingBalanceDate);
-
-                                const payload = {
-                                  personId: selectedOpeningBalancePersonId,
-                                  amount: amountNum,
-                                  balanceType: openingBalanceType,
-                                  date: formattedDate,
-                                  description: openingBalanceDescription
-                                };
-
-                                if (editingOpeningBalanceId) {
-                                  await updatePersonOpeningBalance(editingOpeningBalanceId, payload);
-                                  customAlert("سند افتتاحیه با موفقیت بروزرسانی شد.");
-                                } else {
-                                  await addPersonOpeningBalance(payload);
-                                  customAlert("سند افتتاحیه با موفقیت ثبت شد.");
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                if (!selectedOpeningBalancePersonId) {
+                                  customAlert(
+                                    "لطفا شخص مورد نظر را انتخاب کنید.",
+                                  );
+                                  return;
+                                }
+                                const amountNum = Number(openingBalanceAmount);
+                                if (isNaN(amountNum) || amountNum <= 0) {
+                                  customAlert("لطفا یک مبلغ معتبر وارد کنید.");
+                                  return;
                                 }
 
-                                await fetchPersonOpeningBalances();
-                                await fetchPersons();
-                                setIsOpeningBalanceModalOpen(false);
-                              } catch (err) {
-                                console.error(err);
-                                customAlert("خطا در ذخیره سند افتتاحیه.");
-                              } finally {
-                                setSubmittingOpeningBalance(false);
-                              }
-                            }} className="p-6 space-y-6 bg-slate-50/50">
+                                // Check duplicate person
+                                const exists = personOpeningBalances.some(
+                                  (b) =>
+                                    String(b.personId) ===
+                                    String(selectedOpeningBalancePersonId),
+                                );
+                                if (exists && !editingOpeningBalanceId) {
+                                  customAlert(
+                                    "برای این شخص قبلا سند افتتاحیه ثبت شده است. لطفا همان سند قبلی را ویرایش یا حذف کنید.",
+                                  );
+                                  return;
+                                }
+
+                                setSubmittingOpeningBalance(true);
+                                try {
+                                  const formattedDate =
+                                    typeof openingBalanceDate.format ===
+                                    "function"
+                                      ? openingBalanceDate.format("YYYY/MM/DD")
+                                      : String(openingBalanceDate);
+
+                                  const payload = {
+                                    personId: selectedOpeningBalancePersonId,
+                                    amount: amountNum,
+                                    balanceType: openingBalanceType,
+                                    date: formattedDate,
+                                    description: openingBalanceDescription,
+                                  };
+
+                                  if (editingOpeningBalanceId) {
+                                    await updatePersonOpeningBalance(
+                                      editingOpeningBalanceId,
+                                      payload,
+                                    );
+                                    customAlert(
+                                      "سند افتتاحیه با موفقیت بروزرسانی شد.",
+                                    );
+                                  } else {
+                                    await addPersonOpeningBalance(payload);
+                                    customAlert(
+                                      "سند افتتاحیه با موفقیت ثبت شد.",
+                                    );
+                                  }
+
+                                  await fetchPersonOpeningBalances();
+                                  await fetchPersons();
+                                  setIsOpeningBalanceModalOpen(false);
+                                } catch (err) {
+                                  console.error(err);
+                                  customAlert("خطا در ذخیره سند افتتاحیه.");
+                                } finally {
+                                  setSubmittingOpeningBalance(false);
+                                }
+                              }}
+                              className="p-6 space-y-6 bg-slate-50/50"
+                            >
                               {/* Person Selection */}
                               <div>
                                 <label className="block text-sm font-extrabold text-slate-700 mb-2">
-                                  شخص / طرف حساب را انتخاب کنید <span className="text-rose-500">*</span>
+                                  شخص / طرف حساب را انتخاب کنید{" "}
+                                  <span className="text-rose-500">*</span>
                                 </label>
                                 <Select
                                   isRtl
-                                  options={persons.filter(p => p.isActive).map(p => ({
-                                    value: p.id.toString(),
-                                    label: `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"})${p.personCode ? ` - کد: ${p.personCode}` : ""}`,
-                                    data: p
-                                  }))}
+                                  options={persons
+                                    .filter((p) => p.isActive)
+                                    .map((p) => ({
+                                      value: p.id.toString(),
+                                      label: `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"})${p.personCode ? ` - کد: ${p.personCode}` : ""}`,
+                                      data: p,
+                                    }))}
                                   formatOptionLabel={(option: any) => (
                                     <div className="flex items-center justify-between py-1">
                                       <div className="flex flex-col">
-                                        <span className="font-extrabold text-slate-800 text-sm">{option.data.name}</span>
+                                        <span className="font-extrabold text-slate-800 text-sm">
+                                          {option.data.name}
+                                        </span>
                                         <span className="text-xs text-slate-500 mt-0.5">
-                                          {option.data.role === "supplier" ? "تامین‌کننده" : option.data.role === "employee" ? "کارمند" : "مشتری"}
+                                          {option.data.role === "supplier"
+                                            ? "تامین‌کننده"
+                                            : option.data.role === "employee"
+                                              ? "کارمند"
+                                              : "مشتری"}
                                         </span>
                                       </div>
                                       {option.data.personCode && (
@@ -13738,22 +14274,52 @@ export default function App() {
                                       ? {
                                           value: selectedOpeningBalancePersonId,
                                           label: (() => {
-                                            const p = persons.find(x => String(x.id) === String(selectedOpeningBalancePersonId));
-                                            return p ? `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"})${p.personCode ? ` - کد: ${p.personCode}` : ""}` : "";
+                                            const p = persons.find(
+                                              (x) =>
+                                                String(x.id) ===
+                                                String(
+                                                  selectedOpeningBalancePersonId,
+                                                ),
+                                            );
+                                            return p
+                                              ? `${p.name} (${p.role === "supplier" ? "تامین‌کننده" : p.role === "employee" ? "کارمند" : "مشتری"})${p.personCode ? ` - کد: ${p.personCode}` : ""}`
+                                              : "";
                                           })(),
-                                          data: persons.find(x => String(x.id) === String(selectedOpeningBalancePersonId))
+                                          data: persons.find(
+                                            (x) =>
+                                              String(x.id) ===
+                                              String(
+                                                selectedOpeningBalancePersonId,
+                                              ),
+                                          ),
                                         }
                                       : null
                                   }
                                   onChange={(opt: any) => {
                                     const selectedId = opt ? opt.value : "";
-                                    setSelectedOpeningBalancePersonId(selectedId);
-                                    if (selectedId && !editingOpeningBalanceId) {
+                                    setSelectedOpeningBalancePersonId(
+                                      selectedId,
+                                    );
+                                    if (
+                                      selectedId &&
+                                      !editingOpeningBalanceId
+                                    ) {
                                       const p = opt.data;
-                                      if (p && p.initialBalance && p.initialBalance > 0) {
-                                        setOpeningBalanceAmount(p.initialBalance.toString());
-                                        if (p.initialBalanceType === "debtor" || p.initialBalanceType === "creditor") {
-                                          setOpeningBalanceType(p.initialBalanceType);
+                                      if (
+                                        p &&
+                                        p.initialBalance &&
+                                        p.initialBalance > 0
+                                      ) {
+                                        setOpeningBalanceAmount(
+                                          p.initialBalance.toString(),
+                                        );
+                                        if (
+                                          p.initialBalanceType === "debtor" ||
+                                          p.initialBalanceType === "creditor"
+                                        ) {
+                                          setOpeningBalanceType(
+                                            p.initialBalanceType,
+                                          );
                                         }
                                       } else {
                                         setOpeningBalanceAmount("");
@@ -13776,12 +14342,15 @@ export default function App() {
                               {/* Balance Type buttons */}
                               <div>
                                 <label className="block text-sm font-extrabold text-slate-700 mb-2">
-                                  نوع مانده حساب افتتاحیه <span className="text-rose-500">*</span>
+                                  نوع مانده حساب افتتاحیه{" "}
+                                  <span className="text-rose-500">*</span>
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
                                   <button
                                     type="button"
-                                    onClick={() => setOpeningBalanceType("debtor")}
+                                    onClick={() =>
+                                      setOpeningBalanceType("debtor")
+                                    }
                                     className={`py-3 px-4 text-center rounded-2xl text-sm font-bold border-2 transition-all cursor-pointer ${
                                       openingBalanceType === "debtor"
                                         ? "bg-rose-50 text-rose-700 border-rose-500 shadow-md shadow-rose-100"
@@ -13792,7 +14361,9 @@ export default function App() {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => setOpeningBalanceType("creditor")}
+                                    onClick={() =>
+                                      setOpeningBalanceType("creditor")
+                                    }
                                     className={`py-3 px-4 text-center rounded-2xl text-sm font-bold border-2 transition-all cursor-pointer ${
                                       openingBalanceType === "creditor"
                                         ? "bg-emerald-50 text-emerald-700 border-emerald-500 shadow-md shadow-emerald-100"
@@ -13808,11 +14379,15 @@ export default function App() {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
                                   <label className="block text-sm font-extrabold text-slate-700 mb-2">
-                                    مبلغ مانده اولیه ({storeSettings?.currency || "تومان"}) <span className="text-rose-500">*</span>
+                                    مبلغ مانده اولیه (
+                                    {storeSettings?.currency || "تومان"}){" "}
+                                    <span className="text-rose-500">*</span>
                                   </label>
                                   <CurrencyInput
                                     value={openingBalanceAmount}
-                                    onChange={(e: any) => setOpeningBalanceAmount(e.target.value)}
+                                    onChange={(e: any) =>
+                                      setOpeningBalanceAmount(e.target.value)
+                                    }
                                     placeholder="مثلا: 10,000,000"
                                     className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-lg font-sans font-extrabold text-slate-800 tracking-wider bg-white transition-all text-left"
                                   />
@@ -13820,19 +14395,22 @@ export default function App() {
 
                                 <div>
                                   <label className="block text-sm font-extrabold text-slate-700 mb-2">
-                                    تاریخ ثبت سند <span className="text-rose-500">*</span>
+                                    تاریخ ثبت سند{" "}
+                                    <span className="text-rose-500">*</span>
                                   </label>
                                   <div className="relative">
                                     <DatePicker
                                       value={openingBalanceDate}
                                       onChange={setOpeningBalanceDate}
                                       calendar={
-                                        storeSettings?.calendarType === "gregorian"
+                                        storeSettings?.calendarType ===
+                                        "gregorian"
                                           ? undefined
                                           : persian
                                       }
                                       locale={
-                                        storeSettings?.calendarType === "gregorian"
+                                        storeSettings?.calendarType ===
+                                        "gregorian"
                                           ? undefined
                                           : persian_fa
                                       }
@@ -13849,7 +14427,9 @@ export default function App() {
                                 </label>
                                 <textarea
                                   value={openingBalanceDescription}
-                                  onChange={(e) => setOpeningBalanceDescription(e.target.value)}
+                                  onChange={(e) =>
+                                    setOpeningBalanceDescription(e.target.value)
+                                  }
                                   placeholder="مثلا: بابت مانده حساب قبلی سال ۱۴۰۴"
                                   rows={2}
                                   className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-sm font-bold bg-white transition-all"
@@ -13860,7 +14440,9 @@ export default function App() {
                               <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 mt-2">
                                 <button
                                   type="button"
-                                  onClick={() => setIsOpeningBalanceModalOpen(false)}
+                                  onClick={() =>
+                                    setIsOpeningBalanceModalOpen(false)
+                                  }
                                   className="px-6 py-2.5 hover:bg-slate-200 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold cursor-pointer transition-colors"
                                 >
                                   انصراف
@@ -13967,7 +14549,8 @@ export default function App() {
                               مدیریت اشخاص
                             </h1>
                             <p className="text-sm text-slate-500 font-semibold mt-2 tracking-tight">
-                              پرونده‌ی اطلاعاتی جامع مشتریان، تامین‌کنندگان و همکاران
+                              پرونده‌ی اطلاعاتی جامع مشتریان، تامین‌کنندگان و
+                              همکاران
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-3 relative z-10">
@@ -14025,10 +14608,16 @@ export default function App() {
                         </div>
 
                         {successMsg && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mx-6 sm:mx-8 mt-6">
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            className="mx-6 sm:mx-8 mt-6"
+                          >
                             <div className="bg-emerald-50/80 text-emerald-700 px-5 py-4 rounded-2xl flex items-center gap-3 border border-emerald-100/50 shadow-sm">
                               <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-                              <span className="font-bold text-sm">{successMsg}</span>
+                              <span className="font-bold text-sm">
+                                {successMsg}
+                              </span>
                             </div>
                           </motion.div>
                         )}
@@ -14044,39 +14633,41 @@ export default function App() {
                               className="w-full pl-4 pr-12 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 hover:bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all text-sm text-slate-900 font-bold outline-none"
                               placeholder="جستجوی نام، تلفن، کد ملی، شماره شخص..."
                               value={personSearchTerm}
-                              onChange={(e) => setPersonSearchTerm(e.target.value)}
+                              onChange={(e) =>
+                                setPersonSearchTerm(e.target.value)
+                              }
                             />
                           </div>
 
                           {/* Filters Layout */}
                           <div className="flex flex-wrap items-center gap-3">
-                             <div className="flex bg-slate-100/70 p-1.5 rounded-2xl overflow-x-auto hide-scrollbar">
+                            <div className="flex bg-slate-100/70 p-1.5 rounded-2xl overflow-x-auto hide-scrollbar">
+                              <button
+                                onClick={() => {
+                                  setSelectedPersonRole("all");
+                                  setPersonCurrentPage(1);
+                                }}
+                                className={`px-4 py-2 rounded-xl font-black text-xs transition-all whitespace-nowrap ${selectedPersonRole === "all" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border-transparent cursor-pointer"}`}
+                              >
+                                همه نقش‌ها
+                              </button>
+                              {personRoles.map((r) => (
                                 <button
+                                  key={r.id}
                                   onClick={() => {
-                                    setSelectedPersonRole("all");
+                                    setSelectedPersonRole(r.id);
                                     setPersonCurrentPage(1);
                                   }}
-                                  className={`px-4 py-2 rounded-xl font-black text-xs transition-all whitespace-nowrap ${selectedPersonRole === "all" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border-transparent cursor-pointer"}`}
+                                  className={`px-4 py-2 rounded-xl font-black text-xs transition-all whitespace-nowrap ${selectedPersonRole === r.id ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border-transparent cursor-pointer"}`}
                                 >
-                                  همه نقش‌ها
+                                  {r.name}
                                 </button>
-                                {personRoles.map((r) => (
-                                  <button
-                                    key={r.id}
-                                    onClick={() => {
-                                      setSelectedPersonRole(r.id);
-                                      setPersonCurrentPage(1);
-                                    }}
-                                    className={`px-4 py-2 rounded-xl font-black text-xs transition-all whitespace-nowrap ${selectedPersonRole === r.id ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border-transparent cursor-pointer"}`}
-                                  >
-                                    {r.name}
-                                  </button>
-                                ))}
-                             </div>
+                              ))}
+                            </div>
 
-                             <div className="h-8 w-px bg-slate-200 hidden xl:block" />
+                            <div className="h-8 w-px bg-slate-200 hidden xl:block" />
 
-                             <div className="flex flex-wrap gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                            <div className="flex flex-wrap gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
                               <button
                                 onClick={() => setSelectedPersonGroup("all")}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border-none cursor-pointer ${
@@ -14146,9 +14737,9 @@ export default function App() {
                                 </select>
                               )}
                             </div>
-                            
+
                             <div className="h-8 w-px bg-slate-200 hidden xl:block" />
-                            
+
                             <div className="flex bg-slate-100/70 p-1.5 rounded-2xl">
                               <button
                                 onClick={() => setPersonsViewMode("list")}
@@ -14174,16 +14765,22 @@ export default function App() {
                               <div className="w-20 h-20 bg-white rounded-full shadow-sm border border-slate-100 flex items-center justify-center mb-6">
                                 <User className="w-10 h-10 text-slate-300" />
                               </div>
-                              <h3 className="text-lg font-black text-slate-700 mb-2">هیچ شخصی یافت نشد</h3>
-                              <p className="text-sm font-semibold text-slate-400">با تغییر فیلترها جستجو را تکرار کنید یا شخص جدیدی ایجاد نمایید.</p>
+                              <h3 className="text-lg font-black text-slate-700 mb-2">
+                                هیچ شخصی یافت نشد
+                              </h3>
+                              <p className="text-sm font-semibold text-slate-400">
+                                با تغییر فیلترها جستجو را تکرار کنید یا شخص
+                                جدیدی ایجاد نمایید.
+                              </p>
                             </div>
                           ) : personsViewMode === "list" ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                               {paginatedPersons.map((p, index) => {
-                                const bal = paginatedPersonBalances[p.id.toString()] || 0;
+                                const bal =
+                                  paginatedPersonBalances[p.id.toString()] || 0;
                                 const isDebtor = bal > 0;
                                 const isCreditor = bal < 0;
-                                
+
                                 return (
                                   <motion.div
                                     initial={{ opacity: 0, scale: 0.95 }}
@@ -14191,266 +14788,437 @@ export default function App() {
                                     transition={{ delay: index * 0.03 }}
                                     key={p.id}
                                     onClick={() => setDrawerPersonId(p.id)}
-                                    className="group relative bg-white border border-slate-200 hover:border-indigo-300 rounded-3xl p-5 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer flex flex-col"
+                                    className="group relative bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer flex flex-col"
                                   >
-                                    <div className="flex items-start gap-4">
+                                    <div className="flex items-start gap-3">
                                       <div className="relative">
                                         {p.imageUrl ? (
-                                          <img src={p.imageUrl} alt={p.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md ring-1 ring-slate-100 group-hover:ring-indigo-100 transition-all z-10 relative" />
+                                          <img
+                                            src={p.imageUrl}
+                                            alt={p.name}
+                                            className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-md ring-1 ring-slate-100 group-hover:ring-indigo-100 transition-all z-10 relative"
+                                          />
                                         ) : (
-                                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-white shadow-sm ring-1 ring-slate-100 group-hover:ring-indigo-100 flex items-center justify-center transition-all z-10 relative overflow-hidden">
-                                            {p.personType === "real" && p.gender === "male" ? (
-                                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-blue-400 opacity-80 mt-2">
+                                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 border-2 border-white shadow-sm ring-1 ring-slate-100 group-hover:ring-indigo-100 flex items-center justify-center transition-all z-10 relative overflow-hidden">
+                                            {p.personType === "real" &&
+                                            p.gender === "male" ? (
+                                              <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="w-8 h-8 text-blue-400 opacity-80 mt-1"
+                                              >
                                                 <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                                                <circle cx="12" cy="7" r="4"></circle>
+                                                <circle
+                                                  cx="12"
+                                                  cy="7"
+                                                  r="4"
+                                                ></circle>
                                               </svg>
-                                            ) : p.personType === "real" && p.gender === "female" ? (
-                                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 text-pink-400 opacity-80 mt-2">
+                                            ) : p.personType === "real" &&
+                                              p.gender === "female" ? (
+                                              <svg
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                className="w-8 h-8 text-pink-400 opacity-80 mt-1"
+                                              >
                                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                                <circle cx="12" cy="7" r="4"></circle>
+                                                <circle
+                                                  cx="12"
+                                                  cy="7"
+                                                  r="4"
+                                                ></circle>
                                                 <path d="M8 7v4s0 2 -2 2"></path>
                                                 <path d="M16 7v4s0 2 2 2"></path>
                                               </svg>
                                             ) : (
-                                              <span className="text-2xl font-black text-slate-300">
+                                              <span className="text-xl font-black text-slate-300">
                                                 {p.name.substring(0, 1)}
                                               </span>
                                             )}
                                           </div>
                                         )}
-                                        <div className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shadow-sm z-20 border-2 border-white ${
-                                          p.personType === "legal" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
-                                        }`}>
-                                          {p.personType === "legal" ? <Building className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+                                        <div
+                                          className={`absolute -bottom-2 -right-2 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] shadow-sm z-20 border-2 border-white ${
+                                            p.personType === "legal"
+                                              ? "bg-amber-100 text-amber-700"
+                                              : "bg-blue-100 text-blue-700"
+                                          }`}
+                                        >
+                                          {p.personType === "legal" ? (
+                                            <Building className="w-3.5 h-3.5" />
+                                          ) : (
+                                            <User className="w-3.5 h-3.5" />
+                                          )}
                                         </div>
                                       </div>
 
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2">
                                           <div>
-                                            <h3 className="text-base font-black text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
-                                              {p.name}
+                                            <h3 className="text-sm font-black text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
+                                              {p.alias ? p.alias : p.name}
                                               {p.isActive === false && (
-                                                <span className="mr-2 text-[10px] font-bold bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md align-middle">غیرفعال</span>
+                                                <span className="mr-2 text-[10px] font-bold bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md align-middle">
+                                                  غیرفعال
+                                                </span>
                                               )}
                                             </h3>
                                             {p.alias && (
-                                              <p className="text-xs font-black text-rose-600 mt-1 truncate bg-rose-50/70 inline-block px-2.5 py-0.5 rounded-lg border border-rose-100/50">
-                                                نام مستعار: {p.alias}
+                                              <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate">
+                                                {p.name}
                                               </p>
                                             )}
                                           </div>
                                           <div className="flex flex-col items-end gap-1 shrink-0">
                                             {p.personCode && (
                                               <span className="text-[10px] font-black font-sans bg-slate-100 text-slate-600 px-2 py-0.5 rounded-lg border border-slate-200/50 shadow-3xs">
-                                                ID: {toPersianDigits(p.personCode)}
+                                                ID:{" "}
+                                                {toPersianDigits(p.personCode)}
                                               </span>
                                             )}
                                             {p.accountingCode && (
                                               <span className="text-[10px] font-black font-mono bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg border border-indigo-100/50 shadow-3xs">
-                                                ACC: {toPersianDigits(p.accountingCode)}
+                                                ACC:{" "}
+                                                {toPersianDigits(
+                                                  p.accountingCode,
+                                                )}
                                               </span>
                                             )}
                                           </div>
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${getRoleBadgeClasses(p.role)}`}>
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                          <span
+                                            className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${getRoleBadgeClasses(p.role)}`}
+                                          >
                                             {getRoleName(p.role)}
                                           </span>
-                                          
-                                          {p.group ? (
-                                            (() => {
-                                              const g = personGroups.find(grp => grp.id === p.group);
-                                              if (!g) return null;
-                                              let bg = "bg-slate-100", text = "text-slate-600";
-                                              if (g.color === "indigo") { bg = "bg-indigo-50"; text = "text-indigo-700"; }
-                                              else if (g.color === "emerald") { bg = "bg-emerald-50"; text = "text-emerald-700"; }
-                                              else if (g.color === "amber") { bg = "bg-amber-50"; text = "text-amber-700"; }
-                                              else if (g.color === "rose") { bg = "bg-rose-50"; text = "text-rose-700"; }
-                                              else if (g.color === "purple") { bg = "bg-purple-50"; text = "text-purple-700"; }
-                                              else if (g.color === "cyan") { bg = "bg-cyan-50"; text = "text-cyan-700"; }
-                                              return (
-                                                <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${bg} ${text}`}>
-                                                  {g.name}
-                                                </span>
-                                              );
-                                            })()
-                                          ) : null}
+
+                                          {p.group
+                                            ? (() => {
+                                                const g = personGroups.find(
+                                                  (grp) => grp.id === p.group,
+                                                );
+                                                if (!g) return null;
+                                                let bg = "bg-slate-100",
+                                                  text = "text-slate-600";
+                                                if (g.color === "indigo") {
+                                                  bg = "bg-indigo-50";
+                                                  text = "text-indigo-700";
+                                                } else if (
+                                                  g.color === "emerald"
+                                                ) {
+                                                  bg = "bg-emerald-50";
+                                                  text = "text-emerald-700";
+                                                } else if (
+                                                  g.color === "amber"
+                                                ) {
+                                                  bg = "bg-amber-50";
+                                                  text = "text-amber-700";
+                                                } else if (g.color === "rose") {
+                                                  bg = "bg-rose-50";
+                                                  text = "text-rose-700";
+                                                } else if (
+                                                  g.color === "purple"
+                                                ) {
+                                                  bg = "bg-purple-50";
+                                                  text = "text-purple-700";
+                                                } else if (g.color === "cyan") {
+                                                  bg = "bg-cyan-50";
+                                                  text = "text-cyan-700";
+                                                }
+                                                return (
+                                                  <span
+                                                    className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${bg} ${text}`}
+                                                  >
+                                                    {g.name}
+                                                  </span>
+                                                );
+                                              })()
+                                            : null}
                                         </div>
                                       </div>
                                     </div>
 
-                                    <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                                      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50">
+                                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                                      <div className="bg-slate-50 rounded-xl p-2 border border-slate-100/50">
                                         <div className="text-[10px] font-black text-slate-400 mb-1 flex items-center gap-1.5">
                                           <Phone className="w-3.5 h-3.5" />
                                           شماره تماس
                                         </div>
                                         <div className="font-bold text-slate-700 font-sans tracking-wide text-xs">
-                                          {p.phone ? toPersianDigits(p.phone) : <span className="text-slate-300">-</span>}
+                                          {p.phone ? (
+                                            toPersianDigits(p.phone)
+                                          ) : (
+                                            <span className="text-slate-300">
+                                              -
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
-                                      <div className={`rounded-2xl p-3 border ${isDebtor ? 'bg-rose-50/50 border-rose-100/50' : isCreditor ? 'bg-emerald-50/50 border-emerald-100/50' : 'bg-slate-50 border-slate-100/50'}`}>
-                                        <div className={`text-[10px] font-black mb-1 flex items-center gap-1.5 ${isDebtor ? 'text-rose-500' : isCreditor ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                      <div
+                                        className={`rounded-xl p-2 border ${isDebtor ? "bg-rose-50/50 border-rose-100/50" : isCreditor ? "bg-emerald-50/50 border-emerald-100/50" : "bg-slate-50 border-slate-100/50"}`}
+                                      >
+                                        <div
+                                          className={`text-[10px] font-black mb-1 flex items-center gap-1.5 ${isDebtor ? "text-rose-500" : isCreditor ? "text-emerald-500" : "text-slate-400"}`}
+                                        >
                                           <Wallet className="w-3.5 h-3.5" />
                                           وضعیت مانده
                                         </div>
-                                        <div className={`font-black font-sans text-xs flex items-center gap-1 ${isDebtor ? 'text-rose-700' : isCreditor ? 'text-emerald-700' : 'text-slate-600'}`} dir="ltr">
-                                          {bal === 0 ? "تسویه (۰)" : toPersianDigits(formatNumber(Math.abs(bal)))}
-                                          {bal !== 0 && <span className="text-[9px]">{storeSettings.currency}</span>}
+                                        <div
+                                          className={`font-black font-sans text-[11px] flex items-center gap-1 ${isDebtor ? "text-rose-700" : isCreditor ? "text-emerald-700" : "text-slate-600"}`}
+                                          dir="ltr"
+                                        >
+                                          {bal === 0
+                                            ? "تسویه (۰)"
+                                            : toPersianDigits(
+                                                formatNumber(Math.abs(bal)),
+                                              )}
+                                          {bal !== 0 && (
+                                            <span className="text-[9px]">
+                                              {storeSettings.currency}
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
 
-                                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 relative">
-                                       <span className="text-[10px] font-black text-indigo-500 px-2">عملیات حساب:</span>
-                                       <div className="flex items-center gap-1" dir="ltr">
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setOpenPersonActionsId(openPersonActionsId === p.id ? null : p.id);
-                                            }}
-                                            className="px-3 py-1.5 h-8 flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] shadow-sm"
-                                          >
-                                            <Settings className="w-3.5 h-3.5" /> عملیات <ChevronDown className={`w-3 h-3 transition-transform ${openPersonActionsId === p.id ? "rotate-180" : ""}`} />
-                                          </button>
-                                          
-                                          {openPersonActionsId === p.id && (
-                                            <>
-                                              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenPersonActionsId(null); }}></div>
-                                              <div className="absolute left-0 bottom-10 mb-2 w-64 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 flex flex-col" onClick={(e) => e.stopPropagation()} dir="rtl">
-                                                <div className="bg-slate-50 px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-                                                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">عملیات شخص</span>
-                                                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{p.name.substring(0, 15)}{p.name.length > 15 ? '...' : ''}</span>
-                                                </div>
-                                                <div className="p-1.5 flex flex-col gap-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setLedgerPersonId(p.id);
-                                                          setActiveTab("person_ledger");
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-indigo-100/50 flex items-center justify-center text-indigo-600">
-                                                          <FileText className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        مشاهده کارت حساب
-                                                      </button>
-                                                      
-                                                      <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">امور بازرگانی</div>
-                                                      
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_sale");
-                                                          setCustomerId(p.id);
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-blue-100/50 flex items-center justify-center text-blue-600">
-                                                          <FileText className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        صدور فاکتور فروش
-                                                      </button>
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_purchase");
-                                                          setCustomerId(p.id);
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-violet-50 hover:text-violet-700 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-violet-100/50 flex items-center justify-center text-violet-600">
-                                                          <ShoppingCart className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        صدور فاکتور خرید
-                                                      </button>
-                                                      
-                                                      <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">امور مالی و خزانه‌داری</div>
-                                                      
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_receive_receipt");
-                                                          setReceiptPersonId(p.id);
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-emerald-100/50 flex items-center justify-center text-emerald-600">
-                                                          <ArrowDownToLine className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        دریافت وجه (سند وصول)
-                                                      </button>
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_pay_receipt");
-                                                          setReceiptPersonId(p.id);
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-rose-100/50 flex items-center justify-center text-rose-600">
-                                                          <ArrowUpFromLine className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        پرداخت وجه (سند پرداخت)
-                                                      </button>
-                                                      
-                                                      <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">اطلاعات پایه</div>
-                                                      
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          handleEditPerson(p);
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-slate-200/50 flex items-center justify-center text-slate-600">
-                                                          <Edit2 className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        ویرایش اطلاعات پایه
-                                                      </button>
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setPersonExtraId(p.id);
-                                                          setPersonBankName(p.bankName || "");
-                                                          setPersonBankAcc(p.bankAccountNumber || "");
-                                                          setPersonCard(p.cardNumber || "");
-                                                          setPersonSheba(p.shebaNumber || "");
-                                                          setPersonNotes(p.additionalNotes || "");
-                                                          setIsPersonExtraModalOpen(true);
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-slate-200/50 flex items-center justify-center text-slate-600">
-                                                          <Info className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        اطلاعات تکمیلی بانکی
-                                                      </button>
-                                                      
-                                                      <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <button 
-                                                        onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          confirmAction("آیا از حذف این شخص اطمینان دارید؟", () => handleDeletePerson(p.id));
-                                                        }} 
-                                                        className="w-full text-right px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-colors flex items-center gap-2"
-                                                      >
-                                                        <div className="w-6 h-6 rounded-lg bg-rose-100/50 flex items-center justify-center text-rose-600">
-                                                          <Trash2 className="w-3.5 h-3.5" /> 
-                                                        </div>
-                                                        حذف شخص
-                                                      </button>
-                                                    </div>
+                                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 relative">
+                                      <span className="text-[10px] font-black text-indigo-500 px-2">
+                                        عملیات حساب:
+                                      </span>
+                                      <div
+                                        className="flex items-center gap-1"
+                                        dir="ltr"
+                                      >
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOpenPersonActionsId(
+                                              openPersonActionsId === p.id
+                                                ? null
+                                                : p.id,
+                                            );
+                                          }}
+                                          className="px-3 py-1.5 h-8 flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] shadow-sm"
+                                        >
+                                          <Settings className="w-3.5 h-3.5" />{" "}
+                                          عملیات{" "}
+                                          <ChevronDown
+                                            className={`w-3 h-3 transition-transform ${openPersonActionsId === p.id ? "rotate-180" : ""}`}
+                                          />
+                                        </button>
+
+                                        {openPersonActionsId === p.id && (
+                                          <>
+                                            <div
+                                              className="fixed inset-0 z-40"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenPersonActionsId(null);
+                                              }}
+                                            ></div>
+                                            <div
+                                              className="absolute left-0 bottom-10 mb-2 w-64 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 flex flex-col"
+                                              onClick={(e) =>
+                                                e.stopPropagation()
+                                              }
+                                              dir="rtl"
+                                            >
+                                              <div className="bg-slate-50 px-3 py-2 border-b border-slate-100 flex items-center justify-between">
+                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                  عملیات شخص
+                                                </span>
+                                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                                                  {p.name.substring(0, 15)}
+                                                  {p.name.length > 15
+                                                    ? "..."
+                                                    : ""}
+                                                </span>
+                                              </div>
+                                              <div className="p-1.5 flex flex-col gap-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    setLedgerPersonId(p.id);
+                                                    setActiveTab(
+                                                      "person_ledger",
+                                                    );
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-indigo-100/50 flex items-center justify-center text-indigo-600">
+                                                    <FileText className="w-3.5 h-3.5" />
                                                   </div>
-                                                </>
-                                              )}
-                                       </div>
+                                                  مشاهده کارت حساب
+                                                </button>
+
+                                                <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                                                <div className="px-3 py-1 text-[9px] font-black text-slate-400">
+                                                  امور بازرگانی
+                                                </div>
+
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    setActiveTab("create_sale");
+                                                    setCustomerId(p.id);
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-blue-100/50 flex items-center justify-center text-blue-600">
+                                                    <FileText className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  صدور فاکتور فروش
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    setActiveTab(
+                                                      "create_purchase",
+                                                    );
+                                                    setCustomerId(p.id);
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-violet-50 hover:text-violet-700 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-violet-100/50 flex items-center justify-center text-violet-600">
+                                                    <ShoppingCart className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  صدور فاکتور خرید
+                                                </button>
+
+                                                <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                                                <div className="px-3 py-1 text-[9px] font-black text-slate-400">
+                                                  امور مالی و خزانه‌داری
+                                                </div>
+
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    setActiveTab(
+                                                      "create_receive_receipt",
+                                                    );
+                                                    setReceiptPersonId(p.id);
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-emerald-100/50 flex items-center justify-center text-emerald-600">
+                                                    <ArrowDownToLine className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  دریافت وجه (سند وصول)
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    setActiveTab(
+                                                      "create_pay_receipt",
+                                                    );
+                                                    setReceiptPersonId(p.id);
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-rose-100/50 flex items-center justify-center text-rose-600">
+                                                    <ArrowUpFromLine className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  پرداخت وجه (سند پرداخت)
+                                                </button>
+
+                                                <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                                                <div className="px-3 py-1 text-[9px] font-black text-slate-400">
+                                                  اطلاعات پایه
+                                                </div>
+
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    handleEditPerson(p);
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-slate-200/50 flex items-center justify-center text-slate-600">
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  ویرایش اطلاعات پایه
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    setPersonExtraId(p.id);
+                                                    setPersonBankName(
+                                                      p.bankName || "",
+                                                    );
+                                                    setPersonBankAcc(
+                                                      p.bankAccountNumber || "",
+                                                    );
+                                                    setPersonCard(
+                                                      p.cardNumber || "",
+                                                    );
+                                                    setPersonSheba(
+                                                      p.shebaNumber || "",
+                                                    );
+                                                    setPersonNotes(
+                                                      p.additionalNotes || "",
+                                                    );
+                                                    setIsPersonExtraModalOpen(
+                                                      true,
+                                                    );
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-slate-200/50 flex items-center justify-center text-slate-600">
+                                                    <Info className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  اطلاعات تکمیلی بانکی
+                                                </button>
+
+                                                <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenPersonActionsId(
+                                                      null,
+                                                    );
+                                                    confirmAction(
+                                                      "آیا از حذف این شخص اطمینان دارید؟",
+                                                      () =>
+                                                        handleDeletePerson(
+                                                          p.id,
+                                                        ),
+                                                    );
+                                                  }}
+                                                  className="w-full text-right px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-colors flex items-center gap-2"
+                                                >
+                                                  <div className="w-6 h-6 rounded-lg bg-rose-100/50 flex items-center justify-center text-rose-600">
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                  </div>
+                                                  حذف شخص
+                                                </button>
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
                                   </motion.div>
                                 );
@@ -14462,59 +15230,100 @@ export default function App() {
                                 <table className="w-full text-sm text-right">
                                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                                     <tr>
-                                      <th className="px-6 py-4">نام شخص / شرکت</th>
+                                      <th className="px-6 py-4">
+                                        نام شخص / شرکت
+                                      </th>
                                       <th className="px-6 py-4">نقش و گروه</th>
                                       <th className="px-6 py-4">شماره تماس</th>
                                       <th className="px-6 py-4">مانده حساب</th>
                                       <th className="px-6 py-4">کدینگ</th>
-                                      <th className="px-6 py-4 text-left">عملیات</th>
+                                      <th className="px-6 py-4 text-left">
+                                        عملیات
+                                      </th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {paginatedPersons.map((p, index) => {
-                                      const bal = paginatedPersonBalances[p.id.toString()] || 0;
+                                      const bal =
+                                        paginatedPersonBalances[
+                                          p.id.toString()
+                                        ] || 0;
                                       const isDebtor = bal > 0;
                                       const isCreditor = bal < 0;
-                                      
+
                                       return (
-                                        <tr 
-                                          key={p.id} 
-                                          onClick={() => setDrawerPersonId(p.id)}
+                                        <tr
+                                          key={p.id}
+                                          onClick={() =>
+                                            setDrawerPersonId(p.id)
+                                          }
                                           className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
                                         >
                                           <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
                                                 {p.imageUrl ? (
-                                                  <img src={p.imageUrl} alt={p.name} className="w-full h-full rounded-xl object-cover" />
+                                                  <img
+                                                    src={p.imageUrl}
+                                                    alt={p.name}
+                                                    className="w-full h-full rounded-xl object-cover"
+                                                  />
+                                                ) : p.personType === "real" &&
+                                                  p.gender === "male" ? (
+                                                  <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    className="w-6 h-6 text-blue-400 mt-1"
+                                                  >
+                                                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                                    <circle
+                                                      cx="12"
+                                                      cy="7"
+                                                      r="4"
+                                                    ></circle>
+                                                  </svg>
+                                                ) : p.personType === "real" &&
+                                                  p.gender === "female" ? (
+                                                  <svg
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    className="w-6 h-6 text-pink-400 mt-1"
+                                                  >
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                                    <circle
+                                                      cx="12"
+                                                      cy="7"
+                                                      r="4"
+                                                    ></circle>
+                                                    <path d="M8 7v4s0 2 -2 2"></path>
+                                                    <path d="M16 7v4s0 2 2 2"></path>
+                                                  </svg>
                                                 ) : (
-                                                  p.personType === "real" && p.gender === "male" ? (
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-blue-400 mt-1">
-                                                      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                                                      <circle cx="12" cy="7" r="4"></circle>
-                                                    </svg>
-                                                  ) : p.personType === "real" && p.gender === "female" ? (
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-pink-400 mt-1">
-                                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                                      <circle cx="12" cy="7" r="4"></circle>
-                                                      <path d="M8 7v4s0 2 -2 2"></path>
-                                                      <path d="M16 7v4s0 2 2 2"></path>
-                                                    </svg>
-                                                  ) : (
-                                                    <span className="text-sm font-black text-slate-400">{p.name.substring(0, 1)}</span>
-                                                  )
+                                                  <span className="text-sm font-black text-slate-400">
+                                                    {p.name.substring(0, 1)}
+                                                  </span>
                                                 )}
                                               </div>
                                               <div>
                                                 <div className="font-black text-slate-800">
-                                                  {p.name}
+                                                  {p.alias ? p.alias : p.name}
                                                   {p.isActive === false && (
-                                                    <span className="mr-2 text-[10px] font-bold bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md">غیرفعال</span>
+                                                    <span className="mr-2 text-[10px] font-bold bg-rose-50 text-rose-500 px-2 py-0.5 rounded-md align-middle">
+                                                      غیرفعال
+                                                    </span>
                                                   )}
                                                 </div>
                                                 {p.alias && (
-                                                  <div className="text-xs font-black text-rose-600 mt-1 bg-rose-50/70 inline-block px-2 py-0.5 rounded-md border border-rose-100/50">
-                                                    نام مستعار: {p.alias}
+                                                  <div className="text-xs font-bold text-slate-500 mt-1">
+                                                    {p.name}
                                                   </div>
                                                 )}
                                               </div>
@@ -14522,174 +15331,303 @@ export default function App() {
                                           </td>
                                           <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1.5">
-                                              <span className={`text-[10px] font-black px-2 py-1 rounded-lg inline-block w-fit ${getRoleBadgeClasses(p.role)}`}>
+                                              <span
+                                                className={`text-[10px] font-black px-2 py-1 rounded-lg inline-block w-fit ${getRoleBadgeClasses(p.role)}`}
+                                              >
                                                 {getRoleName(p.role)}
                                               </span>
-                                              {p.group && (() => {
-                                                const g = personGroups.find(grp => grp.id === p.group);
-                                                if (!g) return null;
-                                                return (
-                                                  <span className="text-[10px] font-bold text-slate-500">{g.name}</span>
-                                                );
-                                              })()}
+                                              {p.group &&
+                                                (() => {
+                                                  const g = personGroups.find(
+                                                    (grp) => grp.id === p.group,
+                                                  );
+                                                  if (!g) return null;
+                                                  return (
+                                                    <span className="text-[10px] font-bold text-slate-500">
+                                                      {g.name}
+                                                    </span>
+                                                  );
+                                                })()}
                                             </div>
                                           </td>
                                           <td className="px-6 py-4">
                                             <span className="font-sans font-bold text-slate-700">
-                                              {p.phone ? toPersianDigits(p.phone) : "-"}
+                                              {p.phone
+                                                ? toPersianDigits(p.phone)
+                                                : "-"}
                                             </span>
                                           </td>
                                           <td className="px-6 py-4">
-                                            <div className={`font-sans font-black text-xs ${isDebtor ? 'text-rose-600' : isCreditor ? 'text-emerald-600' : 'text-slate-500'}`} dir="ltr">
-                                              {bal === 0 ? "تسویه (۰)" : toPersianDigits(formatNumber(Math.abs(bal)))}
-                                              {bal !== 0 && <span className="text-[10px] font-medium mr-1">{storeSettings.currency}</span>}
+                                            <div
+                                              className={`font-sans font-black text-xs ${isDebtor ? "text-rose-600" : isCreditor ? "text-emerald-600" : "text-slate-500"}`}
+                                              dir="ltr"
+                                            >
+                                              {bal === 0
+                                                ? "تسویه (۰)"
+                                                : toPersianDigits(
+                                                    formatNumber(Math.abs(bal)),
+                                                  )}
+                                              {bal !== 0 && (
+                                                <span className="text-[10px] font-medium mr-1">
+                                                  {storeSettings.currency}
+                                                </span>
+                                              )}
                                             </div>
                                           </td>
                                           <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1 text-[10px] font-sans font-black">
-                                              {p.personCode && <span className="text-slate-600">ID: {toPersianDigits(p.personCode)}</span>}
-                                              {p.accountingCode && <span className="text-indigo-600">ACC: {toPersianDigits(p.accountingCode)}</span>}
+                                              {p.personCode && (
+                                                <span className="text-slate-600">
+                                                  ID:{" "}
+                                                  {toPersianDigits(
+                                                    p.personCode,
+                                                  )}
+                                                </span>
+                                              )}
+                                              {p.accountingCode && (
+                                                <span className="text-indigo-600">
+                                                  ACC:{" "}
+                                                  {toPersianDigits(
+                                                    p.accountingCode,
+                                                  )}
+                                                </span>
+                                              )}
                                             </div>
                                           </td>
                                           <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end gap-1 relative" dir="ltr">
-                                               <button
+                                            <div
+                                              className="flex items-center justify-end gap-1 relative"
+                                              dir="ltr"
+                                            >
+                                              <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  setOpenPersonActionsId(openPersonActionsId === p.id ? null : p.id);
+                                                  setOpenPersonActionsId(
+                                                    openPersonActionsId === p.id
+                                                      ? null
+                                                      : p.id,
+                                                  );
                                                 }}
                                                 className="px-3 py-1.5 h-8 flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-all font-black text-[10px] shadow-sm"
                                               >
-                                                <Settings className="w-3.5 h-3.5" /> عملیات <ChevronDown className={`w-3 h-3 transition-transform ${openPersonActionsId === p.id ? "rotate-180" : ""}`} />
+                                                <Settings className="w-3.5 h-3.5" />{" "}
+                                                عملیات{" "}
+                                                <ChevronDown
+                                                  className={`w-3 h-3 transition-transform ${openPersonActionsId === p.id ? "rotate-180" : ""}`}
+                                                />
                                               </button>
-                                              
+
                                               {openPersonActionsId === p.id && (
                                                 <>
-                                                  <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenPersonActionsId(null); }}></div>
-                                                  <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 flex flex-col" onClick={(e) => e.stopPropagation()} dir="rtl">
+                                                  <div
+                                                    className="fixed inset-0 z-40"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setOpenPersonActionsId(
+                                                        null,
+                                                      );
+                                                    }}
+                                                  ></div>
+                                                  <div
+                                                    className="absolute left-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden z-50 flex flex-col"
+                                                    onClick={(e) =>
+                                                      e.stopPropagation()
+                                                    }
+                                                    dir="rtl"
+                                                  >
                                                     <div className="bg-slate-50 px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-                                                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">عملیات شخص</span>
-                                                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{p.name.substring(0, 15)}{p.name.length > 15 ? '...' : ''}</span>
+                                                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                                        عملیات شخص
+                                                      </span>
+                                                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                                                        {p.name.substring(
+                                                          0,
+                                                          15,
+                                                        )}
+                                                        {p.name.length > 15
+                                                          ? "..."
+                                                          : ""}
+                                                      </span>
                                                     </div>
                                                     <div className="p-1.5 flex flex-col gap-0.5 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                                      <button 
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setLedgerPersonId(p.id);
-                                                          setActiveTab("person_ledger");
-                                                        }} 
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
+                                                          setLedgerPersonId(
+                                                            p.id,
+                                                          );
+                                                          setActiveTab(
+                                                            "person_ledger",
+                                                          );
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-indigo-100/50 flex items-center justify-center text-indigo-600">
-                                                          <FileText className="w-3.5 h-3.5" /> 
+                                                          <FileText className="w-3.5 h-3.5" />
                                                         </div>
                                                         مشاهده کارت حساب
                                                       </button>
-                                                      
+
                                                       <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">امور بازرگانی</div>
-                                                      
-                                                      <button 
+                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">
+                                                        امور بازرگانی
+                                                      </div>
+
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_sale");
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
+                                                          setActiveTab(
+                                                            "create_sale",
+                                                          );
                                                           setCustomerId(p.id);
-                                                        }} 
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-blue-100/50 flex items-center justify-center text-blue-600">
-                                                          <FileText className="w-3.5 h-3.5" /> 
+                                                          <FileText className="w-3.5 h-3.5" />
                                                         </div>
                                                         صدور فاکتور فروش
                                                       </button>
-                                                      <button 
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_purchase");
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
+                                                          setActiveTab(
+                                                            "create_purchase",
+                                                          );
                                                           setCustomerId(p.id);
-                                                        }} 
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-violet-50 hover:text-violet-700 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-violet-100/50 flex items-center justify-center text-violet-600">
-                                                          <ShoppingCart className="w-3.5 h-3.5" /> 
+                                                          <ShoppingCart className="w-3.5 h-3.5" />
                                                         </div>
                                                         صدور فاکتور خرید
                                                       </button>
-                                                      
+
                                                       <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">امور مالی و خزانه‌داری</div>
-                                                      
-                                                      <button 
+                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">
+                                                        امور مالی و خزانه‌داری
+                                                      </div>
+
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_receive_receipt");
-                                                          setReceiptPersonId(p.id);
-                                                        }} 
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
+                                                          setActiveTab(
+                                                            "create_receive_receipt",
+                                                          );
+                                                          setReceiptPersonId(
+                                                            p.id,
+                                                          );
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-emerald-100/50 flex items-center justify-center text-emerald-600">
-                                                          <ArrowDownToLine className="w-3.5 h-3.5" /> 
+                                                          <ArrowDownToLine className="w-3.5 h-3.5" />
                                                         </div>
                                                         دریافت وجه (سند وصول)
                                                       </button>
-                                                      <button 
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setActiveTab("create_pay_receipt");
-                                                          setReceiptPersonId(p.id);
-                                                        }} 
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
+                                                          setActiveTab(
+                                                            "create_pay_receipt",
+                                                          );
+                                                          setReceiptPersonId(
+                                                            p.id,
+                                                          );
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-rose-100/50 flex items-center justify-center text-rose-600">
-                                                          <ArrowUpFromLine className="w-3.5 h-3.5" /> 
+                                                          <ArrowUpFromLine className="w-3.5 h-3.5" />
                                                         </div>
                                                         پرداخت وجه (سند پرداخت)
                                                       </button>
-                                                      
+
                                                       <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">اطلاعات پایه</div>
-                                                      
-                                                      <button 
+                                                      <div className="px-3 py-1 text-[9px] font-black text-slate-400">
+                                                        اطلاعات پایه
+                                                      </div>
+
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
                                                           handleEditPerson(p);
-                                                        }} 
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-slate-200/50 flex items-center justify-center text-slate-600">
-                                                          <Edit2 className="w-3.5 h-3.5" /> 
+                                                          <Edit2 className="w-3.5 h-3.5" />
                                                         </div>
                                                         ویرایش اطلاعات پایه
                                                       </button>
-                                                      <button 
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          setPersonExtraId(p.id);
-                                                          setPersonBankName(p.bankName || "");
-                                                          setPersonBankAcc(p.bankAccountNumber || "");
-                                                          setPersonCard(p.cardNumber || "");
-                                                          setPersonSheba(p.shebaNumber || "");
-                                                          setPersonNotes(p.additionalNotes || "");
-                                                          setIsPersonExtraModalOpen(true);
-                                                        }} 
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
+                                                          setPersonExtraId(
+                                                            p.id,
+                                                          );
+                                                          setPersonBankName(
+                                                            p.bankName || "",
+                                                          );
+                                                          setPersonBankAcc(
+                                                            p.bankAccountNumber ||
+                                                              "",
+                                                          );
+                                                          setPersonCard(
+                                                            p.cardNumber || "",
+                                                          );
+                                                          setPersonSheba(
+                                                            p.shebaNumber || "",
+                                                          );
+                                                          setPersonNotes(
+                                                            p.additionalNotes ||
+                                                              "",
+                                                          );
+                                                          setIsPersonExtraModalOpen(
+                                                            true,
+                                                          );
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-slate-200/50 flex items-center justify-center text-slate-600">
-                                                          <Info className="w-3.5 h-3.5" /> 
+                                                          <Info className="w-3.5 h-3.5" />
                                                         </div>
                                                         اطلاعات تکمیلی بانکی
                                                       </button>
-                                                      
+
                                                       <div className="h-px bg-slate-100 my-1 mx-2"></div>
-                                                      <button 
+                                                      <button
                                                         onClick={() => {
-                                                          setOpenPersonActionsId(null);
-                                                          confirmAction("آیا از حذف این شخص اطمینان دارید؟", () => handleDeletePerson(p.id));
-                                                        }} 
+                                                          setOpenPersonActionsId(
+                                                            null,
+                                                          );
+                                                          confirmAction(
+                                                            "آیا از حذف این شخص اطمینان دارید؟",
+                                                            () =>
+                                                              handleDeletePerson(
+                                                                p.id,
+                                                              ),
+                                                          );
+                                                        }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-rose-100/50 flex items-center justify-center text-rose-600">
-                                                          <Trash2 className="w-3.5 h-3.5" /> 
+                                                          <Trash2 className="w-3.5 h-3.5" />
                                                         </div>
                                                         حذف شخص
                                                       </button>
@@ -15948,7 +16886,10 @@ export default function App() {
                             {formatNumber(
                               invoices
                                 .filter(
-                                  (inv) => (!inv.isDraft && inv.status !== "draft") && (inv.type === "sale" ||
+                                  (inv) =>
+                                    !inv.isDraft &&
+                                    inv.status !== "draft" &&
+                                    (inv.type === "sale" ||
                                       inv.type === "sale_return") &&
                                     (!reportDateRange ||
                                       reportDateRange.length !== 2 ||
@@ -15992,7 +16933,10 @@ export default function App() {
                           <span className="text-xs text-indigo-600 font-bold mt-1 block">
                             {formatNumber(
                               invoices.filter(
-                                (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "sale" &&
+                                (inv) =>
+                                  !inv.isDraft &&
+                                  inv.status !== "draft" &&
+                                  inv.type === "sale" &&
                                   (!reportDateRange ||
                                     reportDateRange.length !== 2 ||
                                     (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -16030,7 +16974,10 @@ export default function App() {
                             {formatNumber(
                               invoices
                                 .filter(
-                                  (inv) => (!inv.isDraft && inv.status !== "draft") && (inv.type === "purchase" ||
+                                  (inv) =>
+                                    !inv.isDraft &&
+                                    inv.status !== "draft" &&
+                                    (inv.type === "purchase" ||
                                       inv.type === "purchase_return") &&
                                     (!reportDateRange ||
                                       reportDateRange.length !== 2 ||
@@ -16074,7 +17021,10 @@ export default function App() {
                           <span className="text-xs text-amber-600 font-bold mt-1 block">
                             {formatNumber(
                               invoices.filter(
-                                (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "purchase" &&
+                                (inv) =>
+                                  !inv.isDraft &&
+                                  inv.status !== "draft" &&
+                                  inv.type === "purchase" &&
                                   (!reportDateRange ||
                                     reportDateRange.length !== 2 ||
                                     (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -16102,7 +17052,10 @@ export default function App() {
                       {(() => {
                         const salesValRaw = invoices
                           .filter(
-                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "sale" &&
+                            (inv) =>
+                              !inv.isDraft &&
+                              inv.status !== "draft" &&
+                              inv.type === "sale" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -16132,7 +17085,10 @@ export default function App() {
                           );
                         const salesReturnVal = invoices
                           .filter(
-                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "sale_return" &&
+                            (inv) =>
+                              !inv.isDraft &&
+                              inv.status !== "draft" &&
+                              inv.type === "sale_return" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -16165,7 +17121,10 @@ export default function App() {
                          */
                         const purchasesValRaw = invoices
                           .filter(
-                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "purchase" &&
+                            (inv) =>
+                              !inv.isDraft &&
+                              inv.status !== "draft" &&
+                              inv.type === "purchase" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -16195,7 +17154,10 @@ export default function App() {
                           );
                         const purchasesReturnVal = invoices
                           .filter(
-                            (inv) => (!inv.isDraft && inv.status !== "draft") && inv.type === "purchase_return" &&
+                            (inv) =>
+                              !inv.isDraft &&
+                              inv.status !== "draft" &&
+                              inv.type === "purchase_return" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
                                 (new Date(inv.date).setHours(0, 0, 0, 0) >=
@@ -16839,22 +17801,36 @@ export default function App() {
                           onClick={() => {
                             setPrintingPersonLedger(true);
                             setTimeout(() => {
-                              const element = document.getElementById("person-ledger-printable-area");
+                              const element = document.getElementById(
+                                "person-ledger-printable-area",
+                              );
                               if (!element) {
                                 setPrintingPersonLedger(false);
                                 return;
                               }
-                              const person = persons.find(p => p.id.toString() === ledgerPersonId?.toString());
+                              const person = persons.find(
+                                (p) =>
+                                  p.id.toString() ===
+                                  ledgerPersonId?.toString(),
+                              );
                               const opt = {
                                 margin: 10,
                                 filename: `صورتحساب_${person?.name || "شخص"}.pdf`,
-                                image: { type: 'jpeg' as const, quality: 0.98 },
+                                image: { type: "jpeg" as const, quality: 0.98 },
                                 html2canvas: { scale: 2, useCORS: true },
-                                jsPDF: { unit: 'mm' as const, format: 'a4', orientation: 'portrait' as const }
+                                jsPDF: {
+                                  unit: "mm" as const,
+                                  format: "a4",
+                                  orientation: "portrait" as const,
+                                },
                               };
-                              html2pdf().set(opt).from(element).save().then(() => {
-                                setPrintingPersonLedger(false);
-                              });
+                              html2pdf()
+                                .set(opt)
+                                .from(element)
+                                .save()
+                                .then(() => {
+                                  setPrintingPersonLedger(false);
+                                });
                             }, 300);
                           }}
                           className="px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl flex items-center gap-1.5 transition-all font-semibold text-xs border border-sky-100 shadow-sm"
@@ -16871,7 +17847,8 @@ export default function App() {
                           }}
                           className="px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-xl flex items-center gap-1.5 transition-all font-semibold text-xs border border-gray-200 shadow-sm"
                         >
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" /> بروزرسانی
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" />{" "}
+                          بروزرسانی
                         </button>
                       </div>
                     </div>
@@ -16920,7 +17897,9 @@ export default function App() {
                                   <User className="w-4 h-4 text-violet-400" />
                                 </div>
                               )}
-                              <span className="font-bold text-slate-700">{option.label}</span>
+                              <span className="font-bold text-slate-700">
+                                {option.label}
+                              </span>
                             </div>
                           )}
                           placeholder="انتخاب یا جستجوی نام شخص..."
@@ -17066,9 +18045,27 @@ export default function App() {
                             try {
                               const parsed = JSON.parse(t.description);
                               if (parsed.isPayslip) {
-                                const months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-                                const monthName = parsed.periodMonth ? months[parseInt(parsed.periodMonth) - 1] : "";
-                                const periodStr = (monthName && parsed.periodYear) ? ` (دوره فیش: ${monthName} ماه ${parsed.periodYear})` : "";
+                                const months = [
+                                  "فروردین",
+                                  "اردیبهشت",
+                                  "خرداد",
+                                  "تیر",
+                                  "مرداد",
+                                  "شهریور",
+                                  "مهر",
+                                  "آبان",
+                                  "آذر",
+                                  "دی",
+                                  "بهمن",
+                                  "اسفند",
+                                ];
+                                const monthName = parsed.periodMonth
+                                  ? months[parseInt(parsed.periodMonth) - 1]
+                                  : "";
+                                const periodStr =
+                                  monthName && parsed.periodYear
+                                    ? ` (دوره فیش: ${monthName} ماه ${parsed.periodYear})`
+                                    : "";
                                 desc = `ثبت حقوق و دستمزد${periodStr}: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || "حقوق دوره‌ای"})`;
                               }
                             } catch (e) {
@@ -17419,10 +18416,12 @@ export default function App() {
                                   <div className="space-y-3 font-medium">
                                     <div className="flex items-center gap-3 mb-4">
                                       {selectedPerson.imageUrl && (
-                                        <img 
-                                          src={selectedPerson.imageUrl} 
-                                          alt={getPersonDisplayName(selectedPerson)} 
-                                          className="w-12 h-12 rounded-full object-cover border border-gray-200 shadow-sm shrink-0" 
+                                        <img
+                                          src={selectedPerson.imageUrl}
+                                          alt={getPersonDisplayName(
+                                            selectedPerson,
+                                          )}
+                                          className="w-12 h-12 rounded-full object-cover border border-gray-200 shadow-sm shrink-0"
                                         />
                                       )}
                                       <p>
@@ -17558,7 +18557,9 @@ export default function App() {
                                                 dir="rtl"
                                               >
                                                 <span className="whitespace-nowrap">
-                                                  {formatPersianDateDisplay(entry.jalaliDate)}
+                                                  {formatPersianDateDisplay(
+                                                    entry.jalaliDate,
+                                                  )}
                                                 </span>
                                               </span>
                                               <span className="text-[10px] text-gray-600 border border-gray-300 px-1.5 py-0.5 rounded flex items-center gap-1">
@@ -17652,7 +18653,6 @@ export default function App() {
                                     >
                                       {getRoleName(selectedPerson.role)}
                                     </span>
-
                                   </div>
                                   <span className="text-xs text-gray-400 font-medium font-mono text-left">
                                     کد شخص: #
@@ -17665,10 +18665,10 @@ export default function App() {
                                 </div>
                                 <div className="flex items-center gap-4 mb-4">
                                   {selectedPerson.imageUrl ? (
-                                    <img 
-                                      src={selectedPerson.imageUrl} 
-                                      alt={getPersonDisplayName(selectedPerson)} 
-                                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shadow-sm shrink-0" 
+                                    <img
+                                      src={selectedPerson.imageUrl}
+                                      alt={getPersonDisplayName(selectedPerson)}
+                                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-100 shadow-sm shrink-0"
                                     />
                                   ) : (
                                     <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 shadow-sm">
@@ -17886,260 +18886,328 @@ export default function App() {
                           </div>
 
                           {/* Ledger Detail Table */}
-                          {ledgerTab === 'notes' ? (
+                          {ledgerTab === "notes" ? (
                             <PersonNotesAndAttachments
                               person={selectedPerson}
                               onDataChange={fetchPersons}
                               showNotification={showNotification}
                             />
                           ) : (
-                          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden print:overflow-visible">
-                            <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                              <h3 className="font-extrabold text-gray-800 flex items-center gap-2">
-                                <List className="w-5 h-5 text-violet-500" />
-                                ریز و گردش جزئیات حساب معین (کارت حساب اشخاص)
-                              </h3>
-                            </div>
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden print:overflow-visible">
+                              <div className="bg-gray-50/50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                                <h3 className="font-extrabold text-gray-800 flex items-center gap-2">
+                                  <List className="w-5 h-5 text-violet-500" />
+                                  ریز و گردش جزئیات حساب معین (کارت حساب اشخاص)
+                                </h3>
+                              </div>
 
-                            <div className="overflow-x-auto print:overflow-visible">
-                              {ledgerEntries.length === 0 ? (
-                                <div className="p-12 text-center text-gray-400">
-                                  <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                  هیچ گردش مالی یا سندی برای این شخص ثبت نشده
-                                  است.
-                                </div>
-                              ) : (
-                                <table className="w-full text-right min-w-[950px] print:min-w-[0px] print:text-[12px] text-sm">
-                                  <thead>
-                                    <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider print:text-[10px]">
-                                      <th className="py-5 px-4 text-center w-10 print:w-8 print:px-2">
-                                        ردیف
-                                      </th>
-                                      <th className="py-5 px-4 text-right w-36 print:w-28 print:px-2">
-                                        تاریخ و ارجاع
-                                      </th>
-                                      <th className="py-5 px-6 text-right print:px-2">
-                                        عنوان و شرح جزئیات رویداد مالی
-                                      </th>
-                                      <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
-                                        بدهکار (افزایش بدهی)
-                                      </th>
-                                      <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
-                                        بستانکار (کاهش بدهی)
-                                      </th>
-                                      <th className="py-5 px-6 text-left w-44 print:w-32 print:px-2">
-                                        مانده نهایی حساب
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-gray-100 font-medium">
-                                    {ledgerEntries.filter((entry) => {
-                                      if (ledgerTab === 'transactions' || ledgerTab === 'detailed') {
-                                        return entry.rawItem?.type !== 'proforma';
-                                      } else if (ledgerTab === 'items') {
-                                        return entry.entryType === 'invoice' && entry.rawItem?.type !== 'proforma';
-                                      } else if (ledgerTab === 'checks') {
-                                        return entry.entryType === 'issued_check' || entry.entryType === 'received_check';
-                                      } else if (ledgerTab === 'drafts') {
-                                        return entry.rawItem?.type === 'proforma';
-                                      }
-                                      return true;
-                                    }).map((entry, index) => {
-                                      const isDeb = entry.runningBalance > 0;
-                                      const isCred = entry.runningBalance < 0;
-                                      const isBalZero =
-                                        entry.runningBalance === 0;
-
-                                      const isSale =
-                                        entry.type.includes("فروش");
-                                      const isPurchase =
-                                        entry.type.includes("خرید");
-                                      const isReceive =
-                                        entry.type.includes("دریافت");
-                                      const isPay =
-                                        entry.type.includes("پرداخت");
-                                      const isCheck =
-                                        entry.entryType === "issued_check" ||
-                                        entry.entryType === "received_check";
-
-                                      const badgeColor = isSale
-                                        ? "bg-sky-50 text-sky-700 border-sky-200"
-                                        : isPurchase
-                                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                                          : isReceive
-                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                            : isPay
-                                              ? "bg-rose-50 text-rose-700 border-rose-200"
-                                              : isCheck
-                                                ? "bg-violet-50 text-violet-700 border-violet-200"
-                                                : "bg-slate-50 text-slate-700 border-slate-200";
-
-                                      return (
-                                        <tr
-                                          key={entry.id}
-                                          className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                                          onClick={() => {
-                                            if (
+                              <div className="overflow-x-auto print:overflow-visible">
+                                {ledgerEntries.length === 0 ? (
+                                  <div className="p-12 text-center text-gray-400">
+                                    <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    هیچ گردش مالی یا سندی برای این شخص ثبت نشده
+                                    است.
+                                  </div>
+                                ) : (
+                                  <table className="w-full text-right min-w-[950px] print:min-w-[0px] print:text-[12px] text-sm">
+                                    <thead>
+                                      <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider print:text-[10px]">
+                                        <th className="py-5 px-4 text-center w-10 print:w-8 print:px-2">
+                                          ردیف
+                                        </th>
+                                        <th className="py-5 px-4 text-right w-36 print:w-28 print:px-2">
+                                          تاریخ و ارجاع
+                                        </th>
+                                        <th className="py-5 px-6 text-right print:px-2">
+                                          عنوان و شرح جزئیات رویداد مالی
+                                        </th>
+                                        <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
+                                          بدهکار (افزایش بدهی)
+                                        </th>
+                                        <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
+                                          بستانکار (کاهش بدهی)
+                                        </th>
+                                        <th className="py-5 px-6 text-left w-44 print:w-32 print:px-2">
+                                          مانده نهایی حساب
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 font-medium">
+                                      {ledgerEntries
+                                        .filter((entry) => {
+                                          if (
+                                            ledgerTab === "transactions" ||
+                                            ledgerTab === "detailed"
+                                          ) {
+                                            return (
+                                              entry.rawItem?.type !== "proforma"
+                                            );
+                                          } else if (ledgerTab === "items") {
+                                            return (
                                               entry.entryType === "invoice" &&
-                                              entry.rawItem
-                                            ) {
-                                              setViewingInvoice(entry.rawItem);
-                                            } else if (
+                                              entry.rawItem?.type !== "proforma"
+                                            );
+                                          } else if (ledgerTab === "checks") {
+                                            return (
                                               entry.entryType ===
-                                                "transaction" &&
-                                              entry.rawItem
-                                            ) {
-                                              if (
-                                                entry.rawItem.type === "salary"
-                                              ) {
-                                                try {
-                                                  const parsedDesc = JSON.parse(
-                                                    entry.rawItem.description,
+                                                "issued_check" ||
+                                              entry.entryType ===
+                                                "received_check"
+                                            );
+                                          } else if (ledgerTab === "drafts") {
+                                            return (
+                                              entry.rawItem?.type === "proforma"
+                                            );
+                                          }
+                                          return true;
+                                        })
+                                        .map((entry, index) => {
+                                          const isDeb =
+                                            entry.runningBalance > 0;
+                                          const isCred =
+                                            entry.runningBalance < 0;
+                                          const isBalZero =
+                                            entry.runningBalance === 0;
+
+                                          const isSale =
+                                            entry.type.includes("فروش");
+                                          const isPurchase =
+                                            entry.type.includes("خرید");
+                                          const isReceive =
+                                            entry.type.includes("دریافت");
+                                          const isPay =
+                                            entry.type.includes("پرداخت");
+                                          const isCheck =
+                                            entry.entryType ===
+                                              "issued_check" ||
+                                            entry.entryType ===
+                                              "received_check";
+
+                                          const badgeColor = isSale
+                                            ? "bg-sky-50 text-sky-700 border-sky-200"
+                                            : isPurchase
+                                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                                              : isReceive
+                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                : isPay
+                                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                                  : isCheck
+                                                    ? "bg-violet-50 text-violet-700 border-violet-200"
+                                                    : "bg-slate-50 text-slate-700 border-slate-200";
+
+                                          return (
+                                            <tr
+                                              key={entry.id}
+                                              className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                                              onClick={() => {
+                                                if (
+                                                  entry.entryType ===
+                                                    "invoice" &&
+                                                  entry.rawItem
+                                                ) {
+                                                  setViewingInvoice(
+                                                    entry.rawItem,
                                                   );
-                                                  if (parsedDesc.isPayslip) {
-                                                    setViewingPayslip({
-                                                      ...entry.rawItem,
-                                                      parsed: parsedDesc,
-                                                      computedPersonName:
-                                                        selectedPerson.name,
-                                                    });
-                                                    return;
+                                                } else if (
+                                                  entry.entryType ===
+                                                    "transaction" &&
+                                                  entry.rawItem
+                                                ) {
+                                                  if (
+                                                    entry.rawItem.type ===
+                                                    "salary"
+                                                  ) {
+                                                    try {
+                                                      const parsedDesc =
+                                                        JSON.parse(
+                                                          entry.rawItem
+                                                            .description,
+                                                        );
+                                                      if (
+                                                        parsedDesc.isPayslip
+                                                      ) {
+                                                        setViewingPayslip({
+                                                          ...entry.rawItem,
+                                                          parsed: parsedDesc,
+                                                          computedPersonName:
+                                                            selectedPerson.name,
+                                                        });
+                                                        return;
+                                                      }
+                                                    } catch (e) {}
                                                   }
-                                                } catch (e) {}
-                                              }
-                                              setPreviewReceiptData({
-                                                ...entry.rawItem,
-                                                jalaliDate: entry.jalaliDate,
-                                                personId: selectedPerson.id,
-                                                _isReadOnly: true,
-                                              });
-                                            } else if (
-                                              entry.entryType === "issued_check"
-                                            ) {
-                                              setActiveTab("issued_checks");
-                                            } else if (
-                                              entry.entryType ===
-                                              "received_check"
-                                            ) {
-                                              setActiveTab("received_checks");
-                                            }
-                                          }}
-                                        >
-                                          <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6 print:py-3 print:px-2 print:pt-4">
-                                            <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors shrink-0">
-                                              {toPersianDigits(index + 1)}
-                                            </div>
-                                          </td>
-                                          <td className="py-5 px-4 align-top pt-5 print:py-3 print:px-2 print:pt-4">
-                                            <div className="flex flex-col gap-2.5 text-right relative">
-                                              <span
-                                                className="text-gray-700 font-bold flex items-center justify-start gap-2 text-sm max-w-fit pr-0 print:text-xs"
-                                                dir="rtl"
-                                              >
-                                                <span className="mt-0.5 whitespace-nowrap">
-                                                  {formatPersianDateDisplay(entry.jalaliDate)}
-                                                </span>
-                                                <Calendar className="w-4 h-4 text-indigo-500/70" />
-                                              </span>
-                                              <span className="text-xs text-gray-600 bg-white border border-gray-200 px-2.5 py-1 rounded-lg inline-flex w-max items-center gap-1.5 shadow-sm">
-                                                <Tag className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                                                {toPersianDigits(entry.refId)}
-                                              </span>
-                                            </div>
-                                          </td>
-                                          <td className="py-5 px-6 align-top pt-5 max-w-sm print:py-3 print:px-2 print:pt-4">
-                                            <div className="flex flex-col items-start gap-2.5">
-                                              <span
-                                                className={`w-max px-3 py-1 rounded-lg text-xs font-extrabold border shadow-sm ${badgeColor}`}
-                                              >
-                                                {entry.type}
-                                              </span>
-                                              <p className="text-gray-700 text-[13px] print:text-xs whitespace-normal leading-loose font-medium break-words text-justify">
-                                                {toPersianDigits(entry.desc)}
-                                              </p>
-                                              {ledgerTab === 'detailed' && entry.entryType === 'invoice' && entry.rawItem?.items && entry.rawItem.items.length > 0 && (
-                                                <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 w-full text-right shadow-sm">
-                                                  <div className="font-bold mb-1.5 text-gray-700">اقلام رویداد مالی (جزئیات کالا/خدمات):</div>
-                                                  <ul className="list-disc list-inside space-y-1.5 marker:text-gray-400">
-                                                    {entry.rawItem.items.map((item: any, i: number) => (
-                                                      <li key={i} className="flex justify-between items-center border-b border-gray-200/60 pb-1 last:border-0 last:pb-0">
-                                                        <span className="font-medium text-gray-800">{item.name}</span>
-                                                        <span className="font-sans font-bold text-gray-500 text-[11px]" dir="ltr">
-                                                          {toPersianDigits(item.quantity)} {item.unit || "عدد"}
-                                                        </span>
-                                                      </li>
-                                                    ))}
-                                                  </ul>
+                                                  setPreviewReceiptData({
+                                                    ...entry.rawItem,
+                                                    jalaliDate:
+                                                      entry.jalaliDate,
+                                                    personId: selectedPerson.id,
+                                                    _isReadOnly: true,
+                                                  });
+                                                } else if (
+                                                  entry.entryType ===
+                                                  "issued_check"
+                                                ) {
+                                                  setActiveTab("issued_checks");
+                                                } else if (
+                                                  entry.entryType ===
+                                                  "received_check"
+                                                ) {
+                                                  setActiveTab(
+                                                    "received_checks",
+                                                  );
+                                                }
+                                              }}
+                                            >
+                                              <td className="py-5 px-4 text-center text-gray-400 font-sans align-top pt-6 print:py-3 print:px-2 print:pt-4">
+                                                <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center mx-auto text-[10px] font-bold shadow-sm group-hover:border-indigo-300 group-hover:text-indigo-600 transition-colors shrink-0">
+                                                  {toPersianDigits(index + 1)}
                                                 </div>
-                                              )}
-                                            </div>
-                                          </td>
-                                          <td className="py-5 px-4 text-left align-top pt-6 print:py-3 print:px-2 print:pt-4">
-                                            <span
-                                              className={`font-black text-[15px] print:text-[13px] ${entry.debit > 0 ? "text-indigo-600" : "text-gray-300 font-medium"}`}
-                                            >
-                                              {entry.debit > 0
-                                                ? toPersianDigits(
-                                                    formatNumber(entry.debit),
-                                                  )
-                                                : "---"}
-                                            </span>
-                                          </td>
-                                          <td className="py-5 px-4 text-left align-top pt-6 print:py-3 print:px-2 print:pt-4">
-                                            <span
-                                              className={`font-black text-[15px] print:text-[13px] ${entry.credit > 0 ? "text-emerald-600" : "text-gray-300 font-medium"}`}
-                                            >
-                                              {entry.credit > 0
-                                                ? toPersianDigits(
-                                                    formatNumber(entry.credit),
-                                                  )
-                                                : "---"}
-                                            </span>
-                                          </td>
-                                          <td className="py-5 px-6 text-left align-top pt-5 print:py-3 print:px-2 print:pt-4">
-                                            <div
-                                              className={`flex flex-col items-end gap-1.5 font-extrabold ${
-                                                isBalZero
-                                                  ? "text-slate-600"
-                                                  : isDeb
-                                                    ? "text-rose-600"
-                                                    : "text-emerald-600"
-                                              }`}
-                                            >
-                                              {isBalZero ? (
-                                                <span className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm mt-0.5 text-slate-700">
-                                                  صفر (تسویه)
-                                                </span>
-                                              ) : (
-                                                <>
-                                                  <span className="text-[17px] print:text-[14px] tracking-tight">
+                                              </td>
+                                              <td className="py-5 px-4 align-top pt-5 print:py-3 print:px-2 print:pt-4">
+                                                <div className="flex flex-col gap-2.5 text-right relative">
+                                                  <span
+                                                    className="text-gray-700 font-bold flex items-center justify-start gap-2 text-sm max-w-fit pr-0 print:text-xs"
+                                                    dir="rtl"
+                                                  >
+                                                    <span className="mt-0.5 whitespace-nowrap">
+                                                      {formatPersianDateDisplay(
+                                                        entry.jalaliDate,
+                                                      )}
+                                                    </span>
+                                                    <Calendar className="w-4 h-4 text-indigo-500/70" />
+                                                  </span>
+                                                  <span className="text-xs text-gray-600 bg-white border border-gray-200 px-2.5 py-1 rounded-lg inline-flex w-max items-center gap-1.5 shadow-sm">
+                                                    <Tag className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                                     {toPersianDigits(
-                                                      formatNumber(
-                                                        Math.abs(
-                                                          entry.runningBalance,
-                                                        ),
-                                                      ),
+                                                      entry.refId,
                                                     )}
                                                   </span>
+                                                </div>
+                                              </td>
+                                              <td className="py-5 px-6 align-top pt-5 max-w-sm print:py-3 print:px-2 print:pt-4">
+                                                <div className="flex flex-col items-start gap-2.5">
                                                   <span
-                                                    className={`text-[10px] font-bold px-2 py-1 rounded-lg border shadow-sm ${isDeb ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}
+                                                    className={`w-max px-3 py-1 rounded-lg text-xs font-extrabold border shadow-sm ${badgeColor}`}
                                                   >
-                                                    {isDeb
-                                                      ? "بدهکار به ما"
-                                                      : "بستانکار (طلبکار)"}
+                                                    {entry.type}
                                                   </span>
-                                                </>
-                                              )}
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              )}
+                                                  <p className="text-gray-700 text-[13px] print:text-xs whitespace-normal leading-loose font-medium break-words text-justify">
+                                                    {toPersianDigits(
+                                                      entry.desc,
+                                                    )}
+                                                  </p>
+                                                  {ledgerTab === "detailed" &&
+                                                    entry.entryType ===
+                                                      "invoice" &&
+                                                    entry.rawItem?.items &&
+                                                    entry.rawItem.items.length >
+                                                      0 && (
+                                                      <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 w-full text-right shadow-sm">
+                                                        <div className="font-bold mb-1.5 text-gray-700">
+                                                          اقلام رویداد مالی
+                                                          (جزئیات کالا/خدمات):
+                                                        </div>
+                                                        <ul className="list-disc list-inside space-y-1.5 marker:text-gray-400">
+                                                          {entry.rawItem.items.map(
+                                                            (
+                                                              item: any,
+                                                              i: number,
+                                                            ) => (
+                                                              <li
+                                                                key={i}
+                                                                className="flex justify-between items-center border-b border-gray-200/60 pb-1 last:border-0 last:pb-0"
+                                                              >
+                                                                <span className="font-medium text-gray-800">
+                                                                  {item.name}
+                                                                </span>
+                                                                <span
+                                                                  className="font-sans font-bold text-gray-500 text-[11px]"
+                                                                  dir="ltr"
+                                                                >
+                                                                  {toPersianDigits(
+                                                                    item.quantity,
+                                                                  )}{" "}
+                                                                  {item.unit ||
+                                                                    "عدد"}
+                                                                </span>
+                                                              </li>
+                                                            ),
+                                                          )}
+                                                        </ul>
+                                                      </div>
+                                                    )}
+                                                </div>
+                                              </td>
+                                              <td className="py-5 px-4 text-left align-top pt-6 print:py-3 print:px-2 print:pt-4">
+                                                <span
+                                                  className={`font-black text-[15px] print:text-[13px] ${entry.debit > 0 ? "text-indigo-600" : "text-gray-300 font-medium"}`}
+                                                >
+                                                  {entry.debit > 0
+                                                    ? toPersianDigits(
+                                                        formatNumber(
+                                                          entry.debit,
+                                                        ),
+                                                      )
+                                                    : "---"}
+                                                </span>
+                                              </td>
+                                              <td className="py-5 px-4 text-left align-top pt-6 print:py-3 print:px-2 print:pt-4">
+                                                <span
+                                                  className={`font-black text-[15px] print:text-[13px] ${entry.credit > 0 ? "text-emerald-600" : "text-gray-300 font-medium"}`}
+                                                >
+                                                  {entry.credit > 0
+                                                    ? toPersianDigits(
+                                                        formatNumber(
+                                                          entry.credit,
+                                                        ),
+                                                      )
+                                                    : "---"}
+                                                </span>
+                                              </td>
+                                              <td className="py-5 px-6 text-left align-top pt-5 print:py-3 print:px-2 print:pt-4">
+                                                <div
+                                                  className={`flex flex-col items-end gap-1.5 font-extrabold ${
+                                                    isBalZero
+                                                      ? "text-slate-600"
+                                                      : isDeb
+                                                        ? "text-rose-600"
+                                                        : "text-emerald-600"
+                                                  }`}
+                                                >
+                                                  {isBalZero ? (
+                                                    <span className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-sm mt-0.5 text-slate-700">
+                                                      صفر (تسویه)
+                                                    </span>
+                                                  ) : (
+                                                    <>
+                                                      <span className="text-[17px] print:text-[14px] tracking-tight">
+                                                        {toPersianDigits(
+                                                          formatNumber(
+                                                            Math.abs(
+                                                              entry.runningBalance,
+                                                            ),
+                                                          ),
+                                                        )}
+                                                      </span>
+                                                      <span
+                                                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border shadow-sm ${isDeb ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}
+                                                      >
+                                                        {isDeb
+                                                          ? "بدهکار به ما"
+                                                          : "بستانکار (طلبکار)"}
+                                                      </span>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
                             </div>
-                          </div>
                           )}
                         </div>
                       );
@@ -18272,7 +19340,8 @@ export default function App() {
                           تنظیمات جامع سیستم
                         </h1>
                         <p className="mt-1.5 text-indigo-100/80 text-sm max-w-xl leading-relaxed">
-                          پیکربندی کامل امکانات فروشگاه، حسابداری، اطلاع‌رسانی، شخصی‌سازی چاپ و شماره‌گذاری اسناد.
+                          پیکربندی کامل امکانات فروشگاه، حسابداری، اطلاع‌رسانی،
+                          شخصی‌سازی چاپ و شماره‌گذاری اسناد.
                         </p>
                       </div>
                       <button
@@ -18280,7 +19349,7 @@ export default function App() {
                           e.preventDefault();
                           confirmAction(
                             "آیا از ذخیره تنظیمات اطمینان دارید؟",
-                            () => handleSaveSettings(e as any)
+                            () => handleSaveSettings(e as any),
                           );
                         }}
                         disabled={submittingSettings}
@@ -18299,12 +19368,36 @@ export default function App() {
                       {/* Sidebar */}
                       <div className="w-64 bg-white border-l border-gray-200 shrink-0 flex flex-col overflow-y-auto custom-scrollbar p-4 gap-2">
                         {[
-                          { id: "general", label: "اطلاعات پایه و عمومی", icon: Store },
-                          { id: "features", label: "تنظیمات انبار و فروش", icon: Box },
-                          { id: "financial", label: "مالی و حسابداری", icon: Calculator },
-                          { id: "numbering", label: "شماره‌گذاری اسناد", icon: FileText },
-                          { id: "printing", label: "چاپ و قالب فاکتور", icon: Printer },
-                          { id: "notification", label: "پیامک و ارتباطات", icon: Bell },
+                          {
+                            id: "general",
+                            label: "اطلاعات پایه و عمومی",
+                            icon: Store,
+                          },
+                          {
+                            id: "features",
+                            label: "تنظیمات انبار و فروش",
+                            icon: Box,
+                          },
+                          {
+                            id: "financial",
+                            label: "مالی و حسابداری",
+                            icon: Calculator,
+                          },
+                          {
+                            id: "numbering",
+                            label: "شماره‌گذاری اسناد",
+                            icon: FileText,
+                          },
+                          {
+                            id: "printing",
+                            label: "چاپ و قالب فاکتور",
+                            icon: Printer,
+                          },
+                          {
+                            id: "notification",
+                            label: "پیامک و ارتباطات",
+                            icon: Bell,
+                          },
                         ].map((tab) => {
                           const Icon = tab.icon;
                           const isActive = settingsTab === tab.id;
@@ -18313,12 +19406,14 @@ export default function App() {
                               key={tab.id}
                               onClick={() => setSettingsTab(tab.id)}
                               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${
-                                isActive 
-                                  ? "bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100" 
+                                isActive
+                                  ? "bg-indigo-50 text-indigo-700 shadow-sm border border-indigo-100"
                                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border border-transparent"
                               }`}
                             >
-                              <Icon className={`w-5 h-5 ${isActive ? "text-indigo-600" : "text-gray-400"}`} />
+                              <Icon
+                                className={`w-5 h-5 ${isActive ? "text-indigo-600" : "text-gray-400"}`}
+                              />
                               {tab.label}
                             </button>
                           );
@@ -18333,7 +19428,7 @@ export default function App() {
                             <span className="font-bold">{successMsg}</span>
                           </div>
                         )}
-                        
+
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                           {settingsTab === "general" && (
                             <div className="flex flex-col gap-8">
@@ -18344,7 +19439,9 @@ export default function App() {
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   <div className="w-full text-right md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">لوگو فروشگاه / شرکت</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      لوگو فروشگاه / شرکت
+                                    </label>
                                     <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
                                       {settingsForm.logoUrl ? (
                                         <div className="relative group">
@@ -18355,7 +19452,12 @@ export default function App() {
                                           />
                                           <button
                                             type="button"
-                                            onClick={() => setSettingsForm({ ...settingsForm, logoUrl: "" })}
+                                            onClick={() =>
+                                              setSettingsForm({
+                                                ...settingsForm,
+                                                logoUrl: "",
+                                              })
+                                            }
                                             className="absolute -top-2 -right-2 bg-red-100 text-red-600 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                                           >
                                             <Trash2 className="w-3 h-3" />
@@ -18369,38 +19471,67 @@ export default function App() {
                                       <div className="flex-1">
                                         <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm inline-block">
                                           انتخاب تصویر جدید
-                                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleLogoUpload}
+                                          />
                                         </label>
-                                        <p className="text-xs text-gray-500 mt-2 font-medium">حداکثر حجم فایل ۲ مگابایت. فرمت‌های JPG و PNG.</p>
+                                        <p className="text-xs text-gray-500 mt-2 font-medium">
+                                          حداکثر حجم فایل ۲ مگابایت. فرمت‌های
+                                          JPG و PNG.
+                                        </p>
                                       </div>
                                     </div>
                                   </div>
                                   <div className="w-full text-right md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">نام فروشگاه / شرکت</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      نام فروشگاه / شرکت
+                                    </label>
                                     <input
                                       type="text"
                                       value={settingsForm.storeName}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, storeName: e.target.value })}
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          storeName: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
                                       required
                                     />
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">تلفن تماس</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      تلفن تماس
+                                    </label>
                                     <input
                                       type="text"
                                       value={settingsForm.phone || ""}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          phone: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
                                       dir="ltr"
                                     />
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">آدرس</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      آدرس
+                                    </label>
                                     <input
                                       type="text"
                                       value={settingsForm.address || ""}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, address: e.target.value })}
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          address: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
                                     />
                                   </div>
@@ -18414,35 +19545,73 @@ export default function App() {
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">فونت سیستم</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      فونت سیستم
+                                    </label>
                                     <select
-                                      value={settingsForm.fontFamily || "Vazirmatn"}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, fontFamily: e.target.value })}
+                                      value={
+                                        settingsForm.fontFamily || "Vazirmatn"
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          fontFamily: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
                                     >
-                                      <option value="Vazirmatn">وزیرمتن (Vazirmatn)</option>
-                                      <option value="IRANYekanXFaNum">ایران یکان (IRANYekanX)</option>
-                                      <option value="Lalezar">لاله‌زار (Lalezar)</option>
-                                      <option value="Readex Pro">ریدکس پرو (Readex Pro)</option>
-                                      <option value="Cairo">قاهره (Cairo)</option>
-                                      <option value="Amiri">امیری (Amiri)</option>
-                                      <option value="Changa">چنگا (Changa)</option>
-                                      <option value="Tahoma">تاهوما (Tahoma)</option>
+                                      <option value="Vazirmatn">
+                                        وزیرمتن (Vazirmatn)
+                                      </option>
+                                      <option value="IRANYekanXFaNum">
+                                        ایران یکان (IRANYekanX)
+                                      </option>
+                                      <option value="Lalezar">
+                                        لاله‌زار (Lalezar)
+                                      </option>
+                                      <option value="Readex Pro">
+                                        ریدکس پرو (Readex Pro)
+                                      </option>
+                                      <option value="Cairo">
+                                        قاهره (Cairo)
+                                      </option>
+                                      <option value="Amiri">
+                                        امیری (Amiri)
+                                      </option>
+                                      <option value="Changa">
+                                        چنگا (Changa)
+                                      </option>
+                                      <option value="Tahoma">
+                                        تاهوما (Tahoma)
+                                      </option>
                                     </select>
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">پوسته و تم سیستم</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      پوسته و تم سیستم
+                                    </label>
                                     <select
                                       value={settingsForm.theme || "classic"}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, theme: e.target.value })}
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          theme: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
                                     >
-                                      <option value="classic">کلاسیک سرمه‌ای (Classic Indigo)</option>
-                                      <option value="gmail">گوگل جیمیل سرخ (Google Gmail Red)</option>
+                                      <option value="classic">
+                                        کلاسیک سرمه‌ای (Classic Indigo)
+                                      </option>
+                                      <option value="gmail">
+                                        گوگل جیمیل سرخ (Google Gmail Red)
+                                      </option>
                                     </select>
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">واحد پولی (غیرقابل تغییر)</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      واحد پولی (غیرقابل تغییر)
+                                    </label>
                                     <input
                                       type="text"
                                       value={storeSettings.currency}
@@ -18451,10 +19620,17 @@ export default function App() {
                                     />
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">تقویم پایه</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      تقویم پایه
+                                    </label>
                                     <input
                                       type="text"
-                                      value={storeSettings.calendarType === "gregorian" ? "میلادی" : "شمسی (جلالی)"}
+                                      value={
+                                        storeSettings.calendarType ===
+                                        "gregorian"
+                                          ? "میلادی"
+                                          : "شمسی (جلالی)"
+                                      }
                                       disabled
                                       className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 shadow-sm font-bold cursor-not-allowed"
                                     />
@@ -18475,34 +19651,27 @@ export default function App() {
                                   <div className="mt-0.5">
                                     <input
                                       type="checkbox"
-                                      checked={settingsForm.allowNegativeStock || false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, allowNegativeStock: e.target.checked })}
+                                      checked={
+                                        settingsForm.allowNegativeStock || false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          allowNegativeStock: e.target.checked,
+                                        })
+                                      }
                                       className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                     />
                                   </div>
                                   <div className="flex-1">
-                                    <div className="font-bold text-gray-900 mb-1">مجوز فروش موجودی منفی انبار</div>
-                                    <div className="text-sm text-gray-500 font-medium leading-relaxed">
-                                      اجازه ثبت فاکتور فروش برای کالاهایی که موجودی فعلی آن‌ها صفر یا کمتر از مقدار درخواستی است. 
-                                      (مناسب برای پیش‌فروش یا عدم ثبت دقیق ورود کالاها)
+                                    <div className="font-bold text-gray-900 mb-1">
+                                      مجوز فروش موجودی منفی انبار
                                     </div>
-                                  </div>
-                                </label>
-                                
-                                <label className="flex items-start gap-4 p-5 border border-gray-200 rounded-xl hover:bg-gray-50/80 cursor-pointer transition-all shadow-sm">
-                                  <div className="mt-0.5">
-                                    <input
-                                      type="checkbox"
-                                      checked={settingsForm.requireWarehouse || false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, requireWarehouse: e.target.checked })}
-                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                                    />
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="font-bold text-gray-900 mb-1">الزام انتخاب انبار در سطرهای فاکتور</div>
                                     <div className="text-sm text-gray-500 font-medium leading-relaxed">
-                                      هنگام ثبت فاکتورهای فروش و خرید، کاربر ملزم به مشخص کردن انبار برای هر کالا خواهد بود. 
-                                      (در غیر این‌صورت انبار پیش‌فرض لحاظ می‌شود)
+                                      اجازه ثبت فاکتور فروش برای کالاهایی که
+                                      موجودی فعلی آن‌ها صفر یا کمتر از مقدار
+                                      درخواستی است. (مناسب برای پیش‌فروش یا عدم
+                                      ثبت دقیق ورود کالاها)
                                     </div>
                                   </div>
                                 </label>
@@ -18511,16 +19680,58 @@ export default function App() {
                                   <div className="mt-0.5">
                                     <input
                                       type="checkbox"
-                                      checked={settingsForm.allowDuplicateInvoiceRows || false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, allowDuplicateInvoiceRows: e.target.checked })}
+                                      checked={
+                                        settingsForm.requireWarehouse || false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          requireWarehouse: e.target.checked,
+                                        })
+                                      }
                                       className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                     />
                                   </div>
                                   <div className="flex-1">
-                                    <div className="font-bold text-gray-900 mb-1">مجوز تکرار کالا در سطرهای مجزا</div>
+                                    <div className="font-bold text-gray-900 mb-1">
+                                      الزام انتخاب انبار در سطرهای فاکتور
+                                    </div>
                                     <div className="text-sm text-gray-500 font-medium leading-relaxed">
-                                      در صورت فعال بودن، افزودن کالای تکراری به فاکتور، یک سطر جدید ایجاد می‌کند. 
-                                      در غیر اینصورت، صرفاً تعداد همان کالای قبلی در فاکتور اضافه خواهد شد.
+                                      هنگام ثبت فاکتورهای فروش و خرید، کاربر
+                                      ملزم به مشخص کردن انبار برای هر کالا خواهد
+                                      بود. (در غیر این‌صورت انبار پیش‌فرض لحاظ
+                                      می‌شود)
+                                    </div>
+                                  </div>
+                                </label>
+
+                                <label className="flex items-start gap-4 p-5 border border-gray-200 rounded-xl hover:bg-gray-50/80 cursor-pointer transition-all shadow-sm">
+                                  <div className="mt-0.5">
+                                    <input
+                                      type="checkbox"
+                                      checked={
+                                        settingsForm.allowDuplicateInvoiceRows ||
+                                        false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          allowDuplicateInvoiceRows:
+                                            e.target.checked,
+                                        })
+                                      }
+                                      className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                    />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="font-bold text-gray-900 mb-1">
+                                      مجوز تکرار کالا در سطرهای مجزا
+                                    </div>
+                                    <div className="text-sm text-gray-500 font-medium leading-relaxed">
+                                      در صورت فعال بودن، افزودن کالای تکراری به
+                                      فاکتور، یک سطر جدید ایجاد می‌کند. در غیر
+                                      اینصورت، صرفاً تعداد همان کالای قبلی در
+                                      فاکتور اضافه خواهد شد.
                                     </div>
                                   </div>
                                 </label>
@@ -18536,55 +19747,103 @@ export default function App() {
                               </h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="w-full text-right">
-                                  <label className="block text-sm font-bold text-gray-700 mb-2">درصد مالیات بر ارزش افزوده پیش‌فرض</label>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    درصد مالیات بر ارزش افزوده پیش‌فرض
+                                  </label>
                                   <div className="relative">
                                     <input
                                       type="number"
                                       min="0"
                                       max="100"
-                                      value={settingsForm.default_tax_percent !== undefined ? settingsForm.default_tax_percent : 0}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, default_tax_percent: parseFloat(e.target.value) || 0 })}
+                                      value={
+                                        settingsForm.default_tax_percent !==
+                                        undefined
+                                          ? settingsForm.default_tax_percent
+                                          : 0
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          default_tax_percent:
+                                            parseFloat(e.target.value) || 0,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold text-left"
                                       dir="ltr"
                                     />
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">%</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">
+                                      %
+                                    </span>
                                   </div>
-                                  <p className="text-xs text-gray-500 mt-2 font-medium">این درصد هنگام ایجاد فاکتور جدید به صورت خودکار اعمال می‌شود.</p>
+                                  <p className="text-xs text-gray-500 mt-2 font-medium">
+                                    این درصد هنگام ایجاد فاکتور جدید به صورت
+                                    خودکار اعمال می‌شود.
+                                  </p>
                                 </div>
 
                                 <div className="w-full text-right">
-                                  <label className="block text-sm font-bold text-gray-700 mb-2">درصد تخفیف پیش‌فرض خطوط</label>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    درصد تخفیف پیش‌فرض خطوط
+                                  </label>
                                   <div className="relative">
                                     <input
                                       type="number"
                                       min="0"
                                       max="100"
-                                      value={settingsForm.default_discount_percent !== undefined ? settingsForm.default_discount_percent : 0}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, default_discount_percent: parseFloat(e.target.value) || 0 })}
+                                      value={
+                                        settingsForm.default_discount_percent !==
+                                        undefined
+                                          ? settingsForm.default_discount_percent
+                                          : 0
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          default_discount_percent:
+                                            parseFloat(e.target.value) || 0,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold text-left"
                                       dir="ltr"
                                     />
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">%</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">
+                                      %
+                                    </span>
                                   </div>
                                 </div>
                               </div>
-                              
+
                               <div className="mt-8 border-t border-gray-100 pt-8">
-                                <h4 className="text-md font-black text-gray-800 mb-4">اسناد حسابداری</h4>
+                                <h4 className="text-md font-black text-gray-800 mb-4">
+                                  اسناد حسابداری
+                                </h4>
                                 <label className="flex items-start gap-4 p-5 border border-gray-200 rounded-xl hover:bg-gray-50/80 cursor-pointer transition-all shadow-sm">
                                   <div className="mt-0.5">
                                     <input
                                       type="checkbox"
-                                      checked={settingsForm.auto_generate_accounting_docs !== false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, auto_generate_accounting_docs: e.target.checked })}
+                                      checked={
+                                        settingsForm.auto_generate_accounting_docs !==
+                                        false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          auto_generate_accounting_docs:
+                                            e.target.checked,
+                                        })
+                                      }
                                       className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                     />
                                   </div>
                                   <div className="flex-1">
-                                    <div className="font-bold text-gray-900 mb-1">صدور خودکار اسناد حسابداری</div>
+                                    <div className="font-bold text-gray-900 mb-1">
+                                      صدور خودکار اسناد حسابداری
+                                    </div>
                                     <div className="text-sm text-gray-500 font-medium leading-relaxed">
-                                      با ثبت هر فاکتور یا رسید مالی، سیستم به صورت خودکار سند حسابداری متناظر با آن را در دفتر روزنامه ثبت می‌کند. 
-                                      غیرفعال‌سازی این گزینه نیازمند ثبت دستی اسناد است.
+                                      با ثبت هر فاکتور یا رسید مالی، سیستم به
+                                      صورت خودکار سند حسابداری متناظر با آن را
+                                      در دفتر روزنامه ثبت می‌کند. غیرفعال‌سازی
+                                      این گزینه نیازمند ثبت دستی اسناد است.
                                     </div>
                                   </div>
                                 </label>
@@ -18599,62 +19858,141 @@ export default function App() {
                                 الگوی شماره‌گذاری اسناد
                               </h3>
                               <p className="text-sm text-gray-600 font-medium mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                پیشوند نمایشی، شماره شروع و تعداد ارقام ثابت برای هر نوع سند را تنظیم کنید.
+                                پیشوند نمایشی، شماره شروع و تعداد ارقام ثابت
+                                برای هر نوع سند را تنظیم کنید.
                               </p>
-                              
+
                               <div className="space-y-8">
                                 {[
                                   {
                                     title: "فروش و انبار",
                                     items: [
-                                      { key: "sale", label: "فاکتور فروش", defaultPrefix: "INV-" },
-                                      { key: "proforma", label: "پیش‌فاکتور", defaultPrefix: "PF-" },
-                                      { key: "purchase", label: "فاکتور خرید", defaultPrefix: "PUR-" },
-                                      { key: "sale_return", label: "برگشت از فروش", defaultPrefix: "RTN-S-" },
-                                      { key: "purchase_return", label: "برگشت از خرید", defaultPrefix: "RTN-P-" },
-                                      { key: "warehouse_receipt", label: "رسید انبار (ورود)", defaultPrefix: "REC-" },
-                                      { key: "warehouse_remittance", label: "حواله انبار (خروج)", defaultPrefix: "REM-" },
+                                      {
+                                        key: "sale",
+                                        label: "فاکتور فروش",
+                                        defaultPrefix: "INV-",
+                                      },
+                                      {
+                                        key: "proforma",
+                                        label: "پیش‌فاکتور",
+                                        defaultPrefix: "PF-",
+                                      },
+                                      {
+                                        key: "purchase",
+                                        label: "فاکتور خرید",
+                                        defaultPrefix: "PUR-",
+                                      },
+                                      {
+                                        key: "sale_return",
+                                        label: "برگشت از فروش",
+                                        defaultPrefix: "RTN-S-",
+                                      },
+                                      {
+                                        key: "purchase_return",
+                                        label: "برگشت از خرید",
+                                        defaultPrefix: "RTN-P-",
+                                      },
+                                      {
+                                        key: "warehouse_receipt",
+                                        label: "رسید انبار (ورود)",
+                                        defaultPrefix: "REC-",
+                                      },
+                                      {
+                                        key: "warehouse_remittance",
+                                        label: "حواله انبار (خروج)",
+                                        defaultPrefix: "REM-",
+                                      },
                                     ],
                                   },
                                   {
                                     title: "خزانه‌داری",
                                     items: [
-                                      { key: "receive_receipt", label: "رسید دریافت", defaultPrefix: "RD-" },
-                                      { key: "pay_receipt", label: "رسید پرداخت", defaultPrefix: "PD-" },
-                                      { key: "salary", label: "فیش حقوقی", defaultPrefix: "PAY-" },
+                                      {
+                                        key: "receive_receipt",
+                                        label: "رسید دریافت",
+                                        defaultPrefix: "RD-",
+                                      },
+                                      {
+                                        key: "pay_receipt",
+                                        label: "رسید پرداخت",
+                                        defaultPrefix: "PD-",
+                                      },
+                                      {
+                                        key: "salary",
+                                        label: "فیش حقوقی",
+                                        defaultPrefix: "PAY-",
+                                      },
                                     ],
                                   },
                                   {
                                     title: "سایر",
                                     items: [
-                                      { key: "person", label: "کد شخص/مشتری", defaultPrefix: "P-" },
-                                      { key: "product", label: "کد کالا/خدمات", defaultPrefix: "PRD-" },
-                                      { key: "accounting_document", label: "سند حسابداری", defaultPrefix: "ACC-" },
+                                      {
+                                        key: "person",
+                                        label: "کد شخص/مشتری",
+                                        defaultPrefix: "P-",
+                                      },
+                                      {
+                                        key: "product",
+                                        label: "کد کالا/خدمات",
+                                        defaultPrefix: "PRD-",
+                                      },
+                                      {
+                                        key: "accounting_document",
+                                        label: "سند حسابداری",
+                                        defaultPrefix: "ACC-",
+                                      },
                                     ],
-                                  }
+                                  },
                                 ].map((section, sIndex) => (
-                                  <div key={sIndex} className="overflow-hidden border border-gray-200 rounded-xl bg-white shadow-sm">
+                                  <div
+                                    key={sIndex}
+                                    className="overflow-hidden border border-gray-200 rounded-xl bg-white shadow-sm"
+                                  >
                                     <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 font-black text-gray-800">
                                       {section.title}
                                     </div>
                                     <table className="w-full text-sm text-right">
                                       <thead className="bg-gray-50/50 text-gray-500 font-bold text-xs">
                                         <tr>
-                                          <th className="p-4 border-b border-gray-200 w-1/4">نوع فرم</th>
-                                          <th className="p-4 border-b border-gray-200 w-1/4">پیشوند نمادین</th>
-                                          <th className="p-4 border-b border-gray-200 w-1/4">شماره شروع</th>
-                                          <th className="p-4 border-b border-gray-200 w-1/4">تعداد ارقام ثابت</th>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">
+                                            نوع فرم
+                                          </th>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">
+                                            پیشوند نمادین
+                                          </th>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">
+                                            شماره شروع
+                                          </th>
+                                          <th className="p-4 border-b border-gray-200 w-1/4">
+                                            تعداد ارقام ثابت
+                                          </th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-gray-100">
                                         {section.items.map((doc) => (
-                                          <tr key={doc.key} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="p-4 font-bold text-gray-800 border-l border-gray-100">{doc.label}</td>
+                                          <tr
+                                            key={doc.key}
+                                            className="hover:bg-gray-50/50 transition-colors"
+                                          >
+                                            <td className="p-4 font-bold text-gray-800 border-l border-gray-100">
+                                              {doc.label}
+                                            </td>
                                             <td className="p-4 border-l border-gray-100">
                                               <input
                                                 type="text"
-                                                value={settingsForm[`prefix_${doc.key}`] || ""}
-                                                onChange={(e) => setSettingsForm({ ...settingsForm, [`prefix_${doc.key}`]: e.target.value })}
+                                                value={
+                                                  settingsForm[
+                                                    `prefix_${doc.key}`
+                                                  ] || ""
+                                                }
+                                                onChange={(e) =>
+                                                  setSettingsForm({
+                                                    ...settingsForm,
+                                                    [`prefix_${doc.key}`]:
+                                                      e.target.value,
+                                                  })
+                                                }
                                                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white shadow-sm"
                                                 dir="ltr"
                                                 placeholder={doc.defaultPrefix}
@@ -18663,8 +20001,18 @@ export default function App() {
                                             <td className="p-4 border-l border-gray-100">
                                               <input
                                                 type="number"
-                                                value={settingsForm[`start_${doc.key}`] || ""}
-                                                onChange={(e) => setSettingsForm({ ...settingsForm, [`start_${doc.key}`]: e.target.value })}
+                                                value={
+                                                  settingsForm[
+                                                    `start_${doc.key}`
+                                                  ] || ""
+                                                }
+                                                onChange={(e) =>
+                                                  setSettingsForm({
+                                                    ...settingsForm,
+                                                    [`start_${doc.key}`]:
+                                                      e.target.value,
+                                                  })
+                                                }
                                                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white shadow-sm"
                                                 dir="ltr"
                                                 placeholder="1000"
@@ -18672,9 +20020,23 @@ export default function App() {
                                             </td>
                                             <td className="p-4">
                                               <input
-                                                type="number" min="1" max="15"
-                                                value={settingsForm[`len_${doc.key}`] || ""}
-                                                onChange={(e) => setSettingsForm({ ...settingsForm, [`len_${doc.key}`]: parseInt(e.target.value) || "" })}
+                                                type="number"
+                                                min="1"
+                                                max="15"
+                                                value={
+                                                  settingsForm[
+                                                    `len_${doc.key}`
+                                                  ] || ""
+                                                }
+                                                onChange={(e) =>
+                                                  setSettingsForm({
+                                                    ...settingsForm,
+                                                    [`len_${doc.key}`]:
+                                                      parseInt(
+                                                        e.target.value,
+                                                      ) || "",
+                                                  })
+                                                }
                                                 className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 font-mono text-left bg-white shadow-sm"
                                                 dir="ltr"
                                                 placeholder="6"
@@ -18696,73 +20058,146 @@ export default function App() {
                                 <Printer className="w-5 h-5 text-indigo-500" />
                                 تنظیمات قالب چاپ
                               </h3>
-                              
+
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">سایز پیش‌فرض کاغذ</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      سایز پیش‌فرض کاغذ
+                                    </label>
                                     <select
-                                      value={settingsForm.print_paper_size || "A4"}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_paper_size: e.target.value })}
+                                      value={
+                                        settingsForm.print_paper_size || "A4"
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          print_paper_size: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
                                     >
                                       <option value="A4">A4 (استاندارد)</option>
                                       <option value="A5">A5 (نصف صفحه)</option>
-                                      <option value="receipt80">فیش پرینتر عرض 80mm</option>
-                                      <option value="receipt58">فیش پرینتر عرض 58mm</option>
+                                      <option value="receipt80">
+                                        فیش پرینتر عرض 80mm
+                                      </option>
+                                      <option value="receipt58">
+                                        فیش پرینتر عرض 58mm
+                                      </option>
                                     </select>
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">نمایش لوگو در فاکتور</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      نمایش لوگو در فاکتور
+                                    </label>
                                     <select
-                                      value={settingsForm.print_show_logo !== false ? "true" : "false"}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_show_logo: e.target.value === "true" })}
+                                      value={
+                                        settingsForm.print_show_logo !== false
+                                          ? "true"
+                                          : "false"
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          print_show_logo:
+                                            e.target.value === "true",
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
                                     >
-                                      <option value="true">بله، نمایش داده شود</option>
-                                      <option value="false">خیر، مخفی شود</option>
+                                      <option value="true">
+                                        بله، نمایش داده شود
+                                      </option>
+                                      <option value="false">
+                                        خیر، مخفی شود
+                                      </option>
                                     </select>
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">نمایش خلاصه وضعیت مالی مشتری</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      نمایش خلاصه وضعیت مالی مشتری
+                                    </label>
                                     <select
-                                      value={settingsForm.print_show_financial !== false ? "true" : "false"}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_show_financial: e.target.value === "true" })}
+                                      value={
+                                        settingsForm.print_show_financial !==
+                                        false
+                                          ? "true"
+                                          : "false"
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          print_show_financial:
+                                            e.target.value === "true",
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-bold"
                                     >
-                                      <option value="true">بله، نمایش داده شود</option>
-                                      <option value="false">خیر، مخفی شود</option>
+                                      <option value="true">
+                                        بله، نمایش داده شود
+                                      </option>
+                                      <option value="false">
+                                        خیر، مخفی شود
+                                      </option>
                                     </select>
                                   </div>
                                 </div>
 
                                 <div className="space-y-6">
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">عنوان امضاکننده اول (چپ)</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      عنوان امضاکننده اول (چپ)
+                                    </label>
                                     <input
                                       type="text"
-                                      value={settingsForm.print_signature_1 || ""}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_signature_1: e.target.value })}
+                                      value={
+                                        settingsForm.print_signature_1 || ""
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          print_signature_1: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
                                       placeholder="مثال: مهر و امضای خریدار"
                                     />
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">عنوان امضاکننده دوم (وسط)</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      عنوان امضاکننده دوم (وسط)
+                                    </label>
                                     <input
                                       type="text"
-                                      value={settingsForm.print_signature_2 || ""}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_signature_2: e.target.value })}
+                                      value={
+                                        settingsForm.print_signature_2 || ""
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          print_signature_2: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
                                       placeholder="مثال: تحویل‌دهنده"
                                     />
                                   </div>
                                   <div className="w-full text-right">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">عنوان امضاکننده سوم (راست)</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      عنوان امضاکننده سوم (راست)
+                                    </label>
                                     <input
                                       type="text"
-                                      value={settingsForm.print_signature_3 || ""}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, print_signature_3: e.target.value })}
+                                      value={
+                                        settingsForm.print_signature_3 || ""
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          print_signature_3: e.target.value,
+                                        })
+                                      }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
                                       placeholder="مثال: مهر و امضای فروشنده"
                                     />
@@ -18770,10 +20205,17 @@ export default function App() {
                                 </div>
 
                                 <div className="w-full text-right md:col-span-2">
-                                  <label className="block text-sm font-bold text-gray-700 mb-2">یادداشت ثابت انتهای فاکتورها (فوتر)</label>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    یادداشت ثابت انتهای فاکتورها (فوتر)
+                                  </label>
                                   <textarea
                                     value={settingsForm.print_footer_note || ""}
-                                    onChange={(e) => setSettingsForm({ ...settingsForm, print_footer_note: e.target.value })}
+                                    onChange={(e) =>
+                                      setSettingsForm({
+                                        ...settingsForm,
+                                        print_footer_note: e.target.value,
+                                      })
+                                    }
                                     className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium h-24"
                                     placeholder="قوانین تعویض کالا یا تشکر از خرید و ..."
                                   />
@@ -18791,58 +20233,101 @@ export default function App() {
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   <div className="w-full text-right md:col-span-2">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">سرویس اصلی پیام‌رسان</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                                      سرویس اصلی پیام‌رسان
+                                    </label>
                                     <div className="flex flex-wrap gap-4">
                                       {[
                                         { id: "none", label: "غیرفعال" },
-                                        { id: "sms", label: "سامانه پیامکی ابری (API)" },
-                                        { id: "whatsapp", label: "واتساپ بیزینس" },
-                                        { id: "gsm", label: "مودم GSM محلی" }
+                                        {
+                                          id: "sms",
+                                          label: "سامانه پیامکی ابری (API)",
+                                        },
+                                        {
+                                          id: "whatsapp",
+                                          label: "واتساپ بیزینس",
+                                        },
+                                        { id: "gsm", label: "مودم GSM محلی" },
                                       ].map((method) => (
-                                        <label key={method.id} className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                          settingsForm.notify_method === method.id 
-                                            ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm" 
-                                            : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
-                                        }`}>
-                                          <input 
-                                            type="radio" 
-                                            name="notify_method" 
-                                            className="hidden" 
-                                            checked={settingsForm.notify_method === method.id}
-                                            onChange={() => setSettingsForm({ ...settingsForm, notify_method: method.id })} 
+                                        <label
+                                          key={method.id}
+                                          className={`flex-1 flex items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                            settingsForm.notify_method ===
+                                            method.id
+                                              ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
+                                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                                          }`}
+                                        >
+                                          <input
+                                            type="radio"
+                                            name="notify_method"
+                                            className="hidden"
+                                            checked={
+                                              settingsForm.notify_method ===
+                                              method.id
+                                            }
+                                            onChange={() =>
+                                              setSettingsForm({
+                                                ...settingsForm,
+                                                notify_method: method.id,
+                                              })
+                                            }
                                           />
-                                          <span className="font-bold text-sm">{method.label}</span>
+                                          <span className="font-bold text-sm">
+                                            {method.label}
+                                          </span>
                                         </label>
                                       ))}
                                     </div>
                                   </div>
 
-                                  {settingsForm.notify_method && settingsForm.notify_method !== "none" && (
-                                    <>
-                                      <div className="w-full text-right md:col-span-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">کلید API / تنظیمات درگاه / پورت COM</label>
-                                        <input
-                                          type="text"
-                                          value={settingsForm.notify_api_key || ""}
-                                          onChange={(e) => setSettingsForm({ ...settingsForm, notify_api_key: e.target.value })}
-                                          className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                                          placeholder="Token or Port (e.g. COM3)"
-                                          dir="ltr"
-                                        />
-                                      </div>
-                                      <div className="w-full text-right md:col-span-2">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">خط فرستنده / شماره دستگاه</label>
-                                        <input
-                                          type="text"
-                                          value={settingsForm.notify_sender_number || ""}
-                                          onChange={(e) => setSettingsForm({ ...settingsForm, notify_sender_number: e.target.value })}
-                                          className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
-                                          placeholder="+989..."
-                                          dir="ltr"
-                                        />
-                                      </div>
-                                    </>
-                                  )}
+                                  {settingsForm.notify_method &&
+                                    settingsForm.notify_method !== "none" && (
+                                      <>
+                                        <div className="w-full text-right md:col-span-2">
+                                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            کلید API / تنظیمات درگاه / پورت COM
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={
+                                              settingsForm.notify_api_key || ""
+                                            }
+                                            onChange={(e) =>
+                                              setSettingsForm({
+                                                ...settingsForm,
+                                                notify_api_key: e.target.value,
+                                              })
+                                            }
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                                            placeholder="Token or Port (e.g. COM3)"
+                                            dir="ltr"
+                                          />
+                                        </div>
+                                        <div className="w-full text-right md:col-span-2">
+                                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                                            خط فرستنده / شماره دستگاه
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={
+                                              settingsForm.notify_sender_number ||
+                                              ""
+                                            }
+                                            onChange={(e) =>
+                                              setSettingsForm({
+                                                ...settingsForm,
+                                                notify_sender_number:
+                                                  e.target.value,
+                                              })
+                                            }
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-left"
+                                            placeholder="+989..."
+                                            dir="ltr"
+                                          />
+                                        </div>
+                                      </>
+                                    )}
                                 </div>
                               </div>
 
@@ -18855,31 +20340,58 @@ export default function App() {
                                   <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
                                     <input
                                       type="checkbox"
-                                      checked={settingsForm.notify_on_invoice || false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, notify_on_invoice: e.target.checked })}
+                                      checked={
+                                        settingsForm.notify_on_invoice || false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          notify_on_invoice: e.target.checked,
+                                        })
+                                      }
                                       className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                     />
-                                    <span className="text-gray-800 font-bold">ارسال فاکتور خرید/فروش برای مشتری</span>
+                                    <span className="text-gray-800 font-bold">
+                                      ارسال فاکتور خرید/فروش برای مشتری
+                                    </span>
                                   </label>
 
                                   <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
                                     <input
                                       type="checkbox"
-                                      checked={settingsForm.notify_on_receipt || false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, notify_on_receipt: e.target.checked })}
+                                      checked={
+                                        settingsForm.notify_on_receipt || false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          notify_on_receipt: e.target.checked,
+                                        })
+                                      }
                                       className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                     />
-                                    <span className="text-gray-800 font-bold">ارسال رسید ثبت دریافتی / پرداختی</span>
+                                    <span className="text-gray-800 font-bold">
+                                      ارسال رسید ثبت دریافتی / پرداختی
+                                    </span>
                                   </label>
 
                                   <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
                                     <input
                                       type="checkbox"
-                                      checked={settingsForm.notify_on_balance || false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, notify_on_balance: e.target.checked })}
+                                      checked={
+                                        settingsForm.notify_on_balance || false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          notify_on_balance: e.target.checked,
+                                        })
+                                      }
                                       className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                                     />
-                                    <span className="text-gray-800 font-bold">گزارش مانده حساب (پس از هر تراکنش)</span>
+                                    <span className="text-gray-800 font-bold">
+                                      گزارش مانده حساب (پس از هر تراکنش)
+                                    </span>
                                   </label>
                                 </div>
                               </div>
@@ -18891,27 +20403,51 @@ export default function App() {
                                     هشدار سقف اعتباری مشتریان
                                   </h3>
                                   <label className="flex items-center gap-2 cursor-pointer">
-                                    <span className="font-bold text-sm text-gray-600">فعال‌سازی سیستم هشدار</span>
-                                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.smsDebtThresholdEnabled ? "bg-indigo-600" : "bg-gray-300"}`}>
-                                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.smsDebtThresholdEnabled ? "-translate-x-6" : "translate-x-0"}`}></div>
+                                    <span className="font-bold text-sm text-gray-600">
+                                      فعال‌سازی سیستم هشدار
+                                    </span>
+                                    <div
+                                      className={`w-12 h-6 rounded-full p-1 transition-colors ${settingsForm.smsDebtThresholdEnabled ? "bg-indigo-600" : "bg-gray-300"}`}
+                                    >
+                                      <div
+                                        className={`bg-white w-4 h-4 rounded-full shadow-sm transition-transform transform ${settingsForm.smsDebtThresholdEnabled ? "-translate-x-6" : "translate-x-0"}`}
+                                      ></div>
                                     </div>
                                     <input
                                       type="checkbox"
                                       className="hidden"
-                                      checked={settingsForm.smsDebtThresholdEnabled || false}
-                                      onChange={(e) => setSettingsForm({ ...settingsForm, smsDebtThresholdEnabled: e.target.checked })}
+                                      checked={
+                                        settingsForm.smsDebtThresholdEnabled ||
+                                        false
+                                      }
+                                      onChange={(e) =>
+                                        setSettingsForm({
+                                          ...settingsForm,
+                                          smsDebtThresholdEnabled:
+                                            e.target.checked,
+                                        })
+                                      }
                                     />
                                   </label>
                                 </div>
-                                
+
                                 {settingsForm.smsDebtThresholdEnabled && (
                                   <div className="bg-rose-50/50 p-6 rounded-xl border border-rose-100 grid grid-cols-1 gap-6">
                                     <div className="w-full text-right">
-                                      <label className="block text-sm font-bold text-gray-700 mb-2">سقف مجاز بدهی عمومی (تومان)</label>
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        سقف مجاز بدهی عمومی (تومان)
+                                      </label>
                                       <CurrencyInput
-                                        value={settingsForm.smsDebtThresholdAmount || ""}
+                                        value={
+                                          settingsForm.smsDebtThresholdAmount ||
+                                          ""
+                                        }
                                         onChange={(e: any) =>
-                                          setSettingsForm({ ...settingsForm, smsDebtThresholdAmount: Number(e.target.value) || 0 })
+                                          setSettingsForm({
+                                            ...settingsForm,
+                                            smsDebtThresholdAmount:
+                                              Number(e.target.value) || 0,
+                                          })
                                         }
                                         placeholder="مثال: 50,000,000"
                                         className="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm"
@@ -18919,10 +20455,21 @@ export default function App() {
                                       />
                                     </div>
                                     <div className="w-full text-right">
-                                      <label className="block text-sm font-bold text-gray-700 mb-2">متن پیامک هشدار</label>
+                                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                                        متن پیامک هشدار
+                                      </label>
                                       <textarea
-                                        value={settingsForm.smsDebtThresholdMessage || "مشتری گرامی، مانده بدهی شما از سقف مجاز عبور کرده است. لطفا نسبت به تسویه حساب اقدام نمایید."}
-                                        onChange={(e) => setSettingsForm({ ...settingsForm, smsDebtThresholdMessage: e.target.value })}
+                                        value={
+                                          settingsForm.smsDebtThresholdMessage ||
+                                          "مشتری گرامی، مانده بدهی شما از سقف مجاز عبور کرده است. لطفا نسبت به تسویه حساب اقدام نمایید."
+                                        }
+                                        onChange={(e) =>
+                                          setSettingsForm({
+                                            ...settingsForm,
+                                            smsDebtThresholdMessage:
+                                              e.target.value,
+                                          })
+                                        }
                                         className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all h-24"
                                       />
                                     </div>
@@ -19048,7 +20595,9 @@ export default function App() {
                               <thead>
                                 <tr className="bg-gray-50 border-b border-gray-100 text-gray-500">
                                   <th className="p-4 font-semibold">گیرنده</th>
-                                  <th className="p-4 font-semibold">متن پیام</th>
+                                  <th className="p-4 font-semibold">
+                                    متن پیام
+                                  </th>
                                   <th className="p-4 font-semibold">وضعیت</th>
                                   <th className="p-4 font-semibold">توسط</th>
                                   <th className="p-4 font-semibold">
@@ -19057,74 +20606,74 @@ export default function App() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-50">
-                              {smsMessages.length === 0 ? (
-                                <tr>
-                                  <td
-                                    colSpan={5}
-                                    className="p-8 text-center text-gray-500"
-                                  >
-                                    هیچ پیامکی در سیستم ثبت نشده است.
-                                  </td>
-                                </tr>
-                              ) : (
-                                [...smsMessages]
-                                  .sort((a, b) => b.timestamp - a.timestamp)
-                                  .map((msg) => (
-                                    <tr
-                                      key={msg.id}
-                                      className="hover:bg-gray-50/50 transition-colors"
+                                {smsMessages.length === 0 ? (
+                                  <tr>
+                                    <td
+                                      colSpan={5}
+                                      className="p-8 text-center text-gray-500"
                                     >
-                                      <td
-                                        className="p-4 font-bold text-gray-800"
-                                        dir="ltr"
+                                      هیچ پیامکی در سیستم ثبت نشده است.
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  [...smsMessages]
+                                    .sort((a, b) => b.timestamp - a.timestamp)
+                                    .map((msg) => (
+                                      <tr
+                                        key={msg.id}
+                                        className="hover:bg-gray-50/50 transition-colors"
                                       >
-                                        {msg.recipient}
-                                      </td>
-                                      <td
-                                        className="p-4 text-gray-600 max-w-xs truncate"
-                                        title={msg.message}
-                                      >
-                                        {msg.message}
-                                      </td>
-                                      <td className="p-4">
-                                        <span
-                                          className={`px-2.5 py-1 rounded-full text-xs font-bold ${msg.status === "sent" ? "bg-emerald-100 text-emerald-700" : msg.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}
+                                        <td
+                                          className="p-4 font-bold text-gray-800"
+                                          dir="ltr"
                                         >
-                                          {msg.status === "sent"
-                                            ? "ارسال شده"
-                                            : msg.status === "pending"
-                                              ? "در انتظار"
-                                              : "خطا"}
-                                        </span>
-                                      </td>
-                                      <td className="p-4">
-                                        <span
-                                          className={`px-2.5 py-1 rounded-full text-xs font-bold ${msg.provider === "online" || msg.provider === "sms" ? "bg-blue-100 text-blue-700" : msg.provider === "gsm" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"}`}
+                                          {msg.recipient}
+                                        </td>
+                                        <td
+                                          className="p-4 text-gray-600 max-w-xs truncate"
+                                          title={msg.message}
                                         >
-                                          {msg.provider === "sms" ||
-                                          msg.provider === "online"
-                                            ? "وب‌سرویس"
-                                            : msg.provider === "gsm"
-                                              ? "دستگاه GSM"
-                                              : "نامشخص"}
-                                        </span>
-                                      </td>
-                                      <td
-                                        className="p-4 text-gray-500"
-                                        dir="ltr"
-                                      >
-                                        {new Date(msg.timestamp).toLocaleString(
-                                          "fa-IR",
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))
-                              )}
-                            </tbody>
-                          </table>
+                                          {msg.message}
+                                        </td>
+                                        <td className="p-4">
+                                          <span
+                                            className={`px-2.5 py-1 rounded-full text-xs font-bold ${msg.status === "sent" ? "bg-emerald-100 text-emerald-700" : msg.status === "pending" ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}
+                                          >
+                                            {msg.status === "sent"
+                                              ? "ارسال شده"
+                                              : msg.status === "pending"
+                                                ? "در انتظار"
+                                                : "خطا"}
+                                          </span>
+                                        </td>
+                                        <td className="p-4">
+                                          <span
+                                            className={`px-2.5 py-1 rounded-full text-xs font-bold ${msg.provider === "online" || msg.provider === "sms" ? "bg-blue-100 text-blue-700" : msg.provider === "gsm" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"}`}
+                                          >
+                                            {msg.provider === "sms" ||
+                                            msg.provider === "online"
+                                              ? "وب‌سرویس"
+                                              : msg.provider === "gsm"
+                                                ? "دستگاه GSM"
+                                                : "نامشخص"}
+                                          </span>
+                                        </td>
+                                        <td
+                                          className="p-4 text-gray-500"
+                                          dir="ltr"
+                                        >
+                                          {new Date(
+                                            msg.timestamp,
+                                          ).toLocaleString("fa-IR")}
+                                        </td>
+                                      </tr>
+                                    ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       </div>
-                    </div>
                     ) : (
                       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <div className="flex items-center justify-between mb-6">
@@ -19134,7 +20683,9 @@ export default function App() {
                           <button
                             onClick={async () => {
                               await saveStoreSettings(storeSettings);
-                              setSuccessMsg("قالب‌های پیامک با موفقیت ذخیره شدند.");
+                              setSuccessMsg(
+                                "قالب‌های پیامک با موفقیت ذخیره شدند.",
+                              );
                             }}
                             className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-colors flex items-center gap-2"
                           >
@@ -19142,7 +20693,7 @@ export default function App() {
                             ذخیره قالب‌ها
                           </button>
                         </div>
-                        
+
                         <div className="space-y-8">
                           <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -19158,8 +20709,13 @@ export default function App() {
                               </div>
                             </div>
                             <textarea
-                              value={storeSettings?.smsTemplateInvoice || ''}
-                              onChange={(e) => setStoreSettings({...storeSettings, smsTemplateInvoice: e.target.value})}
+                              value={storeSettings?.smsTemplateInvoice || ""}
+                              onChange={(e) =>
+                                setStoreSettings({
+                                  ...storeSettings,
+                                  smsTemplateInvoice: e.target.value,
+                                })
+                              }
                               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 h-24 text-sm"
                               placeholder="مثال: جناب/سرکار {name}، فاکتور شما به شماره {invoice_number} و مبلغ {amount} ثبت شد."
                             ></textarea>
@@ -19179,8 +20735,13 @@ export default function App() {
                               </div>
                             </div>
                             <textarea
-                              value={storeSettings?.smsTemplateReceipt || ''}
-                              onChange={(e) => setStoreSettings({...storeSettings, smsTemplateReceipt: e.target.value})}
+                              value={storeSettings?.smsTemplateReceipt || ""}
+                              onChange={(e) =>
+                                setStoreSettings({
+                                  ...storeSettings,
+                                  smsTemplateReceipt: e.target.value,
+                                })
+                              }
                               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 h-24 text-sm"
                               placeholder="مثال: جناب/سرکار {name}، مبلغ {amount} طی رسید شماره {receipt_number} دریافت شد."
                             ></textarea>
@@ -19200,8 +20761,13 @@ export default function App() {
                               </div>
                             </div>
                             <textarea
-                              value={storeSettings?.smsTemplateCheck || ''}
-                              onChange={(e) => setStoreSettings({...storeSettings, smsTemplateCheck: e.target.value})}
+                              value={storeSettings?.smsTemplateCheck || ""}
+                              onChange={(e) =>
+                                setStoreSettings({
+                                  ...storeSettings,
+                                  smsTemplateCheck: e.target.value,
+                                })
+                              }
                               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 h-24 text-sm"
                               placeholder="مثال: جناب/سرکار {name}، یادآوری چک شماره {check_number} به مبلغ {amount} در تاریخ {due_date}."
                             ></textarea>
@@ -19735,7 +21301,9 @@ export default function App() {
                             تاریخ صدور سند
                           </span>
                           <span className="text-sm font-extrabold text-gray-900 font-sans mt-0.5 block">
-                            {formatPersianDateDisplay(viewingPayslip.jalaliDate || viewingPayslip.date)}
+                            {formatPersianDateDisplay(
+                              viewingPayslip.jalaliDate || viewingPayslip.date,
+                            )}
                           </span>
                         </div>
                       </div>
@@ -20263,7 +21831,7 @@ export default function App() {
                 </div>
               )}
 
-                            {isGenerateBarcodesModalOpen && (
+              {isGenerateBarcodesModalOpen && (
                 <div
                   className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
                   dir="rtl"
@@ -20289,9 +21857,13 @@ export default function App() {
 
                     <div className="p-6 space-y-6 overflow-y-auto max-h-[85vh]">
                       <div className="bg-indigo-50/70 text-indigo-800 text-xs font-medium p-4 rounded-2xl leading-relaxed border border-indigo-100/50 flex items-start gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">ℹ</div>
+                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                          ℹ
+                        </div>
                         <span>
-                          این بخش برای تمام کالاهایی که فاقد بارکد هستند، بر اساس فرمت انتخابی شما بارکد کاملاً یکتا و خودکار ایجاد می‌کند.
+                          این بخش برای تمام کالاهایی که فاقد بارکد هستند، بر
+                          اساس فرمت انتخابی شما بارکد کاملاً یکتا و خودکار ایجاد
+                          می‌کند.
                         </span>
                       </div>
 
@@ -20302,10 +21874,26 @@ export default function App() {
                           </label>
                           <div className="grid grid-cols-2 gap-2.5">
                             {[
-                              { id: "prefix_serial", label: "پیشوند + سریال", desc: "PRD-000100" },
-                              { id: "numeric_only", label: "فقط عددی", desc: "10000001" },
-                              { id: "date_prefix", label: "سال و ماه + سریال", desc: "2606-0001" },
-                              { id: "random_alphanumeric", label: "کاراکتر تصادفی", desc: "PRD-X7H2K" }
+                              {
+                                id: "prefix_serial",
+                                label: "پیشوند + سریال",
+                                desc: "PRD-000100",
+                              },
+                              {
+                                id: "numeric_only",
+                                label: "فقط عددی",
+                                desc: "10000001",
+                              },
+                              {
+                                id: "date_prefix",
+                                label: "سال و ماه + سریال",
+                                desc: "2606-0001",
+                              },
+                              {
+                                id: "random_alphanumeric",
+                                label: "کاراکتر تصادفی",
+                                desc: "PRD-X7H2K",
+                              },
                             ].map((fmt) => (
                               <button
                                 key={fmt.id}
@@ -20317,10 +21905,15 @@ export default function App() {
                                     : "bg-white border-slate-200 hover:bg-slate-50"
                                 }`}
                               >
-                                <span className={`text-xs font-black ${barcodeFormat === fmt.id ? "text-indigo-900" : "text-slate-800"}`}>
+                                <span
+                                  className={`text-xs font-black ${barcodeFormat === fmt.id ? "text-indigo-900" : "text-slate-800"}`}
+                                >
                                   {fmt.label}
                                 </span>
-                                <span className="text-[10px] font-mono text-slate-400 font-bold" dir="ltr">
+                                <span
+                                  className="text-[10px] font-mono text-slate-400 font-bold"
+                                  dir="ltr"
+                                >
                                   {fmt.desc}
                                 </span>
                               </button>
@@ -20328,7 +21921,8 @@ export default function App() {
                           </div>
                         </div>
 
-                        {(barcodeFormat === "prefix_serial" || barcodeFormat === "random_alphanumeric") && (
+                        {(barcodeFormat === "prefix_serial" ||
+                          barcodeFormat === "random_alphanumeric") && (
                           <motion.div
                             initial={{ opacity: 0, y: -5 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -20356,21 +21950,33 @@ export default function App() {
                               <input
                                 type="number"
                                 value={barcodeStartNumber}
-                                onChange={(e) => setBarcodeStartNumber(Number(e.target.value))}
+                                onChange={(e) =>
+                                  setBarcodeStartNumber(Number(e.target.value))
+                                }
                                 dir="ltr"
                                 className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 text-slate-900 font-sans font-bold"
                               />
                             </div>
                           )}
 
-                          <div className={barcodeFormat === "random_alphanumeric" ? "col-span-2" : ""}>
+                          <div
+                            className={
+                              barcodeFormat === "random_alphanumeric"
+                                ? "col-span-2"
+                                : ""
+                            }
+                          >
                             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                              {barcodeFormat === "random_alphanumeric" ? "طول کاراکترهای تصادفی" : "طول سریال عددی (Padding)"}
+                              {barcodeFormat === "random_alphanumeric"
+                                ? "طول کاراکترهای تصادفی"
+                                : "طول سریال عددی (Padding)"}
                             </label>
                             <input
                               type="number"
                               value={barcodeLength}
-                              onChange={(e) => setBarcodeLength(Number(e.target.value))}
+                              onChange={(e) =>
+                                setBarcodeLength(Number(e.target.value))
+                              }
                               dir="ltr"
                               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 text-slate-900 font-sans font-bold"
                             />
@@ -20378,22 +21984,32 @@ export default function App() {
                         </div>
 
                         <div className="mt-4 p-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/20 flex flex-col items-center justify-center gap-2">
-                           <span className="text-[11px] font-bold text-slate-500">پیش‌نمایش اولین بارکد تولیدی با این فرمت:</span>
-                           <span className="text-xl font-black font-mono text-indigo-700 tracking-widest" dir="ltr">
-                              {(() => {
-                                if (barcodeFormat === "prefix_serial") {
-                                  return `${barcodePrefix}${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
-                                } else if (barcodeFormat === "numeric_only") {
-                                  return `${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
-                                } else if (barcodeFormat === "date_prefix") {
-                                  const yy = new Date().getFullYear().toString().substring(2);
-                                  const mm = String(new Date().getMonth() + 1).padStart(2, "0");
-                                  return `${yy}${mm}-${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
-                                } else {
-                                  return `${barcodePrefix}${"X".repeat(barcodeLength)}`;
-                                }
-                              })()}
-                           </span>
+                          <span className="text-[11px] font-bold text-slate-500">
+                            پیش‌نمایش اولین بارکد تولیدی با این فرمت:
+                          </span>
+                          <span
+                            className="text-xl font-black font-mono text-indigo-700 tracking-widest"
+                            dir="ltr"
+                          >
+                            {(() => {
+                              if (barcodeFormat === "prefix_serial") {
+                                return `${barcodePrefix}${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
+                              } else if (barcodeFormat === "numeric_only") {
+                                return `${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
+                              } else if (barcodeFormat === "date_prefix") {
+                                const yy = new Date()
+                                  .getFullYear()
+                                  .toString()
+                                  .substring(2);
+                                const mm = String(
+                                  new Date().getMonth() + 1,
+                                ).padStart(2, "0");
+                                return `${yy}${mm}-${String(barcodeStartNumber).padStart(barcodeLength, "0")}`;
+                              } else {
+                                return `${barcodePrefix}${"X".repeat(barcodeLength)}`;
+                              }
+                            })()}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -20412,10 +22028,10 @@ export default function App() {
                         className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-bold text-xs shadow-md shadow-indigo-600/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
                       >
                         {submittingProduct ? (
-                           <>
-                             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                             در حال پردازش...
-                           </>
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            در حال پردازش...
+                          </>
                         ) : (
                           "تولید و تخصیص بارکدها"
                         )}
@@ -22471,9 +24087,8 @@ export default function App() {
 
                                   let mappedType: "real" | "legal" = "real";
                                   let mappedRole:
-                                    | "customer"
-                                    | "supplier"
-                                    | "employee" = "customer";
+                                    "customer" | "supplier" | "employee" =
+                                    "customer";
                                   let phone = "";
                                   let nationalId = "";
                                   let fatherName = "";
@@ -22565,7 +24180,10 @@ export default function App() {
                                     }
                                   }
 
-                                  let alias = mappedType === "legal" ? (companyName || mappedName) : mappedName;
+                                  let alias =
+                                    mappedType === "legal"
+                                      ? companyName || mappedName
+                                      : mappedName;
                                   if (mappedType === "real" && fatherName) {
                                     alias += `(${fatherName})`;
                                   }
@@ -22699,21 +24317,33 @@ export default function App() {
                                 <div className="flex flex-col items-center justify-center gap-2">
                                   <div className="relative w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-white">
                                     {newPersonImage ? (
-                                      <img src={newPersonImage} alt="Avatar" className="w-full h-full object-cover" />
+                                      <img
+                                        src={newPersonImage}
+                                        alt="Avatar"
+                                        className="w-full h-full object-cover"
+                                      />
                                     ) : (
                                       <User className="w-8 h-8 text-gray-300" />
                                     )}
-                                    <input 
-                                      type="file" 
+                                    <input
+                                      type="file"
                                       className="absolute inset-0 opacity-0 cursor-pointer"
                                       accept="image/*"
                                       onChange={(e) => {
-                                        if (e.target.files && e.target.files.length > 0) {
+                                        if (
+                                          e.target.files &&
+                                          e.target.files.length > 0
+                                        ) {
                                           const file = e.target.files[0];
                                           const reader = new FileReader();
                                           reader.onload = (event) => {
-                                            if (event.target && event.target.result) {
-                                              setNewPersonImage(event.target.result as string);
+                                            if (
+                                              event.target &&
+                                              event.target.result
+                                            ) {
+                                              setNewPersonImage(
+                                                event.target.result as string,
+                                              );
                                             }
                                           };
                                           reader.readAsDataURL(file);
@@ -22721,7 +24351,9 @@ export default function App() {
                                       }}
                                     />
                                   </div>
-                                  <span className="text-xs text-gray-500">تصویر پروفایل</span>
+                                  <span className="text-xs text-gray-500">
+                                    تصویر پروفایل
+                                  </span>
                                 </div>
                                 <div className="w-full text-right">
                                   <label className="block text-sm font-bold text-slate-700 mb-2">
@@ -22852,7 +24484,9 @@ export default function App() {
                                     <select
                                       value={newPersonGender}
                                       onChange={(e) =>
-                                        setNewPersonGender(e.target.value as any)
+                                        setNewPersonGender(
+                                          e.target.value as any,
+                                        )
                                       }
                                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 shadow-sm text-gray-900"
                                     >
@@ -23053,7 +24687,10 @@ export default function App() {
                                     سقف اعتبار / بدهی
                                   </h4>
                                   <p className="text-xs text-blue-700/80 leading-relaxed max-w-2xl">
-                                    با تعیین سقف اعتبار، در صورتی که بدهی این شخص از مبلغ تعیین شده بیشتر شود، سیستم اجازه ثبت فاکتور یا سند جدید برای ایشان را نخواهد داد.
+                                    با تعیین سقف اعتبار، در صورتی که بدهی این
+                                    شخص از مبلغ تعیین شده بیشتر شود، سیستم اجازه
+                                    ثبت فاکتور یا سند جدید برای ایشان را نخواهد
+                                    داد.
                                   </p>
                                 </div>
                                 <div className="w-full relative z-10">
@@ -23701,7 +25338,12 @@ export default function App() {
                                   : "max-w-[210mm] min-h-fit")
                           }
                         >
-                           <WarehousePrintTemplate data={viewingInvoice} storeSettings={storeSettings} warehouses={warehouses} persons={persons} />
+                          <WarehousePrintTemplate
+                            data={viewingInvoice}
+                            storeSettings={storeSettings}
+                            warehouses={warehouses}
+                            persons={persons}
+                          />
                         </div>
                       ) : (
                         <div
@@ -23716,7 +25358,16 @@ export default function App() {
                                   : "max-w-[210mm] min-h-fit")
                           }
                         >
-                           <InvoicePrintTemplate data={viewingInvoice} storeSettings={storeSettings} persons={persons} transactions={transactions} invoices={invoices} personOpeningBalances={personOpeningBalances} issuedChecks={issuedChecks} receivedChecks={receivedChecks} />
+                          <InvoicePrintTemplate
+                            data={viewingInvoice}
+                            storeSettings={storeSettings}
+                            persons={persons}
+                            transactions={transactions}
+                            invoices={invoices}
+                            personOpeningBalances={personOpeningBalances}
+                            issuedChecks={issuedChecks}
+                            receivedChecks={receivedChecks}
+                          />
                         </div>
                       )}
                     </div>
@@ -23855,9 +25506,27 @@ export default function App() {
                           try {
                             const parsed = JSON.parse(t.description);
                             if (parsed.isPayslip) {
-                              const months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-                              const monthName = parsed.periodMonth ? months[parseInt(parsed.periodMonth) - 1] : "";
-                              const periodStr = (monthName && parsed.periodYear) ? ` (دوره فیش: ${monthName} ماه ${parsed.periodYear})` : "";
+                              const months = [
+                                "فروردین",
+                                "اردیبهشت",
+                                "خرداد",
+                                "تیر",
+                                "مرداد",
+                                "شهریور",
+                                "مهر",
+                                "آبان",
+                                "آذر",
+                                "دی",
+                                "بهمن",
+                                "اسفند",
+                              ];
+                              const monthName = parsed.periodMonth
+                                ? months[parseInt(parsed.periodMonth) - 1]
+                                : "";
+                              const periodStr =
+                                monthName && parsed.periodYear
+                                  ? ` (دوره فیش: ${monthName} ماه ${parsed.periodYear})`
+                                  : "";
                               desc = `ثبت حقوق و دستمزد${periodStr}: پایه ${formatNumber(parsed.base)} (بابت ${parsed.userNote || "حقوق دوره‌ای"})`;
                             }
                           } catch (e) {
@@ -24421,7 +26090,9 @@ export default function App() {
                                             >
                                               <td className="py-3 px-4">
                                                 <div className="font-mono text-gray-500 font-bold">
-                                                  {formatPersianDateDisplay(entry.jalaliDate)}
+                                                  {formatPersianDateDisplay(
+                                                    entry.jalaliDate,
+                                                  )}
                                                 </div>
                                                 <div className="text-[10px] text-gray-400 mt-0.5">
                                                   {entry.refId}
@@ -24650,7 +26321,9 @@ export default function App() {
                                   تاریخ ایجاد سند
                                 </span>
                                 <div className="text-base font-bold text-gray-800 font-mono">
-                                  {formatPersianDateDisplay(previewReceiptData.jalaliDate)}
+                                  {formatPersianDateDisplay(
+                                    previewReceiptData.jalaliDate,
+                                  )}
                                 </div>
                               </div>
                               <div>
@@ -25092,35 +26765,51 @@ export default function App() {
                         {/* Header info */}
                         {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING BEGIN --- */}
                         {previewInvoiceData.type?.includes("warehouse") ? (
-                           <div
-                              className={
-                                "bg-white print:p-0 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " +
-                                (storeSettings.print_paper_size === "A5"
-                                  ? "max-w-[148mm] min-h-[210mm] mx-auto"
-                                  : storeSettings.print_paper_size === "receipt80"
-                                    ? "max-w-[80mm] min-h-[100mm] mx-auto print:text-xs"
-                                    : storeSettings.print_paper_size === "receipt58"
-                                      ? "max-w-[58mm] min-h-[100mm] mx-auto print:text-[10px]"
-                                      : "max-w-4xl min-h-fit mx-auto")
-                              }
-                            >
-                               <WarehousePrintTemplate data={previewInvoiceData} storeSettings={storeSettings} warehouses={warehouses} persons={persons} />
-                            </div>
+                          <div
+                            className={
+                              "bg-white print:p-0 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " +
+                              (storeSettings.print_paper_size === "A5"
+                                ? "max-w-[148mm] min-h-[210mm] mx-auto"
+                                : storeSettings.print_paper_size === "receipt80"
+                                  ? "max-w-[80mm] min-h-[100mm] mx-auto print:text-xs"
+                                  : storeSettings.print_paper_size ===
+                                      "receipt58"
+                                    ? "max-w-[58mm] min-h-[100mm] mx-auto print:text-[10px]"
+                                    : "max-w-4xl min-h-fit mx-auto")
+                            }
+                          >
+                            <WarehousePrintTemplate
+                              data={previewInvoiceData}
+                              storeSettings={storeSettings}
+                              warehouses={warehouses}
+                              persons={persons}
+                            />
+                          </div>
                         ) : (
-                        <div
-                          className={
-                            "bg-white print:p-0 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " +
-                            (storeSettings.print_paper_size === "A5"
-                              ? "max-w-[148mm] min-h-[210mm] mx-auto"
-                              : storeSettings.print_paper_size === "receipt80"
-                                ? "max-w-[80mm] min-h-[100mm] mx-auto print:text-xs"
-                                : storeSettings.print_paper_size === "receipt58"
-                                  ? "max-w-[58mm] min-h-[100mm] mx-auto print:text-[10px]"
-                                  : "max-w-[210mm] min-h-fit mx-auto")
-                          }
-                        >
-                           <InvoicePrintTemplate data={previewInvoiceData} storeSettings={storeSettings} persons={persons} transactions={transactions} invoices={invoices} personOpeningBalances={personOpeningBalances} issuedChecks={issuedChecks} receivedChecks={receivedChecks} />
-                        </div>
+                          <div
+                            className={
+                              "bg-white print:p-0 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] print:shadow-none border border-gray-100 print:border-none relative overflow-hidden text-gray-800 " +
+                              (storeSettings.print_paper_size === "A5"
+                                ? "max-w-[148mm] min-h-[210mm] mx-auto"
+                                : storeSettings.print_paper_size === "receipt80"
+                                  ? "max-w-[80mm] min-h-[100mm] mx-auto print:text-xs"
+                                  : storeSettings.print_paper_size ===
+                                      "receipt58"
+                                    ? "max-w-[58mm] min-h-[100mm] mx-auto print:text-[10px]"
+                                    : "max-w-[210mm] min-h-fit mx-auto")
+                            }
+                          >
+                            <InvoicePrintTemplate
+                              data={previewInvoiceData}
+                              storeSettings={storeSettings}
+                              persons={persons}
+                              transactions={transactions}
+                              invoices={invoices}
+                              personOpeningBalances={personOpeningBalances}
+                              issuedChecks={issuedChecks}
+                              receivedChecks={receivedChecks}
+                            />
+                          </div>
                         )}
                         {/* --- COMPLETELY DIFFERENT CONDITIONAL RENDERING END --- */}
                       </div>
@@ -25339,7 +27028,10 @@ export default function App() {
                             تاریخ:
                           </span>
                           <span className="font-sans font-black text-gray-900">
-                            {formatPersianDateDisplay(printingTransaction.jalaliDate || printingTransaction.date?.split('T')[0])}
+                            {formatPersianDateDisplay(
+                              printingTransaction.jalaliDate ||
+                                printingTransaction.date?.split("T")[0],
+                            )}
                           </span>
                         </div>
                         <div className="flex justify-between items-center w-full max-w-[170px]">
@@ -25804,7 +27496,9 @@ export default function App() {
                     </span>
                     <span>
                       تاریخ ثبت خرید:{" "}
-                      {formatPersianDateDisplay(pricingWizardInvoice?.jalaliDate)}
+                      {formatPersianDateDisplay(
+                        pricingWizardInvoice?.jalaliDate,
+                      )}
                     </span>
                     <span>
                       تاریخ قیمت‌گذاری: {formatPersianDateDisplay(new Date())}
@@ -25905,13 +27599,11 @@ export default function App() {
           </div>
         </div>
       )}
-
       <FastProductCreateModal
         isOpen={isFastProductModalOpen}
         onClose={() => setIsFastProductModalOpen(false)}
         onSave={handleFastSaveProduct}
       />
-
       <BulkProductImportModal
         isOpen={isBulkImportOpen}
         onClose={() => setIsBulkImportOpen(false)}
@@ -25919,7 +27611,8 @@ export default function App() {
         onImport={handleBulkImportItems}
         isPurchase={
           activeTab === "create_purchase" ||
-          (activeTab === "create_warehouse_doc" && invoiceType === "warehouse_receipt")
+          (activeTab === "create_warehouse_doc" &&
+            invoiceType === "warehouse_receipt")
         }
         getLastPriceForProduct={getLastPriceForProduct}
       />
