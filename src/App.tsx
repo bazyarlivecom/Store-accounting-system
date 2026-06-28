@@ -221,6 +221,7 @@ import WarehousePrintTemplate from "./components/print/WarehousePrintTemplate";
 import InvoicePrintTemplate from "./components/print/InvoicePrintTemplate";
 import AIProductSearchModal from "./components/products/AIProductSearchModal";
 import BulkProductImportModal from "./components/products/BulkProductImportModal";
+import FastProductCreateModal from "./components/products/FastProductCreateModal";
 import {
   Person,
   PersonGroup,
@@ -1716,6 +1717,7 @@ export default function App() {
     }
   };
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isFastProductModalOpen, setIsFastProductModalOpen] = useState(false);
   const [isProductActionsMenuOpen, setIsProductActionsMenuOpen] = useState(false);
   const [isGenerateBarcodesModalOpen, setIsGenerateBarcodesModalOpen] = useState(false);
   const [isAIProductSearchOpen, setIsAIProductSearchOpen] = useState(false);
@@ -2335,6 +2337,28 @@ export default function App() {
       setSuccessMsg("خطا در ثبت کالا."); // We don't have showError apparently
     } finally {
       setSubmittingProduct(false);
+    }
+  };
+
+  const handleFastSaveProduct = async (productData: any): Promise<boolean> => {
+    try {
+      const addedProduct = await addProduct(productData);
+      
+      if (["create_sale", "create_purchase", "create_warehouse_doc"].includes(activeTab)) {
+        handleFastAddProduct(addedProduct.id.toString(), addedProduct);
+        setNotification({
+          message: "کالا ثبت و به عنوان ردیف جدید به فاکتور اضافه شد.",
+          type: "info",
+        });
+        setTimeout(() => setNotification(null), 3000);
+      }
+      
+      await fetchProducts();
+      return true;
+    } catch (error) {
+      console.error("Error fast saving product", error);
+      showNotification("خطا در ثبت سریع کالا.", "error");
+      return false;
     }
   };
 
@@ -6507,6 +6531,13 @@ export default function App() {
                     <div className="flex gap-2">
                       <FastBarcodeScanner onScan={handleFastBarcodeScan} />
                       <button
+                        onClick={() => setIsFastProductModalOpen(true)}
+                        className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
+                        title="ثبت سریع کالای جدید"
+                      >
+                        <Zap className="w-5 h-5 fill-current" />
+                      </button>
+                      <button
                         onClick={() => setIsBulkImportOpen(true)}
                         className="p-2.5 bg-white border border-gray-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-200 transition-colors flex items-center justify-center shrink-0"
                         title="ورود گروهی کالا (اکسل / CSV / JSON)"
@@ -6983,6 +7014,13 @@ export default function App() {
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <button
+                      onClick={() => setIsFastProductModalOpen(true)}
+                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
+                      title="ثبت سریع کالای جدید"
+                    >
+                      <Zap className="w-5 h-5 fill-current" />
+                    </button>
                     <button
                       onClick={() => setIsBulkImportOpen(true)}
                       className="p-2.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors flex items-center justify-center shrink-0"
@@ -7658,6 +7696,13 @@ export default function App() {
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
                     <button
+                      onClick={() => setIsFastProductModalOpen(true)}
+                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
+                      title="ثبت سریع کالای جدید"
+                    >
+                      <Zap className="w-5 h-5 fill-current" />
+                    </button>
+                    <button
                       onClick={() => setIsBulkImportOpen(true)}
                       className="p-2.5 bg-white border border-emerald-200 text-emerald-600 rounded-xl shadow-sm hover:bg-emerald-50 hover:border-emerald-300 transition-colors flex items-center justify-center shrink-0"
                       title="ورود گروهی کالا (اکسل / CSV / JSON)"
@@ -8288,6 +8333,13 @@ export default function App() {
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <button
+                      onClick={() => setIsFastProductModalOpen(true)}
+                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
+                      title="ثبت سریع کالای جدید"
+                    >
+                      <Zap className="w-5 h-5 fill-current" />
+                    </button>
                     <button
                       onClick={() => setIsBulkImportOpen(true)}
                       className="p-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center shrink-0"
@@ -8951,6 +9003,13 @@ export default function App() {
                 <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-2 max-w-2xl">
                   <div className="flex gap-2">
                     <FastBarcodeScanner onScan={handleFastBarcodeScan} />
+                    <button
+                      onClick={() => setIsFastProductModalOpen(true)}
+                      className="p-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md shadow-amber-200 transition-colors flex items-center justify-center shrink-0"
+                      title="ثبت سریع کالای جدید"
+                    >
+                      <Zap className="w-5 h-5 fill-current" />
+                    </button>
                     <button
                       onClick={() => setIsBulkImportOpen(true)}
                       className="p-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl shadow-sm hover:bg-indigo-50 hover:border-indigo-300 transition-colors flex items-center justify-center shrink-0"
@@ -12839,6 +12898,13 @@ export default function App() {
                         </div>
 
                         <button
+                            onClick={() => setIsFastProductModalOpen(true)}
+                            className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl flex items-center gap-2 transition-colors text-sm font-bold shadow-md shadow-amber-200"
+                          >
+                            <Zap className="w-4 h-4 fill-current" />
+                            ثبت سریع موبایلی
+                        </button>
+                        <button
                             onClick={() => {
                               setEditingProductId(null);
                               setNewProductName("");
@@ -13381,6 +13447,12 @@ export default function App() {
                       onClose={() => setIsAIProductSearchOpen(false)}
                       categories={productCategories}
                       onAddProducts={handleAIProductsAdd}
+                    />
+
+                    <FastProductCreateModal
+                      isOpen={isFastProductModalOpen}
+                      onClose={() => setIsFastProductModalOpen(false)}
+                      onSave={handleFastSaveProduct}
                     />
 
                     <BulkProductImportModal
