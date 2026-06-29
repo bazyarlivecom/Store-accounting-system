@@ -10,7 +10,7 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
   const [loading, setLoading] = useState(true);
   const [calculatedStock, setCalculatedStock] = useState<number>(0);
   const [stockPerWarehouse, setStockPerWarehouse] = useState<{ [key: string]: number }>({});
-  const [activeTab, setActiveTab] = useState<'info' | 'financial' | 'warehouse' | 'price_chart'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'financial' | 'warehouse' | 'price_chart' | 'persons'>('info');
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -22,6 +22,16 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
        
        if (totalStock > 0 || totalStock < 0) {
            whStock[defaultWhId] = totalStock;
+           prodHistory.push({
+               type: 'opening_balance',
+               date: '---', // no specific date for opening balance, or we can use product creation date if available
+               invoiceNumber: '---',
+               quantity: Math.abs(totalStock),
+               isSecondaryUnit: false,
+               unitPrice: product.purchasePrice || 0,
+               personName: '---',
+               warehouseId: defaultWhId
+           });
        }
 
        invs.forEach(inv => {
@@ -87,6 +97,30 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
      }));
    }, [history]);
 
+   const personStats = useMemo(() => {
+      const stats: Record<string, Record<string, { in: number, out: number }>> = {};
+      
+      history.forEach(h => {
+         if (h.type === 'opening_balance' || !h.personName || h.personName === '---') return;
+         
+         const pName = h.personName;
+         const wId = h.warehouseId?.toString() || 'unknown';
+         
+         if (!stats[pName]) stats[pName] = {};
+         if (!stats[pName][wId]) stats[pName][wId] = { in: 0, out: 0 };
+         
+         const qty = Number(h.quantity) || 0;
+         
+         if (h.type === 'purchase' || h.type === 'warehouse_receipt') {
+            stats[pName][wId].in += qty;
+         } else if (h.type === 'sale' || h.type === 'warehouse_remittance') {
+            stats[pName][wId].out += qty;
+         }
+      });
+      
+      return stats;
+   }, [history]);
+
    const content = (
       <motion.div initial={isModal ? { opacity: 0, scale: 0.95 } : { opacity: 0 }} animate={isModal ? { opacity: 1, scale: 1 } : { opacity: 1 }} exit={isModal ? { opacity: 0, scale: 0.95 } : undefined} className={`bg-white rounded-2xl w-full ${isModal ? 'max-w-4xl max-h-[90vh]' : 'h-full min-h-[500px] border border-gray-100'} overflow-hidden shadow-2xl flex flex-col`}>
          
@@ -129,6 +163,13 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                {activeTab === 'warehouse' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
             </button>
             <button
+               onClick={() => setActiveTab('persons')}
+               className={`pb-3 font-bold text-sm whitespace-nowrap transition-colors relative ${activeTab === 'persons' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
+            >
+               مشتریان و تامین‌کنندگان
+               {activeTab === 'persons' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full"></span>}
+            </button>
+            <button
                onClick={() => setActiveTab('price_chart')}
                className={`pb-3 font-bold text-sm whitespace-nowrap transition-colors relative ${activeTab === 'price_chart' ? 'text-indigo-600' : 'text-gray-500 hover:text-indigo-500'}`}
             >
@@ -164,6 +205,37 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                        </div>
                      )}
                      <Package className="w-16 h-16 text-amber-500/10 absolute -left-4 -bottom-4 z-0 rotate-12" />
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                   <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-500 font-bold mb-1">بارکد</span>
+                     <span className="text-sm font-mono text-gray-800">{product.barcode || '---'}</span>
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-500 font-bold mb-1">نوع</span>
+                     <span className="text-sm font-bold text-gray-800">{product.type === 'service' ? 'خدمات' : 'کالا'}</span>
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-500 font-bold mb-1">دسته‌بندی</span>
+                     <span className="text-sm font-bold text-gray-800">{product.category || '---'}</span>
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-500 font-bold mb-1">واحد اصلی / فرعی</span>
+                     <span className="text-sm font-bold text-gray-800">{product.unit || 'عدد'} {product.secondaryUnit ? ` / ${product.secondaryUnit} (نسبت: ${product.unitRatio})` : ''}</span>
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-500 font-bold mb-1">حداقل موجودی</span>
+                     <span className="text-sm font-mono text-gray-800">{product.minStock || product.minStockLevel || '---'}</span>
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-500 font-bold mb-1">وضعیت</span>
+                     <span className={`text-sm font-bold ${product.isActive !== false ? 'text-emerald-600' : 'text-rose-600'}`}>{product.isActive !== false ? 'فعال' : 'غیرفعال'}</span>
+                   </div>
+                   <div className="flex flex-col col-span-2">
+                     <span className="text-[10px] text-gray-500 font-bold mb-1">توضیحات</span>
+                     <span className="text-sm text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis">{product.description || '---'}</span>
                    </div>
                 </div>
 
@@ -217,7 +289,7 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
               <motion.div initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}>
                 {loading ? (
                    <div className="text-center py-10 text-gray-400 font-bold animate-pulse">در حال استخراج سوابق ...</div>
-                ) : history.filter(h => h.type === 'sale' || h.type === 'purchase').length === 0 ? (
+                ) : history.filter(h => h.type === 'sale' || h.type === 'purchase' || h.type === 'opening_balance').length === 0 ? (
                    <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-xl border border-gray-100">فاکتوری برای این کالا ثبت نشده است.</div>
                 ) : (
                    <div className="overflow-x-auto border border-gray-100 rounded-xl shadow-sm">
@@ -228,24 +300,30 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                            <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">تاریخ</th>
                            <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">شماره سند</th>
                            <th className="px-4 py-3 font-semibold text-xs">شخص / مشتری</th>
+                           <th className="px-4 py-3 font-semibold text-xs">انبار</th>
                            <th className="px-4 py-3 font-semibold text-xs">واحد</th>
                            <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">مقدار</th>
                            <th className="px-4 py-3 font-semibold text-xs whitespace-nowrap">فی ({currency})</th>
                          </tr>
                        </thead>
                        <tbody className="divide-y divide-gray-50 bg-white">
-                         {history.filter(h => h.type === 'sale' || h.type === 'purchase').map((h, i) => (
+                         {history.filter(h => h.type === 'sale' || h.type === 'purchase' || h.type === 'opening_balance').map((h, i) => (
                            <tr key={i} className="hover:bg-gray-50 transition-colors">
                              <td className="px-4 py-3 font-bold whitespace-nowrap">
                                 {h.type === 'sale' ? (
                                    <span className="text-emerald-600 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> فروش</span>
-                                ) : (
+                                ) : h.type === 'purchase' ? (
                                    <span className="text-rose-600 flex items-center gap-1"><TrendingDown className="w-3 h-3" /> خرید</span>
+                                ) : (
+                                   <span className="text-amber-600 flex items-center gap-1"><Package className="w-3 h-3" /> موجودی اول دوره</span>
                                 )}
                              </td>
                              <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{h.date}</td>
                              <td className="px-4 py-3 text-gray-500 text-xs font-mono">{h.invoiceNumber || '---'}</td>
                              <td className="px-4 py-3 font-bold text-gray-800 text-xs truncate max-w-[150px]">{h.personName || '---'}</td>
+                             <td className="px-4 py-3 text-xs text-gray-600">
+                                {warehouses?.find(w => String(w.id) === String(h.warehouseId))?.name || '---'}
+                             </td>
                              <td className="px-4 py-3 text-xs font-medium text-gray-500">
                                 {h.isSecondaryUnit ? product.secondaryUnit : product.unit}
                              </td>
@@ -310,6 +388,49 @@ export default function ProductCardModal({ product, warehouses = [], currency = 
                              </td>
                            </tr>
                          ))}
+                       </tbody>
+                     </table>
+                   </div>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'persons' && (
+              <motion.div initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}>
+                {loading ? (
+                   <div className="text-center py-10 text-gray-400 font-bold animate-pulse">در حال استخراج سوابق ...</div>
+                ) : Object.keys(personStats).length === 0 ? (
+                   <div className="text-center py-10 text-gray-400 bg-gray-50 rounded-xl border border-gray-100">سابقه‌ای از مشتریان و تامین‌کنندگان برای این کالا وجود ندارد.</div>
+                ) : (
+                   <div className="overflow-x-auto border border-gray-100 rounded-xl shadow-sm">
+                     <table className="w-full text-right text-sm">
+                       <thead className="bg-gray-50 text-gray-600 border-b border-gray-100">
+                         <tr>
+                           <th className="px-4 py-3 font-semibold text-xs">شخص / شرکت</th>
+                           <th className="px-4 py-3 font-semibold text-xs">انبار</th>
+                           <th className="px-4 py-3 font-semibold text-xs text-center">تعداد ورود (خرید/رسید)</th>
+                           <th className="px-4 py-3 font-semibold text-xs text-center">تعداد خروج (فروش/حواله)</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-gray-50 bg-white">
+                         {Object.entries(personStats).flatMap(([pName, wStats]) => 
+                           Object.entries(wStats).map(([wId, stats], i) => (
+                             <tr key={`${pName}-${wId}`} className="hover:bg-gray-50 transition-colors">
+                               <td className="px-4 py-3 font-bold text-gray-800 text-xs">
+                                 {i === 0 ? pName : ''}
+                               </td>
+                               <td className="px-4 py-3 text-xs text-gray-600">
+                                  {warehouses?.find(w => String(w.id) === wId)?.name || (wId === 'unknown' ? 'نامشخص' : 'حذف شده')}
+                               </td>
+                               <td className="px-4 py-3 text-center">
+                                  {stats.in > 0 ? <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md" dir="ltr">+{stats.in} {product.unit || 'عدد'}</span> : <span className="text-gray-300">-</span>}
+                               </td>
+                               <td className="px-4 py-3 text-center">
+                                  {stats.out > 0 ? <span className="font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-md" dir="ltr">-{stats.out} {product.unit || 'عدد'}</span> : <span className="text-gray-300">-</span>}
+                               </td>
+                             </tr>
+                           ))
+                         )}
                        </tbody>
                      </table>
                    </div>

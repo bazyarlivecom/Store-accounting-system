@@ -145,7 +145,7 @@ export default function StocktakingManager({ showNotification, currentUser = 'س
 
   const toPersianDigits = (str: string | number) => str?.toString().replace(/\d/g, x => ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'][parseInt(x)]);
 
-  const filteredItems = items.filter(it => it.productName.includes(searchTerm) || (products.find(p => p.id === it.productId)?.code?.includes(searchTerm)));
+  const filteredItems = items.filter(it => (it.productName || '').includes(searchTerm || '') || (products.find(p => p.id === it.productId)?.code || '').includes(searchTerm || ''));
 
   const whMap = warehouses.reduce((acc, w) => ({ ...acc, [w.id]: w.name }), {} as Record<string, string>);
 
