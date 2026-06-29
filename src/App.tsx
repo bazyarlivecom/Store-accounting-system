@@ -193,6 +193,7 @@ import ModuleSelector from "./components/ui/ModuleSelector";
 import DatabaseDashboard from "./components/admin/DatabaseDashboard";
 import SystemChecklist from "./components/admin/SystemChecklist";
 import SystemLogs from "./components/admin/SystemLogs";
+import DatabaseLogs from "./components/admin/DatabaseLogs";
 
 import ProductCardModal from "./components/modals/ProductCardModal";
 import QuickPriceInquiry from "./components/inventory/QuickPriceInquiry";
@@ -206,7 +207,10 @@ import EditReceiptModal from "./components/modals/EditReceiptModal";
 import FinancialTransfer from "./components/financial/FinancialTransfer";
 import QuickRefund from "./components/financial/QuickRefund";
 import UserManager from "./components/admin/UserManager";
+import ProfileModal from "./components/auth/ProfileModal";
 import InventoryReport from "./components/reports/InventoryReport";
+import CRMDashboard from "./components/crm/CRMDashboard";
+import SystemDiagnostics from "./components/admin/SystemDiagnostics";
 import StocktakingManager from "./components/inventory/StocktakingManager";
 import AnalyticalDashboard from "./components/reports/AnalyticalDashboard";
 import DebtsCreditsReport from "./components/reports/DebtsCreditsReport";
@@ -375,11 +379,13 @@ export default function App() {
     | "sms_panel"
     | "financial_report"
     | "analytical_dashboard"
+    | "crm_dashboard"
     | "person_ledger"
     | "inventory_report"
     | "checklist"
     | "database"
     | "users_manager"
+    | "system_diagnostics"
     | "checkbooks"
     | "issued_checks"
     | "received_checks"
@@ -395,6 +401,7 @@ export default function App() {
     | "list_purchase_return"
     | "loans"
     | "system_logs"
+    | "database_logs"
     | "stocktaking"
     | "financial_years"
     | "chart_of_accounts"
@@ -470,6 +477,7 @@ export default function App() {
     }
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem("app_isFullWidth");
@@ -554,6 +562,11 @@ export default function App() {
           id: "analytical_dashboard",
           label: "داشبورد تحلیلی",
           roles: ["admin", "accountant", "viewer"],
+        },
+        {
+          id: "crm_dashboard",
+          label: "داشبورد مدیریت ارتباطات (CRM)",
+          roles: ["admin", "viewer"],
         },
         {
           id: "person_ledger",
@@ -871,9 +884,11 @@ export default function App() {
       icon: <Settings className="w-5 h-5" />,
       items: [
         { id: "users_manager", label: "کاربران سیستم", roles: ["admin"] },
+        { id: "system_diagnostics", label: "عیب‌یابی سیستم", roles: ["admin"] },
         { id: "settings", label: "تنظیمات پایه‌ای", roles: ["admin"] },
         { id: "sms_panel", label: "پنل پیامک", roles: ["admin"] },
         { id: "system_logs", label: "لاگ سیستم", roles: ["admin"] },
+        { id: "database_logs", label: "لاگ دیتابیس", roles: ["admin"] },
         { id: "database", label: "پایگاه داده", roles: ["admin"] },
         { id: "update", label: "به‌روزرسانی نرم‌افزار", roles: ["admin"] },
         { id: "checklist", label: "چک‌لیست راه‌اندازی", roles: ["admin"] },
@@ -944,7 +959,7 @@ export default function App() {
               ].includes(item.id);
             if (systemModule === "admin") return true;
             if (systemModule === "crm")
-              return ["analytical_dashboard", "person_ledger"].includes(
+              return ["analytical_dashboard", "crm_dashboard", "person_ledger"].includes(
                 item.id,
               );
             if (systemModule === "hr")
@@ -12731,7 +12746,7 @@ export default function App() {
             else if (sel === "inventory") setActiveTab("inventory_report");
             else if (sel === "accounting") setActiveTab("financial_report");
             else if (sel === "admin") setActiveTab("settings");
-            else if (sel === "crm") setActiveTab("analytical_dashboard");
+            else if (sel === "crm") setActiveTab("crm_dashboard");
             else if (sel === "hr") setActiveTab("list_salary_payroll");
             else if (sel === "reports_module")
               setActiveTab("analytical_dashboard");
@@ -13075,9 +13090,13 @@ export default function App() {
                                 : "کاربر عادی"}
                         </div>
                       </div>
-                      <div className="w-9 h-9 bg-indigo-100 text-indigo-700 rounded-xl flex items-center justify-center font-black shadow-sm">
+                      <button 
+                        onClick={() => setIsProfileModalOpen(true)}
+                        className="w-9 h-9 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-xl flex items-center justify-center font-black shadow-sm transition-colors cursor-pointer"
+                        title="ویرایش پروفایل"
+                      >
                         {user.name?.charAt(0) || <User className="w-5 h-5" />}
-                      </div>
+                      </button>
                       <button
                         onClick={signOut}
                         className="w-8 h-8 flex items-center justify-center mr-1 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
@@ -17692,6 +17711,8 @@ export default function App() {
                     persons={persons}
                     invoices={invoices}
                     transactions={transactions}
+                    issuedChecks={issuedChecks}
+                    receivedChecks={receivedChecks}
                     storeSettings={storeSettings}
                     calculatePersonBalance={calculatePersonBalance}
                     onBack={() => setRawActiveTab("persons")}
@@ -19395,6 +19416,16 @@ export default function App() {
                     transactions={transactions}
                     setTransactions={setTransactions}
                   />
+                ) : activeTab === "system_diagnostics" ? (
+                  <SystemDiagnostics
+                    persons={persons}
+                    invoices={invoices}
+                    products={products}
+                    transactions={transactions}
+                    warehouseStocks={warehouseStocks}
+                    issuedChecks={issuedChecks}
+                    receivedChecks={receivedChecks}
+                  />
                 ) : activeTab === "users_manager" ? (
                   <UserManager />
                 ) : activeTab === "settings" ? (
@@ -20554,6 +20585,8 @@ export default function App() {
                   </motion.div>
                 ) : activeTab === "inventory_report" ? (
                   <InventoryReport showNotification={showNotification} />
+                ) : activeTab === "crm_dashboard" ? (
+                  <CRMDashboard showNotification={showNotification} persons={persons} />
                 ) : activeTab === "analytical_dashboard" ? (
                   <AnalyticalDashboard showNotification={showNotification} />
                 ) : activeTab === "sms_panel" ? (
@@ -20852,6 +20885,13 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                   >
                     <SystemLogs />
+                  </motion.div>
+                ) : activeTab === "database_logs" ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <DatabaseLogs />
                   </motion.div>
                 ) : activeTab === "database" ? (
                   <DatabaseDashboard showNotification={showNotification} />
@@ -27688,6 +27728,9 @@ export default function App() {
         }
         getLastPriceForProduct={getLastPriceForProduct}
       />
+      {isProfileModalOpen && (
+        <ProfileModal onClose={() => setIsProfileModalOpen(false)} />
+      )}
     </>
   );
 }

@@ -197,6 +197,8 @@ export type User = {
   role: UserRole;
   isActive: boolean;
   requires2FA?: boolean;
+  personId?: string | number;
+  autoLogoutMinutes?: number;
 }; 
 export type CompanySettings = {
   companyName: string;

@@ -1,14 +1,17 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Phone, MapPin, Receipt, Wallet, FileText, ArrowRight, Building2, Calendar, Edit2, ShoppingCart, Truck } from "lucide-react";
+import { User, Phone, MapPin, Receipt, Wallet, FileText, ArrowRight, Building2, Calendar, Edit2, ShoppingCart, Truck, CheckCircle, Clock } from "lucide-react";
+import { getPersonFollowUps } from "../../services/dataService";
 
 interface PersonProfileViewProps {
   personId: string | number;
   persons: any[];
   invoices: any[];
   transactions: any[];
+  issuedChecks: any[];
+  receivedChecks: any[];
   storeSettings: any;
-  calculatePersonBalance: (id: string | number) => { amount: number, status: string, totalDebits: number, totalCredits: number };
+  calculatePersonBalance: (id: string | number) => { amount: number, status: string, color?: string, bg?: string };
   onBack: () => void;
   onEdit: (person: any) => void;
   onViewLedger: (personId: string | number) => void;
@@ -27,6 +30,8 @@ export default function PersonProfileView({
   persons,
   invoices,
   transactions,
+  issuedChecks,
+  receivedChecks,
   storeSettings,
   calculatePersonBalance,
   onBack,
@@ -43,7 +48,56 @@ export default function PersonProfileView({
 }: PersonProfileViewProps) {
   const person = persons.find(p => p.id.toString() === personId.toString());
   
+  const [followUps, setFollowUps] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const loadFollowUps = async () => {
+      try {
+        const data = await getPersonFollowUps();
+        setFollowUps(data.filter((f: any) => String(f.personId) === String(personId)));
+      } catch (e) {
+        console.error("Error loading follow ups", e);
+      }
+    };
+    loadFollowUps();
+  }, [personId]);
+  
   const balance = useMemo(() => calculatePersonBalance(personId), [personId, calculatePersonBalance]);
+  
+  const { totalDebits, totalCredits } = useMemo(() => {
+    if (!person) return { totalDebits: 0, totalCredits: 0 };
+    let debits = 0;
+    let credits = 0;
+
+    if (person.initialBalance && person.initialBalanceType !== "settled") {
+      if (person.initialBalanceType === "debtor") {
+        debits += person.initialBalance;
+      } else {
+        credits += person.initialBalance;
+      }
+    }
+
+    invoices.filter((i) => i.customerId?.toString() === personId.toString() && i.type !== "warehouse_receipt" && i.type !== "warehouse_remittance" && i.type !== "proforma" && !i.isDraft && i.status !== "draft").forEach((inv) => {
+      const amount = (inv.totalAmount || 0) * (inv.currency === "USD" ? storeSettings.exchangeRateUSD : inv.currency === "EUR" ? storeSettings.exchangeRateEUR : inv.currency === "AED" ? storeSettings.exchangeRateAED : 1);
+      if (inv.type === "sale" || inv.type === "purchase_return") debits += amount;
+      else if (inv.type === "purchase" || inv.type === "sale_return") credits += amount;
+    });
+
+    transactions.filter((t) => t.personId?.toString() === personId.toString() && t.method !== "check").forEach((t) => {
+      if (t.type === "pay") debits += t.amount || 0;
+      else if (t.type === "receive" || t.type === "salary") credits += t.amount || 0;
+    });
+
+    issuedChecks.filter((c) => c.payeeId?.toString() === personId.toString() && c.status !== "cancelled" && c.status !== "bounced" && c.status !== "cashed").forEach((c) => {
+      debits += c.amount || 0;
+    });
+
+    receivedChecks.filter((c) => c.payerId?.toString() === personId.toString() && c.status !== "returned" && c.status !== "bounced" && c.status !== "cashed").forEach((c) => {
+      credits += c.amount || 0;
+    });
+
+    return { totalDebits: debits, totalCredits: credits };
+  }, [person, invoices, transactions, issuedChecks, receivedChecks, storeSettings, personId]);
   
   const recentInvoices = useMemo(() => {
     return invoices.filter(inv => inv.customerId?.toString() === personId.toString() && inv.status !== 'draft')
@@ -55,7 +109,15 @@ export default function PersonProfileView({
 
   const isOwed = balance.status === "بدهکار";
   const isOwes = balance.status === "بستانکار";
-  const isClr = balance.status === "تسویه";
+  const isClr = balance.status === "بی‌حساب" || balance.status === "تسویه";
+
+  const totalInvoices = useMemo(() => invoices.filter(i => i.customerId?.toString() === personId.toString() && i.status !== 'draft').length, [invoices, personId]);
+  
+  const pendingChecksCount = useMemo(() => {
+    const issued = issuedChecks.filter((c) => c.payeeId?.toString() === personId.toString() && c.status !== "cancelled" && c.status !== "bounced" && c.status !== "cashed").length;
+    const received = receivedChecks.filter((c) => c.payerId?.toString() === personId.toString() && c.status !== "returned" && c.status !== "bounced" && c.status !== "cashed").length;
+    return issued + received;
+  }, [issuedChecks, receivedChecks, personId]);
 
   return (
     <motion.div
@@ -91,11 +153,40 @@ export default function PersonProfileView({
             {person.role === 'customer' ? 'مشتری' : person.role === 'supplier' ? 'تامین کننده' : 'همکار'}
           </span>
 
-          <div className="w-full space-y-4 text-sm font-bold text-slate-700 text-right">
+          <div className="w-full space-y-4 text-sm font-bold text-slate-700 text-right mt-6">
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="bg-indigo-50/50 p-3 rounded-2xl border border-indigo-100/50 flex flex-col items-center justify-center">
+                <span className="text-xl font-black text-indigo-700">{toPersianDigits(totalInvoices)}</span>
+                <span className="text-[10px] text-indigo-600 font-bold mt-1">تعداد فاکتورها</span>
+              </div>
+              <div className="bg-amber-50/50 p-3 rounded-2xl border border-amber-100/50 flex flex-col items-center justify-center">
+                <span className="text-xl font-black text-amber-700">{toPersianDigits(pendingChecksCount)}</span>
+                <span className="text-[10px] text-amber-600 font-bold mt-1">چک‌های درجریان</span>
+              </div>
+            </div>
+            
             <div className="flex items-center gap-3">
               <Phone className="w-4 h-4 text-indigo-500 shrink-0" />
               <span dir="ltr">{toPersianDigits(person.phone || "---")}</span>
             </div>
+            {person.personCode && (
+              <div className="flex items-center gap-3">
+                <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+                <span>کد شخص: {toPersianDigits(person.personCode)}</span>
+              </div>
+            )}
+            {person.accountingCode && (
+              <div className="flex items-center gap-3">
+                <Wallet className="w-4 h-4 text-indigo-500 shrink-0" />
+                <span>کد حسابداری: {toPersianDigits(person.accountingCode)}</span>
+              </div>
+            )}
+            {person.registrationDate && (
+              <div className="flex items-center gap-3">
+                <Calendar className="w-4 h-4 text-indigo-500 shrink-0" />
+                <span>تاریخ ثبت: {formatPersianDateDisplay(person.registrationDate)}</span>
+              </div>
+            )}
             {person.nationalId && (
               <div className="flex items-center gap-3">
                 <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -135,11 +226,11 @@ export default function PersonProfileView({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <div className="text-xs font-bold text-slate-500 mb-1">جمع بدهکاری (افزایش بدهی)</div>
-                <div className="text-lg font-black text-slate-900">{toPersianDigits(formatCurrency(balance.totalDebits))}</div>
+                <div className="text-lg font-black text-slate-900">{toPersianDigits(formatCurrency(totalDebits))}</div>
               </div>
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <div className="text-xs font-bold text-slate-500 mb-1">جمع بستانکاری (کاهش بدهی)</div>
-                <div className="text-lg font-black text-slate-900">{toPersianDigits(formatCurrency(balance.totalCredits))}</div>
+                <div className="text-lg font-black text-slate-900">{toPersianDigits(formatCurrency(totalCredits))}</div>
               </div>
               <div className={`p-4 rounded-2xl border ${isClr ? 'bg-slate-100 border-slate-200' : isOwed ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
                 <div className="text-xs font-bold text-slate-500 mb-1">مانده نهایی حساب</div>
@@ -199,6 +290,43 @@ export default function PersonProfileView({
                 پرداخت وجه
               </button>
             </div>
+          </div>
+
+          {/* Follow Ups (CRM) */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+            <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+              <Phone className="w-5 h-5 text-indigo-600" />
+              پیگیری‌ها و ارتباطات
+            </h3>
+            {followUps.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 font-bold text-sm bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                پیگیری‌ای ثبت نشده است.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {followUps.slice(0, 5).map(f => (
+                  <div key={f.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
+                          f.type === 'call' ? 'bg-blue-100 text-blue-700' :
+                          f.type === 'meeting' ? 'bg-purple-100 text-purple-700' :
+                          f.type === 'account_followup' ? 'bg-rose-100 text-rose-700' :
+                          'bg-slate-200 text-slate-700'
+                      }`}>
+                        {f.type === 'call' ? 'تماس' : f.type === 'meeting' ? 'جلسه' : f.type === 'account_followup' ? 'پیگیری حساب' : 'پیام'}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${f.status === 'pending' ? 'bg-amber-100 text-amber-700' : f.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'}`}>
+                        {f.status === 'pending' ? 'در انتظار' : f.status === 'completed' ? 'تکمیل شده' : 'لغو شده'}
+                      </span>
+                      <span className="text-xs font-bold text-slate-500 mr-auto">
+                        {formatPersianDateDisplay(f.date)}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700">{f.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Recent Invoices */}

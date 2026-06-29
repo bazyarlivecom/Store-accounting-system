@@ -116,6 +116,22 @@ const checklistData = [
       { id: 'req_8', title: "مدیریت دریافت و پرداخت چکی و دسته چک", desc: "بخش مدیریت دسته چک‌ها اضافه گردد و امکان دریافت و یا پرداخت مبالغ به‌صورت چکی فراهم شود.", priority: "high" },
       { id: 'req_9', title: "انتقال وجه بین سرفصل‌ها", desc: "امکان انتقال منابع مالی (مبالغ) بین حساب‌های بانکی، صندوق‌ها و افراد مجموعه وجود داشته باشد.", priority: "high" }
     ]
+  },
+  {
+    id: 'sys_verification',
+    title: 'بررسی و صحت‌سنجی عملکرد سیستم',
+    color: 'emerald',
+    items: [
+      { id: 'ver_1', title: "صحت ثبت و ویرایش اشخاص", desc: "بررسی کامل صحت اطلاعات ثبتی اشخاص، امکان ویرایش صحیح تمامی فیلدها و عدم حذف فیزیکی شخص در صورت داشتن سند مالی.", priority: "high" },
+      { id: 'ver_2', title: "تاثیر صحیح دریافت و پرداخت‌ها", desc: "بررسی تاثیر مستقیم و صحیح اسناد دریافت و پرداخت بر حساب اشخاص و صدور خودکار سند حسابداری تراز و بی‌نقص.", priority: "high" },
+      { id: 'ver_3', title: "عملکرد صحیح فاکتورها", desc: "بررسی صحت عملکرد فاکتورهای خرید و فروش در محاسبه مبالغ و تخفیفات.", priority: "high" },
+      { id: 'ver_4', title: "صدور صحیح اسناد مرتبط با فاکتور", desc: "ایجاد صحیح و خودکار اسناد حسابداری فروش/خرید و حواله/رسید انبار در هنگام تایید فاکتور.", priority: "high" },
+      { id: 'ver_5', title: "صحت اسناد انبار", desc: "بررسی صدور صحیح اسناد فیزیکی انبار (رسید و حواله) متناسب با عملیات فاکتور و بررسی صحت موجودی مقداری کالا.", priority: "high" },
+      { id: 'ver_6', title: "ممنوعیت حذف فیزیکی (Soft Delete)", desc: "هیچ موجودیت اصلی (شخص، کالا، فاکتور، سند) که با بخش‌های دیگر ارتباط دارد به صورت فیزیکی حذف نگردد.", priority: "high" },
+      { id: 'ver_7', title: "جلوگیری از حذف فاکتور و اسناد دارای ارتباط", desc: "فاکتورها و اسنادی که حواله/رسید انبار یا سند حسابداری برایشان صادر شده به هیچ عنوان قابل حذف نباشند.", priority: "high" },
+      { id: 'ver_8', title: "تاییدیه و لاگ ویرایش اسناد", desc: "در صورت ویرایش فاکتور یا سند، حتما از کاربر تاییدیه گرفته شود، اثرات آن در بخش‌های مرتبط آپدیت شود و در لاگ سیستم ثبت گردد.", priority: "high" },
+      { id: 'ver_9', title: "پروفایل کاربر و خروج خودکار", desc: "امکان ویرایش اطلاعات پروفایل، اتصال به شخص در سیستم و خروج خودکار کاربر پس از زمان قابل تنظیم در صورت عدم فعالیت.", priority: "high" }
+    ]
   }
 ];
 
@@ -128,8 +144,30 @@ export default function SystemChecklist() {
     const saved = localStorage.getItem('system-checklist');
     if (saved) {
       try {
-        setCheckedItems(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // Ensure the newly verified items are checked off if they haven't been recorded yet
+        const verifiedItems = ['ver_1', 'ver_2', 'ver_3', 'ver_4', 'ver_5', 'ver_6', 'ver_7', 'ver_8', 'ver_9'];
+        let updated = false;
+        verifiedItems.forEach(id => {
+          if (parsed[id] === undefined) {
+            parsed[id] = true;
+            updated = true;
+          }
+        });
+        setCheckedItems(parsed);
+        if (updated) {
+          localStorage.setItem('system-checklist', JSON.stringify(parsed));
+        }
       } catch(e) {}
+    } else {
+      // If no saved checklist, set the verified ones to true
+      const initialChecked: Record<string, boolean> = {};
+      const verifiedItems = ['ver_1', 'ver_2', 'ver_3', 'ver_4', 'ver_5', 'ver_6', 'ver_7', 'ver_8', 'ver_9'];
+      verifiedItems.forEach(id => {
+        initialChecked[id] = true;
+      });
+      setCheckedItems(initialChecked);
+      localStorage.setItem('system-checklist', JSON.stringify(initialChecked));
     }
   }, []);
 

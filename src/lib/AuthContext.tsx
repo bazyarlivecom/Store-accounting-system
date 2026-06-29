@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { getUsers, addUser } from './dataService';
 import { User, UserRole } from '../types';
 import { Lock, User as UserIcon, LogIn, AlertCircle } from 'lucide-react';
@@ -9,6 +9,7 @@ interface AuthContextType {
   signIn: (u: User) => Promise<void>;
   signOut: () => Promise<void>;
   checkAuth: () => void;
+  updateCurrentUser: (u: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,7 +17,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: false,
   signIn: async () => {},
   signOut: async () => {},
-  checkAuth: () => {}
+  checkAuth: () => {},
+  updateCurrentUser: () => {}
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -30,26 +32,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const logoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const checkAuth = () => {
     const storedUser = localStorage.getItem('auth_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      resetInactivityTimer(parsedUser);
     }
     setLoading(false);
   };
 
   useEffect(() => {
     checkAuth();
+    return () => {
+      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    };
   }, []);
+
+  const resetInactivityTimer = (currentUser: User | null = user) => {
+    if (logoutTimerRef.current) {
+      clearTimeout(logoutTimerRef.current);
+    }
+    if (currentUser && currentUser.autoLogoutMinutes && currentUser.autoLogoutMinutes > 0) {
+      logoutTimerRef.current = setTimeout(() => {
+         handleSignOut();
+         // Could optionally alert the user or show a session expired message
+         alert('به دلیل عدم فعالیت، نشست شما پایان یافت.');
+      }, currentUser.autoLogoutMinutes * 60 * 1000);
+    }
+  };
+
+  useEffect(() => {
+    const events = ['mousemove', 'keydown', 'click', 'scroll'];
+    const handleActivity = () => {
+       if (user) resetInactivityTimer(user);
+    };
+
+    if (user) {
+       events.forEach(e => window.addEventListener(e, handleActivity));
+    }
+
+    return () => {
+       events.forEach(e => window.removeEventListener(e, handleActivity));
+    };
+  }, [user]);
+
 
   const signIn = async (u: User) => {
     setUser(u);
     localStorage.setItem('auth_user', JSON.stringify(u));
+    resetInactivityTimer(u);
   };
 
   const handleSignOut = async () => {
     setUser(null);
     localStorage.removeItem('auth_user');
+    if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+  };
+  
+  const updateCurrentUser = (u: User) => {
+    setUser(u);
+    localStorage.setItem('auth_user', JSON.stringify(u));
+    resetInactivityTimer(u);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -132,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut: handleSignOut, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut: handleSignOut, checkAuth, updateCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );

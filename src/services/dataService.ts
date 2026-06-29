@@ -28,7 +28,82 @@ const getLocalData = async <T>(key: string, defaultValue: T, retries = 3): Promi
   }
 };
 
+export const getDatabaseLogs = async () => {
+  const logs = await getLocalData<any[]>('database_logs', []);
+  return logs.sort((a, b) => b.timestamp - a.timestamp);
+};
+
+export const addDatabaseLog = async (action: string, entityType: string, entityId: string, oldData: any, newData: any) => {
+  const logs = await getLocalData<any[]>('database_logs', []);
+  
+  let userId = 'system';
+  if (typeof window !== 'undefined') {
+     try {
+       const sessionStr = window.localStorage.getItem('auth_user');
+       if (sessionStr) {
+          const session = JSON.parse(sessionStr);
+          if (session.name) userId = session.name;
+          else if (session.username) userId = session.username;
+       }
+     } catch(e) {}
+  }
+
+  const newLog = {
+     id: generateId(),
+     timestamp: Date.now(),
+     action,
+     entityType,
+     entityId,
+     userId,
+     oldData: oldData ? JSON.stringify(oldData) : null,
+     newData: newData ? JSON.stringify(newData) : null
+  };
+
+  logs.unshift(newLog); // Add to beginning
+  if (logs.length > 2000) {
+     logs.length = 2000;
+  }
+  
+  // Directly save without recursive logging
+  try {
+    await fetch('/api/data/database_logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logs)
+    });
+  } catch(e) {}
+};
+
 const saveLocalData = async <T>(key: string, data: T, retries = 3): Promise<void> => {
+  const loggableKeys = ['persons', 'products', 'invoices', 'transactions', 'accounts', 'cashboxes', 'warehouses', 'users', 'accounting_documents'];
+  
+  if (loggableKeys.includes(key)) {
+    try {
+      const oldData = await getLocalData<any[]>(key, []);
+      if (Array.isArray(oldData) && Array.isArray(data)) {
+        const oldMap = new Map(oldData.map(x => [String(x.id), x]));
+        const newMap = new Map((data as any[]).map(x => [String(x.id), x]));
+        
+        for (const [id, newItem] of newMap.entries()) {
+           if (!oldMap.has(id)) {
+              await addDatabaseLog('CREATE', key, id, null, newItem);
+           } else {
+              const oldItem = oldMap.get(id);
+              if (JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+                 await addDatabaseLog('UPDATE', key, id, oldItem, newItem);
+              }
+           }
+        }
+        
+        for (const [id, oldItem] of oldMap.entries()) {
+           if (!newMap.has(id)) {
+              await addDatabaseLog('DELETE', key, id, oldItem, null);
+           }
+        }
+      }
+    } catch(e) {}
+  }
+
   try {
     const res = await fetch(`/api/data/${key}`, {
       method: 'POST',
@@ -355,7 +430,7 @@ export const deletePersonRole = async (id: string) => {
 // Persons
 export const getPersons = async () => {
   const persons = await getLocalData<any[]>('persons', []);
-  return persons.sort((a, b) => b.createdAt - a.createdAt);
+  return persons.filter(p => !p.isDeleted).sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addPerson = async (person: any) => {
@@ -480,8 +555,32 @@ export const updatePerson = async (id: string, person: any) => {
 };
 
 export const deletePerson = async (id: string) => {
+  // Check relations
+  const invoices = await getInvoices();
+  if (invoices.some(inv => String(inv.customerId) === String(id))) {
+    throw new Error('این شخص دارای فاکتور ثبت شده است و قابل حذف نیست.');
+  }
+  const transactions = await getTransactions();
+  if (transactions.some(t => String(t.personId) === String(id))) {
+    throw new Error('این شخص دارای سند دریافت/پرداخت است و قابل حذف نیست.');
+  }
+  const issuedChecks = await getIssuedChecks();
+  if (issuedChecks.some(c => String(c.payeeId) === String(id))) {
+    throw new Error('این شخص دارای چک پرداختی است و قابل حذف نیست.');
+  }
+  const receivedChecks = await getReceivedChecks();
+  if (receivedChecks.some(c => String(c.payerId) === String(id))) {
+    throw new Error('این شخص دارای چک دریافتی است و قابل حذف نیست.');
+  }
+
   const persons = await getLocalData<any[]>('persons', []);
-  await saveLocalData('persons', persons.filter((p: any) => String(p.id) !== String(id)));
+  // Instead of physical delete, maybe just soft delete if needed, but user says "هیچ چیز به صورت فیزیکی حذف نشود".
+  // Actually, we can do soft delete by setting isDeleted = true. Or just keep it as is if there are no relations, we can physically delete it, since it has no relations. The user says "هیچ چیز به صورت فیزیکی حذف نشود". So let's soft delete.
+  const index = persons.findIndex((p: any) => String(p.id) === String(id));
+  if (index !== -1) {
+    persons[index].isDeleted = true;
+    await saveLocalData('persons', persons);
+  }
 };
 
 // Accounts
@@ -661,7 +760,7 @@ export const deleteCashbox = async (id: string) => {
 // Warehouses
 export const getWarehouses = async () => {
   const warehouses = await getLocalData<any[]>('warehouses', []);
-  return warehouses.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  return warehouses.filter(w => !w.isDeleted).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 };
 
 export const addWarehouse = async (warehouse: any) => {
@@ -695,8 +794,16 @@ export const updateWarehouse = async (id: string, warehouse: any) => {
 };
 
 export const deleteWarehouse = async (id: string) => {
+  const invoices = await getInvoices();
+  if (invoices.some(inv => String(inv.warehouseId) === String(id))) {
+     throw new Error('این انبار در اسناد یا فاکتورها استفاده شده است و قابل حذف نیست.');
+  }
   const warehouses = await getLocalData<any[]>('warehouses', []);
-  await saveLocalData('warehouses', warehouses.filter((p: any) => String(p.id) !== String(id)));
+  const index = warehouses.findIndex((p: any) => String(p.id) === String(id));
+  if (index !== -1) {
+    warehouses[index].isDeleted = true;
+    await saveLocalData('warehouses', warehouses);
+  }
 };
 
 // Product Categories
@@ -757,7 +864,7 @@ export const deleteProductCategory = async (id: string) => {
 // Products
 export const getProducts = async () => {
   const products = await getLocalData<any[]>('products', []);
-  return products.sort((a, b) => b.createdAt - a.createdAt);
+  return products.filter(p => !p.isDeleted).sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addProduct = async (product: any) => {
@@ -865,14 +972,22 @@ export const updateProduct = async (id: string, product: any) => {
 };
 
 export const deleteProduct = async (id: string) => {
+  const invoices = await getInvoices();
+  if (invoices.some(inv => inv.items && inv.items.some((item: any) => String(item.productId) === String(id)))) {
+     throw new Error('این کالا در فاکتور استفاده شده است و قابل حذف نیست.');
+  }
   const products = await getLocalData<any[]>('products', []);
-  await saveLocalData('products', products.filter((p: any) => String(p.id) !== String(id)));
+  const index = products.findIndex((p: any) => String(p.id) === String(id));
+  if (index !== -1) {
+    products[index].isDeleted = true;
+    await saveLocalData('products', products);
+  }
 };
 
 // Transactions
 export const getTransactions = async () => {
   const transactions = await getLocalData<any[]>('transactions', []);
-  return transactions.sort((a, b) => b.createdAt - a.createdAt);
+  return transactions.filter(t => !t.isDeleted).sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addTransaction = async (transaction: any) => {
@@ -1039,14 +1154,18 @@ export const deleteTransaction = async (id: string) => {
         await saveLocalData('cashboxes', cashboxes);
       }
     }
+    const index = transactions.findIndex((p: any) => String(p.id) === String(id));
+    if (index !== -1) {
+      transactions[index].isDeleted = true;
+      await saveLocalData('transactions', transactions);
+    }
   }
-  await saveLocalData('transactions', transactions.filter((p: any) => String(p.id) !== String(id)));
 };
 
 // Invoices
 export const getInvoices = async () => {
   const invoices = await getLocalData<any[]>('invoices', []);
-  return invoices.sort((a, b) => b.createdAt - a.createdAt);
+  return invoices.filter(inv => !inv.isDeleted).sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addInvoice = async (invoice: any) => {
@@ -1155,21 +1274,30 @@ export const deleteInvoice = async (id: string) => {
   const invoices = await getLocalData<any[]>('invoices', []);
   const invoiceToDelete = invoices.find((p: any) => String(p.id) === String(id) || p.id === Number(id) || p.id === String(id));
   
-  const toDeleteIds = new Set([id, Number(id), String(id)]);
-  
   if (invoiceToDelete) {
-     invoices.forEach(inv => {
-        if (inv.isAutoGenerated && inv.sourceInvoiceId && (inv.sourceInvoiceId === invoiceToDelete.id || inv.sourceInvoiceId === invoiceToDelete.invoiceNumber)) {
-           toDeleteIds.add(inv.id);
-           toDeleteIds.add(String(inv.id));
-        }
-     });
+    if (invoiceToDelete.status !== 'draft' && !invoiceToDelete.isDraft) {
+      throw new Error('این فاکتور تایید شده است و قابلیت حذف ندارد. می‌توانید آن را ابطال یا مرجوع کنید.');
+    }
+    const toDeleteIds = new Set([id, Number(id), String(id)]);
+    
+    invoices.forEach(inv => {
+       if (inv.isAutoGenerated && inv.sourceInvoiceId && (inv.sourceInvoiceId === invoiceToDelete.id || inv.sourceInvoiceId === invoiceToDelete.invoiceNumber)) {
+          toDeleteIds.add(inv.id);
+          toDeleteIds.add(String(inv.id));
+       }
+    });
+
+    // Soft delete
+    invoices.forEach(inv => {
+      if (toDeleteIds.has(inv.id) || toDeleteIds.has(String(inv.id))) {
+        inv.isDeleted = true;
+      }
+    });
+    await saveLocalData('invoices', invoices);
+
+    // Recalculate warehouse stocks automatically
+    await recalculateAllWarehouseStocks();
   }
-
-  await saveLocalData('invoices', invoices.filter((p: any) => !toDeleteIds.has(p.id) && !toDeleteIds.has(String(p.id))));
-
-  // Recalculate warehouse stocks automatically
-  await recalculateAllWarehouseStocks();
 };
 
 // Checkbooks
@@ -1520,6 +1648,34 @@ export const deleteStocktaking = async (id: string | number) => {
   await saveStocktakings(newSts);
 };
 
+// --- Follow Ups (CRM) ---
+export const getPersonFollowUps = async () => {
+  const followUps = await getLocalData<any[]>('person_follow_ups', []);
+  return followUps.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const addPersonFollowUp = async (followUp: any) => {
+  const followUps = await getPersonFollowUps();
+  const newFollowUp = { ...followUp, id: generateId(), createdAt: Date.now(), updatedAt: Date.now() };
+  followUps.push(newFollowUp);
+  await saveLocalData('person_follow_ups', followUps);
+  return newFollowUp;
+};
+
+export const updatePersonFollowUp = async (id: string | number, followUp: any) => {
+  const followUps = await getPersonFollowUps();
+  const index = followUps.findIndex((p: any) => String(p.id) === String(id));
+  if (index !== -1) {
+    followUps[index] = { ...followUps[index], ...followUp, updatedAt: Date.now() };
+    await saveLocalData('person_follow_ups', followUps);
+  }
+};
+
+export const deletePersonFollowUp = async (id: string | number) => {
+  const followUps = await getPersonFollowUps();
+  await saveLocalData('person_follow_ups', followUps.filter((p: any) => String(p.id) !== String(id)));
+};
+
 export const getLoans = async () => getLocalData<any[]>('loans', []);
 export const saveLoans = async (roles: any[]) => saveLocalData('loans', roles);
 
@@ -1584,7 +1740,10 @@ export const deleteLedgerAccount = async (id: string | number) => {
   await saveLedgerAccounts(newAccs);
 };
 
-export const getAccountingDocuments = async () => getLocalData<any[]>('accounting_documents', []);
+export const getAccountingDocuments = async () => {
+  const docs = await getLocalData<any[]>('accounting_documents', []);
+  return docs.filter(d => !d.isDeleted);
+};
 export const saveAccountingDocuments = async (data: any[]) => saveLocalData('accounting_documents', data);
 export const addAccountingDocument = async (doc: any) => {
   if (doc.date) await checkFinancialYear(doc.date);
@@ -1619,8 +1778,14 @@ export const updateAccountingDocument = async (id: string | number, updated: any
 };
 export const deleteAccountingDocument = async (id: string | number) => {
   const docs = await getAccountingDocuments();
-  const newDocs = docs.filter((x: any) => x.id?.toString() !== id?.toString());
-  await saveAccountingDocuments(newDocs);
+  const index = docs.findIndex((x: any) => x.id?.toString() === id?.toString());
+  if (index !== -1) {
+    if (docs[index].isAutoGenerated) {
+       throw new Error('اسناد اتوماتیک قابل حذف دستی نیستند.');
+    }
+    docs[index].isDeleted = true;
+    await saveLocalData('accounting_documents', docs); // saveLocalData directly to bypass saveAccountingDocuments if it overwrites.
+  }
 };
 
 export const getInstallments = async () => getLocalData<any[]>('installments', []);
