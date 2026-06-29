@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Plus, ClipboardList, PenTool, CheckCircle, Search, Save, AlertCircle, RefreshCcw, Handshake } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Package, Plus, ClipboardList, PenTool, CheckCircle, Search, Save, AlertCircle, RefreshCcw, Handshake, Trash2, X } from 'lucide-react';
 import { getStocktakings, addStocktaking, updateStocktaking, deleteStocktaking, getProducts, getWarehouses, getWarehouseStocks } from '../../services/dataService';
 import DatePickerModule, { Calendar as RMCalendar } from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
@@ -28,9 +28,23 @@ export default function StocktakingManager({ showNotification, currentUser = 'س
   const [description, setDescription] = useState('');
   const [items, setItems] = useState<StocktakingItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Fast Search State
+  const [productSearch, setProductSearch] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target as Node)) {
+        setShowProductDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchData = async () => {
@@ -58,15 +72,16 @@ export default function StocktakingManager({ showNotification, currentUser = 'س
     setDescription('');
     setItems([]);
     setCurrentId('');
+    setProductSearch('');
+    setSearchTerm('');
     setViewState('create');
   };
 
-  const handleStartCounting = () => {
+  const handleStartCountingAll = () => {
     if (!warehouseId) {
       if (showNotification) showNotification('لطفا انبار را انتخاب کنید', 'error');
       return;
     }
-    // initialize items with expected stock
     const newItems: StocktakingItem[] = products.filter(p => p.type === 'product' || !p.type).map(p => {
       const stockEntry = stocks.find(s => s.productId?.toString() === p.id?.toString() && s.warehouseId?.toString() === warehouseId.toString());
       const expected = stockEntry ? stockEntry.availableStock : 0;
@@ -80,6 +95,57 @@ export default function StocktakingManager({ showNotification, currentUser = 'س
       };
     });
     setItems(newItems);
+  };
+
+  const handleAddProductToCounting = (product: Product) => {
+    if (!warehouseId) {
+      if (showNotification) showNotification('لطفا انبار را انتخاب کنید', 'error');
+      return;
+    }
+    
+    setProductSearch('');
+    setShowProductDropdown(false);
+
+    const exists = items.findIndex(it => it.productId === product.id);
+    if (exists > -1) {
+      // Highlight existing
+      const row = document.getElementById(`item-row-${product.id}`);
+      if (row && tableRef.current) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.classList.add('bg-indigo-50');
+        setTimeout(() => row.classList.remove('bg-indigo-50'), 2000);
+        const input = row.querySelector('input');
+        if (input) input.focus();
+      }
+      return;
+    }
+
+    const stockEntry = stocks.find(s => s.productId?.toString() === product.id?.toString() && s.warehouseId?.toString() === warehouseId.toString());
+    const expected = stockEntry ? stockEntry.availableStock : 0;
+    
+    const newItem: StocktakingItem = {
+      productId: product.id,
+      productName: product.name,
+      expectedStock: expected,
+      countedStock: null,
+      difference: 0,
+      costValue: 0
+    };
+
+    setItems([newItem, ...items]);
+    
+    // Focus the new row's input after render
+    setTimeout(() => {
+      const row = document.getElementById(`item-row-${product.id}`);
+      if (row) {
+        const input = row.querySelector('input');
+        if (input) input.focus();
+      }
+    }, 100);
+  };
+
+  const handleRemoveItem = (productId: string | number) => {
+    setItems(items.filter(it => it.productId !== productId));
   };
 
   const handleViewOrEdit = (st: Stocktaking) => {
@@ -258,18 +324,100 @@ export default function StocktakingManager({ showNotification, currentUser = 'س
              </div>
 
              {items.length === 0 ? (
-               <div className="mt-8 flex justify-end">
-                 <button onClick={handleStartCounting} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-md">
-                   <Package className="w-5 h-5" /> فراخوانی لیست کالاها جهت شمارش
+               <div className="mt-8 flex flex-col md:flex-row items-center justify-end gap-4 border-t pt-6">
+                 <div className="relative w-full md:w-96" ref={tableRef}>
+                    <div className="relative">
+                      <Search className="w-5 h-5 absolute right-3 top-3.5 text-slate-400" />
+                      <input 
+                        ref={searchInputRef}
+                        type="text" 
+                        value={productSearch}
+                        onChange={(e) => {
+                          setProductSearch(e.target.value);
+                          setShowProductDropdown(true);
+                        }}
+                        onFocus={() => setShowProductDropdown(true)}
+                        placeholder="جستجوی سریع کالا / اسکن بارکد ..." 
+                        className="w-full py-3 pr-10 pl-4 bg-white border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 font-bold transition-all shadow-sm"
+                        disabled={!warehouseId}
+                      />
+                    </div>
+                    {showProductDropdown && productSearch && warehouseId && (
+                      <div className="absolute top-full right-0 left-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto z-50">
+                        {products.filter(p => (p.type === 'product' || !p.type) && (p.name.includes(productSearch) || p.code?.includes(productSearch) || p.barcode?.includes(productSearch))).length > 0 ? (
+                          products.filter(p => (p.type === 'product' || !p.type) && (p.name.includes(productSearch) || p.code?.includes(productSearch) || p.barcode?.includes(productSearch))).map(p => (
+                            <button 
+                              key={p.id}
+                              onClick={() => handleAddProductToCounting(p)}
+                              className="w-full text-right p-3 hover:bg-indigo-50 border-b border-slate-50 last:border-0 flex justify-between items-center transition-colors"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-800 text-sm">{p.name}</span>
+                                <span className="text-xs text-slate-500 font-mono mt-0.5">{p.code || p.barcode || 'بدون کد'}</span>
+                              </div>
+                              <Plus className="w-4 h-4 text-indigo-500" />
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-slate-500 text-sm">کالایی یافت نشد</div>
+                        )}
+                      </div>
+                    )}
+                 </div>
+                 <div className="w-full md:w-auto text-center text-slate-400 font-bold text-sm">یا</div>
+                 <button onClick={handleStartCountingAll} disabled={!warehouseId} className="w-full md:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+                   <Package className="w-5 h-5" /> فراخوانی تمام کالاها
                  </button>
                </div>
              ) : (
                <div className="mt-8 space-y-4">
-                 <div className="flex items-center justify-between border-b pb-4">
+                 <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 gap-4">
                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2"><PenTool className="w-5 h-5 text-amber-500" /> ثبت شمارش موجودی</h3>
-                   <div className="relative w-64">
-                     <Search className="w-4 h-4 absolute right-3 top-3 text-slate-400" />
-                     <input type="text" placeholder="جستجوی کالا..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full py-2 pr-9 pl-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-400 text-sm" />
+                   
+                   <div className="flex flex-col md:flex-row gap-4 items-center flex-1 justify-end">
+                     <div className="relative w-full md:w-80" ref={tableRef}>
+                        <div className="relative">
+                          <Plus className="w-5 h-5 absolute right-3 top-2.5 text-indigo-500" />
+                          <input 
+                            ref={searchInputRef}
+                            type="text" 
+                            value={productSearch}
+                            onChange={(e) => {
+                              setProductSearch(e.target.value);
+                              setShowProductDropdown(true);
+                            }}
+                            onFocus={() => setShowProductDropdown(true)}
+                            placeholder="افزودن کالای جدید (اسکن/جستجو)..." 
+                            className="w-full py-2 pr-10 pl-4 bg-indigo-50/50 border border-indigo-100 rounded-xl outline-none focus:border-indigo-400 focus:bg-white text-sm font-bold transition-all placeholder-indigo-300"
+                          />
+                        </div>
+                        {showProductDropdown && productSearch && (
+                          <div className="absolute top-full right-0 left-0 mt-2 bg-white rounded-xl shadow-2xl border border-slate-100 max-h-60 overflow-y-auto z-50">
+                            {products.filter(p => (p.type === 'product' || !p.type) && (p.name.includes(productSearch) || p.code?.includes(productSearch) || p.barcode?.includes(productSearch))).length > 0 ? (
+                              products.filter(p => (p.type === 'product' || !p.type) && (p.name.includes(productSearch) || p.code?.includes(productSearch) || p.barcode?.includes(productSearch))).map(p => (
+                                <button 
+                                  key={p.id}
+                                  onClick={() => handleAddProductToCounting(p)}
+                                  className="w-full text-right p-3 hover:bg-indigo-50 border-b border-slate-50 last:border-0 flex justify-between items-center transition-colors"
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-slate-800 text-sm">{p.name}</span>
+                                    <span className="text-xs text-slate-500 font-mono mt-0.5">{p.code || p.barcode || 'بدون کد'}</span>
+                                  </div>
+                                  <Plus className="w-4 h-4 text-indigo-500" />
+                                </button>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-slate-500 text-sm">کالایی یافت نشد</div>
+                            )}
+                          </div>
+                        )}
+                     </div>
+
+                     <div className="relative w-full md:w-64">
+                       <Search className="w-4 h-4 absolute right-3 top-3 text-slate-400" />
+                       <input type="text" placeholder="فیلتر در اقلام لیست..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full py-2 pr-9 pl-4 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-slate-400 text-sm" />
+                     </div>
                    </div>
                  </div>
                  
@@ -281,15 +429,16 @@ export default function StocktakingManager({ showNotification, currentUser = 'س
                          <th className="p-4">جستجو / کد</th>
                          <th className="p-4">نام کالا</th>
                          <th className="p-4 text-center">موجودی فعلی (سیستم)</th>
-                         <th className="p-4 w-48 text-center bg-indigo-50/50">تعداد شمارش شده</th>
+                         <th className="p-4 w-48 text-center bg-indigo-50/50 text-indigo-800">تعداد شمارش شده</th>
                          <th className="p-4 text-center">مغایرت</th>
+                         <th className="p-4 w-12 text-center">حذف</th>
                        </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-100">
                        {filteredItems.map((it, idx) => {
                          const p = products.find(prod => prod.id === it.productId);
                          return (
-                           <tr key={it.productId} className="hover:bg-slate-50/30">
+                           <tr key={it.productId} id={`item-row-${it.productId}`} className="hover:bg-slate-50/30 transition-colors">
                              <td className="p-4 text-center text-slate-400 font-mono text-sm">{idx + 1}</td>
                              <td className="p-4 font-mono text-sm text-slate-500">{p?.code || p?.barcode || '-'}</td>
                              <td className="p-4 font-bold text-slate-800">{it.productName}</td>
@@ -309,15 +458,20 @@ export default function StocktakingManager({ showNotification, currentUser = 'س
                                      setItems(newItems);
                                    }
                                  }}
-                                 placeholder="؟"
-                                 className="w-full p-2 border border-indigo-200 text-center font-mono font-bold rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none placeholder-slate-300"
+                                 placeholder="شماره/مقدار؟"
+                                 className="w-full p-2 border border-indigo-200 text-center font-mono font-bold text-lg text-indigo-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none placeholder-indigo-200 shadow-inner bg-white"
                                />
                              </td>
                              <td className="p-4 text-center font-mono font-bold">
                                {it.countedStock === null ? <span className="text-slate-300">-</span> : 
                                 it.difference === 0 ? <span className="text-slate-400">بدون مغایرت</span> : 
-                                it.difference > 0 ? <span className="text-emerald-600">+{it.difference} (اضافی)</span> : 
-                                <span className="text-rose-600">{it.difference} (کسری)</span>}
+                                it.difference > 0 ? <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">+{it.difference} (اضافی)</span> : 
+                                <span className="text-rose-600 bg-rose-50 px-2 py-1 rounded-md">{it.difference} (کسری)</span>}
+                             </td>
+                             <td className="p-4 text-center">
+                                <button onClick={() => handleRemoveItem(it.productId)} className="p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                              </td>
                            </tr>
                          )
