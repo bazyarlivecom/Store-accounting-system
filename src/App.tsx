@@ -224,6 +224,7 @@ import InvoicePrintTemplate from "./components/print/InvoicePrintTemplate";
 import AIProductSearchModal from "./components/products/AIProductSearchModal";
 import BulkProductImportModal from "./components/products/BulkProductImportModal";
 import FastProductCreateModal from "./components/products/FastProductCreateModal";
+import PersonProfileView from "./components/persons/PersonProfileView";
 import {
   Person,
   PersonGroup,
@@ -362,6 +363,7 @@ export default function App() {
     | "product_view"
     | "product_categories"
     | "persons"
+    | "person_profile"
     | "person_opening_balances"
     | "person_groups"
     | "person_roles"
@@ -1257,8 +1259,11 @@ export default function App() {
     any | null
   >(null);
 
-  // Person Ledger state
+  // Person Ledger & Profile state
   const [ledgerPersonId, setLedgerPersonId] = useState<string | number | "">(
+    "",
+  );
+  const [profilePersonId, setProfilePersonId] = useState<string | number | "">(
     "",
   );
   const [ledgerTab, setLedgerTab] = useState<
@@ -14787,7 +14792,10 @@ export default function App() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: index * 0.03 }}
                                     key={p.id}
-                                    onClick={() => setDrawerPersonId(p.id)}
+                                    onClick={() => {
+                                      setProfilePersonId(p.id);
+                                      setActiveTab("person_profile");
+                                    }}
                                     className="group relative bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-300 cursor-pointer flex flex-col"
                                   >
                                     <div className="flex items-start gap-3">
@@ -15050,17 +15058,17 @@ export default function App() {
                                                     setOpenPersonActionsId(
                                                       null,
                                                     );
-                                                    setLedgerPersonId(p.id);
+                                                    setProfilePersonId(p.id);
                                                     setActiveTab(
-                                                      "person_ledger",
+                                                      "person_profile",
                                                     );
                                                   }}
                                                   className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2"
                                                 >
                                                   <div className="w-6 h-6 rounded-lg bg-indigo-100/50 flex items-center justify-center text-indigo-600">
-                                                    <FileText className="w-3.5 h-3.5" />
+                                                    <User className="w-3.5 h-3.5" />
                                                   </div>
-                                                  مشاهده کارت حساب
+                                                  مشاهده پروفایل
                                                 </button>
 
                                                 <div className="h-px bg-slate-100 my-1 mx-2"></div>
@@ -15254,9 +15262,10 @@ export default function App() {
                                       return (
                                         <tr
                                           key={p.id}
-                                          onClick={() =>
-                                            setDrawerPersonId(p.id)
-                                          }
+                                          onClick={() => {
+                                            setProfilePersonId(p.id);
+                                            setActiveTab("person_profile");
+                                          }}
                                           className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
                                         >
                                           <td className="px-6 py-4">
@@ -15455,19 +15464,17 @@ export default function App() {
                                                           setOpenPersonActionsId(
                                                             null,
                                                           );
-                                                          setLedgerPersonId(
-                                                            p.id,
-                                                          );
+                                                          setProfilePersonId(p.id);
                                                           setActiveTab(
-                                                            "person_ledger",
+                                                            "person_profile",
                                                           );
                                                         }}
                                                         className="w-full text-right px-3 py-2 text-xs font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl transition-colors flex items-center gap-2"
                                                       >
                                                         <div className="w-6 h-6 rounded-lg bg-indigo-100/50 flex items-center justify-center text-indigo-600">
-                                                          <FileText className="w-3.5 h-3.5" />
+                                                          <User className="w-3.5 h-3.5" />
                                                         </div>
-                                                        مشاهده کارت حساب
+                                                        مشاهده پروفایل
                                                       </button>
 
                                                       <div className="h-px bg-slate-100 my-1 mx-2"></div>
@@ -17679,6 +17686,43 @@ export default function App() {
                       })()}
                     </div>
                   </motion.div>
+                ) : activeTab === "person_profile" ? (
+                  <PersonProfileView
+                    personId={profilePersonId}
+                    persons={persons}
+                    invoices={invoices}
+                    transactions={transactions}
+                    storeSettings={storeSettings}
+                    calculatePersonBalance={calculatePersonBalance}
+                    onBack={() => setRawActiveTab("persons")}
+                    onEdit={(p) => {
+                      handleEditPerson(p);
+                    }}
+                    onViewLedger={(id) => {
+                      setLedgerPersonId(id);
+                      setRawActiveTab("person_ledger");
+                    }}
+                    onCreateSale={(id) => {
+                      setInvoicePersonId(id);
+                      setRawActiveTab("create_sale");
+                    }}
+                    onCreatePurchase={(id) => {
+                      setInvoicePersonId(id);
+                      setRawActiveTab("create_purchase");
+                    }}
+                    onCreateReceive={(id) => {
+                      setReceiptPersonId(id);
+                      setRawActiveTab("create_receive_receipt");
+                    }}
+                    onCreatePay={(id) => {
+                      setReceiptPersonId(id);
+                      setRawActiveTab("create_pay_receipt");
+                    }}
+                    getPersonDisplayName={getPersonDisplayName}
+                    formatCurrency={formatNumber}
+                    toPersianDigits={toPersianDigits}
+                    formatPersianDateDisplay={formatPersianDateDisplay}
+                  />
                 ) : activeTab === "person_ledger" ? (
                   /* Contact/Person Ledger Card View (کارت حساب اشخاص) */
                   <motion.div
@@ -18388,47 +18432,49 @@ export default function App() {
                               className="fixed inset-0 z-[9999] bg-white text-black p-8 print-section overflow-visible flex flex-col font-sans"
                               dir="rtl"
                             >
-                              <div className="border-2 border-gray-900 p-6 rounded-2xl mb-8 shadow-sm print:shadow-none">
-                                <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
+                              <div className="border border-slate-300 p-6 rounded-2xl mb-8 bg-white shadow-sm print:shadow-none print:border-slate-400 print:bg-white print:p-4">
+                                <div className="flex justify-between items-start border-b border-slate-200 pb-6 mb-6 print:pb-4 print:mb-4">
                                   <div className="text-right">
-                                    <h1 className="text-2xl font-black text-gray-900">
+                                    <h1 className="text-2xl font-black text-slate-900 print:text-xl">
                                       {storeSettings.storeName ||
                                         "سیستم مدیریت"}
                                     </h1>
-                                    <h2 className="text-lg font-bold text-gray-600 mt-1">
+                                    <h2 className="text-lg font-bold text-indigo-700 mt-1 print:text-base print:text-slate-700">
                                       کارت حساب (دفتر معین) ویژه اشخاص
                                     </h2>
                                   </div>
-                                  <div className="text-left select-none text-sm font-semibold text-gray-500">
+                                  <div className="text-left select-none text-sm font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg print:bg-transparent print:border-none print:p-0">
                                     تاریخ چاپ:{" "}
-                                    {toPersianDigits(
-                                      new Date().toLocaleDateString(
-                                        storeSettings?.calendarType ===
-                                          "gregorian"
-                                          ? "en-US"
-                                          : "fa-IR",
-                                      ),
-                                    )}
+                                    <span className="font-bold text-slate-700 print:text-black">
+                                      {toPersianDigits(
+                                        new Date().toLocaleDateString(
+                                          storeSettings?.calendarType ===
+                                            "gregorian"
+                                            ? "en-US"
+                                            : "fa-IR",
+                                        ),
+                                      )}
+                                    </span>
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-8 text-sm">
-                                  <div className="space-y-3 font-medium">
-                                    <div className="flex items-center gap-3 mb-4">
+                                <div className="grid grid-cols-2 gap-6 text-sm print:gap-4 print:text-xs">
+                                  <div className="space-y-3 font-medium bg-slate-50 p-4 rounded-xl border border-slate-200 print:bg-transparent print:border-slate-300 print:p-3">
+                                    <div className="flex items-center gap-3 mb-4 border-b border-slate-200 pb-3 print:mb-2 print:pb-2">
                                       {selectedPerson.imageUrl && (
                                         <img
                                           src={selectedPerson.imageUrl}
                                           alt={getPersonDisplayName(
                                             selectedPerson,
                                           )}
-                                          className="w-12 h-12 rounded-full object-cover border border-gray-200 shadow-sm shrink-0"
+                                          className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm shrink-0 print:w-10 print:h-10"
                                         />
                                       )}
                                       <p>
-                                        <span className="text-gray-500 w-24 inline-block font-bold">
+                                        <span className="text-slate-500 w-24 inline-block font-bold print:w-20">
                                           نام طرف حساب:
                                         </span>{" "}
-                                        <span className="font-extrabold text-lg text-gray-900">
+                                        <span className="font-extrabold text-lg text-slate-900 print:text-base">
                                           {getPersonDisplayName(selectedPerson)}{" "}
                                           {selectedPerson.personCode
                                             ? `[${selectedPerson.personCode}]`
@@ -18436,11 +18482,11 @@ export default function App() {
                                         </span>
                                       </p>
                                     </div>
-                                    <p>
-                                      <span className="text-gray-500 w-24 inline-block font-bold">
+                                    <p className="flex items-center">
+                                      <span className="text-slate-500 w-24 inline-block font-bold print:w-20">
                                         تلفن تماس:
                                       </span>{" "}
-                                      <span className="text-gray-900">
+                                      <span className="text-slate-900 font-bold bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0 print:bg-transparent">
                                         {toPersianDigits(
                                           selectedPerson.phone
                                             ? selectedPerson.phone
@@ -18448,94 +18494,106 @@ export default function App() {
                                         )}
                                       </span>
                                     </p>
-                                    <p>
-                                      <span className="text-gray-500 w-24 inline-block font-bold">
+                                    <p className="flex items-center">
+                                      <span className="text-slate-500 w-24 inline-block font-bold print:w-20">
                                         آدرس:
                                       </span>{" "}
-                                      <span className="text-gray-900">
+                                      <span className="text-slate-900 font-medium">
                                         {selectedPerson.address || "---"}
                                       </span>
                                     </p>
                                   </div>
 
-                                  <div className="space-y-3 font-medium">
-                                    <p>
-                                      <span className="text-gray-500 inline-block font-bold">
+                                  <div className="space-y-3 font-medium bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 print:bg-transparent print:border-slate-300 print:p-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-600 font-bold">
                                         جمع مبالغ بدهکار:
                                       </span>{" "}
-                                      <span className="text-gray-900 font-extrabold text-base">
+                                      <span className="text-slate-900 font-extrabold text-base bg-white px-2 py-1 rounded shadow-sm border border-slate-100 print:border-none print:shadow-none print:p-0 print:bg-transparent print:text-sm">
                                         {toPersianDigits(
                                           formatNumber(totalDebits),
                                         )}{" "}
-                                        {storeSettings.currency}
+                                        <span className="text-[10px] text-slate-400">
+                                          {storeSettings.currency}
+                                        </span>
                                       </span>
-                                    </p>
-                                    <p>
-                                      <span className="text-gray-500 inline-block font-bold">
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-600 font-bold">
                                         جمع مبالغ بستانکار:
                                       </span>{" "}
-                                      <span className="text-gray-900 font-extrabold text-base">
+                                      <span className="text-slate-900 font-extrabold text-base bg-white px-2 py-1 rounded shadow-sm border border-slate-100 print:border-none print:shadow-none print:p-0 print:bg-transparent print:text-sm">
                                         {toPersianDigits(
                                           formatNumber(totalCredits),
                                         )}{" "}
-                                        {storeSettings.currency}
+                                        <span className="text-[10px] text-slate-400">
+                                          {storeSettings.currency}
+                                        </span>
                                       </span>
-                                    </p>
-                                    <p className="pt-2 border-t border-gray-200">
-                                      <span className="text-gray-600 inline-block font-bold text-lg">
+                                    </div>
+                                    <div className="pt-3 border-t border-indigo-200 flex items-center justify-between mt-2 print:border-slate-300">
+                                      <span className="text-indigo-900 font-black text-lg print:text-slate-800 print:text-base">
                                         مانده نهایی حساب:
                                       </span>{" "}
                                       <span
-                                        className={`text-lg font-black tracking-tight ${isClr ? "text-gray-800" : isOwed ? "text-rose-700" : "text-emerald-700"}`}
+                                        className={`text-lg font-black tracking-tight ${isClr ? "text-slate-800" : isOwed ? "text-rose-700" : "text-emerald-700"} print:text-base`}
                                       >
                                         {isClr ? (
-                                          "تسویه کامل"
+                                          <span className="bg-slate-200 text-slate-700 px-3 py-1 rounded-lg text-sm shadow-sm print:border print:border-slate-300 print:shadow-none print:bg-transparent">
+                                            تسویه کامل
+                                          </span>
                                         ) : (
-                                          <>
-                                            {toPersianDigits(
-                                              formatNumber(
-                                                Math.abs(finalBalance),
-                                              ),
-                                            )}{" "}
-                                            {storeSettings.currency}{" "}
-                                            <span className="text-xs mr-2 font-bold bg-gray-100 px-2 py-0.5 rounded text-gray-700">
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className={`text-xs font-bold px-2 py-1 rounded shadow-sm print:border print:shadow-none print:bg-transparent ${isOwed ? "bg-rose-100 text-rose-700 print:border-slate-300 print:text-slate-800" : "bg-emerald-100 text-emerald-700 print:border-slate-300 print:text-slate-800"}`}
+                                            >
                                               {isOwed
                                                 ? "بدهکار به ما"
                                                 : "بستانکار از ما"}
                                             </span>
-                                          </>
+                                            <span>
+                                              {toPersianDigits(
+                                                formatNumber(
+                                                  Math.abs(finalBalance),
+                                                ),
+                                              )}{" "}
+                                              <span className="text-xs font-bold">
+                                                {storeSettings.currency}
+                                              </span>{" "}
+                                            </span>
+                                          </div>
                                         )}
                                       </span>
-                                    </p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
 
                               <div className="overflow-visible">
-                                <table className="w-full text-right min-w-[0px] text-[11px] print:text-[11px] mb-8">
+                                <table className="w-full text-right min-w-[0px] text-[11px] print:text-[11px] mb-8 border-collapse">
                                   <thead>
-                                    <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-400 font-bold text-[10px] uppercase tracking-wider print:bg-slate-100">
-                                      <th className="py-3 px-2 text-center w-8 print:border-b-2 print:border-gray-500">
+                                    <tr className="bg-indigo-600 text-white font-bold text-[10px] uppercase tracking-wider print:bg-slate-200 print:text-slate-800">
+                                      <th className="py-3 px-2 text-center w-8 border border-indigo-700 print:border-slate-400">
                                         ردیف
                                       </th>
-                                      <th className="py-3 px-2 text-right w-24 print:border-b-2 print:border-gray-500">
+                                      <th className="py-3 px-2 text-right w-24 border border-indigo-700 print:border-slate-400">
                                         تاریخ و ارجاع
                                       </th>
-                                      <th className="py-3 px-2 text-right print:border-b-2 print:border-gray-500">
+                                      <th className="py-3 px-2 text-right border border-indigo-700 print:border-slate-400">
                                         عنوان و شرح جزئیات رویداد مالی
                                       </th>
-                                      <th className="py-3 px-2 text-left w-28 print:border-b-2 print:border-gray-500">
-                                        بدهکار
+                                      <th className="py-3 px-2 text-left w-28 border border-indigo-700 print:border-slate-400">
+                                        بدهکار (افزایش بدهی)
                                       </th>
-                                      <th className="py-3 px-2 text-left w-28 print:border-b-2 print:border-gray-500">
-                                        بستانکار
+                                      <th className="py-3 px-2 text-left w-28 border border-indigo-700 print:border-slate-400">
+                                        بستانکار (کاهش بدهی)
                                       </th>
-                                      <th className="py-3 px-2 text-left w-32 print:border-b-2 print:border-gray-500">
+                                      <th className="py-3 px-2 text-left w-32 border border-indigo-700 print:border-slate-400">
                                         مانده نهایی
                                       </th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-gray-200 font-medium font-sans">
+                                  <tbody className="font-medium font-sans bg-white">
                                     {ledgerEntries.map((entry, index) => {
                                       const isDeb = entry.runningBalance > 0;
                                       const isBalZero =
@@ -18543,17 +18601,17 @@ export default function App() {
                                       return (
                                         <tr
                                           key={index}
-                                          className="break-inside-avoid border-b border-gray-100"
+                                          className="break-inside-avoid border-b border-slate-200 even:bg-slate-50/50 print:even:bg-slate-50/50 hover:bg-indigo-50/50 transition-colors"
                                         >
-                                          <td className="py-3 px-2 text-center align-top pt-4">
-                                            <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center mx-auto text-[9px] font-bold shrink-0">
+                                          <td className="py-3 px-2 text-center align-top border-x border-slate-200 print:border-slate-300">
+                                            <div className="w-5 h-5 rounded border border-slate-300 bg-white shadow-sm flex items-center justify-center mx-auto text-[9px] font-bold shrink-0 text-slate-600">
                                               {toPersianDigits(index + 1)}
                                             </div>
                                           </td>
-                                          <td className="py-3 px-2 align-top pt-3">
+                                          <td className="py-3 px-2 align-top border-x border-slate-200 print:border-slate-300">
                                             <div className="flex flex-col gap-1.5 text-right relative">
                                               <span
-                                                className="text-gray-800 font-bold flex items-center justify-start gap-1 text-xs pr-0"
+                                                className="text-slate-900 font-bold flex items-center justify-start gap-1 text-[11px] pr-0"
                                                 dir="rtl"
                                               >
                                                 <span className="whitespace-nowrap">
@@ -18562,24 +18620,34 @@ export default function App() {
                                                   )}
                                                 </span>
                                               </span>
-                                              <span className="text-[10px] text-gray-600 border border-gray-300 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                              <span className="text-[10px] text-indigo-700 font-bold border border-indigo-100 bg-indigo-50 px-1.5 py-0.5 rounded flex items-center gap-1 w-max shadow-sm print:border-slate-300 print:bg-transparent print:text-slate-700 print:shadow-none">
                                                 {toPersianDigits(entry.refId)}
                                               </span>
                                             </div>
                                           </td>
-                                          <td className="py-3 px-2 align-top pt-3 max-w-sm">
+                                          <td className="py-3 px-2 align-top max-w-sm border-x border-slate-200 print:border-slate-300">
                                             <div className="flex flex-col items-start gap-1">
-                                              <span className="font-extrabold text-[10px] bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                              <span
+                                                className={`font-extrabold text-[10px] px-2 py-0.5 rounded border shadow-sm print:shadow-none ${
+                                                  entry.credit > 0
+                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 print:border-slate-300 print:bg-transparent print:text-slate-800"
+                                                    : entry.debit > 0
+                                                      ? "bg-rose-50 text-rose-700 border-rose-200 print:border-slate-300 print:bg-transparent print:text-slate-800"
+                                                      : "bg-slate-100 text-slate-700 border-slate-200 print:border-slate-300 print:bg-transparent print:text-slate-800"
+                                                }`}
+                                              >
                                                 {entry.type}
                                               </span>
-                                              <p className="text-gray-800 text-[11px] whitespace-normal leading-relaxed break-words text-justify">
+                                              <p className="text-slate-800 text-[11px] whitespace-normal leading-relaxed break-words text-justify mt-1">
                                                 {toPersianDigits(entry.desc)}
                                               </p>
                                             </div>
                                           </td>
-                                          <td className="py-3 px-2 text-left align-top pt-4">
+                                          <td
+                                            className={`py-3 px-2 text-left align-top border-x border-slate-200 print:border-slate-300 ${entry.debit > 0 ? "bg-rose-50/30 print:bg-transparent" : ""}`}
+                                          >
                                             <span
-                                              className={`font-black text-[12px] ${entry.debit > 0 ? "text-black" : "text-gray-400 font-medium"}`}
+                                              className={`font-black text-[12px] ${entry.debit > 0 ? "text-rose-700 print:text-slate-900" : "text-slate-400 font-medium"}`}
                                             >
                                               {entry.debit > 0
                                                 ? toPersianDigits(
@@ -18588,9 +18656,11 @@ export default function App() {
                                                 : "---"}
                                             </span>
                                           </td>
-                                          <td className="py-3 px-2 text-left align-top pt-4">
+                                          <td
+                                            className={`py-3 px-2 text-left align-top border-x border-slate-200 print:border-slate-300 ${entry.credit > 0 ? "bg-emerald-50/30 print:bg-transparent" : ""}`}
+                                          >
                                             <span
-                                              className={`font-black text-[12px] ${entry.credit > 0 ? "text-black" : "text-gray-400 font-medium"}`}
+                                              className={`font-black text-[12px] ${entry.credit > 0 ? "text-emerald-700 print:text-slate-900" : "text-slate-400 font-medium"}`}
                                             >
                                               {entry.credit > 0
                                                 ? toPersianDigits(
@@ -18599,12 +18669,12 @@ export default function App() {
                                                 : "---"}
                                             </span>
                                           </td>
-                                          <td className="py-3 px-2 text-left align-top pt-3">
+                                          <td className="py-3 px-2 text-left align-top border-x border-slate-200 print:border-slate-300">
                                             <div
-                                              className={`flex flex-col items-end gap-1 font-extrabold ${isBalZero ? "text-gray-600" : "text-black"}`}
+                                              className={`flex flex-col items-end gap-1 font-extrabold ${isBalZero ? "text-slate-500" : "text-slate-900"}`}
                                             >
                                               {isBalZero ? (
-                                                <span className="border border-gray-300 px-2 py-1 rounded text-xs mt-0.5">
+                                                <span className="bg-slate-100 border border-slate-200 px-2 py-1 rounded text-xs text-slate-600 shadow-sm print:border-slate-300 print:bg-transparent print:shadow-none mt-0.5">
                                                   صفر (تسویه)
                                                 </span>
                                               ) : (
@@ -18619,7 +18689,7 @@ export default function App() {
                                                     )}
                                                   </span>
                                                   <span
-                                                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${isDeb ? "border-gray-400 text-gray-700" : "border-gray-400 text-gray-700"}`}
+                                                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shadow-sm print:border-slate-400 print:shadow-none print:bg-transparent print:text-slate-800 ${isDeb ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}
                                                   >
                                                     {isDeb
                                                       ? "بدهکار"
@@ -25343,6 +25413,7 @@ export default function App() {
                             storeSettings={storeSettings}
                             warehouses={warehouses}
                             persons={persons}
+                            products={products}
                           />
                         </div>
                       ) : (
@@ -26783,6 +26854,7 @@ export default function App() {
                               storeSettings={storeSettings}
                               warehouses={warehouses}
                               persons={persons}
+                              products={products}
                             />
                           </div>
                         ) : (
