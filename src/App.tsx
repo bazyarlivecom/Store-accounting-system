@@ -213,6 +213,7 @@ import CRMDashboard from "./components/crm/CRMDashboard";
 import SystemDiagnostics from "./components/admin/SystemDiagnostics";
 import StocktakingManager from "./components/inventory/StocktakingManager";
 import AnalyticalDashboard from "./components/reports/AnalyticalDashboard";
+import FinancialDashboardWidgets from "./components/reports/FinancialDashboardWidgets";
 import DebtsCreditsReport from "./components/reports/DebtsCreditsReport";
 import LoansManager from "./components/loans/LoansManager";
 import ChartOfAccounts from "./components/accounting/ChartOfAccounts";
@@ -17539,6 +17540,16 @@ export default function App() {
                         بانکی بالا اثرگذار بوده‌اند.
                       </p>
                     </div>
+
+                    <FinancialDashboardWidgets 
+                       persons={persons}
+                       calculatePersonBalance={calculatePersonBalance}
+                       issuedChecks={issuedChecks}
+                       receivedChecks={receivedChecks}
+                       storeSettings={storeSettings}
+                       getPersonDisplayName={getPersonDisplayName}
+                       formatNumber={formatNumber}
+                    />
 
                     {/* Checks Dashboard Chart */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mt-6">
