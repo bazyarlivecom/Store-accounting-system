@@ -145,7 +145,7 @@ export default function SystemDiagnostics({
       });
 
       // 8. Find gaps in invoice numbering
-      const saleInvoices = invoices.filter(i => i.type === 'sale' && i.status !== 'draft').map(i => parseInt(i.invoiceNumber, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b);
+      const saleInvoices = invoices.filter(i => i.type === 'sale' && i.status !== 'draft' && i.status !== 'voided').map(i => parseInt(i.invoiceNumber, 10)).filter(n => !isNaN(n)).sort((a, b) => a - b);
       if (saleInvoices.length > 1) {
         for (let i = 0; i < saleInvoices.length - 1; i++) {
           if (saleInvoices[i + 1] - saleInvoices[i] > 1) {

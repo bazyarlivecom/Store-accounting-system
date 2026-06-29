@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Users, CreditCard, ChevronDown, Filter, Calendar } from 'lucide-react';
+import { Users, CreditCard, ChevronDown, Filter, Calendar, GripHorizontal } from 'lucide-react';
+import { Reorder } from 'motion/react';
 
 export default function FinancialDashboardWidgets({
   persons,
@@ -12,6 +13,8 @@ export default function FinancialDashboardWidgets({
 }: any) {
   const [filterLimit, setFilterLimit] = useState(5);
   const [minAmount, setMinAmount] = useState('');
+  const [widgetsOrder, setWidgetsOrder] = useState(['payable_checks', 'debtors', 'creditors']);
+
   
   // Date filters (simple string search for now or date logic)
   const [fromDate, setFromDate] = useState('');
@@ -129,94 +132,106 @@ export default function FinancialDashboardWidgets({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Payable Checks */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="bg-rose-50 border-b border-rose-100 p-4 flex items-center justify-between">
-            <h3 className="font-extrabold text-rose-900 flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-rose-600" />
-              چک‌های پرداختی (سررسید نشده)
-            </h3>
-          </div>
-          <div className="p-4 flex-1 overflow-auto max-h-96">
-            {payableChecks.length === 0 ? (
-               <div className="text-center text-gray-400 py-8 text-sm font-bold">رکوردی یافت نشد.</div>
-            ) : (
-               <ul className="space-y-3">
-                 {payableChecks.map((c: any) => (
-                   <li key={c.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col gap-2">
-                     <div className="flex justify-between items-start">
-                       <span className="text-sm font-black text-gray-800">{getPersonName(c.receiverId)}</span>
-                       <span className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">{c.dueDate}</span>
-                     </div>
-                     <div className="flex justify-between items-center mt-1">
-                       <span className="text-xs text-gray-500">شماره: <span dir="ltr">{c.checkNumber}</span></span>
-                       <div className="text-left">
-                         <span className="text-sm font-extrabold text-rose-600">{formatNumber(c.amount)}</span>
-                         <span className="text-[10px] text-gray-400 font-semibold mr-1">{storeSettings.currency}</span>
-                       </div>
-                     </div>
-                   </li>
-                 ))}
-               </ul>
-            )}
-          </div>
-        </div>
+      <Reorder.Group axis="y" layoutScroll values={widgetsOrder} onReorder={setWidgetsOrder} className="grid grid-cols-1 lg:grid-cols-3 gap-6" as="div">
+        {widgetsOrder.map((widgetId) => (
+          <Reorder.Item key={widgetId} value={widgetId} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col relative group" as="div">
+            {/* Drag Handle */}
+            <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity z-10 p-1 bg-white/80 rounded-md">
+              <GripHorizontal className="w-5 h-5 text-slate-400" />
+            </div>
 
-        {/* Debtors */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="bg-emerald-50 border-b border-emerald-100 p-4 flex items-center justify-between">
-            <h3 className="font-extrabold text-emerald-900 flex items-center gap-2">
-              <Users className="w-5 h-5 text-emerald-600" />
-              بدهکاران (بزرگترین)
-            </h3>
-          </div>
-          <div className="p-4 flex-1 overflow-auto max-h-96">
-            {debtors.length === 0 ? (
-               <div className="text-center text-gray-400 py-8 text-sm font-bold">بدهکاری یافت نشد.</div>
-            ) : (
-               <ul className="space-y-3">
-                 {debtors.map((p: any) => (
-                   <li key={p.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex justify-between items-center">
-                     <span className="text-sm font-bold text-gray-800 line-clamp-1">{getPersonName(p.id)}</span>
-                     <div className="text-left whitespace-nowrap">
-                       <span className="text-sm font-extrabold text-emerald-600">{formatNumber(p.balanceAmount)}</span>
-                       <span className="text-[10px] text-gray-400 font-semibold mr-1">{storeSettings.currency}</span>
-                     </div>
-                   </li>
-                 ))}
-               </ul>
+            {widgetId === 'payable_checks' && (
+              <>
+                <div className="bg-rose-50 border-b border-rose-100 p-4 flex items-center justify-between">
+                  <h3 className="font-extrabold text-rose-900 flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-rose-600" />
+                    چک‌های پرداختی (سررسید نشده)
+                  </h3>
+                </div>
+                <div className="p-4 flex-1 overflow-auto max-h-96">
+                  {payableChecks.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8 text-sm font-bold">رکوردی یافت نشد.</div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {payableChecks.map((c: any) => (
+                        <li key={c.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col gap-2">
+                          <div className="flex justify-between items-start">
+                            <span className="text-sm font-black text-gray-800">{getPersonName(c.receiverId)}</span>
+                            <span className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">{c.dueDate}</span>
+                          </div>
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-gray-500">شماره: <span dir="ltr">{c.checkNumber}</span></span>
+                            <div className="text-left">
+                              <span className="text-sm font-extrabold text-rose-600">{formatNumber(c.amount)}</span>
+                              <span className="text-[10px] text-gray-400 font-semibold mr-1">{storeSettings.currency}</span>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
             )}
-          </div>
-        </div>
 
-        {/* Creditors */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="bg-indigo-50 border-b border-indigo-100 p-4 flex items-center justify-between">
-            <h3 className="font-extrabold text-indigo-900 flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-600" />
-              بستانکاران (بزرگترین)
-            </h3>
-          </div>
-          <div className="p-4 flex-1 overflow-auto max-h-96">
-            {creditors.length === 0 ? (
-               <div className="text-center text-gray-400 py-8 text-sm font-bold">بستانکاری یافت نشد.</div>
-            ) : (
-               <ul className="space-y-3">
-                 {creditors.map((p: any) => (
-                   <li key={p.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex justify-between items-center">
-                     <span className="text-sm font-bold text-gray-800 line-clamp-1">{getPersonName(p.id)}</span>
-                     <div className="text-left whitespace-nowrap">
-                       <span className="text-sm font-extrabold text-indigo-600">{formatNumber(p.balanceAmount)}</span>
-                       <span className="text-[10px] text-gray-400 font-semibold mr-1">{storeSettings.currency}</span>
-                     </div>
-                   </li>
-                 ))}
-               </ul>
+            {widgetId === 'debtors' && (
+              <>
+                <div className="bg-emerald-50 border-b border-emerald-100 p-4 flex items-center justify-between">
+                  <h3 className="font-extrabold text-emerald-900 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-emerald-600" />
+                    بدهکاران (بزرگترین)
+                  </h3>
+                </div>
+                <div className="p-4 flex-1 overflow-auto max-h-96">
+                  {debtors.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8 text-sm font-bold">بدهکاری یافت نشد.</div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {debtors.map((p: any) => (
+                        <li key={p.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex justify-between items-center">
+                          <span className="text-sm font-bold text-gray-800 line-clamp-1">{getPersonName(p.id)}</span>
+                          <div className="text-left whitespace-nowrap">
+                            <span className="text-sm font-extrabold text-emerald-600">{formatNumber(p.balanceAmount)}</span>
+                            <span className="text-[10px] text-gray-400 font-semibold mr-1">{storeSettings.currency}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
             )}
-          </div>
-        </div>
-      </div>
+
+            {widgetId === 'creditors' && (
+              <>
+                <div className="bg-indigo-50 border-b border-indigo-100 p-4 flex items-center justify-between">
+                  <h3 className="font-extrabold text-indigo-900 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-600" />
+                    بستانکاران (بزرگترین)
+                  </h3>
+                </div>
+                <div className="p-4 flex-1 overflow-auto max-h-96">
+                  {creditors.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8 text-sm font-bold">بستانکاری یافت نشد.</div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {creditors.map((p: any) => (
+                        <li key={p.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex justify-between items-center">
+                          <span className="text-sm font-bold text-gray-800 line-clamp-1">{getPersonName(p.id)}</span>
+                          <div className="text-left whitespace-nowrap">
+                            <span className="text-sm font-extrabold text-indigo-600">{formatNumber(p.balanceAmount)}</span>
+                            <span className="text-[10px] text-gray-400 font-semibold mr-1">{storeSettings.currency}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </>
+            )}
+          </Reorder.Item>
+        ))}
+      </Reorder.Group>
     </div>
   );
 }

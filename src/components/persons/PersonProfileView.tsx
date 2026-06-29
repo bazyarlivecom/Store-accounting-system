@@ -77,7 +77,7 @@ export default function PersonProfileView({
       }
     }
 
-    invoices.filter((i) => i.customerId?.toString() === personId.toString() && i.type !== "warehouse_receipt" && i.type !== "warehouse_remittance" && i.type !== "proforma" && !i.isDraft && i.status !== "draft").forEach((inv) => {
+    invoices.filter((i) => i.customerId?.toString() === personId.toString() && i.type !== "warehouse_receipt" && i.type !== "warehouse_remittance" && i.type !== "proforma" && !i.isDraft && i.status !== "draft" && i.status !== "voided").forEach((inv) => {
       const amount = (inv.totalAmount || 0) * (inv.currency === "USD" ? storeSettings.exchangeRateUSD : inv.currency === "EUR" ? storeSettings.exchangeRateEUR : inv.currency === "AED" ? storeSettings.exchangeRateAED : 1);
       if (inv.type === "sale" || inv.type === "purchase_return") debits += amount;
       else if (inv.type === "purchase" || inv.type === "sale_return") credits += amount;
@@ -100,7 +100,7 @@ export default function PersonProfileView({
   }, [person, invoices, transactions, issuedChecks, receivedChecks, storeSettings, personId]);
   
   const recentInvoices = useMemo(() => {
-    return invoices.filter(inv => inv.customerId?.toString() === personId.toString() && inv.status !== 'draft')
+    return invoices.filter(inv => inv.customerId?.toString() === personId.toString() && inv.status !== 'draft' && inv.status !== 'voided')
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
   }, [invoices, personId]);
@@ -111,7 +111,7 @@ export default function PersonProfileView({
   const isOwes = balance.status === "بستانکار";
   const isClr = balance.status === "بی‌حساب" || balance.status === "تسویه";
 
-  const totalInvoices = useMemo(() => invoices.filter(i => i.customerId?.toString() === personId.toString() && i.status !== 'draft').length, [invoices, personId]);
+  const totalInvoices = useMemo(() => invoices.filter(i => i.customerId?.toString() === personId.toString() && i.status !== 'draft' && i.status !== 'voided').length, [invoices, personId]);
   
   const pendingChecksCount = useMemo(() => {
     const issued = issuedChecks.filter((c) => c.payeeId?.toString() === personId.toString() && c.status !== "cancelled" && c.status !== "bounced" && c.status !== "cashed").length;

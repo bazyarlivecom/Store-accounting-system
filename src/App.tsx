@@ -80,6 +80,7 @@ import {
   Globe,
   Bell,
   Sparkles,
+  Ban,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
@@ -178,6 +179,7 @@ import {
   addInvoice,
   updateInvoice,
   deleteInvoice,
+  voidInvoice,
   getTransactions,
   addTransaction,
   updateTransaction,
@@ -3056,7 +3058,7 @@ export default function App() {
             i.type !== "warehouse_receipt" &&
             i.type !== "warehouse_remittance" &&
             i.type !== "proforma" &&
-            i.status !== "draft",
+            i.status !== "draft" && i.status !== "voided",
         )
         .forEach((inv: any) => {
           const amount =
@@ -4584,7 +4586,12 @@ export default function App() {
     }
 
     if (!confirm("حذف این مورد غیرقابل بازگشت است. آیا اطمینان دارید؟")) return;
-    deleteInvoice(id.toString()).then(fetchInvoices);
+    deleteInvoice(id.toString()).then(fetchInvoices).catch((err) => customAlert(err.message));
+  };
+
+  const handleVoidInvoice = async (id: string | number) => {
+    if (!confirm("آیا از ابطال این فاکتور اطمینان دارید؟ فاکتور ابطال شده در محاسبات لحاظ نخواهد شد اما در سوابق باقی می‌ماند.")) return;
+    voidInvoice(id.toString()).then(fetchInvoices).catch((err) => customAlert(err.message));
   };
 
   const handleEditInvoiceAction = async (inv: any) => {
@@ -5057,10 +5064,10 @@ export default function App() {
 
     try {
       if (editingInvoiceId) {
-        await deleteInvoice(editingInvoiceId);
+        await deleteInvoice(editingInvoiceId, true);
         setEditingInvoiceId(null);
       } else if (autoSaveInvoiceId) {
-        await deleteInvoice(autoSaveInvoiceId);
+        await deleteInvoice(autoSaveInvoiceId, true);
         setAutoSaveInvoiceId(null);
       }
       const addedInvoice = await addInvoice(payload as any);
@@ -5815,7 +5822,7 @@ export default function App() {
           i.type !== "warehouse_remittance" &&
           i.type !== "proforma" &&
           !i.isDraft &&
-          i.status !== "draft",
+          i.status !== "draft" && i.status !== "voided",
       )
       .forEach((inv) => {
         const amount =
@@ -9993,6 +10000,11 @@ export default function App() {
                                     پیش‌نویس
                                   </span>
                                 )}
+                                {inv.status === "voided" && (
+                                  <span className="bg-gray-100 text-gray-800 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-gray-200">
+                                    ابطال شده
+                                  </span>
+                                )}
                               </div>
                             </td>
                             {[
@@ -10208,32 +10220,34 @@ export default function App() {
                                   <Tag className="w-4 h-4" />
                                 </button>
                               )}
-                              <button
-                                onClick={() => {
-                                  if (
+                              {inv.status !== "voided" && (
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      inv.type === "sale" ||
+                                      inv.type === "purchase_return"
+                                    ) {
+                                      setReceiptPersonId(inv.personId);
+                                      setActiveTab("create_receive_receipt");
+                                    } else if (
+                                      inv.type === "purchase" ||
+                                      inv.type === "sale_return"
+                                    ) {
+                                      setReceiptPersonId(inv.personId);
+                                      setActiveTab("create_pay_receipt");
+                                    }
+                                  }}
+                                  className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg cursor-pointer bg-transparent border-none"
+                                  title={
                                     inv.type === "sale" ||
                                     inv.type === "purchase_return"
-                                  ) {
-                                    setReceiptPersonId(inv.personId);
-                                    setActiveTab("create_receive_receipt");
-                                  } else if (
-                                    inv.type === "purchase" ||
-                                    inv.type === "sale_return"
-                                  ) {
-                                    setReceiptPersonId(inv.personId);
-                                    setActiveTab("create_pay_receipt");
+                                      ? "ثبت دریافت وجه"
+                                      : "ثبت پرداخت وجه"
                                   }
-                                }}
-                                className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg cursor-pointer bg-transparent border-none"
-                                title={
-                                  inv.type === "sale" ||
-                                  inv.type === "purchase_return"
-                                    ? "ثبت دریافت وجه"
-                                    : "ثبت پرداخت وجه"
-                                }
-                              >
-                                <Wallet className="w-4 h-4" />
-                              </button>
+                                >
+                                  <Wallet className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setViewingInvoice(inv);
@@ -10243,20 +10257,33 @@ export default function App() {
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => handleEditInvoiceAction(inv)}
-                                className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none"
-                                title="ویرایش (بازگشت به پیش‌نویس)"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteInvoice(inv.id)}
-                                className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer bg-transparent border-none"
-                                title="حذف دائمی"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {inv.status !== "voided" && (
+                                <button
+                                  onClick={() => handleEditInvoiceAction(inv)}
+                                  className="p-2 text-gray-400 hover:bg-amber-50 hover:text-amber-600 rounded-lg cursor-pointer bg-transparent border-none"
+                                  title="ویرایش (بازگشت به پیش‌نویس)"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                              )}
+                              {inv.status !== "voided" && (
+                                <button
+                                  onClick={() => handleVoidInvoice(inv.id)}
+                                  className="p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 rounded-lg cursor-pointer bg-transparent border-none"
+                                  title="ابطال فاکتور"
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </button>
+                              )}
+                              {inv.status !== "voided" && (
+                                <button
+                                  onClick={() => handleDeleteInvoice(inv.id)}
+                                  className="p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg cursor-pointer bg-transparent border-none"
+                                  title="حذف دائمی"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -10924,7 +10951,7 @@ export default function App() {
                       const personInvoices = invoices.filter(
                         (inv) =>
                           !inv.isDraft &&
-                          inv.status !== "draft" &&
+                          inv.status !== "draft" && inv.status !== "voided" &&
                           inv.type !== "proforma" &&
                           inv.customerId?.toString() ===
                             receiptPersonId.toString() &&
@@ -16915,7 +16942,7 @@ export default function App() {
                                 .filter(
                                   (inv) =>
                                     !inv.isDraft &&
-                                    inv.status !== "draft" &&
+                                    inv.status !== "draft" && inv.status !== "voided" &&
                                     (inv.type === "sale" ||
                                       inv.type === "sale_return") &&
                                     (!reportDateRange ||
@@ -16962,7 +16989,7 @@ export default function App() {
                               invoices.filter(
                                 (inv) =>
                                   !inv.isDraft &&
-                                  inv.status !== "draft" &&
+                                  inv.status !== "draft" && inv.status !== "voided" &&
                                   inv.type === "sale" &&
                                   (!reportDateRange ||
                                     reportDateRange.length !== 2 ||
@@ -17003,7 +17030,7 @@ export default function App() {
                                 .filter(
                                   (inv) =>
                                     !inv.isDraft &&
-                                    inv.status !== "draft" &&
+                                    inv.status !== "draft" && inv.status !== "voided" &&
                                     (inv.type === "purchase" ||
                                       inv.type === "purchase_return") &&
                                     (!reportDateRange ||
@@ -17050,7 +17077,7 @@ export default function App() {
                               invoices.filter(
                                 (inv) =>
                                   !inv.isDraft &&
-                                  inv.status !== "draft" &&
+                                  inv.status !== "draft" && inv.status !== "voided" &&
                                   inv.type === "purchase" &&
                                   (!reportDateRange ||
                                     reportDateRange.length !== 2 ||
@@ -17081,7 +17108,7 @@ export default function App() {
                           .filter(
                             (inv) =>
                               !inv.isDraft &&
-                              inv.status !== "draft" &&
+                              inv.status !== "draft" && inv.status !== "voided" &&
                               inv.type === "sale" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
@@ -17114,7 +17141,7 @@ export default function App() {
                           .filter(
                             (inv) =>
                               !inv.isDraft &&
-                              inv.status !== "draft" &&
+                              inv.status !== "draft" && inv.status !== "voided" &&
                               inv.type === "sale_return" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
@@ -17150,7 +17177,7 @@ export default function App() {
                           .filter(
                             (inv) =>
                               !inv.isDraft &&
-                              inv.status !== "draft" &&
+                              inv.status !== "draft" && inv.status !== "voided" &&
                               inv.type === "purchase" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
@@ -17183,7 +17210,7 @@ export default function App() {
                           .filter(
                             (inv) =>
                               !inv.isDraft &&
-                              inv.status !== "draft" &&
+                              inv.status !== "draft" && inv.status !== "voided" &&
                               inv.type === "purchase_return" &&
                               (!reportDateRange ||
                                 reportDateRange.length !== 2 ||
@@ -17735,11 +17762,11 @@ export default function App() {
                       setRawActiveTab("person_ledger");
                     }}
                     onCreateSale={(id) => {
-                      setInvoicePersonId(id);
+                      setCustomerId(id);
                       setRawActiveTab("create_sale");
                     }}
                     onCreatePurchase={(id) => {
-                      setInvoicePersonId(id);
+                      setCustomerId(id);
                       setRawActiveTab("create_purchase");
                     }}
                     onCreateReceive={(id) => {
@@ -17779,8 +17806,9 @@ export default function App() {
                       <div className="flex flex-wrap items-center justify-end gap-2 mt-4 md:mt-0">
                         <button
                           onClick={() => {
+                            if (!ledgerPersonId) return;
                             setActiveTab("create_sale");
-                            setCustomerId(selectedPerson.id);
+                            setCustomerId(ledgerPersonId);
                           }}
                           className="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl flex items-center gap-1.5 transition-all font-semibold text-xs border border-blue-100 shadow-sm"
                         >
@@ -17788,8 +17816,9 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => {
+                            if (!ledgerPersonId) return;
                             setActiveTab("create_purchase");
-                            setCustomerId(selectedPerson.id);
+                            setCustomerId(ledgerPersonId);
                           }}
                           className="px-3 py-2 bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-xl flex items-center gap-1.5 transition-all font-semibold text-xs border border-violet-100 shadow-sm"
                         >
@@ -17797,8 +17826,9 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => {
+                            if (!ledgerPersonId) return;
                             setActiveTab("create_receive_receipt");
-                            setReceiptPersonId(selectedPerson.id);
+                            setReceiptPersonId(ledgerPersonId);
                           }}
                           className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl flex items-center gap-1.5 transition-all font-semibold text-xs border border-emerald-100 shadow-sm"
                         >
@@ -17806,8 +17836,9 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => {
+                            if (!ledgerPersonId) return;
                             setActiveTab("create_pay_receipt");
-                            setReceiptPersonId(selectedPerson.id);
+                            setReceiptPersonId(ledgerPersonId);
                           }}
                           className="px-3 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl flex items-center gap-1.5 transition-all font-semibold text-xs border border-rose-100 shadow-sm"
                         >
@@ -17815,8 +17846,12 @@ export default function App() {
                         </button>
                         <button
                           onClick={() => {
-                            handleEditPerson(selectedPerson);
-                            setIsPersonModalOpen(true);
+                            if (!ledgerPersonId) return;
+                            const p = persons.find(x => x.id?.toString() === ledgerPersonId?.toString());
+                            if (p) {
+                               handleEditPerson(p);
+                               setIsPersonModalOpen(true);
+                            }
                           }}
                           className="px-3 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100 rounded-xl flex items-center gap-1.5 transition-all font-semibold text-xs border border-slate-200 shadow-sm"
                         >
