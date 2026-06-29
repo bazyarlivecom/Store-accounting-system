@@ -551,25 +551,36 @@ export default function FinancialDashboard({
                <button onClick={() => setEditingWidget(null)} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-2 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
              </div>
              <div className="p-6">
-                {(['payable_checks', 'debtors', 'creditors'].includes(editingWidget.id)) ? (
-                   <div className="space-y-4">
-                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-2">تعداد نمایش رکوردها</label>
-                       <select 
-                         value={editingWidget.settings?.limit || 5} 
-                         onChange={e => setEditingWidget({...editingWidget, settings: {...editingWidget.settings, limit: Number(e.target.value)}})}
-                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/50"
-                       >
-                         <option value={5}>۵ مورد</option>
-                         <option value={10}>۱۰ مورد</option>
-                         <option value={20}>۲۰ مورد</option>
-                         <option value={50}>۵۰ مورد</option>
-                       </select>
-                     </div>
-                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500 font-bold text-center py-4">این ویجت تنظیمات خاصی ندارد.</p>
-                )}
+                <div className="space-y-4">
+                  {['payable_checks', 'debtors', 'creditors'].includes(editingWidget.id) && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">تعداد نمایش رکوردها</label>
+                      <select 
+                        value={editingWidget.settings?.limit || 5} 
+                        onChange={e => setEditingWidget({...editingWidget, settings: {...editingWidget.settings, limit: Number(e.target.value)}})}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/50"
+                      >
+                        <option value={5}>۵ مورد</option>
+                        <option value={10}>۱۰ مورد</option>
+                        <option value={20}>۲۰ مورد</option>
+                        <option value={50}>۵۰ مورد</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">عرض ویجت در داشبورد</label>
+                    <select 
+                      value={editingWidget.settings?.width || editingWidget.defaultWidth} 
+                      onChange={e => setEditingWidget({...editingWidget, settings: {...editingWidget.settings, width: e.target.value}})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    >
+                      <option value="col-span-1">کوچک (یک ستون)</option>
+                      <option value="col-span-1 md:col-span-2">متوسط (دو ستون)</option>
+                      <option value="col-span-1 md:col-span-2 lg:col-span-3">بزرگ (سه ستون)</option>
+                      <option value="col-span-1 md:col-span-2 lg:col-span-4">کامل (چهار ستون)</option>
+                    </select>
+                  </div>
+                </div>
              </div>
              <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
                <button onClick={() => setEditingWidget(null)} className="px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 rounded-xl transition-colors">انصراف</button>
@@ -592,11 +603,13 @@ function SortableWidget({ widget, children, onRemove, onEdit }: any) {
     zIndex: isDragging ? 10 : 1,
   };
 
+  const currentWidth = widget.settings?.width || widget.defaultWidth;
+
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
-      className={`relative group ${widget.defaultWidth} bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-100 transition-colors flex flex-col`}
+      className={`relative group ${currentWidth} bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-indigo-100 transition-colors flex flex-col`}
     >
       {/* Widget Controls - Visible on Hover */}
       <div className="absolute top-2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
@@ -608,7 +621,6 @@ function SortableWidget({ widget, children, onRemove, onEdit }: any) {
         >
           <GripHorizontal className="w-4 h-4" />
         </button>
-        {['payable_checks', 'debtors', 'creditors'].includes(widget.id) && (
           <button 
              onClick={onEdit}
              className="p-1.5 text-gray-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 rounded-lg shadow-sm border border-gray-200 cursor-pointer"
@@ -616,7 +628,6 @@ function SortableWidget({ widget, children, onRemove, onEdit }: any) {
           >
             <Settings className="w-4 h-4" />
           </button>
-        )}
         <button 
            onClick={onRemove}
            className="p-1.5 text-gray-400 hover:text-rose-600 bg-white hover:bg-rose-50 rounded-lg shadow-sm border border-gray-200 cursor-pointer"

@@ -1455,6 +1455,7 @@ export default function App() {
   const [invoicePaidAmount, setInvoicePaidAmount] = useState<number>(0);
 
   const [hasDraft, setHasDraft] = useState<boolean>(false);
+  const [receiptHasDraft, setReceiptHasDraft] = useState<boolean>(false);
   const [autoSaveInvoiceId, setAutoSaveInvoiceId] = useState<string | null>(
     null,
   );
@@ -1483,6 +1484,94 @@ export default function App() {
     }[];
     payload: any;
   } | null>(null);
+
+
+  // Auto-save effect for receipt
+  useEffect(() => {
+    if (["create_receive_receipt", "create_pay_receipt"].includes(activeTab)) {
+      const draft = {
+        receiptPersonId,
+        receiptDate,
+        receiptAmount,
+        receiptResourceType,
+        receiptMethod,
+        receiptCheckNumber,
+        receiptCheckDueDate,
+        receiptCheckBankName,
+        receiptCheckbookId,
+        receiptResourceId,
+        receiptDescription,
+        receiptLinkedInvoices,
+        activeTab
+      };
+      
+      if (receiptPersonId || receiptAmount || receiptDescription) {
+        localStorage.setItem("receipt_draft", JSON.stringify(draft));
+        setReceiptHasDraft(true);
+      } else {
+        localStorage.removeItem("receipt_draft");
+        setReceiptHasDraft(false);
+      }
+    }
+  }, [
+    receiptPersonId,
+    receiptDate,
+    receiptAmount,
+    receiptResourceType,
+    receiptMethod,
+    receiptCheckNumber,
+    receiptCheckDueDate,
+    receiptCheckBankName,
+    receiptCheckbookId,
+    receiptResourceId,
+    receiptDescription,
+    receiptLinkedInvoices,
+    activeTab
+  ]);
+
+  useEffect(() => {
+    if (localStorage.getItem("receipt_draft")) {
+      setReceiptHasDraft(true);
+    }
+  }, []);
+
+  const restoreReceiptDraft = () => {
+    const d = localStorage.getItem("receipt_draft");
+    if (d) {
+      try {
+        const parsed = JSON.parse(d);
+        if (parsed.activeTab) setActiveTab(parsed.activeTab);
+        setReceiptPersonId(parsed.receiptPersonId || "");
+        setReceiptDate(parsed.receiptDate || new Date());
+        setReceiptAmount(parsed.receiptAmount || "");
+        setReceiptResourceType(parsed.receiptResourceType || "cashbox");
+        setReceiptMethod(parsed.receiptMethod || "cash");
+        setReceiptCheckNumber(parsed.receiptCheckNumber || "");
+        setReceiptCheckDueDate(parsed.receiptCheckDueDate || new Date());
+        setReceiptCheckBankName(parsed.receiptCheckBankName || "");
+        setReceiptCheckbookId(parsed.receiptCheckbookId || "");
+        setReceiptResourceId(parsed.receiptResourceId || "");
+        setReceiptDescription(parsed.receiptDescription || "");
+        setReceiptLinkedInvoices(parsed.receiptLinkedInvoices || []);
+        
+        showNotification("پیشنویس رسید دریافت/پرداخت بازیابی شد.", "info");
+      } catch (e) {}
+    }
+  };
+
+  const discardReceiptDraft = () => {
+    localStorage.removeItem("receipt_draft");
+    setReceiptHasDraft(false);
+    
+    // clear form
+    setReceiptPersonId("");
+    setReceiptAmount("");
+    setReceiptDescription("");
+    setReceiptLinkedInvoices([]);
+    setReceiptMethod("cash");
+    setReceiptResourceType("cashbox");
+    showNotification("پیشنویس رسید حذف شد.", "info");
+  };
 
   // Auto-save effect
   useEffect(() => {
@@ -2255,8 +2344,11 @@ export default function App() {
           let finalMsg = `${successCount} کالا با موفقیت درون‌ریزی شد.`;
           if (skippedCount > 0) {
             finalMsg +=
-              `\n\nتعداد ${skippedCount} کالا به دلیل تکراری بودن رد شدند:\n` +
-              duplicateMsgs.slice(0, 10).join("\n");
+              `
+
+تعداد ${skippedCount} کالا به دلیل تکراری بودن رد شدند:
+` +
+              duplicateMsgs.slice(0, 10).join("\n")
             if (duplicateMsgs.length > 10) finalMsg += "\n...";
           }
           customAlert(finalMsg);
@@ -3170,7 +3262,9 @@ export default function App() {
 
         if (newDebt > person.creditLimit) {
           customAlert(
-            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`,
+            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.
+سقف اعتبار: ${addCommas(person.creditLimit)}
+مبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`,
           );
           return;
         }
@@ -3353,6 +3447,9 @@ export default function App() {
       setReceiptLinkedInvoices({});
       setPreviewReceiptData(null);
       setReceiptPersonSearchText("");
+      
+      localStorage.removeItem("receipt_draft");
+      setReceiptHasDraft(false);
 
       await Promise.all([
         fetchTransactions(),
@@ -4882,7 +4979,9 @@ export default function App() {
         const newDebt = currentDebt + invTotal;
         if (newDebt > person.creditLimit) {
           customAlert(
-            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.\nسقف اعتبار: ${addCommas(person.creditLimit)}\nمبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`,
+            `خطا: ثبت این سند باعث عبور از سقف اعتبار شخص می‌شود.
+سقف اعتبار: ${addCommas(person.creditLimit)}
+مبلغ بدهی بعد از ثبت: ${addCommas(newDebt)}`,
           );
           setSubmitting(false);
           return;
@@ -6103,7 +6202,10 @@ export default function App() {
         }
 
         setUpdateLog(
-          `نسخه اصلی نرم‌افزار حسابداری و فاکتور با موفقیت به آخرین بیلد سیستم ارتقا یافت.\nتغییرات نرم‌افزاری جدید با موفقیت همگام‌سازی شدند.\n\nسیستم تا لحظاتی دیگر به صورت خودکار مجدداً راه‌اندازی و بارگذاری می‌شود...`,
+          `نسخه اصلی نرم‌افزار حسابداری و فاکتور با موفقیت به آخرین بیلد سیستم ارتقا یافت.
+تغییرات نرم‌افزاری جدید با موفقیت همگام‌سازی شدند.
+
+سیستم تا لحظاتی دیگر به صورت خودکار مجدداً راه‌اندازی و بارگذاری می‌شود...`,
         );
 
         // Auto-reloading after 4 seconds
@@ -6124,7 +6226,8 @@ export default function App() {
           fetchResult.data?.error ||
           fetchResult.data?.message ||
           "خطای غیرمنتظره در همگام‌سازی فایل‌ها.";
-        setUpdateLog(`مشکلی در بروزرسانی پیش آمد:\n${errMsg}`);
+        setUpdateLog(`مشکلی در بروزرسانی پیش آمد:
+${errMsg}`);
       }
     } catch (e) {
       clearInterval(updateInterval);
@@ -10436,6 +10539,28 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6 text-right"
           >
+            {receiptHasDraft && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center text-amber-800 shadow-sm col-span-full w-full">
+                <span className="font-bold flex items-center gap-2.5 mb-3 md:mb-0">
+                  <History className="w-5 h-5 text-amber-500" /> یک پیش‌نویس ثبت‌نشده از فرم دریافت/پرداخت بازیابی شد. مایلید از آن استفاده کنید یا رسید جدیدی آغاز کنید؟
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={restoreReceiptDraft}
+                    className="px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-sm font-bold transition-colors"
+                  >
+                    بازیابی پیش‌نویس
+                  </button>
+                  <button
+                    onClick={discardReceiptDraft}
+                    className="px-4 py-2.5 bg-white border border-amber-200 hover:bg-amber-50 rounded-xl text-sm font-bold transition-colors"
+                  >
+                    پاک کردن و فرم جدید
+                  </button>
+                </div>
+              </div>
+            )}
+
             {lastCreatedReceipt && (
               <div className="bg-emerald-50 text-emerald-800 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-emerald-200 shadow-xs font-bold animate-fadeIn">
                 <div className="flex items-center gap-3">
@@ -12783,7 +12908,7 @@ export default function App() {
         />
       ) : (
         <div
-          className={`flex ${menuLayout === "horizontal" ? "flex-col h-screen" : "h-screen"} overflow-hidden ${isGmailTheme ? "theme-gmail bg-[#f6f8fc]" : "bg-gray-50/50"} text-gray-800 font-sans print:h-auto print:block print:overflow-visible`}
+          className={`flex ${menuLayout === "horizontal" ? "flex-col h-screen" : "h-screen"} overflow-hidden ${isGmailTheme ? "theme-gmail bg-[#f6f8fc]" : `theme-${storeSettings?.theme || "classic"} bg-gray-50/50`} text-gray-800 font-sans print:h-auto print:block print:overflow-visible`}
           dir="rtl"
         >
           {isGmailTheme && (
@@ -12791,91 +12916,143 @@ export default function App() {
               dangerouslySetInnerHTML={{
                 __html: `
               /* Gmail theme overrides */
-              .theme-gmail .bg-indigo-600 {
-                background-color: #b3261e !important;
-              }
-              .theme-gmail .hover\\:bg-indigo-700:hover {
-                background-color: #8c1d18 !important;
-              }
-              .theme-gmail .text-indigo-600 {
-                color: #b3261e !important;
-              }
-              .theme-gmail .text-indigo-800 {
-                color: #8c1d18 !important;
-              }
-              .theme-gmail .border-indigo-600 {
-                border-color: #b3261e !important;
-              }
-              .theme-gmail .bg-indigo-50 {
-                background-color: #fce8e6 !important;
-              }
-              .theme-gmail .text-indigo-300 {
-                color: #b3261e !important;
-              }
-              .theme-gmail .focus\\:ring-indigo-500:focus {
-                --tw-ring-color: #b3261e !important;
-                ring-color: #b3261e !important;
-              }
-              .theme-gmail .focus\\:ring-indigo-600:focus {
-                --tw-ring-color: #b3261e !important;
-                ring-color: #b3261e !important;
-              }
-              .theme-gmail .bg-indigo-600\\/20 {
-                background-color: rgba(253, 232, 230, 0.7) !important;
-              }
-              .theme-gmail .border-indigo-100 {
-                border-color: #fce8e6 !important;
-              }
-              .theme-gmail .border-indigo-200 {
-                border-color: #f9d5d3 !important;
-              }
-              .theme-gmail .text-indigo-500 {
-                color: #b3261e !important;
-              }
-              .theme-gmail .bg-indigo-600\\/10 {
-                background-color: rgba(253, 232, 230, 0.4) !important;
-              }
+              .theme-gmail .bg-indigo-600 { background-color: #b3261e !important; }
+              .theme-gmail .hover\\:bg-indigo-700:hover { background-color: #8c1d18 !important; }
+              .theme-gmail .text-indigo-600 { color: #b3261e !important; }
+              .theme-gmail .text-indigo-800 { color: #8c1d18 !important; }
+              .theme-gmail .border-indigo-600 { border-color: #b3261e !important; }
+              .theme-gmail .bg-indigo-50 { background-color: #fce8e6 !important; }
+              .theme-gmail .text-indigo-300 { color: #b3261e !important; }
+              .theme-gmail .focus\\:ring-indigo-500:focus { --tw-ring-color: #b3261e !important; ring-color: #b3261e !important; }
+              .theme-gmail .focus\\:ring-indigo-600:focus { --tw-ring-color: #b3261e !important; ring-color: #b3261e !important; }
+              .theme-gmail .bg-indigo-600\\/20 { background-color: rgba(253, 232, 230, 0.7) !important; }
+              .theme-gmail .border-indigo-100 { border-color: #fce8e6 !important; }
+              .theme-gmail .border-indigo-200 { border-color: #f9d5d3 !important; }
+              .theme-gmail .text-indigo-500 { color: #b3261e !important; }
+              .theme-gmail .bg-indigo-600\\/10 { background-color: rgba(253, 232, 230, 0.4) !important; }
               /* Custom overrides for cards and layouts inside Gmail theme */
-              .theme-gmail .bg-gradient-to-l.from-indigo-50.to-white {
-                background-image: linear-gradient(to left, #fce8e6, #ffffff) !important;
-              }
-              .theme-gmail .bg-gradient-to-r.from-indigo-500.to-indigo-600 {
-                background-image: linear-gradient(to right, #b3261e, #8c1d18) !important;
-              }
-              .theme-gmail .bg-gradient-to-br.from-indigo-500.to-indigo-600 {
-                background-image: linear-gradient(to bottom right, #b3261e, #8c1d18) !important;
-              }
-              .theme-gmail .from-indigo-600 {
-                --tw-gradient-from: #b3261e !important;
-              }
-              .theme-gmail .to-indigo-700 {
-                --tw-gradient-to: #8c1d18 !important;
-              }
-              .theme-gmail .text-indigo-700 {
-                color: #b3261e !important;
-              }
-              .theme-gmail .bg-indigo-100 {
-                background-color: #fce8e6 !important;
-              }
-              .theme-gmail .text-indigo-900 {
-                color: #601410 !important;
-              }
-              .theme-gmail .hover\\:text-indigo-500:hover {
-                color: #b3261e !important;
-              }
-              .theme-gmail .border-l-4.border-indigo-600 {
-                border-left-color: #b3261e !important;
-              }
-              .theme-gmail .border-r-4.border-indigo-600 {
-                border-right-color: #b3261e !important;
-              }
-              .theme-gmail .accent-indigo-600 {
-                accent-color: #b3261e !important;
-              }
-              .theme-gmail .bg-indigo-900 {
-                background-color: #3f0c0a !important;
-              }
-            `,
+              .theme-gmail .bg-gradient-to-l.from-indigo-50.to-white { background-image: linear-gradient(to left, #fce8e6, #ffffff) !important; }
+              .theme-gmail .bg-gradient-to-r.from-indigo-500.to-indigo-600 { background-image: linear-gradient(to right, #b3261e, #8c1d18) !important; }
+              .theme-gmail .bg-gradient-to-br.from-indigo-500.to-indigo-600 { background-image: linear-gradient(to bottom right, #b3261e, #8c1d18) !important; }
+              .theme-gmail .from-indigo-600 { --tw-gradient-from: #b3261e !important; }
+              .theme-gmail .to-indigo-700 { --tw-gradient-to: #8c1d18 !important; }
+              .theme-gmail .text-indigo-700 { color: #b3261e !important; }
+              .theme-gmail .bg-indigo-100 { background-color: #fce8e6 !important; }
+              .theme-gmail .text-indigo-900 { color: #601410 !important; }
+              .theme-gmail .hover\\:text-indigo-500:hover { color: #b3261e !important; }
+              .theme-gmail .border-l-4.border-indigo-600 { border-left-color: #b3261e !important; }
+              .theme-gmail .border-r-4.border-indigo-600 { border-right-color: #b3261e !important; }
+              .theme-gmail .accent-indigo-600 { accent-color: #b3261e !important; }
+              .theme-gmail .bg-indigo-900 { background-color: #3f0c0a !important; }
+              `
+              }}
+            />
+          )}
+          {storeSettings?.theme === "emerald" && (
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
+              /* Emerald theme overrides */
+              .theme-emerald .bg-indigo-600 { background-color: #059669 !important; }
+              .theme-emerald .hover\\:bg-indigo-700:hover { background-color: #047857 !important; }
+              .theme-emerald .text-indigo-600 { color: #059669 !important; }
+              .theme-emerald .text-indigo-800 { color: #064e3b !important; }
+              .theme-emerald .border-indigo-600 { border-color: #059669 !important; }
+              .theme-emerald .bg-indigo-50 { background-color: #ecfdf5 !important; }
+              .theme-emerald .text-indigo-300 { color: #6ee7b7 !important; }
+              .theme-emerald .focus\\:ring-indigo-500:focus, .theme-emerald .focus\\:ring-indigo-600:focus { --tw-ring-color: #059669 !important; ring-color: #059669 !important; }
+              .theme-emerald .bg-indigo-600\\/20 { background-color: rgba(16, 185, 129, 0.2) !important; }
+              .theme-emerald .border-indigo-100 { border-color: #d1fae5 !important; }
+              .theme-emerald .border-indigo-200 { border-color: #a7f3d0 !important; }
+              .theme-emerald .text-indigo-500 { color: #10b981 !important; }
+              .theme-emerald .bg-indigo-600\\/10 { background-color: rgba(16, 185, 129, 0.1) !important; }
+              .theme-emerald .bg-gradient-to-l.from-indigo-50.to-white { background-image: linear-gradient(to left, #ecfdf5, #ffffff) !important; }
+              .theme-emerald .bg-gradient-to-r.from-indigo-500.to-indigo-600 { background-image: linear-gradient(to right, #10b981, #059669) !important; }
+              .theme-emerald .from-indigo-600 { --tw-gradient-from: #059669 !important; }
+              .theme-emerald .to-indigo-700 { --tw-gradient-to: #047857 !important; }
+              .theme-emerald .text-indigo-700 { color: #047857 !important; }
+              .theme-emerald .bg-indigo-100 { background-color: #d1fae5 !important; }
+              .theme-emerald .text-indigo-900 { color: #064e3b !important; }
+              .theme-emerald .hover\\:text-indigo-500:hover { color: #10b981 !important; }
+              .theme-emerald .border-l-4.border-indigo-600 { border-left-color: #059669 !important; }
+              .theme-emerald .border-r-4.border-indigo-600 { border-right-color: #059669 !important; }
+              .theme-emerald .accent-indigo-600 { accent-color: #059669 !important; }
+              .theme-emerald .bg-indigo-900 { background-color: #064e3b !important; }
+              .theme-emerald .from-indigo-900 { --tw-gradient-from: #064e3b !important; }
+              .theme-emerald.bg-indigo-900 { background-color: #064e3b !important; }
+            `
+              }}
+            />
+          )}
+          {storeSettings?.theme === "ocean" && (
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
+              /* Ocean theme overrides */
+              .theme-ocean .bg-indigo-600 { background-color: #0284c7 !important; }
+              .theme-ocean .hover\\:bg-indigo-700:hover { background-color: #0369a1 !important; }
+              .theme-ocean .text-indigo-600 { color: #0284c7 !important; }
+              .theme-ocean .text-indigo-800 { color: #075985 !important; }
+              .theme-ocean .border-indigo-600 { border-color: #0284c7 !important; }
+              .theme-ocean .bg-indigo-50 { background-color: #f0f9ff !important; }
+              .theme-ocean .text-indigo-300 { color: #7dd3fc !important; }
+              .theme-ocean .focus\\:ring-indigo-500:focus, .theme-ocean .focus\\:ring-indigo-600:focus { --tw-ring-color: #0284c7 !important; ring-color: #0284c7 !important; }
+              .theme-ocean .bg-indigo-600\\/20 { background-color: rgba(2, 132, 199, 0.2) !important; }
+              .theme-ocean .border-indigo-100 { border-color: #e0f2fe !important; }
+              .theme-ocean .border-indigo-200 { border-color: #bae6fd !important; }
+              .theme-ocean .text-indigo-500 { color: #0ea5e9 !important; }
+              .theme-ocean .bg-indigo-600\\/10 { background-color: rgba(2, 132, 199, 0.1) !important; }
+              .theme-ocean .bg-gradient-to-l.from-indigo-50.to-white { background-image: linear-gradient(to left, #f0f9ff, #ffffff) !important; }
+              .theme-ocean .bg-gradient-to-r.from-indigo-500.to-indigo-600 { background-image: linear-gradient(to right, #0ea5e9, #0284c7) !important; }
+              .theme-ocean .from-indigo-600 { --tw-gradient-from: #0284c7 !important; }
+              .theme-ocean .to-indigo-700 { --tw-gradient-to: #0369a1 !important; }
+              .theme-ocean .text-indigo-700 { color: #0369a1 !important; }
+              .theme-ocean .bg-indigo-100 { background-color: #e0f2fe !important; }
+              .theme-ocean .text-indigo-900 { color: #0c4a6e !important; }
+              .theme-ocean .hover\\:text-indigo-500:hover { color: #0ea5e9 !important; }
+              .theme-ocean .border-l-4.border-indigo-600 { border-left-color: #0284c7 !important; }
+              .theme-ocean .border-r-4.border-indigo-600 { border-right-color: #0284c7 !important; }
+              .theme-ocean .accent-indigo-600 { accent-color: #0284c7 !important; }
+              .theme-ocean .bg-indigo-900 { background-color: #0c4a6e !important; }
+              .theme-ocean .from-indigo-900 { --tw-gradient-from: #0c4a6e !important; }
+              .theme-ocean.bg-indigo-900 { background-color: #0c4a6e !important; }
+            `
+              }}
+            />
+          )}
+          {storeSettings?.theme === "rose" && (
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
+              /* Rose theme overrides */
+              .theme-rose .bg-indigo-600 { background-color: #e11d48 !important; }
+              .theme-rose .hover\\:bg-indigo-700:hover { background-color: #be123c !important; }
+              .theme-rose .text-indigo-600 { color: #e11d48 !important; }
+              .theme-rose .text-indigo-800 { color: #881337 !important; }
+              .theme-rose .border-indigo-600 { border-color: #e11d48 !important; }
+              .theme-rose .bg-indigo-50 { background-color: #fff1f2 !important; }
+              .theme-rose .text-indigo-300 { color: #fda4af !important; }
+              .theme-rose .focus\\:ring-indigo-500:focus, .theme-rose .focus\\:ring-indigo-600:focus { --tw-ring-color: #e11d48 !important; ring-color: #e11d48 !important; }
+              .theme-rose .bg-indigo-600\\/20 { background-color: rgba(225, 29, 72, 0.2) !important; }
+              .theme-rose .border-indigo-100 { border-color: #ffe4e6 !important; }
+              .theme-rose .border-indigo-200 { border-color: #fecdd3 !important; }
+              .theme-rose .text-indigo-500 { color: #f43f5e !important; }
+              .theme-rose .bg-indigo-600\\/10 { background-color: rgba(225, 29, 72, 0.1) !important; }
+              .theme-rose .bg-gradient-to-l.from-indigo-50.to-white { background-image: linear-gradient(to left, #fff1f2, #ffffff) !important; }
+              .theme-rose .bg-gradient-to-r.from-indigo-500.to-indigo-600 { background-image: linear-gradient(to right, #f43f5e, #e11d48) !important; }
+              .theme-rose .from-indigo-600 { --tw-gradient-from: #e11d48 !important; }
+              .theme-rose .to-indigo-700 { --tw-gradient-to: #be123c !important; }
+              .theme-rose .text-indigo-700 { color: #be123c !important; }
+              .theme-rose .bg-indigo-100 { background-color: #ffe4e6 !important; }
+              .theme-rose .text-indigo-900 { color: #881337 !important; }
+              .theme-rose .hover\\:text-indigo-500:hover { color: #f43f5e !important; }
+              .theme-rose .border-l-4.border-indigo-600 { border-left-color: #e11d48 !important; }
+              .theme-rose .border-r-4.border-indigo-600 { border-right-color: #e11d48 !important; }
+              .theme-rose .accent-indigo-600 { accent-color: #e11d48 !important; }
+              .theme-rose .bg-indigo-900 { background-color: #881337 !important; }
+              .theme-rose .from-indigo-900 { --tw-gradient-from: #881337 !important; }
+              .theme-rose.bg-indigo-900 { background-color: #881337 !important; }
+            `
               }}
             />
           )}
@@ -12893,7 +13070,7 @@ export default function App() {
               className={`hidden md:flex flex-col w-64 flex-shrink-0 transition-all duration-300 overflow-y-auto print:hidden ${
                 isGmailTheme
                   ? "bg-[#f6f8fc] border-l border-slate-200"
-                  : "bg-slate-900 shadow-2xl text-slate-300 z-40"
+                  : `bg-slate-900 shadow-2xl text-slate-300 z-40 theme-${storeSettings?.theme || "classic"}`
               }`}
               dir="rtl"
             >
@@ -18788,8 +18965,17 @@ export default function App() {
                                       <option value="classic">
                                         کلاسیک سرمه‌ای (Classic Indigo)
                                       </option>
+                                      <option value="ocean">
+                                        آبی اقیانوسی (Ocean Blue)
+                                      </option>
+                                      <option value="emerald">
+                                        سبز زمردین (Emerald Green)
+                                      </option>
+                                      <option value="rose">
+                                        سرخ رُز (Rose Red)
+                                      </option>
                                       <option value="gmail">
-                                        گوگل جیمیل سرخ (Google Gmail Red)
+                                        گوگل جیمیل (Google Gmail)
                                       </option>
                                     </select>
                                   </div>
@@ -20198,9 +20384,7 @@ export default function App() {
                                     className="bg-white border text-right border-gray-100 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow"
                                   >
                                     <p className="text-sm font-bold text-gray-800 mb-2 truncate">
-                                      {commitData.commit?.message?.split(
-                                        "\n",
-                                      )[0] || "بروزرسانی سیستم"}
+                                      {commitData.commit?.message?.split("\n")[0] || "بروزرسانی سیستم"}
                                     </p>
                                     <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
                                       <span className="flex items-center gap-1.5">
