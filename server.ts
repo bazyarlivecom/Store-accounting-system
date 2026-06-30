@@ -28,14 +28,68 @@ const KNOWN_TABLES = [
 ];
 
 
+const tableSchemas = new Map<string, Set<string>>();
+async function syncTableSchema(client: any, tableName: string, dataObj: any) {
+    if (!dataObj || typeof dataObj !== 'object') return;
+    let knownCols = tableSchemas.get(tableName);
+    if (!knownCols) {
+        knownCols = new Set();
+        try {
+            const res = await client.query('SELECT column_name FROM information_schema.columns WHERE table_name = $1', [tableName]);
+            for (const row of res.rows) knownCols.add(row.column_name);
+        } catch (e) {}
+        tableSchemas.set(tableName, knownCols);
+    }
+    
+    for (const [k, v] of Object.entries(dataObj)) {
+        if (!knownCols.has(k)) {
+            let colType = 'TEXT';
+            if (typeof v === 'number') colType = 'DOUBLE PRECISION';
+            else if (typeof v === 'boolean') colType = 'BOOLEAN';
+            else if (typeof v === 'object') colType = 'JSONB';
+            
+            try {
+               await client.query(`ALTER TABLE "${tableName}" ADD COLUMN "${k}" ${colType}`);
+               knownCols.add(k);
+            } catch (e) {
+               console.error(`Error adding column ${k} to ${tableName}`, e);
+            }
+        }
+    }
+}
+
+async function connectPgDb(connectionString: string) {
+    try {
+        const client = new Client({ connectionString });
+        await client.connect();
+        return client;
+    } catch (e: any) {
+        if (e.code === '3D000') { // database does not exist
+            const url = new URL(connectionString);
+            const dbName = url.pathname.slice(1);
+            url.pathname = '/postgres';
+            const rootClient = new Client({ connectionString: url.toString() });
+            await rootClient.connect();
+            await rootClient.query(`CREATE DATABASE "${dbName}"`);
+            await rootClient.end();
+            
+            const newClient = new Client({ connectionString });
+            await newClient.connect();
+            return newClient;
+        }
+        throw e;
+    }
+}
+
+
 async function getDbData(key: string) {
   if (usePg && pgClient) {
     if (!KNOWN_TABLES.includes(key)) return null;
-    const res = await pgClient.query(`SELECT data FROM "${key}"`);
+    const res = await pgClient.query(`SELECT * FROM "${key}"`);
     if (key === 'company_profile' || key === 'backupConfig') {
-      return res.rows.length > 0 ? res.rows[0].data : null;
+      return res.rows.length > 0 ? res.rows[0] : null;
     }
-    return res.rows.map(r => r.data);
+    return res.rows;
   } else {
     const row = db.prepare('SELECT value FROM store WHERE key = ?').get(key) as any;
     return row ? JSON.parse(row.value) : null;
@@ -48,13 +102,26 @@ async function setDbData(key: string, data: any) {
     await pgClient.query('BEGIN');
     await pgClient.query(`TRUNCATE TABLE "${key}"`);
     if (key === 'company_profile' || key === 'backupConfig' || !Array.isArray(data)) {
-      await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2)`, ['singleton', JSON.stringify(data)]);
-    } else {
-      for (const item of data) {
-         const id = item.id ? String(item.id) : Math.random().toString(36).substring(2, 15);
-         await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2)`, [id, JSON.stringify(item)]);
+         if (data && typeof data === 'object') {
+             data.id = 'singleton';
+             await syncTableSchema(pgClient, key, data);
+             const keys = Object.keys(data);
+             const vals = Object.values(data);
+             const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+             const colNames = keys.map(k => `"${k}"`).join(', ');
+             await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
+         }
+      } else {
+         for (const item of data) {
+            if (!item.id) item.id = Math.random().toString(36).substring(2, 15);
+            await syncTableSchema(pgClient, key, item);
+            const keys = Object.keys(item);
+            const vals = Object.values(item);
+            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+            const colNames = keys.map(k => `"${k}"`).join(', ');
+            await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
+         }
       }
-    }
     await pgClient.query('COMMIT');
   } else {
     const value = JSON.stringify(data);
@@ -66,11 +133,11 @@ async function getAllDbData() {
   if (usePg && pgClient) {
     const allData = [];
     for (const key of KNOWN_TABLES) {
-       const res = await pgClient.query(`SELECT data FROM "${key}"`);
+       const res = await pgClient.query(`SELECT * FROM "${key}"`);
        if (key === 'company_profile' || key === 'backupConfig') {
-         allData.push({ key, value: res.rows.length > 0 ? res.rows[0].data : null });
+         allData.push({ key, value: res.rows.length > 0 ? res.rows[0] : null });
        } else {
-         allData.push({ key, value: res.rows.map(r => r.data) });
+         allData.push({ key, value: res.rows });
        }
     }
     return allData;
@@ -84,15 +151,13 @@ async function initDB() {
     const configRaw = await fsPromises.readFile(DB_CONFIG_FILE, 'utf-8');
     const config = JSON.parse(configRaw);
     if (config.engine === 'postgres' && config.connectionString) {
-      pgClient = new Client({ connectionString: config.connectionString });
-      await pgClient.connect();
+      pgClient = await connectPgDb(config.connectionString);
       usePg = true;
       console.log('Connected to PostgreSQL');
     }
   } catch (e) {
     if (process.env.DATABASE_URL) {
-      pgClient = new Client({ connectionString: process.env.DATABASE_URL });
-      await pgClient.connect();
+      pgClient = await connectPgDb(process.env.DATABASE_URL);
       usePg = true;
       console.log('Connected to PostgreSQL from env DATABASE_URL');
     }
@@ -109,10 +174,7 @@ async function initDB() {
   if (usePg && pgClient) {
     for (const key of KNOWN_TABLES) {
       await pgClient.query(`
-        CREATE TABLE IF NOT EXISTS "${key}" (
-          id VARCHAR PRIMARY KEY,
-          data JSONB
-        )
+        CREATE TABLE IF NOT EXISTS "${key}" (id VARCHAR PRIMARY KEY)
       `);
     }
     try {
@@ -125,11 +187,24 @@ async function initDB() {
           if (KNOWN_TABLES.includes(key)) {
             const data = JSON.parse(row.value);
             if (key === 'company_profile' || key === 'backupConfig' || !Array.isArray(data)) {
-               await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, ['singleton', JSON.stringify(data)]);
+               if (data && typeof data === 'object') {
+                  data.id = 'singleton';
+                  await syncTableSchema(pgClient, key, data);
+                  const keys = Object.keys(data);
+                  const vals = Object.values(data);
+                  const placeholders = keys.map((_, i) => `${i + 1}`).join(', ');
+                  const colNames = keys.map(k => `"${k}"`).join(', ');
+                  await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
+               }
             } else {
                for (const item of data) {
-                  const id = item.id ? String(item.id) : Math.random().toString(36).substring(2, 15);
-                  await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, [id, JSON.stringify(item)]);
+                  if (!item.id) item.id = Math.random().toString(36).substring(2, 15);
+                  await syncTableSchema(pgClient, key, item);
+                  const keys = Object.keys(item);
+                  const vals = Object.values(item);
+                  const placeholders = keys.map((_, i) => `${i + 1}`).join(', ');
+                  const colNames = keys.map(k => `"${k}"`).join(', ');
+                  await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
                }
             }
           }
@@ -879,8 +954,7 @@ async function startServer() {
   app.post('/api/migrate-postgres/validate', async (req, res) => {
     const { connectionString } = req.body;
     try {
-      const client = new Client({ connectionString });
-      await client.connect();
+      const client = await connectPgDb(connectionString);
       await client.query('SELECT NOW()');
       await client.end();
       res.json({ success: true, message: 'اتصال با موفقیت برقرار شد.' });
@@ -913,10 +987,7 @@ async function startServer() {
         migrationState.logs.push('بررسی و ایجاد جدول‌ها در PostgreSQL...');
         for (const table of KNOWN_TABLES) {
           await client.query(`
-            CREATE TABLE IF NOT EXISTS "${table}" (
-              id VARCHAR PRIMARY KEY,
-              data JSONB
-            )
+            CREATE TABLE IF NOT EXISTS "${table}" (id VARCHAR PRIMARY KEY)
           `);
         }
         
@@ -932,11 +1003,24 @@ async function startServer() {
           const data = JSON.parse(row.value);
           
           if (key === 'company_profile' || key === 'backupConfig' || !Array.isArray(data)) {
-             await client.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, ['singleton', JSON.stringify(data)]);
+             if (data && typeof data === 'object') {
+                 data.id = 'singleton';
+                 await syncTableSchema(client, key, data);
+                 const keys = Object.keys(data);
+                 const vals = Object.values(data);
+                 const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+                 const colNames = keys.map(k => `"${k}"`).join(', ');
+                 await client.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
+             }
           } else {
              for (const item of data) {
-                const id = item.id ? String(item.id) : Math.random().toString(36).substring(2, 15);
-                await client.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, [id, JSON.stringify(item)]);
+                if (!item.id) item.id = Math.random().toString(36).substring(2, 15);
+                await syncTableSchema(client, key, item);
+                const keys = Object.keys(item);
+                const vals = Object.values(item);
+                const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+                const colNames = keys.map(k => `"${k}"`).join(', ');
+                await client.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
              }
           }
           
