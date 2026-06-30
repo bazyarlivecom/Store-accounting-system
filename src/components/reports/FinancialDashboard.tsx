@@ -59,6 +59,7 @@ const WIDGET_TYPES = [
   { id: 'cashboxes', title: 'صندوق‌های نقدی', defaultWidth: 'col-span-1 md:col-span-2' },
   { id: 'cash_flow', title: 'خلاصه گردش نقدی', defaultWidth: 'col-span-1 md:col-span-2 lg:col-span-4' },
   { id: 'payable_checks', title: 'چک‌های پرداختی', defaultWidth: 'col-span-1 md:col-span-2 lg:col-span-2' },
+  { id: 'receivable_checks', title: 'چک‌های دریافتی', defaultWidth: 'col-span-1 md:col-span-2 lg:col-span-2' },
   { id: 'debtors', title: 'بدهکاران', defaultWidth: 'col-span-1 md:col-span-2 lg:col-span-1' },
   { id: 'creditors', title: 'بستانکاران', defaultWidth: 'col-span-1 md:col-span-2 lg:col-span-1' },
   { id: 'checks_chart', title: 'نمودار چک‌ها', defaultWidth: 'col-span-1 md:col-span-2 lg:col-span-4' }
@@ -324,7 +325,7 @@ export default function FinancialDashboard({
       }
       case 'payable_checks': {
         const limit = widget.settings.limit || 5;
-        let checks = issuedChecks.filter((c: any) => c.status === 'pending');
+        let checks = issuedChecks.filter((c: any) => c.status === 'issued' || !c.status);
         checks.sort((a: any, b: any) => normalizeDateStr(a.dueDate) - normalizeDateStr(b.dueDate));
         checks = checks.slice(0, limit);
         return (
@@ -334,7 +335,7 @@ export default function FinancialDashboard({
               <span className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-lg font-bold">{toPersianDigits(limit)} رکورد</span>
             </h3>
             <div className="flex-1 overflow-auto max-h-64 space-y-3 pr-1">
-              {checks.map((c: any) => (
+              {checks.length === 0 ? <div className="text-center text-sm text-gray-400 mt-4">چک پرداختی یافت نشد</div> : checks.map((c: any) => (
                 <div key={c.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col gap-2">
                   <div className="flex justify-between items-start">
                     <span className="text-sm font-black text-gray-800">{getPersonDisplayName(persons.find((x: any) => String(x.id) === String(c.receiverId)) || {})}</span>
@@ -342,7 +343,35 @@ export default function FinancialDashboard({
                   </div>
                   <div className="flex justify-between items-center mt-1">
                     <span className="text-xs text-gray-500">شماره: {toPersianDigits(c.checkNumber)}</span>
-                    <span className="text-sm font-extrabold text-rose-600">{formatNumber(c.amount)}</span>
+                    <span className="text-sm font-extrabold text-rose-600">{formatNumber(c.amount)} {storeSettings.currency}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+      case 'receivable_checks': {
+        const limit = widget.settings.limit || 5;
+        let checks = receivedChecks.filter((c: any) => c.status === 'received' || c.status === 'deposited' || !c.status);
+        checks.sort((a: any, b: any) => normalizeDateStr(a.dueDate) - normalizeDateStr(b.dueDate));
+        checks = checks.slice(0, limit);
+        return (
+          <div className="bg-white rounded-2xl p-6 h-full flex flex-col">
+            <h3 className="text-base font-extrabold text-gray-900 border-b border-gray-100 pb-3 mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2"><CreditCard className="w-5 h-5 text-emerald-600" /> چک‌های دریافتی (سررسید نشده)</div>
+              <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-lg font-bold">{toPersianDigits(limit)} رکورد</span>
+            </h3>
+            <div className="flex-1 overflow-auto max-h-64 space-y-3 pr-1">
+              {checks.length === 0 ? <div className="text-center text-sm text-gray-400 mt-4">چک دریافتی یافت نشد</div> : checks.map((c: any) => (
+                <div key={c.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col gap-2">
+                  <div className="flex justify-between items-start">
+                    <span className="text-sm font-black text-gray-800">{getPersonDisplayName(persons.find((x: any) => String(x.id) === String(c.payerId)) || {})}</span>
+                    <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{toPersianDigits(c.dueDate)}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-gray-500">شماره: {toPersianDigits(c.checkNumber)}</span>
+                    <span className="text-sm font-extrabold text-emerald-600">{formatNumber(c.amount)} {storeSettings.currency}</span>
                   </div>
                 </div>
               ))}
@@ -404,8 +433,8 @@ export default function FinancialDashboard({
       }
       case 'checks_chart': {
         const allC = [
-          ...receivedChecks.map((c: any) => ({ ...c, type: "receive", isPending: c.status === "pending" })),
-          ...issuedChecks.map((c: any) => ({ ...c, type: "issue", isPending: c.status === "pending" })),
+          ...receivedChecks.map((c: any) => ({ ...c, type: "receive", isPending: c.status === 'received' || c.status === 'deposited' || !c.status })),
+          ...issuedChecks.map((c: any) => ({ ...c, type: "issue", isPending: c.status === 'issued' || !c.status })),
         ];
         const monthMap = new Map();
         allC.forEach((c) => {

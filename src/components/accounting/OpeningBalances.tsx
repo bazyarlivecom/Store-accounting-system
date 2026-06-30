@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Save, FileText, ArrowRight, User } from "lucide-react";
-import { getLedgerAccounts, getPersons, addAccountingDocument, getStoreSettings, ensureLedgerAccount } from "../../services/dataService";
+import { getLedgerAccounts, getPersons, addAccountingDocument, getStoreSettings, ensureLedgerAccount, getActiveFinancialYear } from "../../services/dataService";
 import { LedgerAccount } from "../../types";
 import CustomDatePicker from "../ui/CustomDatePicker";
 const DatePicker = CustomDatePicker;
@@ -18,6 +18,7 @@ export default function OpeningBalances({ showNotification, onBack }: any) {
   const [balanceType, setBalanceType] = useState<"debtor" | "creditor">("debtor");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState<any>(new Date().toISOString());
+  const [activeYearObj, setActiveYearObj] = useState<any>(null);
   const [description, setDescription] = useState("بابت ثبت مانده اول دوره");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,14 +27,19 @@ export default function OpeningBalances({ showNotification, onBack }: any) {
   }, []);
 
   const loadData = async () => {
-    const [accs, pers, settings] = await Promise.all([
+    const [accs, pers, settings, activeYear] = await Promise.all([
       getLedgerAccounts(),
       getPersons(),
-      getStoreSettings()
+      getStoreSettings(),
+      getActiveFinancialYear()
     ]);
     setAccounts(accs);
     setPersons(pers);
     setStoreSettings(settings);
+    setActiveYearObj(activeYear);
+    if (activeYear && activeYear.startDate) {
+      setDate(activeYear.startDate);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -109,7 +115,16 @@ export default function OpeningBalances({ showNotification, onBack }: any) {
         }
       ];
 
-      const docDate = date ? (typeof date.toDate === 'function' ? date.toDate().toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0];
+      let docDate = "";
+      if (date && typeof date.format === 'function') {
+        docDate = date.format();
+      } else if (typeof date === 'string') {
+        docDate = date;
+      } else if (date && typeof date.toDate === 'function') {
+        docDate = date.toDate().toISOString().split('T')[0];
+      } else {
+         docDate = new Date().toISOString().split('T')[0];
+      }
 
       await addAccountingDocument({
         date: docDate,
@@ -246,8 +261,12 @@ export default function OpeningBalances({ showNotification, onBack }: any) {
                 calendar={storeSettings?.calendarType === "gregorian" ? undefined : persian}
                 locale={storeSettings?.calendarType === "gregorian" ? undefined : persian_fa}
                 calendarPosition="bottom-right"
-                inputClass="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-sans focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20"
+                disabled={!!activeYearObj}
+                inputClass={`w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-sans focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 ${activeYearObj ? 'opacity-70 cursor-not-allowed' : ''}`}
               />
+              {activeYearObj && (
+                 <p className="text-xs text-slate-500 mt-2 font-medium">تاریخ سند معادل تاریخ شروع سال مالی فعال در نظر گرفته می‌شود.</p>
+              )}
             </div>
           </div>
 

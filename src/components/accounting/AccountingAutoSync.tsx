@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Settings, Play, RefreshCcw, FileText, CheckCircle, HandCoins } from 'lucide-react';
-import { getAccountingDocuments, addAccountingDocument, getInvoices, getTransactions, getPersons, getLedgerAccounts, getIssuedChecks, getReceivedChecks, getLoans, getInstallments, getAccounts, getCashboxes } from '../../services/dataService';
+import { getAccountingDocuments, addAccountingDocument, getInvoices, getTransactions, getPersons, getLedgerAccounts, getIssuedChecks, getReceivedChecks, getLoans, getInstallments, getAccounts, getCashboxes, getActiveFinancialYear } from '../../services/dataService';
 
 export default function AccountingAutoSync({ showNotification }: any) {
   const [missingInvoices, setMissingInvoices] = useState<any[]>([]);
@@ -65,6 +65,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
       const pers = await getPersons();
       const bankAccounts = await getAccounts();
       const cashboxesList = await getCashboxes();
+      const activeYear = await getActiveFinancialYear();
       const defaultLedger = ledgerAccounts.length > 0 ? ledgerAccounts[0].id : '';
 
       const getPersonLedgerAcc = (personId: string | number) => {
@@ -135,7 +136,7 @@ export default function AccountingAutoSync({ showNotification }: any) {
               items.push({ description: 'بستانکار - طرف حساب', debit: 0, credit: Number(p.initialBalance), ledgerAccountId: getPersonLedgerAcc(p.id), detailedAccountId: p.id });
           }
           await addAccountingDocument({
-              date: safeDate(p.registrationDate),
+              date: activeYear?.startDate ? activeYear.startDate : safeDate(p.registrationDate),
               description: `سند افتتاحیه طرف حساب: ${p.name}`,
               status: 'approved',
               sourceType: 'opening_balance',

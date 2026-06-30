@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import DatePickerModule, { Calendar as RMCalendar } from "react-multi-date-picker";
+import DateObject from "react-date-object";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Bar } from 'recharts';
@@ -38,8 +39,25 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
   // Custom queries
   const [issuedSearchQuery, setIssuedSearchQuery] = useState('');
   const [receivedSearchQuery, setReceivedSearchQuery] = useState('');
+  
+  const [issuedSortBy, setIssuedSortBy] = useState<'date' | 'amount'>('date');
+  const [issuedSortDir, setIssuedSortDir] = useState<'asc' | 'desc'>('asc');
+  
+  const [receivedSortBy, setReceivedSortBy] = useState<'date' | 'amount'>('date');
+  const [receivedSortDir, setReceivedSortDir] = useState<'asc' | 'desc'>('asc');
+
   const [depositAccountId, setDepositAccountId] = useState('');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<any[]>([new Date()]);
+
+  const getDaysRemaining = (dueDate: string) => {
+    if (!dueDate) return 0;
+    try {
+      const today = new DateObject({ calendar: persian }).set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+      const due = new DateObject({ date: dueDate, format: "YYYY/MM/DD", calendar: persian }).set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+      const diff = due.toDate().getTime() - today.toDate().getTime();
+      return Math.floor(diff / (1000 * 3600 * 24));
+    } catch(e) { return 0; }
+  };
 
   const normalizeDate = (dStr: string) => {
     if (!dStr) return 0;
@@ -400,7 +418,12 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
     );
     const statusMatch = issuedCheckStatusFilter === 'all' || c.status === issuedCheckStatusFilter;
     return searchMatch && statusMatch;
-  }).sort((a, b) => normalizeDate(a.dueDate) - normalizeDate(b.dueDate));
+  }).sort((a, b) => {
+    let diff = 0;
+    if (issuedSortBy === 'date') diff = normalizeDate(a.dueDate) - normalizeDate(b.dueDate);
+    else diff = Number(a.amount) - Number(b.amount);
+    return issuedSortDir === 'asc' ? diff : -diff;
+  });
 
   const filteredReceivedChecks = receivedChecks.filter(c => {
     const payerName = String(persons.find(p => p.id?.toString() === c.payerId?.toString())?.name || c.payerId || '');
@@ -414,7 +437,12 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
     );
     const statusMatch = receivedCheckStatusFilter === 'all' || c.status === receivedCheckStatusFilter;
     return searchMatch && statusMatch;
-  }).sort((a, b) => normalizeDate(a.dueDate) - normalizeDate(b.dueDate));
+  }).sort((a, b) => {
+    let diff = 0;
+    if (receivedSortBy === 'date') diff = normalizeDate(a.dueDate) - normalizeDate(b.dueDate);
+    else diff = Number(a.amount) - Number(b.amount);
+    return receivedSortDir === 'asc' ? diff : -diff;
+  });
 
   // KPI Calculations
   const totalIssuedAmount = issuedChecks.reduce((sum, c) => sum + Number(c.amount || 0), 0);
@@ -591,6 +619,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
 
               <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <div className="flex items-center gap-1 bg-white border border-gray-200 p-1 rounded-xl shadow-sm">
+                  <select 
+                    value={issuedSortBy} 
+                    onChange={e => setIssuedSortBy(e.target.value as any)}
+                    className="bg-transparent text-xs font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
+                  >
+                    <option value="date">سررسید</option>
+                    <option value="amount">مبلغ</option>
+                  </select>
+                  <button 
+                    onClick={() => setIssuedSortDir(prev => prev === 'asc' ? 'desc' : 'asc')} 
+                    className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+                  >
+                    {issuedSortDir === 'asc' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                  </button>
+                </div>
+                
                 <button 
                   onClick={() => window.print()}
                   className="p-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl transition-all shadow-sm"
@@ -636,8 +681,8 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                       <th className="px-4 py-4 font-bold">شماره چک</th>
                       <th className="px-4 py-4 font-bold">دسته چک / حساب</th>
                       <th className="px-4 py-4 font-bold">بابت (گیرنده چک)</th>
-                      <th className="px-4 py-4 font-bold">مبلغ (تومان)</th>
-                      <th className="px-4 py-4 font-bold">سررسید</th>
+                      <th className="px-4 py-4 font-bold">مبلغ ({storeSettings?.currency || 'تومان'})</th>
+                      <th className="px-4 py-4 font-bold">سررسید و مهلت</th>
                       <th className="px-4 py-4 font-bold">وضعیت</th>
                       <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
                     </tr>
@@ -657,7 +702,19 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                           <td className="px-4 py-3.5 text-xs text-indigo-950 font-bold max-w-[150px] truncate">{bankName}</td>
                           <td className="px-4 py-3.5 font-bold text-gray-800">{payee?.name || c.payeeId || 'ناشناس'}</td>
                           <td className="px-4 py-3.5 font-sans font-black text-rose-600">{toPersianDigits(Number(c.amount).toLocaleString())}</td>
-                          <td className="px-4 py-3.5 font-sans font-medium text-gray-700">{toPersianDigits(c.dueDate)}</td>
+                          <td className="px-4 py-3.5">
+                             <div className="font-sans font-medium text-gray-700">{toPersianDigits(c.dueDate)}</div>
+                             {(!c.status || c.status === 'issued') && (
+                               <div className="mt-2 flex items-center gap-2 print:hidden w-32">
+                                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                   <div className={`h-full ${getDaysRemaining(c.dueDate) < 0 ? 'bg-rose-500' : getDaysRemaining(c.dueDate) <= 3 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, Math.max(5, (30 - getDaysRemaining(c.dueDate)) / 30 * 100))}%` }}></div>
+                                 </div>
+                                 <span className={`text-[10px] font-bold ${getDaysRemaining(c.dueDate) < 0 ? 'text-rose-600' : getDaysRemaining(c.dueDate) <= 3 ? 'text-amber-600' : 'text-gray-500'}`}>
+                                   {getDaysRemaining(c.dueDate) < 0 ? `${toPersianDigits(Math.abs(getDaysRemaining(c.dueDate)))} روز گذشته` : getDaysRemaining(c.dueDate) === 0 ? 'امروز' : `${toPersianDigits(getDaysRemaining(c.dueDate))} روز`}
+                                 </span>
+                               </div>
+                             )}
+                          </td>
                           <td className="px-4 py-3.5">
                              <div className={`relative inline-block rounded-lg text-xs font-bold border ${
                                c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
@@ -810,6 +867,23 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
               </div>
 
               <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <div className="flex items-center gap-1 bg-white border border-gray-200 p-1 rounded-xl shadow-sm">
+                  <select 
+                    value={receivedSortBy} 
+                    onChange={e => setReceivedSortBy(e.target.value as any)}
+                    className="bg-transparent text-xs font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
+                  >
+                    <option value="date">سررسید</option>
+                    <option value="amount">مبلغ</option>
+                  </select>
+                  <button 
+                    onClick={() => setReceivedSortDir(prev => prev === 'asc' ? 'desc' : 'asc')} 
+                    className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+                  >
+                    {receivedSortDir === 'asc' ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                  </button>
+                </div>
+                
                 <button 
                   onClick={() => window.print()}
                   className="p-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl transition-all shadow-sm"
@@ -856,9 +930,9 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                       <th className="px-4 py-4 font-bold">شماره چک</th>
                       <th className="px-4 py-4 font-bold">بانک صادرکننده</th>
                       <th className="px-4 py-4 font-bold">پرداخت‌کننده (طرف حساب)</th>
-                      <th className="px-4 py-4 font-bold">مبلغ (تومان)</th>
+                      <th className="px-4 py-4 font-bold">مبلغ ({storeSettings?.currency || 'تومان'})</th>
                       <th className="px-4 py-4 font-bold">دریافت</th>
-                      <th className="px-4 py-4 font-bold">سررسید</th>
+                      <th className="px-4 py-4 font-bold">سررسید و مهلت</th>
                       <th className="px-4 py-4 font-bold">وضعیت</th>
                       <th className="px-4 py-4 font-bold text-center w-36 print:hidden">عملیات</th>
                     </tr>
@@ -878,7 +952,19 @@ export default function CheckManagement({ showNotification, activeTab = 'checkbo
                           <td className="px-4 py-3.5 font-bold text-gray-800">{payer?.name || c.payerId || 'ناشناس'}</td>
                           <td className="px-4 py-3.5 font-sans font-black text-emerald-600">{toPersianDigits(Number(c.amount).toLocaleString())}</td>
                           <td className="px-4 py-3.5 font-sans font-medium text-gray-500 text-xs">{toPersianDigits(c.receiveDate)}</td>
-                          <td className="px-4 py-3.5 font-sans font-bold text-gray-700">{toPersianDigits(c.dueDate)}</td>
+                          <td className="px-4 py-3.5">
+                             <div className="font-sans font-bold text-gray-700">{toPersianDigits(c.dueDate)}</div>
+                             {(!c.status || c.status === 'received' || c.status === 'deposited') && (
+                               <div className="mt-2 flex items-center gap-2 print:hidden w-32">
+                                 <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                   <div className={`h-full ${getDaysRemaining(c.dueDate) < 0 ? 'bg-rose-500' : getDaysRemaining(c.dueDate) <= 3 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, Math.max(5, (30 - getDaysRemaining(c.dueDate)) / 30 * 100))}%` }}></div>
+                                 </div>
+                                 <span className={`text-[10px] font-bold ${getDaysRemaining(c.dueDate) < 0 ? 'text-rose-600' : getDaysRemaining(c.dueDate) <= 3 ? 'text-amber-600' : 'text-gray-500'}`}>
+                                   {getDaysRemaining(c.dueDate) < 0 ? `${toPersianDigits(Math.abs(getDaysRemaining(c.dueDate)))} روز گذشته` : getDaysRemaining(c.dueDate) === 0 ? 'امروز' : `${toPersianDigits(getDaysRemaining(c.dueDate))} روز`}
+                                 </span>
+                               </div>
+                             )}
+                          </td>
                           <td className="px-4 py-3.5">
                              <div className={`relative inline-block rounded-lg text-xs font-bold border ${
                                c.status === 'cashed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 

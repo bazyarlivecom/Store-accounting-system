@@ -14120,7 +14120,7 @@ ${errMsg}`);
                             setSelectedOpeningBalancePersonId("");
                             setOpeningBalanceAmount("");
                             setOpeningBalanceType("debtor");
-                            setOpeningBalanceDate(new DateObject());
+                            setOpeningBalanceDate(activeFinancialYear?.startDate ? activeFinancialYear.startDate : new DateObject());
                             setOpeningBalanceDescription(
                               "بابت مانده بدهی/طلب اول دوره",
                             );
@@ -14176,7 +14176,7 @@ ${errMsg}`);
                                 setSelectedOpeningBalancePersonId("");
                                 setOpeningBalanceAmount("");
                                 setOpeningBalanceType("debtor");
-                                setOpeningBalanceDate(new DateObject());
+                                setOpeningBalanceDate(activeFinancialYear?.startDate ? activeFinancialYear.startDate : new DateObject());
                                 setOpeningBalanceDescription(
                                   "بابت مانده بدهی/طلب اول دوره",
                                 );
@@ -14643,8 +14643,12 @@ ${errMsg}`);
                                           ? undefined
                                           : persian_fa
                                       }
-                                      className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-sm text-center font-sans font-bold bg-white"
+                                      disabled={!!activeFinancialYear}
+                                      inputClass={`w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-sm text-center font-sans font-bold ${activeFinancialYear ? 'opacity-70 cursor-not-allowed bg-slate-50' : 'bg-white'}`}
                                     />
+                                    {activeFinancialYear && (
+                                       <p className="text-[10px] text-slate-500 mt-2 font-medium">تاریخ سند به طور خودکار تاریخ شروع سال مالی در نظر گرفته می‌شود.</p>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -18254,66 +18258,74 @@ ${errMsg}`);
                               </div>
 
                               <div className="overflow-x-auto print:overflow-visible">
-                                {ledgerEntries.length === 0 ? (
-                                  <div className="p-12 text-center text-gray-400">
-                                    <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                    هیچ گردش مالی یا سندی برای این شخص ثبت نشده
-                                    است.
-                                  </div>
-                                ) : (
-                                  <table className="w-full text-right min-w-[950px] print:min-w-[0px] print:text-[12px] text-sm">
-                                    <thead>
-                                      <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider print:text-[10px]">
-                                        <th className="py-5 px-4 text-center w-10 print:w-8 print:px-2">
-                                          ردیف
-                                        </th>
-                                        <th className="py-5 px-4 text-right w-36 print:w-28 print:px-2">
-                                          تاریخ و ارجاع
-                                        </th>
-                                        <th className="py-5 px-6 text-right print:px-2">
-                                          عنوان و شرح جزئیات رویداد مالی
-                                        </th>
-                                        <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
-                                          بدهکار (افزایش بدهی)
-                                        </th>
-                                        <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
-                                          بستانکار (کاهش بدهی)
-                                        </th>
-                                        <th className="py-5 px-6 text-left w-44 print:w-32 print:px-2">
-                                          مانده نهایی حساب
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 font-medium">
-                                      {ledgerEntries
-                                        .filter((entry) => {
-                                          if (
-                                            ledgerTab === "transactions" ||
-                                            ledgerTab === "detailed"
-                                          ) {
-                                            return (
-                                              entry.rawItem?.type !== "proforma"
-                                            );
-                                          } else if (ledgerTab === "items") {
-                                            return (
-                                              entry.entryType === "invoice" &&
-                                              entry.rawItem?.type !== "proforma"
-                                            );
-                                          } else if (ledgerTab === "checks") {
-                                            return (
-                                              entry.entryType ===
-                                                "issued_check" ||
-                                              entry.entryType ===
-                                                "received_check"
-                                            );
-                                          } else if (ledgerTab === "drafts") {
-                                            return (
-                                              entry.rawItem?.type === "proforma"
-                                            );
-                                          }
-                                          return true;
-                                        })
-                                        .map((entry, index) => {
+                                {(() => {
+                                  const filteredLedgerEntries = ledgerEntries.filter((entry) => {
+                                    if (
+                                      ledgerTab === "transactions" ||
+                                      ledgerTab === "detailed"
+                                    ) {
+                                      return (
+                                        entry.rawItem?.type !== "proforma"
+                                      );
+                                    } else if (ledgerTab === "items") {
+                                      return (
+                                        entry.entryType === "invoice" &&
+                                        entry.rawItem?.type !== "proforma"
+                                      );
+                                    } else if (ledgerTab === "checks") {
+                                      return (
+                                        entry.entryType ===
+                                          "issued_check" ||
+                                        entry.entryType ===
+                                          "received_check"
+                                      );
+                                    } else if (ledgerTab === "drafts") {
+                                      return (
+                                        entry.rawItem?.type === "proforma"
+                                      );
+                                    }
+                                    return true;
+                                  });
+                                  
+                                  const totalDebit = filteredLedgerEntries.reduce((sum, e) => sum + (e.debit || 0), 0);
+                                  const totalCredit = filteredLedgerEntries.reduce((sum, e) => sum + (e.credit || 0), 0);
+                                  const totalBalance = totalDebit - totalCredit;
+                                  
+                                  if (filteredLedgerEntries.length === 0) {
+                                    return (
+                                      <div className="p-12 text-center text-gray-400">
+                                        <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                        هیچ گردش مالی یا سندی برای این تب یافت نشد.
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <table className="w-full text-right min-w-[950px] print:min-w-[0px] print:text-[12px] text-sm">
+                                      <thead>
+                                        <tr className="bg-slate-100/60 text-slate-500 border-b border-slate-200 font-bold text-xs uppercase tracking-wider print:text-[10px]">
+                                          <th className="py-5 px-4 text-center w-10 print:w-8 print:px-2">
+                                            ردیف
+                                          </th>
+                                          <th className="py-5 px-4 text-right w-36 print:w-28 print:px-2">
+                                            تاریخ و ارجاع
+                                          </th>
+                                          <th className="py-5 px-6 text-right print:px-2">
+                                            عنوان و شرح جزئیات رویداد مالی
+                                          </th>
+                                          <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
+                                            بدهکار (افزایش بدهی)
+                                          </th>
+                                          <th className="py-5 px-4 text-left w-36 print:w-28 print:px-2">
+                                            بستانکار (کاهش بدهی)
+                                          </th>
+                                          <th className="py-5 px-6 text-left w-44 print:w-32 print:px-2">
+                                            مانده نهایی حساب
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-100 font-medium">
+                                        {filteredLedgerEntries.map((entry, index) => {
                                           const isDeb =
                                             entry.runningBalance > 0;
                                           const isCred =
@@ -18556,8 +18568,54 @@ ${errMsg}`);
                                           );
                                         })}
                                     </tbody>
+                                    <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-bold text-[13px]">
+                                      <tr>
+                                        <td colSpan={3} className="py-5 px-6 text-left text-slate-700">
+                                          جمع کل ({filteredLedgerEntries.length} رکورد):
+                                        </td>
+                                        <td className="py-5 px-4 text-left text-indigo-600 text-[15px]">
+                                          {toPersianDigits(formatNumber(totalDebit))}
+                                        </td>
+                                        <td className="py-5 px-4 text-left text-emerald-600 text-[15px]">
+                                          {toPersianDigits(formatNumber(totalCredit))}
+                                        </td>
+                                        <td className="py-5 px-6 text-left">
+                                          <div
+                                            className={`flex flex-col items-end gap-1.5 font-extrabold ${
+                                              totalBalance === 0
+                                                ? "text-slate-600"
+                                                : totalBalance > 0
+                                                  ? "text-rose-600"
+                                                  : "text-emerald-600"
+                                            }`}
+                                          >
+                                            {totalBalance === 0 ? (
+                                              <span className="bg-slate-100 px-3 py-1.5 rounded-xl text-xs text-slate-700">
+                                                صفر (تسویه)
+                                              </span>
+                                            ) : (
+                                              <>
+                                                <span className="text-[17px] tracking-tight">
+                                                  {toPersianDigits(formatNumber(Math.abs(totalBalance)))}
+                                                </span>
+                                                <span
+                                                  className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
+                                                    totalBalance > 0
+                                                      ? "bg-rose-100 text-rose-700"
+                                                      : "bg-emerald-100 text-emerald-700"
+                                                  }`}
+                                                >
+                                                  {totalBalance > 0 ? "بدهکار به ما" : "بستانکار (طلبکار)"}
+                                                </span>
+                                              </>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    </tfoot>
                                   </table>
-                                )}
+                                  );
+                                })()}
                               </div>
                             </div>
                           )}
@@ -25539,6 +25597,45 @@ ${errMsg}`);
                                           );
                                         })}
                                     </tbody>
+                                    <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-bold text-[13px]">
+                                      {(() => {
+                                        const filteredEntries = ledgerEntries.slice(-50).reverse();
+                                        const totalDebit = filteredEntries.reduce((sum, e) => sum + (e.debit || 0), 0);
+                                        const totalCredit = filteredEntries.reduce((sum, e) => sum + (e.credit || 0), 0);
+                                        const totalBalance = totalDebit - totalCredit;
+                                        return (
+                                          <tr>
+                                            <td colSpan={2} className="py-3 px-4 text-left text-slate-700">
+                                              جمع کل ({filteredEntries.length} رکورد):
+                                            </td>
+                                            <td className="py-3 px-4 text-left">
+                                              <div className="flex flex-col gap-1 font-mono" dir="ltr">
+                                                <span className="text-rose-600 text-xs text-right">
+                                                  بدهکار: {toPersianDigits(formatNumber(totalDebit))}
+                                                </span>
+                                                <span className="text-emerald-600 text-xs text-right">
+                                                  بستانکار: {toPersianDigits(formatNumber(totalCredit))}
+                                                </span>
+                                              </div>
+                                            </td>
+                                            <td className="py-3 px-4 text-left font-mono" dir="ltr">
+                                              <div className="flex flex-col items-end">
+                                                {totalBalance === 0 ? (
+                                                  <span className="text-slate-500 font-bold">۰</span>
+                                                ) : (
+                                                  <span className={`font-bold ${totalBalance > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                                                    {formatNumber(Math.abs(totalBalance))}
+                                                  </span>
+                                                )}
+                                                <span className="text-[9px] text-gray-400 mt-0.5">
+                                                  {totalBalance === 0 ? "تسویه" : totalBalance > 0 ? "بدهکار" : "بستانکار"}
+                                                </span>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })()}
+                                    </tfoot>
                                   </table>
                                 )}
                               </div>
