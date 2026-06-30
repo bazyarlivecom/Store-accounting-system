@@ -4,7 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
   const [step, setStep] = useState(1);
-  const [connectionString, setConnectionString] = useState('postgresql://user:password@localhost:5432/dbname');
+  const [host, setHost] = useState('localhost');
+  const [port, setPort] = useState('5432');
+  const [database, setDatabase] = useState('dbname');
+  const [username, setUsername] = useState('postgres');
+  const [password, setPassword] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [migrationState, setMigrationState] = useState<any>({ status: 'idle', progress: 0, total: 0, logs: [], error: null });
@@ -34,6 +38,12 @@ export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [migrationState.logs]);
 
+  const getConnectionString = () => {
+    const encodedUser = encodeURIComponent(username);
+    const encodedPass = encodeURIComponent(password);
+    return `postgresql://${encodedUser}:${encodedPass}@${host}:${port}/${database}`;
+  };
+
   const handleValidate = async () => {
     setIsValidating(true);
     setValidationError('');
@@ -41,7 +51,7 @@ export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
       const res = await fetch('/api/migrate-postgres/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ connectionString })
+        body: JSON.stringify({ connectionString: getConnectionString() })
       });
       const data = await res.json();
       if (data.success) {
@@ -61,7 +71,7 @@ export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
       await fetch('/api/migrate-postgres/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ connectionString })
+        body: JSON.stringify({ connectionString: getConnectionString() })
       });
       // polling will take over
     } catch (e) {
@@ -166,22 +176,66 @@ export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
 
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">رشته اتصال (Connection String) دیتابیس PostgreSQL مقصد</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400">
-                    <Server className="w-5 h-5" />
+              
+              <div className="bg-slate-50 border-2 border-slate-200 p-6 rounded-xl space-y-4">
+                <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">تنظیمات سرور PostgreSQL</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">آدرس سرور (Host)</label>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={host}
+                      onChange={e => setHost(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2 px-3 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      placeholder="localhost"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    dir="ltr"
-                    value={connectionString}
-                    onChange={e => setConnectionString(e.target.value)}
-                    className="w-full bg-slate-50 border-2 border-slate-200 text-slate-700 font-mono text-sm rounded-xl py-4 pr-12 pl-4 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none"
-                    placeholder="postgresql://username:password@localhost:5432/database_name"
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">پورت (Port)</label>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={port}
+                      onChange={e => setPort(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2 px-3 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      placeholder="5432"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-600 mb-1">نام پایگاه‌داده (Database Name)</label>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={database}
+                      onChange={e => setDatabase(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2 px-3 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      placeholder="dbname"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">نام کاربری (Username)</label>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2 px-3 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      placeholder="postgres"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">رمز عبور (Password)</label>
+                    <input
+                      type="password"
+                      dir="ltr"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-200 text-slate-700 font-mono text-sm rounded-lg py-2 px-3 focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      placeholder="••••••••"
+                    />
+                  </div>
                 </div>
-                <p className="text-xs font-medium text-slate-500 mt-2">فرمت صحیح: postgresql://[user]:[password]@[host]:[port]/[database]</p>
               </div>
 
               {validationError && (
@@ -197,7 +251,7 @@ export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
                 </button>
                 <button 
                   onClick={handleValidate} 
-                  disabled={isValidating || !connectionString}
+                  disabled={isValidating || !host || !port || !database || !username}
                   className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 transition-all shadow-md shadow-indigo-200"
                 >
                   {isValidating ? (
