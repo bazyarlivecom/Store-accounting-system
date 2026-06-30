@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, Server, CheckCircle, AlertTriangle, ChevronLeft, RefreshCw, LogIn, Check, XCircle } from 'lucide-react';
+import { Database, Server, CheckCircle, AlertTriangle, ChevronLeft, RefreshCw, LogIn, Check, XCircle, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
@@ -364,5 +364,3 @@ export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
     </div>
   );
 }
-// Using lucide-react Play instead of importing it if not there
-import { Play as PlayIcon } from 'lucide-react';
