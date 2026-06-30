@@ -7,6 +7,7 @@ import fsPromises from 'fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { Client } from 'pg';
 import cookieParser from 'cookie-parser';
 
 const DATA_FILE = path.join(process.cwd(), 'database.json');
@@ -540,6 +541,98 @@ async function startServer() {
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  let migrationState = {
+    status: 'idle',
+    progress: 0,
+    total: 0,
+    logs: [] as string[],
+    error: null as string | null
+  };
+
+  app.post('/api/migrate-postgres/validate', async (req, res) => {
+    const { connectionString } = req.body;
+    try {
+      const client = new Client({ connectionString });
+      await client.connect();
+      await client.query('SELECT NOW()');
+      await client.end();
+      res.json({ success: true, message: 'اتصال با موفقیت برقرار شد.' });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/migrate-postgres/start', async (req, res) => {
+    const { connectionString } = req.body;
+    if (migrationState.status === 'migrating') {
+      return res.status(400).json({ error: 'مهاجرت در حال انجام است.' });
+    }
+    
+    migrationState = { status: 'migrating', progress: 0, total: 0, logs: ['در حال اتصال به PostgreSQL...'], error: null };
+    res.json({ success: true });
+    
+    (async () => {
+      const client = new Client({ connectionString });
+      try {
+        await client.connect();
+        migrationState.logs.push('اتصال به PostgreSQL با موفقیت انجام شد.');
+        
+        migrationState.logs.push('در حال خواندن داده‌ها از SQLite...');
+        const stmt = db.prepare('SELECT key, value FROM store');
+        const allRows = stmt.all();
+        migrationState.total = allRows.length;
+        migrationState.logs.push(`تعداد ${migrationState.total} جدول/مجموعه داده در SQLite یافت شد.`);
+        
+        migrationState.logs.push('بررسی و ایجاد جدول store در PostgreSQL...');
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS store (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+          )
+        `);
+        
+        migrationState.logs.push('شروع Transaction برای اطمینان از صحت داده‌ها...');
+        await client.query('BEGIN');
+        
+        let count = 0;
+        for (const row of allRows) {
+          migrationState.logs.push(`در حال انتقال داده‌های مربوط به: ${row.key}...`);
+          await client.query(
+            'INSERT INTO store (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            [row.key, row.value]
+          );
+          count++;
+          migrationState.progress = count;
+          // Small delay for UI demonstration of progress
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        migrationState.logs.push('پایان تراکنش و ثبت دائمی اطلاعات (Commit)...');
+        await client.query('COMMIT');
+        migrationState.logs.push('مهاجرت اطلاعات با موفقیت به پایان رسید.');
+        migrationState.status = 'success';
+        
+      } catch (err) {
+        migrationState.logs.push(`خطا در هنگام مهاجرت: ${err.message}`);
+        migrationState.logs.push('در حال بازگردانی تغییرات (Rollback)...');
+        try { await client.query('ROLLBACK'); } catch(e){}
+        migrationState.status = 'error';
+        migrationState.error = err.message;
+      } finally {
+        try { await client.end(); } catch(e){}
+      }
+    })();
+  });
+
+  app.get('/api/migrate-postgres/status', (req, res) => {
+    res.json(migrationState);
+  });
+
+  app.post('/api/migrate-postgres/reset', (req, res) => {
+    migrationState = { status: 'idle', progress: 0, total: 0, logs: [], error: null };
+    res.json({ success: true });
   });
 
   // Vite middleware for development

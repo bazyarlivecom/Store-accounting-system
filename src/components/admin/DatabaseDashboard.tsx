@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DriveBackup from './DriveBackup';
+import MigrationWizard from './MigrationWizard';
 import { 
   Database, Download, Upload, AlertCircle, RefreshCw, 
   Layers, Search, Trash2, Eye, X, Check, ChevronDown, 
@@ -39,6 +40,7 @@ export default function DatabaseDashboard({ showNotification }: DatabaseDashboar
   const [expandedRecordId, setExpandedRecordId] = useState<any>(null);
   const [recordToDelete, setRecordToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showMigrationWizard, setShowMigrationWizard] = useState(false);
   const explorerRef = useRef<HTMLDivElement>(null);
 
   const fetchStats = async () => {
@@ -512,9 +514,30 @@ export default function DatabaseDashboard({ showNotification }: DatabaseDashboar
                 </div>
               </div>
             </div>
+            
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-5 rounded-2xl border-2 border-indigo-100 shadow-sm relative overflow-hidden">
+              <div className="flex justify-between items-center relative z-10">
+                <div>
+                  <h3 className="font-bold text-indigo-900 text-base mb-1">مهاجرت به PostgreSQL</h3>
+                  <p className="text-xs text-indigo-700/80 font-medium">Wizard انتقال یکپارچه و امن داده‌ها</p>
+                </div>
+                <button onClick={() => setShowMigrationWizard(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition-all shadow-md">
+                  شروع فرآیند
+                </button>
+              </div>
+            </div>
+
             <DriveBackup showNotification={showNotification} />
           </div>
   
+          {showMigrationWizard && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+              <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                <MigrationWizard onClose={() => setShowMigrationWizard(false)} />
+              </div>
+            </div>
+          )}
+
           {/* Collections Breakdown Tables */}
           <div>
             <h3 className="text-gray-800 font-extrabold text-base mb-2 border-b border-gray-100 pb-2 flex items-center gap-2">
