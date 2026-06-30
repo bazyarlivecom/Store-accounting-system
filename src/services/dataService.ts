@@ -74,36 +74,39 @@ export const addDatabaseLog = async (action: string, entityType: string, entityI
   } catch(e) {}
 };
 
-const saveLocalData = async <T>(key: string, data: T, retries = 3): Promise<void> => {
-  const loggableKeys = ['persons', 'products', 'invoices', 'transactions', 'accounts', 'cashboxes', 'warehouses', 'users', 'accounting_documents'];
-  
-  if (loggableKeys.includes(key)) {
-    try {
-      const oldData = await getLocalData<any[]>(key, []);
-      if (Array.isArray(oldData) && Array.isArray(data)) {
-        const oldMap = new Map(oldData.map(x => [String(x.id), x]));
-        const newMap = new Map((data as any[]).map(x => [String(x.id), x]));
-        
-        for (const [id, newItem] of newMap.entries()) {
-           if (!oldMap.has(id)) {
-              await addDatabaseLog('CREATE', key, id, null, newItem);
-           } else {
-              const oldItem = oldMap.get(id);
-              if (JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
-                 await addDatabaseLog('UPDATE', key, id, oldItem, newItem);
-              }
-           }
-        }
-        
-        for (const [id, oldItem] of oldMap.entries()) {
-           if (!newMap.has(id)) {
-              await addDatabaseLog('DELETE', key, id, oldItem, null);
-           }
-        }
-      }
-    } catch(e) {}
-  }
+export const appendLocalData = async <T>(key: string, data: T): Promise<T> => {
+  const res = await fetch(`/api/data/${key}/append`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Network response was not ok');
+  const result = await res.json();
+  return result.data;
+};
 
+export const batchLocalData = async (operations: any[]): Promise<any> => {
+  const res = await fetch(`/api/data/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operations })
+  });
+  if (!res.ok) throw new Error('Network response was not ok');
+  return await res.json();
+};
+
+export const updateLocalData = async <T>(key: string, id: string | number, data: T): Promise<T> => {
+  const res = await fetch(`/api/data/${key}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Network response was not ok');
+  const result = await res.json();
+  return result.data;
+};
+
+const saveLocalData = async <T>(key: string, data: T, retries = 3): Promise<void> => {
   try {
     const res = await fetch(`/api/data/${key}`, {
       method: 'POST',
@@ -497,8 +500,7 @@ export const addPerson = async (person: any) => {
 
   const now = Date.now();
   const newPerson = { ...person, personCode: finalPersonCode, accountingCode: finalAccountingCode, id: generateId(), createdAt: now, updatedAt: now };
-  persons.push(newPerson);
-  await saveLocalData('persons', persons);
+  await appendLocalData('persons', newPerson);
   
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_' + 'Person'.toUpperCase(), 'ثبت رکورد جدید در persons', 'Person', newPerson.id);
@@ -542,14 +544,13 @@ export const updatePerson = async (id: string, person: any) => {
     );
     updatedPerson.accountingCode = finalAccountingCode;
 
-    persons[index] = updatedPerson;
-    await saveLocalData('persons', persons);
+    await updateLocalData('persons', id, updatedPerson);
   
   if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'Person'.toUpperCase(), 'ویرایش رکورد در persons', 'Person', persons[index].id);
+    await addSystemLog('UPDATE_' + 'Person'.toUpperCase(), 'ویرایش رکورد در persons', 'Person', id);
   }
 
-    return persons[index];
+    return updatedPerson;
   }
   return null;
 };
@@ -579,7 +580,7 @@ export const deletePerson = async (id: string) => {
   const index = persons.findIndex((p: any) => String(p.id) === String(id));
   if (index !== -1) {
     persons[index].isDeleted = true;
-    await saveLocalData('persons', persons);
+    await updateLocalData('persons', id, persons[index]);
   }
 };
 
@@ -928,8 +929,8 @@ export const addProduct = async (product: any) => {
           sellPrice: Number(newProduct.price || newProduct.sellPrice || 0)
       });
   }
-  products.push(newProduct);
-  await saveLocalData('products', products);
+  
+  await appendLocalData('products', newProduct);
   
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_' + 'Product'.toUpperCase(), 'ثبت رکورد جدید در products', 'Product', newProduct.id);
@@ -959,14 +960,13 @@ export const updateProduct = async (id: string, product: any) => {
        });
     }
 
-    products[index] = newProduct;
-    await saveLocalData('products', products);
+    const updated = await updateLocalData('products', id, newProduct);
   
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'Product'.toUpperCase(), 'ویرایش رکورد در products', 'Product', products[index].id);
-  }
+    if (typeof addSystemLog !== 'undefined') {
+      await addSystemLog('UPDATE_' + 'Product'.toUpperCase(), 'ویرایش رکورد در products', 'Product', updated.id);
+    }
 
-    return products[index];
+    return updated;
   }
   return null;
 };
@@ -1016,7 +1016,7 @@ export const addTransaction = async (transaction: any) => {
         } else {
           accounts[index].balance -= amount;
         }
-        await saveLocalData('accounts', accounts);
+        await updateLocalData('accounts', accounts[index].id, accounts[index]);
   
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_' + 'Transaction'.toUpperCase(), 'ثبت رکورد جدید در accounts', 'Transaction', newTransaction.id);
@@ -1032,13 +1032,12 @@ export const addTransaction = async (transaction: any) => {
         } else {
           cashboxes[index].balance -= amount;
         }
-        await saveLocalData('cashboxes', cashboxes);
+        await updateLocalData('cashboxes', cashboxes[index].id, cashboxes[index]);
       }
     }
   }
 
-  transactions.push(newTransaction);
-  await saveLocalData('transactions', transactions);
+  await appendLocalData('transactions', newTransaction);
 
   // Auto-generate basic accounting document
   try {
@@ -1111,24 +1110,21 @@ export const addTransaction = async (transaction: any) => {
 
 export const updateTransaction = async (id: string | number, updated: any) => {
   if (updated.date) await checkFinancialYear(updated.date);
-  const transactions = await getLocalData<any[]>('transactions', []);
-  const idx = transactions.findIndex((t: any) => t.id.toString() === id.toString());
-  if (idx !== -1) {
-    transactions[idx] = { ...transactions[idx], ...updated, updatedAt: Date.now() };
-    await saveLocalData('transactions', transactions);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'Transaction'.toUpperCase(), 'ویرایش رکورد در transactions', 'Transaction', transactions[idx].id);
+  const updatedData = { ...updated, updatedAt: Date.now() };
+  try {
+     const newTx = await updateLocalData('transactions', id, updatedData);
+     if (typeof addSystemLog !== 'undefined') {
+       await addSystemLog('UPDATE_' + 'Transaction'.toUpperCase(), 'ویرایش رکورد در transactions', 'Transaction', newTx.id);
+     }
+     return newTx;
+  } catch (e) {
+     throw new Error('Transaction not found');
   }
-
-    return transactions[idx];
-  }
-  throw new Error('Transaction not found');
 };
 
 export const deleteTransaction = async (id: string) => {
   const transactions = await getLocalData<any[]>('transactions', []);
-  const t = transactions.find(tx => tx.id === id);
+  const t = transactions.find(tx => String(tx.id) === String(id));
   if (t) {
     const amount = Number(t.amount) || 0;
     if (t.resourceType === 'bank') {
@@ -1140,7 +1136,7 @@ export const deleteTransaction = async (id: string) => {
         } else {
           accounts[index].balance += amount;
         }
-        await saveLocalData('accounts', accounts);
+        await updateLocalData('accounts', accounts[index].id, accounts[index]);
       }
     } else if (t.resourceType === 'cashbox') {
       const cashboxes = await getLocalData<any[]>('cashboxes', []);
@@ -1151,13 +1147,13 @@ export const deleteTransaction = async (id: string) => {
         } else {
           cashboxes[index].balance += amount;
         }
-        await saveLocalData('cashboxes', cashboxes);
+        await updateLocalData('cashboxes', cashboxes[index].id, cashboxes[index]);
       }
     }
     const index = transactions.findIndex((p: any) => String(p.id) === String(id));
     if (index !== -1) {
       transactions[index].isDeleted = true;
-      await saveLocalData('transactions', transactions);
+      await updateLocalData('transactions', id, transactions[index]);
     }
   }
 };
@@ -1168,9 +1164,8 @@ export const getInvoices = async () => {
   return invoices.filter(inv => !inv.isDeleted).sort((a, b) => b.createdAt - a.createdAt);
 };
 
-export const addInvoice = async (invoice: any) => {
+export const addInvoice = async (invoice: any, skipRecalc: boolean = false) => {
   if (invoice.date) await checkFinancialYear(invoice.date);
-  const invoices = await getLocalData<any[]>('invoices', []);
   const now = Date.now();
   
   // Apply auto-generated invoice number if missing
@@ -1180,16 +1175,16 @@ export const addInvoice = async (invoice: any) => {
   }
 
   const newInvoice = { ...finalInvoiceObj, id: generateId(), createdAt: now, updatedAt: now };
-  invoices.push(newInvoice);
-  await saveLocalData('invoices', invoices);
+  await appendLocalData('invoices', newInvoice);
   
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_' + 'Invoice'.toUpperCase(), 'ثبت رکورد جدید در invoices', 'Invoice', newInvoice.id);
   }
 
-
   // Recalculate warehouse stocks automatically
-  await recalculateAllWarehouseStocks();
+  if (!skipRecalc) {
+    await recalculateAllWarehouseStocks();
+  }
 
   if (newInvoice.isDraft || newInvoice.status === 'draft') {
     return newInvoice;
@@ -1252,22 +1247,20 @@ export const addInvoice = async (invoice: any) => {
   return newInvoice;
 };
 
-export const updateInvoice = async (id: string | number, updated: any) => {
+export const updateInvoice = async (id: string | number, updated: any, skipRecalc: boolean = false) => {
   if (updated.date) await checkFinancialYear(updated.date);
-  const invoices = await getLocalData<any[]>('invoices', []);
-  const idx = invoices.findIndex((i: any) => i.id.toString() === id.toString());
-  if (idx !== -1) {
-    invoices[idx] = { ...invoices[idx], ...updated, updatedAt: Date.now() };
-    await saveLocalData('invoices', invoices);
+  
+  const updatedData = { ...updated, updatedAt: Date.now() };
+  const newInvoice = await updateLocalData('invoices', id, updatedData);
   
   if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'Invoice'.toUpperCase(), 'ویرایش رکورد در invoices', 'Invoice', invoices[idx].id);
+    await addSystemLog('UPDATE_' + 'Invoice'.toUpperCase(), 'ویرایش رکورد در invoices', 'Invoice', newInvoice.id);
   }
 
+  if (!skipRecalc) {
     await recalculateAllWarehouseStocks();
-    return invoices[idx];
   }
-  throw new Error('Invoice not found');
+  return newInvoice;
 };
 
 export const voidInvoice = async (id: string | number) => {
@@ -1307,7 +1300,7 @@ export const voidInvoice = async (id: string | number) => {
   }
 };
 
-export const deleteInvoice = async (id: string, forceDelete: boolean = false) => {
+export const deleteInvoice = async (id: string, forceDelete: boolean = false, skipRecalc: boolean = false) => {
   const invoices = await getLocalData<any[]>('invoices', []);
   const invoiceToDelete = invoices.find((p: any) => String(p.id) === String(id) || p.id === Number(id) || p.id === String(id));
   
@@ -1324,27 +1317,35 @@ export const deleteInvoice = async (id: string, forceDelete: boolean = false) =>
        }
     });
 
+    const operations: any[] = [];
+    
     // Soft delete
     invoices.forEach(inv => {
       if (toDeleteIds.has(inv.id) || toDeleteIds.has(String(inv.id))) {
-        inv.isDeleted = true;
+        operations.push({ type: 'delete', key: 'invoices', id: inv.id });
       }
     });
-    await saveLocalData('invoices', invoices);
-
+    
     // delete related accounting docs
     const accDocs = await getLocalData<any[]>('accounting_documents', []);
-    let accDocsChanged = false;
     accDocs.forEach(d => {
        if (toDeleteIds.has(d.sourceId) || toDeleteIds.has(String(d.sourceId))) {
-          d.isDeleted = true;
-          accDocsChanged = true;
+          operations.push({ type: 'delete', key: 'accounting_documents', id: d.id });
        }
     });
-    if (accDocsChanged) await saveLocalData('accounting_documents', accDocs);
+
+    if (operations.length > 0) {
+      await batchLocalData(operations);
+    }
+
+    if (typeof addSystemLog !== 'undefined') {
+       // addSystemLog is no-op, backend handles log for batch
+    }
 
     // Recalculate warehouse stocks automatically
-    await recalculateAllWarehouseStocks();
+    if (!skipRecalc) {
+      await recalculateAllWarehouseStocks();
+    }
   }
 };
 
@@ -1397,11 +1398,9 @@ export const getIssuedChecks = async () => {
 
 export const addIssuedCheck = async (record: any) => {
   if (record.issueDate) await checkFinancialYear(record.issueDate);
-  const data = await getLocalData<any[]>('issued_checks', []);
   const now = Date.now();
   const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
-  data.push(newItem);
-  await saveLocalData('issued_checks', data);
+  await appendLocalData('issued_checks', newItem);
   
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_' + 'IssuedCheck'.toUpperCase(), 'ثبت رکورد جدید در issued_checks', 'IssuedCheck', newItem.id);
@@ -1412,24 +1411,24 @@ export const addIssuedCheck = async (record: any) => {
 
 export const updateIssuedCheck = async (id: string, record: any) => {
   if (record.issueDate) await checkFinancialYear(record.issueDate);
-  const data = await getLocalData<any[]>('issued_checks', []);
-  const index = data.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    data[index] = { ...data[index], ...record, updatedAt: Date.now() };
-    await saveLocalData('issued_checks', data);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'IssuedCheck'.toUpperCase(), 'ویرایش رکورد در issued_checks', 'IssuedCheck', data[index].id);
+  const updatedData = { ...record, updatedAt: Date.now() };
+  try {
+     const saved = await updateLocalData('issued_checks', id, updatedData);
+     if (typeof addSystemLog !== 'undefined') {
+       await addSystemLog('UPDATE_' + 'IssuedCheck'.toUpperCase(), 'ویرایش رکورد در issued_checks', 'IssuedCheck', saved.id);
+     }
+     return saved;
+  } catch (e) {
+     return null;
   }
-
-    return data[index];
-  }
-  return null;
 };
 
 export const deleteIssuedCheck = async (id: string) => {
   const data = await getLocalData<any[]>('issued_checks', []);
-  await saveLocalData('issued_checks', data.filter((p: any) => String(p.id) !== String(id)));
+  const index = data.findIndex((p: any) => String(p.id) === String(id));
+  if (index !== -1) {
+    await updateLocalData('issued_checks', id, { ...data[index], isDeleted: true });
+  }
 };
 
 // Received Checks
@@ -1440,11 +1439,9 @@ export const getReceivedChecks = async () => {
 
 export const addReceivedCheck = async (record: any) => {
   if (record.issueDate) await checkFinancialYear(record.issueDate);
-  const data = await getLocalData<any[]>('received_checks', []);
   const now = Date.now();
   const newItem = { ...record, id: generateId(), createdAt: now, updatedAt: now };
-  data.push(newItem);
-  await saveLocalData('received_checks', data);
+  await appendLocalData('received_checks', newItem);
   
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_' + 'ReceivedCheck'.toUpperCase(), 'ثبت رکورد جدید در received_checks', 'ReceivedCheck', newItem.id);
@@ -1455,24 +1452,24 @@ export const addReceivedCheck = async (record: any) => {
 
 export const updateReceivedCheck = async (id: string, record: any) => {
   if (record.issueDate) await checkFinancialYear(record.issueDate);
-  const data = await getLocalData<any[]>('received_checks', []);
-  const index = data.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    data[index] = { ...data[index], ...record, updatedAt: Date.now() };
-    await saveLocalData('received_checks', data);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'ReceivedCheck'.toUpperCase(), 'ویرایش رکورد در received_checks', 'ReceivedCheck', data[index].id);
+  const updatedData = { ...record, updatedAt: Date.now() };
+  try {
+     const saved = await updateLocalData('received_checks', id, updatedData);
+     if (typeof addSystemLog !== 'undefined') {
+       await addSystemLog('UPDATE_' + 'ReceivedCheck'.toUpperCase(), 'ویرایش رکورد در received_checks', 'ReceivedCheck', saved.id);
+     }
+     return saved;
+  } catch (e) {
+     return null;
   }
-
-    return data[index];
-  }
-  return null;
 };
 
 export const deleteReceivedCheck = async (id: string) => {
   const data = await getLocalData<any[]>('received_checks', []);
-  await saveLocalData('received_checks', data.filter((p: any) => String(p.id) !== String(id)));
+  const index = data.findIndex((p: any) => String(p.id) === String(id));
+  if (index !== -1) {
+    await updateLocalData('received_checks', id, { ...data[index], isDeleted: true });
+  }
 };
 
 // Warehouse Stocks Persistence & Recalculation
@@ -1481,11 +1478,9 @@ export const getRefundRequests = async () => {
 };
 
 export const addRefundRequest = async (request: any) => {
-  const requests = await getLocalData<any[]>('refundRequests', []);
   const now = Date.now();
   const newRequest = { ...request, id: generateId(), createdAt: now, updatedAt: now };
-  requests.push(newRequest);
-  await saveLocalData('refundRequests', requests);
+  await appendLocalData('refundRequests', newRequest);
   
   if (typeof addSystemLog !== 'undefined') {
     await addSystemLog('ADD_' + 'RefundRequest'.toUpperCase(), 'ثبت رکورد جدید در refundRequests', 'RefundRequest', newRequest.id);
@@ -1495,25 +1490,24 @@ export const addRefundRequest = async (request: any) => {
 };
 
 export const updateRefundRequest = async (id: string, updated: any) => {
-  const requests = await getLocalData<any[]>('refundRequests', []);
-  const index = requests.findIndex(r => r.id === id);
-  if (index !== -1) {
-    requests[index] = { ...requests[index], ...updated, updatedAt: Date.now() };
-    await saveLocalData('refundRequests', requests);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'RefundRequest'.toUpperCase(), 'ویرایش رکورد در refundRequests', 'RefundRequest', requests[index].id);
+  const updatedData = { ...updated, updatedAt: Date.now() };
+  try {
+     const saved = await updateLocalData('refundRequests', id, updatedData);
+     if (typeof addSystemLog !== 'undefined') {
+       await addSystemLog('UPDATE_' + 'RefundRequest'.toUpperCase(), 'ویرایش رکورد در refundRequests', 'RefundRequest', saved.id);
+     }
+     return saved;
+  } catch(e) {
+     return null;
   }
-
-    return requests[index];
-  }
-  return null;
 };
 
 export const deleteRefundRequest = async (id: string) => {
   const requests = await getLocalData<any[]>('refundRequests', []);
-  const filtered = requests.filter(r => r.id !== id);
-  await saveLocalData('refundRequests', filtered);
+  const index = requests.findIndex(r => String(r.id) === String(id));
+  if (index !== -1) {
+    await updateLocalData('refundRequests', id, { ...requests[index], isDeleted: true });
+  }
 };
 
 export const getWarehouseStocks = async () => {
@@ -1530,142 +1524,16 @@ export const saveWarehouseStocks = async (stocks: any[]) => {
 };
 
 export const recalculateAllWarehouseStocks = async () => {
-  const products = await getLocalData<any[]>('products', []);
-  const invoices = await getLocalData<any[]>('invoices', []);
-  const warehouses = await getLocalData<any[]>('warehouses', []);
-
-  const stocksMap: Record<string, {
-    productId: string | number;
-    warehouseId: string | number;
-    physicalStock: number;
-    reservedStock: number;
-    availableStock: number;
-  }> = {};
-
-  // 1. Initialize for all products that have stock/warehouse
-  products.forEach(p => {
-    if (p.type === 'service') return;
-    const baseStock = Number(p.stock) || 0;
-    const defaultWhId = (p.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
-    const key = `${p.id}_${defaultWhId}`;
-    
-    if (!stocksMap[key]) {
-      stocksMap[key] = {
-        productId: p.id,
-        warehouseId: defaultWhId,
-        physicalStock: 0,
-        reservedStock: 0,
-        availableStock: 0
-      };
+  try {
+    const res = await fetch('/api/db/recalculate-stocks', { method: 'POST' });
+    if (res.ok) {
+      const result = await res.json();
+      return result.data;
     }
-    stocksMap[key].physicalStock += baseStock;
-  });
-
-  // Track sales and remittances to calculate reserved stock
-  const saleQtysMap: Record<string, number> = {};
-  const remittedSaleQtysMap: Record<string, number> = {};
-
-  // 2. Process all invoices
-  invoices.forEach(inv => {
-    if (inv.isDraft || inv.status === 'draft' || inv.status === 'voided') return;
-    if (!inv.items || !Array.isArray(inv.items)) return;
-    inv.items.forEach((i: any) => {
-      const prodId = i.productId;
-      if (!prodId) return;
-
-      const product = products.find(p => p.id?.toString() === prodId.toString());
-      if (!product || product.type === 'service') return;
-
-      let q = Number(i.quantity) || 0;
-      if (i.isSecondaryUnit && product.unitRatio) {
-        q = q * Number(product.unitRatio);
-      }
-
-      const defaultWhId = (product.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
-      const whId = (i.warehouseId || inv.warehouseId || defaultWhId).toString();
-      const key = `${prodId}_${whId}`;
-
-      if (!stocksMap[key]) {
-        stocksMap[key] = {
-          productId: prodId,
-          warehouseId: whId,
-          physicalStock: 0,
-          reservedStock: 0,
-          availableStock: 0
-        };
-      }
-
-      if (inv.type === 'warehouse_receipt') {
-        stocksMap[key].physicalStock += q;
-      } else if (inv.type === 'warehouse_remittance') {
-        stocksMap[key].physicalStock -= q;
-        if (inv.sourceInvoiceId) {
-          const sourceInv = invoices.find(sinv => sinv.id?.toString() === inv.sourceInvoiceId?.toString());
-          if (sourceInv && sourceInv.type === 'sale') {
-            remittedSaleQtysMap[key] = (remittedSaleQtysMap[key] || 0) + q;
-          }
-        } else {
-          remittedSaleQtysMap[key] = (remittedSaleQtysMap[key] || 0) + q;
-        }
-      } else if (inv.type === 'sale') {
-        saleQtysMap[key] = (saleQtysMap[key] || 0) + q;
-      }
-    });
-  });
-
-  // 3. Process reservations by aggregating globally per product
-  const productGlobalSales: Record<string, number> = {};
-  const productGlobalRemitted: Record<string, number> = {};
-  
-  Object.keys(saleQtysMap).forEach(key => {
-    const prodId = key.split('_')[0];
-    productGlobalSales[prodId] = (productGlobalSales[prodId] || 0) + saleQtysMap[key];
-  });
-  
-  Object.keys(remittedSaleQtysMap).forEach(key => {
-    const prodId = key.split('_')[0];
-    productGlobalRemitted[prodId] = (productGlobalRemitted[prodId] || 0) + remittedSaleQtysMap[key];
-  });
-  
-  Object.keys(productGlobalSales).forEach(prodId => {
-    const totalSale = productGlobalSales[prodId] || 0;
-    const totalRemittedForSale = productGlobalRemitted[prodId] || 0;
-    const unremitted = Math.max(0, totalSale - totalRemittedForSale);
-    
-    if (unremitted > 0) {
-      const product = products.find(p => p.id.toString() === prodId.toString());
-      const defaultWhId = (product?.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
-      const key = `${prodId}_${defaultWhId}`;
-      
-      if (!stocksMap[key]) {
-        stocksMap[key] = {
-          productId: prodId,
-          warehouseId: defaultWhId,
-          physicalStock: 0,
-          reservedStock: 0,
-          availableStock: 0
-        };
-      }
-      stocksMap[key].reservedStock += unremitted;
-    }
-  });
-
-  // 4. Transform and save
-  const finalStocksList: any[] = Object.keys(stocksMap).map(key => {
-    const item = stocksMap[key];
-    return {
-      id: key,
-      productId: item.productId,
-      warehouseId: item.warehouseId,
-      physicalStock: item.physicalStock,
-      reservedStock: item.reservedStock,
-      availableStock: item.physicalStock - item.reservedStock,
-      lastUpdated: Date.now()
-    };
-  });
-
-  await saveLocalData('warehouse_stocks', finalStocksList);
-  return finalStocksList;
+  } catch(e) {
+    console.error('Error recalculating stocks', e);
+  }
+  return [];
 };
 
 
@@ -1795,7 +1663,7 @@ export const getAccountingDocuments = async () => {
 export const saveAccountingDocuments = async (data: any[]) => saveLocalData('accounting_documents', data);
 export const addAccountingDocument = async (doc: any) => {
   if (doc.date) await checkFinancialYear(doc.date);
-  const docs = await getAccountingDocuments();
+  
   // Generate a document number if not provided
   let docNum = doc.documentNumber;
   if (!docNum || String(docNum).trim() === '') {
@@ -1803,26 +1671,25 @@ export const addAccountingDocument = async (doc: any) => {
      if (settings && (settings as any).prefix_accounting_document !== undefined) {
          docNum = await generateDocNumber('accounting_document');
      } else {
+         const docs = await getAccountingDocuments();
          let maxDocNum = 0;
          docs.forEach((d: any) => { if (Number(d.documentNumber) > maxDocNum) maxDocNum = Number(d.documentNumber); });
          docNum = String(maxDocNum + 1).padStart(4, '0');
      }
   }
   const added = { ...doc, id: generateId(), documentNumber: docNum, createdAt: Date.now() };
-  docs.push(added);
-  await saveAccountingDocuments(docs);
+  await appendLocalData('accounting_documents', added);
   return added;
 };
 export const updateAccountingDocument = async (id: string | number, updated: any) => {
   if (updated.date) await checkFinancialYear(updated.date);
-  const docs = await getAccountingDocuments();
-  const idx = docs.findIndex((x: any) => x.id?.toString() === id?.toString());
-  if (idx > -1) {
-    docs[idx] = { ...updated, updatedAt: Date.now() };
-    await saveAccountingDocuments(docs);
-    return docs[idx];
+  const updatedDoc = { ...updated, updatedAt: Date.now() };
+  try {
+     const saved = await updateLocalData('accounting_documents', id, updatedDoc);
+     return saved;
+  } catch (e) {
+     return null;
   }
-  return null;
 };
 export const deleteAccountingDocument = async (id: string | number) => {
   const docs = await getAccountingDocuments();
@@ -1831,8 +1698,7 @@ export const deleteAccountingDocument = async (id: string | number) => {
     if (docs[index].isAutoGenerated) {
        throw new Error('اسناد اتوماتیک قابل حذف دستی نیستند.');
     }
-    docs[index].isDeleted = true;
-    await saveLocalData('accounting_documents', docs); // saveLocalData directly to bypass saveAccountingDocuments if it overwrites.
+    await updateLocalData('accounting_documents', id, { ...docs[index], isDeleted: true });
   }
 };
 
@@ -1845,33 +1711,9 @@ export const getSystemLogs = async () => {
 };
 
 export const addSystemLog = async (action, details, entityType, entityId) => {
-  const logs = await getLocalData('system_logs', []);
-  
-  // Try to get current user from localStorage if we're in browser
-  let userId = 'system';
-  if (typeof window !== 'undefined') {
-     try {
-       const sessionStr = window.localStorage.getItem('auth_session');
-       if (sessionStr) {
-          const session = JSON.parse(sessionStr);
-          if (session.userId) userId = session.userId;
-       }
-     } catch(e) {}
-  }
-  
-  const newLog = {
-     id: generateId(),
-     action,
-     userId,
-     details: typeof details === 'string' ? details : JSON.stringify(details),
-     entityType,
-     entityId,
-     timestamp: Date.now()
-  };
-  
-  logs.push(newLog);
-  await saveLocalData('system_logs', logs);
-  return newLog;
+  // Backend automatically handles system_logs on POST /api/data/:key
+  // We make this a no-op to prevent huge performance overhead and duplicate logs
+  return { id: generateId(), action, userId: 'system', details, entityType, entityId, timestamp: Date.now() };
 };
 
 // --- SMS Messages ---

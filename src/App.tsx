@@ -5163,13 +5163,13 @@ export default function App() {
 
     try {
       if (editingInvoiceId) {
-        await deleteInvoice(editingInvoiceId, true);
+        await deleteInvoice(editingInvoiceId, true, true);
         setEditingInvoiceId(null);
       } else if (autoSaveInvoiceId) {
-        await deleteInvoice(autoSaveInvoiceId, true);
+        await deleteInvoice(autoSaveInvoiceId, true, true);
         setAutoSaveInvoiceId(null);
       }
-      const addedInvoice = await addInvoice(payload as any);
+      const addedInvoice = await addInvoice(payload as any, true);
 
       // Auto-create warehouse remittance for purchase return
       if (payload.type === "purchase_return" && !isDraft) {
@@ -5216,7 +5216,7 @@ export default function App() {
           overallDiscountPercent: 0,
           totalAmount: 0,
         };
-        await addInvoice(autoDocPayload as any);
+        await addInvoice(autoDocPayload as any, true);
       }
 
       // Auto-create warehouse remittance for sales
@@ -5261,8 +5261,11 @@ export default function App() {
           overallDiscountPercent: 0,
           totalAmount: 0,
         };
-        await addInvoice(remittancePayload as any);
+        await addInvoice(remittancePayload as any, true);
       }
+
+      // Single recalculate at the end to save network overhead
+      await recalculateAllWarehouseStocks();
 
       const successTypeName =
         payload.type === "warehouse_receipt"

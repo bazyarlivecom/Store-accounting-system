@@ -335,6 +335,109 @@ async function startServer() {
     }
   });
 
+  app.post('/api/data/batch', async (req, res) => {
+    const { operations } = req.body;
+    if (!Array.isArray(operations)) {
+      return res.status(400).json({ error: 'Expected operations array' });
+    }
+    
+    try {
+      // Group operations by key
+      const keys = new Set(operations.map((op: any) => op.key));
+      const results: any[] = [];
+      const sysLogs = (await getDbData('system_logs')) || [];
+      const timestamp = Date.now();
+      
+      for (const key of Array.from(keys)) {
+         let data = (await getDbData(key)) || [];
+         if (!Array.isArray(data)) continue;
+         
+         const keyOps = operations.filter((op: any) => op.key === key);
+         for (const op of keyOps) {
+            if (op.type === 'append') {
+               data.push(op.data);
+               results.push({ id: op.data.id, status: 'appended' });
+               sysLogs.push({ id: Math.random().toString(36).substring(2, 15), action: 'CREATE', userId: 'system', details: 'ایجاد رکورد گروهی', entityType: key, entityId: op.data.id, timestamp });
+            } else if (op.type === 'update') {
+               const idx = data.findIndex((x: any) => String(x.id) === String(op.id));
+               if (idx !== -1) {
+                  data[idx] = { ...data[idx], ...op.data };
+                  results.push({ id: op.id, status: 'updated' });
+                  sysLogs.push({ id: Math.random().toString(36).substring(2, 15), action: 'UPDATE', userId: 'system', details: 'ویرایش رکورد گروهی', entityType: key, entityId: op.id, timestamp });
+               }
+            } else if (op.type === 'delete') {
+               const idx = data.findIndex((x: any) => String(x.id) === String(op.id));
+               if (idx !== -1) {
+                  data[idx].isDeleted = true;
+                  results.push({ id: op.id, status: 'deleted' });
+                  sysLogs.push({ id: Math.random().toString(36).substring(2, 15), action: 'DELETE', userId: 'system', details: 'حذف رکورد گروهی', entityType: key, entityId: op.id, timestamp });
+               }
+            }
+         }
+         await setDbData(key, data);
+      }
+      
+      await setDbData('system_logs', sysLogs);
+      res.json({ success: true, results });
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/data/:key/append', async (req, res) => {
+    const { key } = req.params;
+    const newItem = req.body;
+    try {
+      const data = (await getDbData(key)) || [];
+      if (Array.isArray(data)) {
+        data.push(newItem);
+        await setDbData(key, data);
+        
+        // Log creation
+        const sysLogs = (await getDbData('system_logs')) || [];
+        const timestamp = Date.now();
+        sysLogs.push({ id: Math.random().toString(36).substring(2, 15), action: 'CREATE', userId: 'system', details: 'ایجاد رکورد جدید', entityType: key, entityId: newItem.id, changes: JSON.stringify(newItem), timestamp });
+        await setDbData('system_logs', sysLogs);
+
+        res.json({ success: true, data: newItem });
+      } else {
+        res.status(400).json({ error: 'Target is not an array' });
+      }
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/data/:key/:id', async (req, res) => {
+    const { key, id } = req.params;
+    const updatedItem = req.body;
+    try {
+      const data = (await getDbData(key)) || [];
+      if (Array.isArray(data)) {
+        const index = data.findIndex((x: any) => String(x.id) === String(id));
+        if (index !== -1) {
+          const oldItem = data[index];
+          data[index] = { ...oldItem, ...updatedItem };
+          await setDbData(key, data);
+          
+          // Log update
+          const sysLogs = (await getDbData('system_logs')) || [];
+          const timestamp = Date.now();
+          sysLogs.push({ id: Math.random().toString(36).substring(2, 15), action: 'UPDATE', userId: 'system', details: 'ویرایش رکورد', entityType: key, entityId: id, changes: JSON.stringify(updatedItem), timestamp });
+          await setDbData('system_logs', sysLogs);
+
+          res.json({ success: true, data: data[index] });
+        } else {
+          res.status(404).json({ error: 'Not found' });
+        }
+      } else {
+        res.status(400).json({ error: 'Target is not an array' });
+      }
+    } catch(err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post('/api/data/:key', async (req, res) => {
     const { key } = req.params;
     const data = req.body;
@@ -415,6 +518,106 @@ async function startServer() {
       await setDbData(key, data);
       res.json({ success: true });
     } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/db/recalculate-stocks', async (req, res) => {
+    try {
+      const products = (await getDbData('products')) || [];
+      const invoices = (await getDbData('invoices')) || [];
+      const warehouses = (await getDbData('warehouses')) || [];
+
+      const stocksMap: Record<string, any> = {};
+
+      products.forEach((p: any) => {
+        if (p.type === 'service') return;
+        const baseStock = Number(p.stock) || 0;
+        const defaultWhId = (p.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
+        const key = `${p.id}_${defaultWhId}`;
+        
+        if (!stocksMap[key]) {
+          stocksMap[key] = { productId: p.id, warehouseId: defaultWhId, physicalStock: 0, reservedStock: 0, availableStock: 0 };
+        }
+        stocksMap[key].physicalStock += baseStock;
+      });
+
+      const saleQtysMap: Record<string, number> = {};
+      const remittedSaleQtysMap: Record<string, number> = {};
+
+      invoices.forEach((inv: any) => {
+        if (inv.isDraft || inv.status === 'draft' || inv.status === 'voided') return;
+        if (!inv.items || !Array.isArray(inv.items)) return;
+        inv.items.forEach((i: any) => {
+          const prodId = i.productId;
+          if (!prodId) return;
+          const product = products.find((p: any) => p.id?.toString() === prodId.toString());
+          if (!product || product.type === 'service') return;
+
+          let q = Number(i.quantity) || 0;
+          if (i.isSecondaryUnit && product.unitRatio) q = q * Number(product.unitRatio);
+
+          const defaultWhId = (product.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
+          const whId = (i.warehouseId || inv.warehouseId || defaultWhId).toString();
+          const key = `${prodId}_${whId}`;
+
+          if (!stocksMap[key]) stocksMap[key] = { productId: prodId, warehouseId: whId, physicalStock: 0, reservedStock: 0, availableStock: 0 };
+
+          if (inv.type === 'warehouse_receipt') {
+            stocksMap[key].physicalStock += q;
+          } else if (inv.type === 'warehouse_remittance') {
+            stocksMap[key].physicalStock -= q;
+            if (inv.sourceInvoiceId) {
+              const sourceInv = invoices.find((sinv: any) => sinv.id?.toString() === inv.sourceInvoiceId?.toString());
+              if (sourceInv && sourceInv.type === 'sale') remittedSaleQtysMap[key] = (remittedSaleQtysMap[key] || 0) + q;
+            } else {
+              remittedSaleQtysMap[key] = (remittedSaleQtysMap[key] || 0) + q;
+            }
+          } else if (inv.type === 'sale') {
+            saleQtysMap[key] = (saleQtysMap[key] || 0) + q;
+          }
+        });
+      });
+
+      const productGlobalSales: Record<string, number> = {};
+      const productGlobalRemitted: Record<string, number> = {};
+      
+      Object.keys(saleQtysMap).forEach(key => {
+        const prodId = key.split('_')[0];
+        productGlobalSales[prodId] = (productGlobalSales[prodId] || 0) + saleQtysMap[key];
+      });
+      Object.keys(remittedSaleQtysMap).forEach(key => {
+        const prodId = key.split('_')[0];
+        productGlobalRemitted[prodId] = (productGlobalRemitted[prodId] || 0) + remittedSaleQtysMap[key];
+      });
+      
+      Object.keys(productGlobalSales).forEach(prodId => {
+        const unremitted = Math.max(0, (productGlobalSales[prodId] || 0) - (productGlobalRemitted[prodId] || 0));
+        if (unremitted > 0) {
+          const product = products.find((p: any) => p.id.toString() === prodId.toString());
+          const defaultWhId = (product?.warehouseId || (warehouses[0]?.id) || 'unknown').toString();
+          const key = `${prodId}_${defaultWhId}`;
+          if (!stocksMap[key]) stocksMap[key] = { productId: prodId, warehouseId: defaultWhId, physicalStock: 0, reservedStock: 0, availableStock: 0 };
+          stocksMap[key].reservedStock += unremitted;
+        }
+      });
+
+      const finalStocksList: any[] = Object.keys(stocksMap).map(key => {
+        const item = stocksMap[key];
+        return {
+          id: key,
+          productId: item.productId,
+          warehouseId: item.warehouseId,
+          physicalStock: item.physicalStock,
+          reservedStock: item.reservedStock,
+          availableStock: item.physicalStock - item.reservedStock,
+          lastUpdated: Date.now()
+        };
+      });
+
+      await setDbData('warehouse_stocks', finalStocksList);
+      res.json({ success: true, data: finalStocksList });
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
