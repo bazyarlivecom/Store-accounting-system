@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { Lock, User as UserIcon, LogIn, AlertCircle, KeyRound, Zap } from 'lucide-react';
 import FastProductCreateModal from '../components/products/FastProductCreateModal';
+import SystemChecklist from '../components/admin/SystemChecklist';
 import { addProduct } from '../services/dataService';
 
 interface AuthContextType {
@@ -146,8 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   if (!user) {
      return (
-       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 bg-gradient-to-br from-indigo-50 to-emerald-50" dir="rtl">
-          <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-white relative overflow-hidden">
+       <div className="min-h-screen flex flex-col lg:flex-row items-center justify-center gap-8 bg-gray-50 bg-gradient-to-br from-indigo-50 to-emerald-50 p-4" dir="rtl">
+          <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-white relative overflow-hidden shrink-0">
              <div className="absolute -top-10 -left-10 w-40 h-40 bg-indigo-100 rounded-full blur-3xl opacity-50"></div>
              <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-100 rounded-full blur-3xl opacity-50"></div>
              
@@ -214,6 +215,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     </button>
                  </div>
              </div>
+          </div>
+          <div className="w-full max-w-3xl h-[90vh] overflow-y-auto flex flex-col bg-white rounded-3xl shadow-xl border border-white custom-scrollbar hidden lg:flex">
+             <SystemChecklist />
           </div>
           <FastProductCreateModal
             isOpen={isFastProductModalOpen}

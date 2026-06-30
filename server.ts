@@ -18,10 +18,24 @@ let pgClient: Client | null = null;
 let usePg = false;
 const DB_CONFIG_FILE = path.join(process.cwd(), 'db_config.json');
 
+const KNOWN_TABLES = [
+  'users', 'company_profile', 'financial_years', 'person_groups', 'person_roles',
+  'accounts', 'cashboxes', 'warehouses', 'product_categories', 'products',
+  'transactions', 'invoices', 'accounting_documents', 'checkbooks',
+  'warehouse_stocks', 'stocktakings', 'person_follow_ups', 'loans',
+  'ledger_accounts', 'installments', 'sms_messages', 'person_opening_balances',
+  'persons', 'system_logs', 'database_logs', 'backupConfig'
+];
+
+
 async function getDbData(key: string) {
   if (usePg && pgClient) {
-    const res = await pgClient.query('SELECT value FROM store WHERE key = $1', [key]);
-    return res.rows.length > 0 ? JSON.parse(res.rows[0].value) : null;
+    if (!KNOWN_TABLES.includes(key)) return null;
+    const res = await pgClient.query(`SELECT data FROM "${key}"`);
+    if (key === 'company_profile' || key === 'backupConfig') {
+      return res.rows.length > 0 ? res.rows[0].data : null;
+    }
+    return res.rows.map(r => r.data);
   } else {
     const row = db.prepare('SELECT value FROM store WHERE key = ?').get(key) as any;
     return row ? JSON.parse(row.value) : null;
@@ -29,18 +43,37 @@ async function getDbData(key: string) {
 }
 
 async function setDbData(key: string, data: any) {
-  const value = JSON.stringify(data);
   if (usePg && pgClient) {
-    await pgClient.query('INSERT INTO store (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, value]);
+    if (!KNOWN_TABLES.includes(key)) return;
+    await pgClient.query('BEGIN');
+    await pgClient.query(`TRUNCATE TABLE "${key}"`);
+    if (key === 'company_profile' || key === 'backupConfig' || !Array.isArray(data)) {
+      await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2)`, ['singleton', JSON.stringify(data)]);
+    } else {
+      for (const item of data) {
+         const id = item.id ? String(item.id) : Math.random().toString(36).substring(2, 15);
+         await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2)`, [id, JSON.stringify(item)]);
+      }
+    }
+    await pgClient.query('COMMIT');
   } else {
+    const value = JSON.stringify(data);
     db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
   }
 }
 
 async function getAllDbData() {
   if (usePg && pgClient) {
-    const res = await pgClient.query('SELECT key, value FROM store');
-    return res.rows.map(r => ({ key: r.key, value: r.value }));
+    const allData = [];
+    for (const key of KNOWN_TABLES) {
+       const res = await pgClient.query(`SELECT data FROM "${key}"`);
+       if (key === 'company_profile' || key === 'backupConfig') {
+         allData.push({ key, value: res.rows.length > 0 ? res.rows[0].data : null });
+       } else {
+         allData.push({ key, value: res.rows.map(r => r.data) });
+       }
+    }
+    return allData;
   } else {
     return db.prepare('SELECT key, value FROM store').all() as any[];
   }
@@ -57,7 +90,12 @@ async function initDB() {
       console.log('Connected to PostgreSQL');
     }
   } catch (e) {
-    // Config file doesn't exist or is invalid
+    if (process.env.DATABASE_URL) {
+      pgClient = new Client({ connectionString: process.env.DATABASE_URL });
+      await pgClient.connect();
+      usePg = true;
+      console.log('Connected to PostgreSQL from env DATABASE_URL');
+    }
   }
 
   db = new DatabaseSync(SQLITE_FILE);
@@ -68,22 +106,51 @@ async function initDB() {
     )
   `);
 
-  // Migrate JSON to SQLite if exists
-  try {
-    const raw = await fsPromises.readFile(DATA_FILE, 'utf-8');
-    const legacyDB = JSON.parse(raw);
-    const getStmt = db.prepare('SELECT key FROM store WHERE key = ?');
-    const insertStmt = db.prepare('INSERT INTO store (key, value) VALUES (?, ?)');
-    
-    for (const [key, value] of Object.entries(legacyDB)) {
-      const existing = getStmt.get(key);
-      if (!existing) {
-        insertStmt.run(key, JSON.stringify(value));
-      }
+  if (usePg && pgClient) {
+    for (const key of KNOWN_TABLES) {
+      await pgClient.query(`
+        CREATE TABLE IF NOT EXISTS "${key}" (
+          id VARCHAR PRIMARY KEY,
+          data JSONB
+        )
+      `);
     }
-    await fsPromises.rename(DATA_FILE, DATA_FILE + '.bak');
-    console.log('Migrated JSON DB to SQLite');
-  } catch (e) {
+    try {
+      const res = await pgClient.query(`SELECT COUNT(*) as count FROM "users"`);
+      if (parseInt(res.rows[0].count) === 0) {
+        console.log('Migrating from SQLite to Postgres...');
+        const sqliteRows = db.prepare('SELECT key, value FROM store').all();
+        for (const row of sqliteRows) {
+          const key = row.key;
+          if (KNOWN_TABLES.includes(key)) {
+            const data = JSON.parse(row.value);
+            if (key === 'company_profile' || key === 'backupConfig' || !Array.isArray(data)) {
+               await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, ['singleton', JSON.stringify(data)]);
+            } else {
+               for (const item of data) {
+                  const id = item.id ? String(item.id) : Math.random().toString(36).substring(2, 15);
+                  await pgClient.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, [id, JSON.stringify(item)]);
+               }
+            }
+          }
+        }
+        console.log('Migration to Postgres complete');
+      }
+    } catch(e) { console.error('Migration error', e); }
+  } else {
+    try {
+      const raw = await fsPromises.readFile(DATA_FILE, 'utf-8');
+      const legacyDB = JSON.parse(raw);
+      const getStmt = db.prepare('SELECT key FROM store WHERE key = ?');
+      const insertStmt = db.prepare('INSERT INTO store (key, value) VALUES (?, ?)');
+      for (const [key, value] of Object.entries(legacyDB)) {
+        if (!getStmt.get(key)) {
+          insertStmt.run(key, JSON.stringify(value));
+        }
+      }
+      await fsPromises.rename(DATA_FILE, DATA_FILE + '.bak');
+      console.log('Migrated JSON DB to SQLite');
+    } catch (e) {}
   }
 }
 
@@ -99,15 +166,12 @@ async function startServer() {
   const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key-2024';
   const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'super-secret-jwt-refresh-key-2024';
 
-  const getUsers = () => {
-    try {
-      const row = db.prepare('SELECT value FROM store WHERE key = ?').get('users');
-      return row ? JSON.parse(row.value) : [];
-    } catch(e) { return []; }
+  const getUsers = async () => {
+    return (await getDbData('users')) || [];
   };
 
-  const saveUsers = (users) => {
-    db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run('users', JSON.stringify(users));
+  const saveUsers = async (users) => {
+    await setDbData('users', users);
   };
   
   // Custom users endpoint intercepting password saves
@@ -130,12 +194,12 @@ async function startServer() {
 
   app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
-    const users = getUsers();
+    const users = await getUsers();
     
     if (users.length === 0 && username === 'admin' && password === '123') {
        const hashed = await bcrypt.hash('123', 10);
        const admin = { id: 'admin-1', username: 'admin', password: hashed, name: 'مدیر کل', role: 'admin', isActive: true, requires2FA: false };
-       saveUsers([admin]);
+       await saveUsers([admin]);
        users.push(admin);
     }
     
@@ -150,7 +214,7 @@ async function startServer() {
        isMatch = (password === user.password);
        if (isMatch) {
           user.password = await bcrypt.hash(password, 10);
-          saveUsers(users);
+          await saveUsers(users);
        }
     }
     
@@ -159,7 +223,7 @@ async function startServer() {
     if (user.requires2FA) {
        const otp = Math.floor(100000 + Math.random() * 900000).toString();
        user.currentOTP = { code: otp, expiresAt: Date.now() + 5 * 60 * 1000 };
-       saveUsers(users);
+       await saveUsers(users);
        console.log('OTP for ' + username + ' is: ' + otp);
        
        const tempToken = jwt.sign({ username }, JWT_SECRET, { expiresIn: '5m' });
@@ -173,7 +237,7 @@ async function startServer() {
     const { tempToken, otp } = req.body;
     try {
       const decoded = jwt.verify(tempToken, JWT_SECRET);
-      const users = getUsers();
+      const users = await getUsers();
       const user = users.find(u => u.username === decoded.username);
       
       if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
@@ -182,7 +246,7 @@ async function startServer() {
       }
       
       delete user.currentOTP;
-      saveUsers(users);
+      await saveUsers(users);
       
       return finalizeLogin(res, user);
     } catch(err) {
@@ -190,13 +254,13 @@ async function startServer() {
     }
   });
   
-  app.post('/api/auth/refresh', (req, res) => {
+  app.post('/api/auth/refresh', async (req, res) => {
      const token = req.cookies.refreshToken;
      if (!token) return res.status(401).json({ error: 'نیازمند ورود مجدد' });
      
      try {
        const decoded = jwt.verify(token, JWT_REFRESH_SECRET);
-       const users = getUsers();
+       const users = await getUsers();
        const user = users.find(u => u.username === decoded.username);
        if (!user || user.tokenVersion !== decoded.tokenVersion) {
          return res.status(401).json({ error: 'توکن نامعتبر است' });
@@ -231,10 +295,9 @@ async function startServer() {
   // --- Local Backups Logic (Configurable) ---
   let backupConfig = { path: '', intervalHours: 4 };
   try {
-     const getStmt = db.prepare('SELECT value FROM store WHERE key = ?');
-     const row = getStmt.get('backupConfig');
-     if (row && row.value) {
-        Object.assign(backupConfig, JSON.parse(row.value));
+     const backupData = await getDbData('backupConfig');
+     if (backupData) {
+        Object.assign(backupConfig, backupData);
      }
   } catch(e) {}
 
@@ -249,11 +312,10 @@ async function startServer() {
      try {
         const dir = getBackupsDir();
         await fsPromises.mkdir(dir, { recursive: true });
-        const rowsStmt = db.prepare('SELECT key, value FROM store');
-        const rows = rowsStmt.all();
+        const rows = await getAllDbData();
         const backupData = {};
         for (const row of rows) {
-          backupData[row.key] = JSON.parse(row.value);
+          backupData[row.key] = row.value;
         }
         const fileName = `backup-${Date.now()}.json`;
         await fsPromises.writeFile(path.join(dir, fileName), JSON.stringify(backupData));
@@ -275,10 +337,9 @@ async function startServer() {
      backupInterval = setInterval(runBackupJob, backupConfig.intervalHours * 60 * 60 * 1000);
   }
 
-  app.post('/api/db/backup-config', (req, res) => {
+  app.post('/api/db/backup-config', async (req, res) => {
      backupConfig = { ...backupConfig, ...req.body };
-     const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-     insertOrUpdate.run('backupConfig', JSON.stringify(backupConfig));
+     await setDbData('backupConfig', backupConfig);
      if (backupInterval) clearInterval(backupInterval);
      if (backupConfig.intervalHours > 0) {
         backupInterval = setInterval(runBackupJob, backupConfig.intervalHours * 60 * 60 * 1000);
@@ -327,10 +388,24 @@ async function startServer() {
 
   app.get('/api/data/:key', async (req, res) => {
     const { key } = req.params;
+    const { limit, offset } = req.query;
     try {
-      const data = await getDbData(key);
+      let data = await getDbData(key);
+      
+      // Pagination for large collections
+      if (Array.isArray(data) && ['invoices', 'transactions', 'system_logs'].includes(key)) {
+        if (limit) {
+          const limitNum = parseInt(limit as string, 10);
+          const offsetNum = parseInt(offset as string, 10) || 0;
+          
+          // Sort by createdAt descending (if available) or reverse array
+          data = data.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          data = data.slice(offsetNum, offsetNum + limitNum);
+        }
+      }
+      
       res.json(data);
-    } catch (err) {
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
@@ -734,19 +809,29 @@ async function startServer() {
     });
   });
 
-  app.post('/api/db/execute', (req, res) => {
+  app.post('/api/db/execute', async (req, res) => {
     const { query, params } = req.body;
     try {
-      const isSelect = query.trim().toUpperCase().startsWith('SELECT');
-      const stmt = db.prepare(query);
-      if (isSelect) {
-        const results = stmt.all(...(params || []));
-        res.json({ results });
+      if (usePg && pgClient) {
+         const isSelect = query.trim().toUpperCase().startsWith('SELECT');
+         const result = await pgClient.query(query, params || []);
+         if (isSelect) {
+           res.json({ results: result.rows });
+         } else {
+           res.json({ info: { changes: result.rowCount } });
+         }
       } else {
-        const info = stmt.run(...(params || []));
-        res.json({ info });
+        const isSelect = query.trim().toUpperCase().startsWith('SELECT');
+        const stmt = db.prepare(query);
+        if (isSelect) {
+          const results = stmt.all(...(params || []));
+          res.json({ results });
+        } else {
+          const info = stmt.run(...(params || []));
+          res.json({ info });
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
@@ -825,24 +910,36 @@ async function startServer() {
         migrationState.total = allRows.length;
         migrationState.logs.push(`تعداد ${migrationState.total} جدول/مجموعه داده در SQLite یافت شد.`);
         
-        migrationState.logs.push('بررسی و ایجاد جدول store در PostgreSQL...');
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS store (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-          )
-        `);
+        migrationState.logs.push('بررسی و ایجاد جدول‌ها در PostgreSQL...');
+        for (const table of KNOWN_TABLES) {
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS "${table}" (
+              id VARCHAR PRIMARY KEY,
+              data JSONB
+            )
+          `);
+        }
         
         migrationState.logs.push('شروع Transaction برای اطمینان از صحت داده‌ها...');
         await client.query('BEGIN');
         
         let count = 0;
         for (const row of allRows) {
+          if (!KNOWN_TABLES.includes(row.key)) continue;
           migrationState.logs.push(`در حال انتقال داده‌های مربوط به: ${row.key}...`);
-          await client.query(
-            'INSERT INTO store (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            [row.key, row.value]
-          );
+          
+          const key = row.key;
+          const data = JSON.parse(row.value);
+          
+          if (key === 'company_profile' || key === 'backupConfig' || !Array.isArray(data)) {
+             await client.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, ['singleton', JSON.stringify(data)]);
+          } else {
+             for (const item of data) {
+                const id = item.id ? String(item.id) : Math.random().toString(36).substring(2, 15);
+                await client.query(`INSERT INTO "${key}" (id, data) VALUES ($1, $2) ON CONFLICT(id) DO NOTHING`, [id, JSON.stringify(item)]);
+             }
+          }
+          
           count++;
           migrationState.progress = count;
           // Small delay for UI demonstration of progress

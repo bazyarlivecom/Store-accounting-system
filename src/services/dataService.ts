@@ -12,19 +12,47 @@ export interface CompanySettings {
   theme?: string;
 }
 
-const getLocalData = async <T>(key: string, defaultValue: T, retries = 3): Promise<T> => {
+const cache: Record<string, { data: any, timestamp: number }> = {};
+const CACHE_DURATION = 60000; // 1 minute
+const CACHEABLE_KEYS = ['company_profile', 'warehouses', 'financial_years', 'product_categories', 'person_groups'];
+
+const getLocalData = async <T>(key: string, defaultValue: T, queryParams: Record<string, string | number> = {}, retries = 3): Promise<T> => {
+  const qs = new URLSearchParams(Object.entries(queryParams).map(([k, v]) => [k, String(v)])).toString();
+  const url = qs ? `/api/data/${key}?${qs}` : `/api/data/${key}`;
+  
+  if (CACHEABLE_KEYS.includes(key) && !qs) {
+    const cached = cache[key];
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      return cached.data;
+    }
+  }
+
   try {
-    const res = await fetch(`/api/data/${key}`);
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Network response was not ok');
     const data = await res.json();
-    return data !== null ? data : defaultValue;
+    const finalData = data !== null ? data : defaultValue;
+    
+    if (CACHEABLE_KEYS.includes(key) && !qs) {
+      cache[key] = { data: finalData, timestamp: Date.now() };
+    }
+    return finalData;
   } catch (error) {
     if (retries > 0) {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      return getLocalData(key, defaultValue, retries - 1);
+      return getLocalData(key, defaultValue, queryParams, retries - 1);
     }
     console.error(`Error reading ${key} from API`, error);
+    if (CACHEABLE_KEYS.includes(key) && cache[key]) {
+       return cache[key].data;
+    }
     return defaultValue;
+  }
+};
+
+const invalidateCache = (key: string) => {
+  if (cache[key]) {
+    delete cache[key];
   }
 };
 
@@ -81,6 +109,7 @@ export const appendLocalData = async <T>(key: string, data: T): Promise<T> => {
     body: JSON.stringify(data)
   });
   if (!res.ok) throw new Error('Network response was not ok');
+  invalidateCache(key);
   const result = await res.json();
   return result.data;
 };
@@ -92,6 +121,7 @@ export const batchLocalData = async (operations: any[]): Promise<any> => {
     body: JSON.stringify({ operations })
   });
   if (!res.ok) throw new Error('Network response was not ok');
+  operations.forEach(op => invalidateCache(op.key));
   return await res.json();
 };
 
@@ -102,6 +132,7 @@ export const updateLocalData = async <T>(key: string, id: string | number, data:
     body: JSON.stringify(data)
   });
   if (!res.ok) throw new Error('Network response was not ok');
+  invalidateCache(key);
   const result = await res.json();
   return result.data;
 };
@@ -114,6 +145,7 @@ const saveLocalData = async <T>(key: string, data: T, retries = 3): Promise<void
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Network response was not ok');
+    invalidateCache(key);
   } catch (error) {
     if (retries > 0) {
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -304,38 +336,18 @@ export const getUsers = async () => {
 };
 
 export const addUser = async (user: any) => {
-  const users = await getLocalData<any[]>('users', []);
   const now = Date.now();
   const newUser = { ...user, id: generateId(), createdAt: now, updatedAt: now };
-  users.push(newUser);
-  await saveLocalData('users', users);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'User'.toUpperCase(), 'ثبت رکورد جدید در users', 'User', newUser.id);
-  }
-
+  await appendLocalData('users', newUser);
   return newUser;
 };
 
 export const updateUser = async (id: string, user: any) => {
-  const users = await getLocalData<any[]>('users', []);
-  const index = users.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    users[index] = { ...users[index], ...user, updatedAt: Date.now() };
-    await saveLocalData('users', users);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'User'.toUpperCase(), 'ویرایش رکورد در users', 'User', users[index].id);
-  }
-
-    return users[index];
-  }
-  return null;
+  return await updateLocalData('users', id, { ...user, updatedAt: Date.now() });
 };
 
 export const deleteUser = async (id: string) => {
-  const users = await getLocalData<any[]>('users', []);
-  await saveLocalData('users', users.filter((p: any) => String(p.id) !== String(id)));
+  await batchLocalData([{ type: 'delete', key: 'users', id }]);
 };
 
 // Person Groups
@@ -345,38 +357,18 @@ export const getPersonGroups = async () => {
 };
 
 export const addPersonGroup = async (group: any) => {
-  const groups = await getLocalData<any[]>('person_groups', []);
   const now = Date.now();
   const newGroup = { ...group, id: generateId(), createdAt: now, updatedAt: now };
-  groups.push(newGroup);
-  await saveLocalData('person_groups', groups);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'PersonGroup'.toUpperCase(), 'ثبت رکورد جدید در person_groups', 'PersonGroup', newGroup.id);
-  }
-
+  await appendLocalData('person_groups', newGroup);
   return newGroup;
 };
 
 export const updatePersonGroup = async (id: string, group: any) => {
-  const groups = await getLocalData<any[]>('person_groups', []);
-  const index = groups.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    groups[index] = { ...groups[index], ...group, updatedAt: Date.now() };
-    await saveLocalData('person_groups', groups);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'PersonGroup'.toUpperCase(), 'ویرایش رکورد در person_groups', 'PersonGroup', groups[index].id);
-  }
-
-    return groups[index];
-  }
-  return null;
+  return await updateLocalData('person_groups', id, { ...group, updatedAt: Date.now() });
 };
 
 export const deletePersonGroup = async (id: string) => {
-  const groups = await getLocalData<any[]>('person_groups', []);
-  await saveLocalData('person_groups', groups.filter((p: any) => String(p.id) !== String(id)));
+  await batchLocalData([{ type: 'delete', key: 'person_groups', id }]);
 };
 
 // Person Roles
@@ -396,38 +388,18 @@ export const getPersonRoles = async () => {
 };
 
 export const addPersonRole = async (role: any) => {
-  const roles = await getLocalData<any[]>('person_roles', []);
   const now = Date.now();
   const newRole = { ...role, id: generateId(), createdAt: now, updatedAt: now };
-  roles.push(newRole);
-  await saveLocalData('person_roles', roles);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'PersonRole'.toUpperCase(), 'ثبت رکورد جدید در person_roles', 'PersonRole', newRole.id);
-  }
-
+  await appendLocalData('person_roles', newRole);
   return newRole;
 };
 
 export const updatePersonRole = async (id: string, role: any) => {
-  const roles = await getLocalData<any[]>('person_roles', []);
-  const index = roles.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    roles[index] = { ...roles[index], ...role, updatedAt: Date.now() };
-    await saveLocalData('person_roles', roles);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'PersonRole'.toUpperCase(), 'ویرایش رکورد در person_roles', 'PersonRole', roles[index].id);
-  }
-
-    return roles[index];
-  }
-  return null;
+  return await updateLocalData('person_roles', id, { ...role, updatedAt: Date.now() });
 };
 
 export const deletePersonRole = async (id: string) => {
-  const roles = await getLocalData<any[]>('person_roles', []);
-  await saveLocalData('person_roles', roles.filter((p: any) => String(p.id) !== String(id)));
+  await batchLocalData([{ type: 'delete', key: 'person_roles', id }]);
 };
 
 // Persons
@@ -658,42 +630,26 @@ export const getAccounts = async () => {
 };
 
 export const addAccount = async (account: any) => {
-  const accounts = await getLocalData<any[]>('accounts', []);
   const now = Date.now();
   let finalAccountingCode = await ensureLedgerAccount(account, '11', '1102', 'بانک‌ها', account.bankName + ' - ' + (account.branchName || ''), 'debit');
   const newAccount = { ...account, accountingCode: finalAccountingCode, id: generateId(), createdAt: now, updatedAt: now };
-  accounts.push(newAccount);
-  await saveLocalData('accounts', accounts);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'Account'.toUpperCase(), 'ثبت رکورد جدید در accounts', 'Account', newAccount.id);
-  }
-
+  await appendLocalData('accounts', newAccount);
   return newAccount;
 };
 
 export const updateAccount = async (id: string, account: any) => {
   const accounts = await getLocalData<any[]>('accounts', []);
-  const index = accounts.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    const oldAccount = accounts[index];
+  const oldAccount = accounts.find((p: any) => String(p.id) === String(id));
+  if (oldAccount) {
     const mergedAccount = { ...oldAccount, ...account };
     let finalAccountingCode = await ensureLedgerAccount(mergedAccount, '11', '1102', 'بانک‌ها', mergedAccount.bankName + ' - ' + (mergedAccount.branchName || ''), 'debit');
-    accounts[index] = { ...mergedAccount, accountingCode: finalAccountingCode, updatedAt: Date.now() };
-    await saveLocalData('accounts', accounts);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'Account'.toUpperCase(), 'ویرایش رکورد در accounts', 'Account', accounts[index].id);
-  }
-
-    return accounts[index];
+    return await updateLocalData('accounts', id, { ...mergedAccount, accountingCode: finalAccountingCode, updatedAt: Date.now() });
   }
   return null;
 };
 
 export const deleteAccount = async (id: string) => {
-  const accounts = await getLocalData<any[]>('accounts', []);
-  await saveLocalData('accounts', accounts.filter((p: any) => String(p.id) !== String(id)));
+  await batchLocalData([{ type: 'delete', key: 'accounts', id }]);
 };
 
 // Cashboxes
@@ -720,42 +676,26 @@ export const getCashboxes = async () => {
 };
 
 export const addCashbox = async (cashbox: any) => {
-  const cashboxes = await getLocalData<any[]>('cashboxes', []);
   const now = Date.now();
   let finalAccountingCode = await ensureLedgerAccount(cashbox, '11', '1101', 'صندوق‌ها', cashbox.name, 'debit');
   const newCashbox = { ...cashbox, accountingCode: finalAccountingCode, id: generateId(), createdAt: now, updatedAt: now };
-  cashboxes.push(newCashbox);
-  await saveLocalData('cashboxes', cashboxes);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'Cashbox'.toUpperCase(), 'ثبت رکورد جدید در cashboxes', 'Cashbox', newCashbox.id);
-  }
-
+  await appendLocalData('cashboxes', newCashbox);
   return newCashbox;
 };
 
 export const updateCashbox = async (id: string, cashbox: any) => {
   const cashboxes = await getLocalData<any[]>('cashboxes', []);
-  const index = cashboxes.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    const oldCashbox = cashboxes[index];
+  const oldCashbox = cashboxes.find((p: any) => String(p.id) === String(id));
+  if (oldCashbox) {
     const mergedCashbox = { ...oldCashbox, ...cashbox };
     let finalAccountingCode = await ensureLedgerAccount(mergedCashbox, '11', '1101', 'صندوق‌ها', mergedCashbox.name, 'debit');
-    cashboxes[index] = { ...mergedCashbox, accountingCode: finalAccountingCode, updatedAt: Date.now() };
-    await saveLocalData('cashboxes', cashboxes);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'Cashbox'.toUpperCase(), 'ویرایش رکورد در cashboxes', 'Cashbox', cashboxes[index].id);
-  }
-
-    return cashboxes[index];
+    return await updateLocalData('cashboxes', id, { ...mergedCashbox, accountingCode: finalAccountingCode, updatedAt: Date.now() });
   }
   return null;
 };
 
 export const deleteCashbox = async (id: string) => {
-  const cashboxes = await getLocalData<any[]>('cashboxes', []);
-  await saveLocalData('cashboxes', cashboxes.filter((p: any) => String(p.id) !== String(id)));
+  await batchLocalData([{ type: 'delete', key: 'cashboxes', id }]);
 };
 
 // Warehouses
@@ -765,33 +705,14 @@ export const getWarehouses = async () => {
 };
 
 export const addWarehouse = async (warehouse: any) => {
-  const warehouses = await getLocalData<any[]>('warehouses', []);
   const now = Date.now();
   const newWarehouse = { ...warehouse, id: generateId(), createdAt: now, updatedAt: now };
-  warehouses.push(newWarehouse);
-  await saveLocalData('warehouses', warehouses);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'Warehouse'.toUpperCase(), 'ثبت رکورد جدید در warehouses', 'Warehouse', newWarehouse.id);
-  }
-
+  await appendLocalData('warehouses', newWarehouse);
   return newWarehouse;
 };
 
 export const updateWarehouse = async (id: string, warehouse: any) => {
-  const warehouses = await getLocalData<any[]>('warehouses', []);
-  const index = warehouses.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    warehouses[index] = { ...warehouses[index], ...warehouse, updatedAt: Date.now() };
-    await saveLocalData('warehouses', warehouses);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'Warehouse'.toUpperCase(), 'ویرایش رکورد در warehouses', 'Warehouse', warehouses[index].id);
-  }
-
-    return warehouses[index];
-  }
-  return null;
+  return await updateLocalData('warehouses', id, { ...warehouse, updatedAt: Date.now() });
 };
 
 export const deleteWarehouse = async (id: string) => {
@@ -799,12 +720,7 @@ export const deleteWarehouse = async (id: string) => {
   if (invoices.some(inv => String(inv.warehouseId) === String(id))) {
      throw new Error('این انبار در اسناد یا فاکتورها استفاده شده است و قابل حذف نیست.');
   }
-  const warehouses = await getLocalData<any[]>('warehouses', []);
-  const index = warehouses.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    warehouses[index].isDeleted = true;
-    await saveLocalData('warehouses', warehouses);
-  }
+  await batchLocalData([{ type: 'delete', key: 'warehouses', id }]);
 };
 
 // Product Categories
@@ -831,35 +747,16 @@ export const addProductCategory = async (category: any) => {
   const catCode = (maxCatCode + 1).toString().padStart(2, '0');
 
   const newCategory = { ...category, code: catCode, id: generateId(), createdAt: now, updatedAt: now };
-  categories.push(newCategory);
-  await saveLocalData('product_categories', categories);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'ProductCategory'.toUpperCase(), 'ثبت رکورد جدید در product_categories', 'ProductCategory', newCategory.id);
-  }
-
+  await appendLocalData('product_categories', newCategory);
   return newCategory;
 };
 
 export const updateProductCategory = async (id: string, category: any) => {
-  const categories = await getLocalData<any[]>('product_categories', []);
-  const index = categories.findIndex((p: any) => String(p.id) === String(id));
-  if (index !== -1) {
-    categories[index] = { ...categories[index], ...category, updatedAt: Date.now() };
-    await saveLocalData('product_categories', categories);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('UPDATE_' + 'ProductCategory'.toUpperCase(), 'ویرایش رکورد در product_categories', 'ProductCategory', categories[index].id);
-  }
-
-    return categories[index];
-  }
-  return null;
+  return await updateLocalData('product_categories', id, { ...category, updatedAt: Date.now() });
 };
 
 export const deleteProductCategory = async (id: string) => {
-  const categories = await getLocalData<any[]>('product_categories', []);
-  await saveLocalData('product_categories', categories.filter((p: any) => String(p.id) !== String(id)));
+  await batchLocalData([{ type: 'delete', key: 'product_categories', id }]);
 };
 
 // Products
@@ -986,13 +883,12 @@ export const deleteProduct = async (id: string) => {
 
 // Transactions
 export const getTransactions = async () => {
-  const transactions = await getLocalData<any[]>('transactions', []);
+  const transactions = await getLocalData<any[]>('transactions', [], { limit: 50 });
   return transactions.filter(t => !t.isDeleted).sort((a, b) => b.createdAt - a.createdAt);
 };
 
 export const addTransaction = async (transaction: any) => {
   if (transaction.date) await checkFinancialYear(transaction.date);
-  const transactions = await getLocalData<any[]>('transactions', []);
   const now = Date.now();
   
   let finalTx = { ...transaction };
@@ -1004,6 +900,7 @@ export const addTransaction = async (transaction: any) => {
   }
 
   const newTransaction = { ...finalTx, id: generateId(), createdAt: now, updatedAt: now };
+  const operations: any[] = [];
 
   if (transaction.type === 'receive' || transaction.type === 'pay' || transaction.type === 'salary') {
     const amount = Number(transaction.amount) || 0;
@@ -1011,33 +908,31 @@ export const addTransaction = async (transaction: any) => {
       const accounts = await getLocalData<any[]>('accounts', []);
       const index = accounts.findIndex(a => a.id === transaction.resourceId);
       if (index !== -1) {
+        let newBalance = accounts[index].balance;
         if (transaction.type === 'receive') {
-          accounts[index].balance += amount;
+          newBalance += amount;
         } else {
-          accounts[index].balance -= amount;
+          newBalance -= amount;
         }
-        await updateLocalData('accounts', accounts[index].id, accounts[index]);
-  
-  if (typeof addSystemLog !== 'undefined') {
-    await addSystemLog('ADD_' + 'Transaction'.toUpperCase(), 'ثبت رکورد جدید در accounts', 'Transaction', newTransaction.id);
-  }
-
+        operations.push({ type: 'update', key: 'accounts', id: accounts[index].id, data: { balance: newBalance } });
       }
     } else if (transaction.resourceType === 'cashbox') {
       const cashboxes = await getLocalData<any[]>('cashboxes', []);
       const index = cashboxes.findIndex(c => c.id === transaction.resourceId);
       if (index !== -1) {
+        let newBalance = cashboxes[index].balance;
         if (transaction.type === 'receive') {
-          cashboxes[index].balance += amount;
+          newBalance += amount;
         } else {
-          cashboxes[index].balance -= amount;
+          newBalance -= amount;
         }
-        await updateLocalData('cashboxes', cashboxes[index].id, cashboxes[index]);
+        operations.push({ type: 'update', key: 'cashboxes', id: cashboxes[index].id, data: { balance: newBalance } });
       }
     }
   }
 
-  await appendLocalData('transactions', newTransaction);
+  operations.push({ type: 'append', key: 'transactions', data: newTransaction });
+  await batchLocalData(operations);
 
   // Auto-generate basic accounting document
   try {
@@ -1126,41 +1021,46 @@ export const deleteTransaction = async (id: string) => {
   const transactions = await getLocalData<any[]>('transactions', []);
   const t = transactions.find(tx => String(tx.id) === String(id));
   if (t) {
+    const operations: any[] = [];
     const amount = Number(t.amount) || 0;
     if (t.resourceType === 'bank') {
       const accounts = await getLocalData<any[]>('accounts', []);
       const index = accounts.findIndex(a => a.id === t.resourceId);
       if (index !== -1) {
+        let newBalance = accounts[index].balance;
         if (t.type === 'receive') {
-          accounts[index].balance -= amount;
+          newBalance -= amount;
         } else {
-          accounts[index].balance += amount;
+          newBalance += amount;
         }
-        await updateLocalData('accounts', accounts[index].id, accounts[index]);
+        operations.push({ type: 'update', key: 'accounts', id: accounts[index].id, data: { balance: newBalance } });
       }
     } else if (t.resourceType === 'cashbox') {
       const cashboxes = await getLocalData<any[]>('cashboxes', []);
       const index = cashboxes.findIndex(c => c.id === t.resourceId);
       if (index !== -1) {
+        let newBalance = cashboxes[index].balance;
         if (t.type === 'receive') {
-          cashboxes[index].balance -= amount;
+          newBalance -= amount;
         } else {
-          cashboxes[index].balance += amount;
+          newBalance += amount;
         }
-        await updateLocalData('cashboxes', cashboxes[index].id, cashboxes[index]);
+        operations.push({ type: 'update', key: 'cashboxes', id: cashboxes[index].id, data: { balance: newBalance } });
       }
     }
     const index = transactions.findIndex((p: any) => String(p.id) === String(id));
     if (index !== -1) {
-      transactions[index].isDeleted = true;
-      await updateLocalData('transactions', id, transactions[index]);
+      operations.push({ type: 'delete', key: 'transactions', id: id });
+    }
+    if (operations.length > 0) {
+      await batchLocalData(operations);
     }
   }
 };
 
 // Invoices
 export const getInvoices = async () => {
-  const invoices = await getLocalData<any[]>('invoices', []);
+  const invoices = await getLocalData<any[]>('invoices', [], { limit: 50 });
   return invoices.filter(inv => !inv.isDeleted).sort((a, b) => b.createdAt - a.createdAt);
 };
 
@@ -1706,7 +1606,7 @@ export const getInstallments = async () => getLocalData<any[]>('installments', [
 export const saveInstallments = async (groups: any[]) => saveLocalData('installments', groups);
 
 export const getSystemLogs = async () => {
-  const logs = await getLocalData('system_logs', []);
+  const logs = await getLocalData('system_logs', [], { limit: 50 });
   return logs.sort((a, b) => b.timestamp - a.timestamp);
 };
 
