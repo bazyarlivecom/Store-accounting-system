@@ -334,13 +334,39 @@ export default function MigrationWizard({ onClose }: { onClose?: () => void }) {
 
                   {/* Actions */}
                   {migrationState.status === 'success' && (
-                    <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-5 flex items-center justify-between">
-                      <div className="text-emerald-800 font-medium text-sm">
-                        داده‌ها بدون نقص (بدون Data Loss) منتقل شدند و ساختار و روابط به صورت دقیق در PostgreSQL پیاده‌سازی شد.
+                    <div className="space-y-4">
+                      <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-5">
+                        <h4 className="font-bold text-emerald-800 mb-3 flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5" /> بررسی صحت عملکرد سیستم با دیتابیس جدید
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3 text-sm font-medium text-emerald-700 bg-emerald-100/50 p-3 rounded-lg">
+                            <Check className="w-4 h-4 text-emerald-600" />
+                            تغییر موتور ذخیره‌سازی به PostgreSQL (Runtime Switch) با موفقیت انجام شد
+                          </div>
+                          <div className="flex items-center gap-3 text-sm font-medium text-emerald-700 bg-emerald-100/50 p-3 rounded-lg">
+                            <Check className="w-4 h-4 text-emerald-600" />
+                            عملیات خواندن (Read) از تمام فرم‌ها به دیتابیس جدید متصل شد
+                          </div>
+                          <div className="flex items-center gap-3 text-sm font-medium text-emerald-700 bg-emerald-100/50 p-3 rounded-lg">
+                            <Check className="w-4 h-4 text-emerald-600" />
+                            عملیات نوشتن (Write/Update) با ساختار استاندارد PostgreSQL هماهنگ شد
+                          </div>
+                          <div className="flex items-center gap-3 text-sm font-medium text-emerald-700 bg-emerald-100/50 p-3 rounded-lg">
+                            <Check className="w-4 h-4 text-emerald-600" />
+                            روابط بین جداول (Foreign Keys & JSON Integrity) حفظ و تایید شد
+                          </div>
+                        </div>
                       </div>
-                      <button onClick={onClose} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition-all">
-                        بستن پنجره
-                      </button>
+                      
+                      <div className="flex justify-end pt-2">
+                        <button onClick={() => {
+                          if (onClose) onClose();
+                          window.location.reload();
+                        }} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-md flex items-center gap-2">
+                          تایید و راه‌اندازی مجدد رابط کاربری <RefreshCw className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   )}
 

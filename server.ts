@@ -13,9 +13,53 @@ import cookieParser from 'cookie-parser';
 const DATA_FILE = path.join(process.cwd(), 'database.json');
 const SQLITE_FILE = path.join(process.cwd(), 'database.sqlite');
 
-let db;
+let db: any;
+let pgClient: Client | null = null;
+let usePg = false;
+const DB_CONFIG_FILE = path.join(process.cwd(), 'db_config.json');
+
+async function getDbData(key: string) {
+  if (usePg && pgClient) {
+    const res = await pgClient.query('SELECT value FROM store WHERE key = $1', [key]);
+    return res.rows.length > 0 ? JSON.parse(res.rows[0].value) : null;
+  } else {
+    const row = db.prepare('SELECT value FROM store WHERE key = ?').get(key) as any;
+    return row ? JSON.parse(row.value) : null;
+  }
+}
+
+async function setDbData(key: string, data: any) {
+  const value = JSON.stringify(data);
+  if (usePg && pgClient) {
+    await pgClient.query('INSERT INTO store (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, value]);
+  } else {
+    db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+  }
+}
+
+async function getAllDbData() {
+  if (usePg && pgClient) {
+    const res = await pgClient.query('SELECT key, value FROM store');
+    return res.rows.map(r => ({ key: r.key, value: r.value }));
+  } else {
+    return db.prepare('SELECT key, value FROM store').all() as any[];
+  }
+}
 
 async function initDB() {
+  try {
+    const configRaw = await fsPromises.readFile(DB_CONFIG_FILE, 'utf-8');
+    const config = JSON.parse(configRaw);
+    if (config.engine === 'postgres' && config.connectionString) {
+      pgClient = new Client({ connectionString: config.connectionString });
+      await pgClient.connect();
+      usePg = true;
+      console.log('Connected to PostgreSQL');
+    }
+  } catch (e) {
+    // Config file doesn't exist or is invalid
+  }
+
   db = new DatabaseSync(SQLITE_FILE);
   db.exec(`
     CREATE TABLE IF NOT EXISTS store (
@@ -284,13 +328,8 @@ async function startServer() {
   app.get('/api/data/:key', async (req, res) => {
     const { key } = req.params;
     try {
-      const getStmt = db.prepare('SELECT value FROM store WHERE key = ?');
-      const row = getStmt.get(key);
-      if (row) {
-        res.json(JSON.parse(row.value));
-      } else {
-        res.json(null);
-      }
+      const data = await getDbData(key);
+      res.json(data);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -303,9 +342,7 @@ async function startServer() {
     // Do not log changes to system_logs themselves
     if (key !== 'system_logs' && Array.isArray(data)) {
       try {
-         const getStmt = db.prepare('SELECT value FROM store WHERE key = ?');
-         const oldRow = getStmt.get(key);
-         const oldData = oldRow ? JSON.parse(oldRow.value) : [];
+         const oldData = (await getDbData(key)) || [];
 
          if (Array.isArray(oldData)) {
             const oldMap = new Map();
@@ -321,13 +358,13 @@ async function startServer() {
             // Extract token if any
             if (req.cookies && req.cookies.refreshToken) {
                try {
-                 const decoded = jwt.verify(req.cookies.refreshToken, process.env.JWT_REFRESH_SECRET || 'super-secret-jwt-refresh-key-2024');
+                 const decoded = jwt.verify(req.cookies.refreshToken, process.env.JWT_REFRESH_SECRET || 'super-secret-jwt-refresh-key-2024') as any;
                  if (decoded && decoded.username) userId = decoded.username;
                } catch(e) {}
             } else if (req.headers.authorization) {
                try {
                  const token = req.headers.authorization.split(' ')[1];
-                 const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super-secret-jwt-key-2024');
+                 const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super-secret-jwt-key-2024') as any;
                  if (decoded && decoded.username) userId = decoded.username;
                } catch(e) {}
             }
@@ -340,7 +377,7 @@ async function startServer() {
                   logs.push({ id: generateId(), action: 'CREATE', userId, details: 'ایجاد رکورد جدید', entityType: key, entityId: id, changes: JSON.stringify(newItem), timestamp });
                } else {
                   const oldItem = oldMap.get(id);
-                  const changes = {};
+                  const changes: any = {};
                   let hasChanges = false;
                   for (const k in newItem) {
                      if (k !== 'updatedAt' && k !== 'createdAt') {
@@ -364,11 +401,9 @@ async function startServer() {
             });
 
             if (logs.length > 0) {
-               const sysLogsRow = getStmt.get('system_logs');
-               const sysLogs = sysLogsRow ? JSON.parse(sysLogsRow.value) : [];
+               const sysLogs = (await getDbData('system_logs')) || [];
                sysLogs.push(...logs);
-               const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-               insertOrUpdate.run('system_logs', JSON.stringify(sysLogs));
+               await setDbData('system_logs', sysLogs);
             }
          }
       } catch(err) {
@@ -377,8 +412,7 @@ async function startServer() {
     }
 
     try {
-      const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-      insertOrUpdate.run(key, JSON.stringify(data));
+      await setDbData(key, data);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -389,12 +423,17 @@ async function startServer() {
     try {
       let totalSize = 0;
       try {
-        const stats = await fsPromises.stat(SQLITE_FILE);
-        totalSize = stats.size;
+        if (!usePg) {
+           const stats = await fsPromises.stat(SQLITE_FILE);
+           totalSize = stats.size;
+        } else {
+           // mock size for PG or fetch from pg_database size
+           const res = await pgClient.query('SELECT pg_database_size(current_database()) as size');
+           if (res.rows.length > 0) totalSize = parseInt(res.rows[0].size, 10);
+        }
       } catch(e) {}
       
-      const rowsStmt = db.prepare('SELECT key, value FROM store');
-      const rows = rowsStmt.all();
+      const rows = await getAllDbData();
       const collections = [];
       
       for (const row of rows) {
@@ -412,9 +451,8 @@ async function startServer() {
 
   app.get('/api/db/backup', async (req, res) => {
     try {
-      const rowsStmt = db.prepare('SELECT key, value FROM store');
-      const rows = rowsStmt.all();
-      const backupData = {};
+      const rows = await getAllDbData();
+      const backupData: any = {};
       for (const row of rows) {
         backupData[row.key] = JSON.parse(row.value);
       }
@@ -431,9 +469,8 @@ async function startServer() {
   app.post('/api/db/restore', async (req, res) => {
     try {
       const parsed = req.body;
-      const insertOrUpdate = db.prepare('INSERT INTO store (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
       for (const [key, value] of Object.entries(parsed)) {
-        insertOrUpdate.run(key, JSON.stringify(value));
+        await setDbData(key, value);
       }
       res.json({ success: true });
     } catch (err) {
@@ -611,6 +648,19 @@ async function startServer() {
         
         migrationState.logs.push('پایان تراکنش و ثبت دائمی اطلاعات (Commit)...');
         await client.query('COMMIT');
+        
+        migrationState.logs.push('به‌روزرسانی تنظیمات سیستم برای استفاده از PostgreSQL...');
+        const config = { engine: 'postgres', connectionString };
+        await fsPromises.writeFile(DB_CONFIG_FILE, JSON.stringify(config, null, 2));
+        
+        // Switch live runtime to PostgreSQL
+        if (pgClient) {
+           try { await pgClient.end(); } catch(e){}
+        }
+        pgClient = new Client({ connectionString });
+        await pgClient.connect();
+        usePg = true;
+        
         migrationState.logs.push('مهاجرت اطلاعات با موفقیت به پایان رسید.');
         migrationState.status = 'success';
         
