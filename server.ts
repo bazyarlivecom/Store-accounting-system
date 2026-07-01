@@ -88,10 +88,23 @@ async function getDbData(key: string) {
   if (usePg && pgClient) {
     if (!KNOWN_TABLES.includes(key)) return null;
     const res = await pgClient.query(`SELECT * FROM "${key}"`);
+    
+    const parseJSONFields = (row: any) => {
+       if (!row) return row;
+       for (const k in row) {
+          if (typeof row[k] === 'string' && (row[k].startsWith('{') || row[k].startsWith('['))) {
+             try {
+                row[k] = JSON.parse(row[k]);
+             } catch(e) {}
+          }
+       }
+       return row;
+    };
+
     if (key === 'company_profile' || key === 'backupConfig') {
-      return res.rows.length > 0 ? res.rows[0] : null;
+      return res.rows.length > 0 ? parseJSONFields(res.rows[0]) : null;
     }
-    return res.rows;
+    return res.rows.map(parseJSONFields);
   } else {
     const row = db.prepare('SELECT value FROM store WHERE key = ?').get(key) as any;
     return row ? JSON.parse(row.value) : null;
@@ -108,7 +121,7 @@ async function setDbData(key: string, data: any) {
              data.id = 'singleton';
              await syncTableSchema(pgClient, key, data);
              const keys = Object.keys(data);
-             const vals = Object.values(data);
+             const vals = Object.values(data).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
              const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
              const colNames = keys.map(k => `"${k}"`).join(', ');
              await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
@@ -118,7 +131,7 @@ async function setDbData(key: string, data: any) {
             if (!item.id) item.id = Math.random().toString(36).substring(2, 15);
             await syncTableSchema(pgClient, key, item);
             const keys = Object.keys(item);
-            const vals = Object.values(item);
+            const vals = Object.values(item).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
             const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
             const colNames = keys.map(k => `"${k}"`).join(', ');
             await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
@@ -134,17 +147,30 @@ async function setDbData(key: string, data: any) {
 async function getAllDbData() {
   if (usePg && pgClient) {
     const allData = [];
+    const parseJSONFields = (row: any) => {
+       if (!row) return row;
+       for (const k in row) {
+          if (typeof row[k] === 'string' && (row[k].startsWith('{') || row[k].startsWith('['))) {
+             try {
+                row[k] = JSON.parse(row[k]);
+             } catch(e) {}
+          }
+       }
+       return row;
+    };
+
     for (const key of KNOWN_TABLES) {
        const res = await pgClient.query(`SELECT * FROM "${key}"`);
        if (key === 'company_profile' || key === 'backupConfig') {
-         allData.push({ key, value: res.rows.length > 0 ? res.rows[0] : null });
+         allData.push({ key, value: res.rows.length > 0 ? parseJSONFields(res.rows[0]) : null });
        } else {
-         allData.push({ key, value: res.rows });
+         allData.push({ key, value: res.rows.map(parseJSONFields) });
        }
     }
     return allData;
   } else {
-    return db.prepare('SELECT key, value FROM store').all() as any[];
+    const rows = db.prepare('SELECT key, value FROM store').all();
+    return rows.map((r: any) => ({ key: r.key, value: JSON.parse(r.value) }));
   }
 }
 
@@ -198,7 +224,7 @@ async function initDB() {
                   data.id = 'singleton';
                   await syncTableSchema(pgClient, key, data);
                   const keys = Object.keys(data);
-                  const vals = Object.values(data);
+                  const vals = Object.values(data).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
                   const placeholders = keys.map((_, i) => `${i + 1}`).join(', ');
                   const colNames = keys.map(k => `"${k}"`).join(', ');
                   await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
@@ -208,7 +234,7 @@ async function initDB() {
                   if (!item.id) item.id = Math.random().toString(36).substring(2, 15);
                   await syncTableSchema(pgClient, key, item);
                   const keys = Object.keys(item);
-                  const vals = Object.values(item);
+                  const vals = Object.values(item).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
                   const placeholders = keys.map((_, i) => `${i + 1}`).join(', ');
                   const colNames = keys.map(k => `"${k}"`).join(', ');
                   await pgClient.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
@@ -970,102 +996,77 @@ async function startServer() {
     }
   });
 
-  app.post('/api/migrate-postgres/start', async (req, res) => {
-    const { connectionString } = req.body;
-    if (migrationState.status === 'migrating') {
-      return res.status(400).json({ error: 'مهاجرت در حال انجام است.' });
+  
+  app.get('/api/migrate-postgres/tables', (req, res) => {
+    try {
+      const stmt = db.prepare('SELECT key FROM store');
+      const allRows = stmt.all();
+      const tables = allRows.map(r => r.key).filter(k => KNOWN_TABLES.includes(k));
+      res.json({ success: true, tables });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
     }
+  });
+
+  app.post('/api/migrate-postgres/table/:table', async (req, res) => {
+    const { table } = req.params;
+    const { connectionString } = req.body;
     
-    migrationState = { status: 'migrating', progress: 0, total: 0, logs: ['در حال اتصال به PostgreSQL...'], error: null };
-    res.json({ success: true });
-    
-    (async () => {
+    if (!KNOWN_TABLES.includes(table)) {
+        return res.status(400).json({ error: 'جدول نامعتبر است' });
+    }
+
+    try {
       const client = new Client({ connectionString });
-      try {
-        await client.connect();
-        migrationState.logs.push('اتصال به PostgreSQL با موفقیت انجام شد.');
-        
-        migrationState.logs.push('در حال خواندن داده‌ها از SQLite...');
-        const stmt = db.prepare('SELECT key, value FROM store');
-        const allRows = stmt.all();
-        migrationState.total = allRows.length;
-        migrationState.logs.push(`تعداد ${migrationState.total} جدول/مجموعه داده در SQLite یافت شد.`);
-        
-        migrationState.logs.push('بررسی و ایجاد جدول‌ها در PostgreSQL...');
-        tableSchemas.clear();
-        for (const table of KNOWN_TABLES) {
-          await client.query(`DROP TABLE IF EXISTS "${table}" CASCADE`);
-          await client.query(`CREATE TABLE "${table}" (id VARCHAR PRIMARY KEY)`);
-        }
-        
-        migrationState.logs.push('شروع Transaction برای اطمینان از صحت داده‌ها...');
-        await client.query('BEGIN');
-        
-        let count = 0;
-        for (const row of allRows) {
-          if (!KNOWN_TABLES.includes(row.key)) continue;
-          migrationState.logs.push(`در حال انتقال داده‌های مربوط به: ${row.key}...`);
-          
-          const key = row.key;
-          const data = JSON.parse(row.value);
-          
-          if (key === 'company_profile' || key === 'backupConfig' || !Array.isArray(data)) {
-             if (data && typeof data === 'object') {
-                 data.id = 'singleton';
-                 await syncTableSchema(client, key, data);
-                 const keys = Object.keys(data);
-                 const vals = Object.values(data);
-                 const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-                 const colNames = keys.map(k => `"${k}"`).join(', ');
-                 await client.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
-             }
-          } else {
-             for (const item of data) {
-                if (!item.id) item.id = Math.random().toString(36).substring(2, 15);
-                await syncTableSchema(client, key, item);
-                const keys = Object.keys(item);
-                const vals = Object.values(item);
-                const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-                const colNames = keys.map(k => `"${k}"`).join(', ');
-                await client.query(`INSERT INTO "${key}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
-             }
-          }
-          
-          count++;
-          migrationState.progress = count;
-          // Small delay for UI demonstration of progress
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-        
-        migrationState.logs.push('پایان تراکنش و ثبت دائمی اطلاعات (Commit)...');
-        await client.query('COMMIT');
-        
-        migrationState.logs.push('به‌روزرسانی تنظیمات سیستم برای استفاده از PostgreSQL...');
-        const config = { engine: 'postgres', connectionString };
-        await fsPromises.writeFile(DB_CONFIG_FILE, JSON.stringify(config, null, 2));
-        
-        // Switch live runtime to PostgreSQL
-        if (pgClient) {
-           try { await pgClient.end(); } catch(e){}
-        }
-        pgClient = new Client({ connectionString });
-        await pgClient.connect();
-        usePg = true;
-        
-        migrationState.logs.push('مهاجرت اطلاعات با موفقیت به پایان رسید.');
-        migrationState.status = 'success';
-        
-      } catch (err: any) {
-        tableSchemas.clear();
-        migrationState.logs.push(`خطا در هنگام مهاجرت: ${err.message}`);
-        migrationState.logs.push('در حال بازگردانی تغییرات (Rollback)...');
-        try { await client.query('ROLLBACK'); } catch(e){}
-        migrationState.status = 'error';
-        migrationState.error = err.message;
-      } finally {
-        try { await client.end(); } catch(e){}
+      await client.connect();
+
+      const stmt = db.prepare('SELECT value FROM store WHERE key = ?');
+      const row = stmt.get(table);
+      if (!row) {
+         await client.end();
+         return res.status(404).json({ error: 'داده‌ای برای این جدول یافت نشد' });
       }
-    })();
+
+      await client.query(`DROP TABLE IF EXISTS "${table}" CASCADE`);
+      await client.query(`CREATE TABLE "${table}" (id VARCHAR PRIMARY KEY)`);
+      
+      const data = JSON.parse(row.value);
+      
+      await client.query('BEGIN');
+      let migratedCount = 0;
+      tableSchemas.clear();
+
+      if (table === 'company_profile' || table === 'backupConfig' || !Array.isArray(data)) {
+          if (data && typeof data === 'object') {
+              data.id = 'singleton';
+              await syncTableSchema(client, table, data);
+              const keys = Object.keys(data);
+              const vals = Object.values(data).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
+              const placeholders = keys.map((_, i) => `${i + 1}`).join(', ');
+              const colNames = keys.map(k => `"${k}"`).join(', ');
+              await client.query(`INSERT INTO "${table}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
+              migratedCount = 1;
+          }
+      } else {
+          for (const item of data) {
+              if (!item.id) item.id = Math.random().toString(36).substring(2, 15);
+              await syncTableSchema(client, table, item);
+              const keys = Object.keys(item);
+              const vals = Object.values(item).map(v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
+              const placeholders = keys.map((_, i) => `${i + 1}`).join(', ');
+              const colNames = keys.map(k => `"${k}"`).join(', ');
+              await client.query(`INSERT INTO "${table}" (${colNames}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING`, vals);
+              migratedCount++;
+          }
+      }
+
+      await client.query('COMMIT');
+      await client.end();
+      res.json({ success: true, count: migratedCount });
+    } catch (e) {
+      console.error(`Error migrating table ${table}:`, e);
+      res.status(500).json({ error: e.message || String(e) });
+    }
   });
 
   app.get('/api/migrate-postgres/status', (req, res) => {
