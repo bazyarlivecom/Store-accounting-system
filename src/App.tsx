@@ -1567,7 +1567,7 @@ export default function App() {
     setReceiptPersonId("");
     setReceiptAmount("");
     setReceiptDescription("");
-    setReceiptLinkedInvoices([]);
+    setReceiptLinkedInvoices({});
     setReceiptMethod("cash");
     setReceiptResourceType("cashbox");
     showNotification("پیشنویس رسید حذف شد.", "info");
