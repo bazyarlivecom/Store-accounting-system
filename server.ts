@@ -42,9 +42,11 @@ async function syncTableSchema(client: any, tableName: string, dataObj: any) {
     }
     
     for (const [k, v] of Object.entries(dataObj)) {
+        if (v === undefined) continue;
         if (!knownCols.has(k)) {
             let colType = 'TEXT';
-            if (typeof v === 'number') colType = 'DOUBLE PRECISION';
+            if (v === null) colType = 'TEXT';
+            else if (typeof v === 'number') colType = 'DOUBLE PRECISION';
             else if (typeof v === 'boolean') colType = 'BOOLEAN';
             else if (typeof v === 'object') colType = 'JSONB';
             
@@ -181,6 +183,11 @@ async function initDB() {
       const res = await pgClient.query(`SELECT COUNT(*) as count FROM "users"`);
       if (parseInt(res.rows[0].count) === 0) {
         console.log('Migrating from SQLite to Postgres...');
+        tableSchemas.clear();
+        for (const table of KNOWN_TABLES) {
+          await pgClient.query(`DROP TABLE IF EXISTS "${table}" CASCADE`);
+          await pgClient.query(`CREATE TABLE "${table}" (id VARCHAR PRIMARY KEY)`);
+        }
         const sqliteRows = db.prepare('SELECT key, value FROM store').all();
         for (const row of sqliteRows) {
           const key = row.key;
@@ -985,10 +992,10 @@ async function startServer() {
         migrationState.logs.push(`تعداد ${migrationState.total} جدول/مجموعه داده در SQLite یافت شد.`);
         
         migrationState.logs.push('بررسی و ایجاد جدول‌ها در PostgreSQL...');
+        tableSchemas.clear();
         for (const table of KNOWN_TABLES) {
-          await client.query(`
-            CREATE TABLE IF NOT EXISTS "${table}" (id VARCHAR PRIMARY KEY)
-          `);
+          await client.query(`DROP TABLE IF EXISTS "${table}" CASCADE`);
+          await client.query(`CREATE TABLE "${table}" (id VARCHAR PRIMARY KEY)`);
         }
         
         migrationState.logs.push('شروع Transaction برای اطمینان از صحت داده‌ها...');
@@ -1048,7 +1055,8 @@ async function startServer() {
         migrationState.logs.push('مهاجرت اطلاعات با موفقیت به پایان رسید.');
         migrationState.status = 'success';
         
-      } catch (err) {
+      } catch (err: any) {
+        tableSchemas.clear();
         migrationState.logs.push(`خطا در هنگام مهاجرت: ${err.message}`);
         migrationState.logs.push('در حال بازگردانی تغییرات (Rollback)...');
         try { await client.query('ROLLBACK'); } catch(e){}
